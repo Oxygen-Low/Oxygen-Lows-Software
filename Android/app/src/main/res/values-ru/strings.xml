@@ -3,4 +3,9 @@
     <string name="update_downloading">Загрузка обновления Oxygen Low\'s Software (%1$s)...</string>
     <string name="update_ready">Обновление готово. Запуск установщика...</string>
     <string name="update_failed">Не удалось загрузить обновление.</string>
+    <string name="webview_update_title">Обновите Android System WebView</string>
+    <string name="webview_update_message">Ваш WebView не поддерживает такие функции приложения, как VPN-подключения, мелодии звонка и управление обновлениями из приложения. Обновите Android System WebView (или текущий компонент WebView) через Google Play, затем снова откройте приложение. Пока вы можете продолжать пользоваться веб-функциями.</string>
+    <string name="webview_update_action">Обновить</string>
+    <string name="webview_update_later">Не сейчас</string>
+    <string name="webview_update_unavailable">Не удалось открыть Google Play. Обновите Android System WebView или текущий компонент WebView вручную, затем снова откройте приложение.</string>
 </resources>
