@@ -4,6 +4,7 @@ import {
   fetchPollinationsClient,
   PollinationsRateLimitError,
   PollinationsNotFoundError,
+  PollinationsAuthError,
 } from "./pollinationsClient";
 
 export interface EntityGenerationOptions {
@@ -339,11 +340,16 @@ export async function callModel(
       if (
         err instanceof PollinationsRateLimitError ||
         err instanceof PollinationsNotFoundError ||
+        err instanceof PollinationsAuthError ||
         err?.statusCode === 429 ||
         err?.statusCode === 404 ||
         err?.statusCode === 402 ||
+        err?.statusCode === 401 ||
+        err?.statusCode === 403 ||
         err?.message?.includes("404") ||
-        err?.message?.includes("402")
+        err?.message?.includes("402") ||
+        err?.message?.includes("401") ||
+        err?.message?.includes("403")
       ) {
         // Fallback to Horde Fast, then Smart via server proxy
         try {
