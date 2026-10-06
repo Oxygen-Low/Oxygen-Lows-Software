@@ -15,6 +15,43 @@ describe("public HTTP boundary", () => {
     expect(isPrivateIP("2606:4700:4700::1111")).toBe(false);
     expect(isPrivateIP("8.8.8.8")).toBe(false);
   });
+  it("resolves a public address when options are omitted", () => {
+    vi.mocked(lookup).mockImplementation(((_host: any, _options: any, cb: any) => cb(null, [{ address: "8.8.8.8", family: 4 }])) as any);
+    const callback = vi.fn();
+
+    publicLookup("example.com", callback);
+
+    expect(callback).toHaveBeenCalledExactlyOnceWith(null, "8.8.8.8", 4);
+  });
+  it("forwards DNS errors when options are omitted", () => {
+    const error = new Error("DNS lookup failed");
+    vi.mocked(lookup).mockImplementation(((_host: any, _options: any, cb: any) => cb(error)) as any);
+    const callback = vi.fn();
+
+    publicLookup("example.com", callback);
+
+    expect(callback).toHaveBeenCalledExactlyOnceWith(error);
+  });
+  it.each([
+    { name: "empty answers", addresses: [] },
+    { name: "mixed public and private answers", addresses: [{ address: "8.8.8.8", family: 4 }, { address: "127.0.0.1", family: 4 }] },
+  ])("rejects $name when options are omitted", ({ addresses }) => {
+    vi.mocked(lookup).mockImplementation(((_host: any, _options: any, cb: any) => cb(null, addresses)) as any);
+    const callback = vi.fn();
+
+    publicLookup("example.com", callback);
+
+    expect(callback).toHaveBeenCalledExactlyOnceWith(new Error("Public origin required"));
+  });
+  it("preserves family filtering and all-address results with explicit options", () => {
+    const ipv6 = { address: "2606:4700:4700::1111", family: 6 };
+    vi.mocked(lookup).mockImplementation(((_host: any, _options: any, cb: any) => cb(null, [{ address: "8.8.8.8", family: 4 }, ipv6])) as any);
+    const callback = vi.fn();
+
+    publicLookup("example.com", { family: 6, all: true }, callback);
+
+    expect(callback).toHaveBeenCalledExactlyOnceWith(null, [ipv6]);
+  });
   it("checks actual connection DNS answers, including mixed answers", async () => {
     vi.mocked(lookup).mockImplementation(((_host: any, _options: any, cb: any) => cb(null, [{ address: "8.8.8.8", family: 4 }, { address: "127.0.0.1", family: 4 }])) as any);
     await new Promise<void>((resolve) => {

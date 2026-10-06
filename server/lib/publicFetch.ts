@@ -5,6 +5,10 @@ import { assertPublicHostname, isPrivateIP } from "./safeAiUrl.ts";
 // Resolve at connection time, preserving the hostname for TLS and Host headers.
 // A separate preflight DNS lookup cannot protect against DNS rebinding.
 export const publicLookup: typeof lookup = ((hostname: string, options: any, callback: any) => {
+  if (typeof options === "function") {
+    callback = options;
+    options = {};
+  }
   lookup(hostname, { all: true, verbatim: true }, (error, addresses) => {
     if (error) return callback(error);
     if (!addresses.length || addresses.some(({ address }) => isPrivateIP(address))) {
