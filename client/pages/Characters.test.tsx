@@ -154,7 +154,12 @@ describe("Characters Component", () => {
 
   it("opens a review of the saved character with its linked lore", async () => {
     const universe = { id: "world", name: "Moon City", is_universe: true };
-    const race = { id: "race", name: "Elves", is_race: true };
+    const race = {
+      id: "race",
+      name: "Elves",
+      is_race: true,
+      universe_id: "world",
+    };
     const character = {
       id: "hero",
       name: "Mira",
@@ -178,12 +183,41 @@ describe("Characters Component", () => {
         character: expect.objectContaining(character),
         universe: expect.objectContaining(universe),
         race: expect.objectContaining(race),
+        entityType: "character",
       }),
     );
     expect(builder.update).not.toHaveBeenCalled();
     expect(builder.insert).not.toHaveBeenCalled();
+
+    // Review Universe
     fireEvent.click(screen.getByText("My Universes"));
-    expect(screen.queryByRole("button", { name: "Review with AI" })).toBeNull();
+    const univReviewBtn = await screen.findByRole("button", {
+      name: "Review with AI",
+    });
+    fireEvent.click(univReviewBtn);
+    expect(reviewDialogProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining(universe),
+        universe: undefined,
+        race: undefined,
+        entityType: "universe",
+      }),
+    );
+
+    // Review Race (with linked universe if assigned)
+    fireEvent.click(screen.getByText("My Races"));
+    const raceReviewBtn = await screen.findByRole("button", {
+      name: "Review with AI",
+    });
+    fireEvent.click(raceReviewBtn);
+    expect(reviewDialogProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining(race),
+        universe: expect.objectContaining(universe),
+        race: undefined,
+        entityType: "race",
+      }),
+    );
   });
 
   it("renders characters tabs and new character button", async () => {

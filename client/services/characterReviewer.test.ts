@@ -94,6 +94,126 @@ describe("reviewCharacter", () => {
     expect(JSON.stringify(character)).toBe(before);
   });
 
+  it("sends universe-specific review prompts and payload when entityType is universe", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: "```json\n" + JSON.stringify(review) + "\n```",
+                },
+              },
+            ],
+          }),
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const universe = {
+      name: "Eldoria",
+      short_description: "A high-magic floating continent.",
+      appearance: "Crystalline towers and floating isles.",
+      personality: "Ancient, serene, and precarious.",
+      backstory: "Formed after the Sundering.",
+      hidden_description: "The core is cracking.",
+    };
+
+    const res = await reviewCharacter({
+      ...options,
+      character: universe,
+      entityType: "universe",
+    });
+
+    expect(res).toEqual(review);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = (
+      fetchMock.mock.calls as unknown as [string, RequestInit][]
+    )[0];
+    const body = JSON.parse(init.body as string);
+    expect(body.messages[0].content).toContain(
+      "worldbuilding and universe editor",
+    );
+    expect(JSON.parse(body.messages[1].content)).toEqual({
+      universe: {
+        name: "Eldoria",
+        display_name: undefined,
+        short_description: "A high-magic floating continent.",
+        appearance: "Crystalline towers and floating isles.",
+        personality: "Ancient, serene, and precarious.",
+        backstory: "Formed after the Sundering.",
+        hidden_description: "The core is cracking.",
+      },
+    });
+  });
+
+  it("sends race-specific review prompts and payload with linked universe when entityType is race", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: "```json\n" + JSON.stringify(review) + "\n```",
+                },
+              },
+            ],
+          }),
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const race = {
+      name: "Starborn",
+      short_description: "Humanoids infused with stellar energy.",
+      appearance: "Luminescent skin and silver hair.",
+      personality: "Philosophical, aloof, and curious.",
+      backstory: "Descended from astral travelers.",
+      hidden_description: "Vulnerable to void decay.",
+    };
+    const universe = {
+      name: "Cosmic Realm",
+      short_description: "Interstellar empires.",
+    };
+
+    const res = await reviewCharacter({
+      ...options,
+      character: race,
+      universe,
+      entityType: "race",
+    });
+
+    expect(res).toEqual(review);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = (
+      fetchMock.mock.calls as unknown as [string, RequestInit][]
+    )[0];
+    const body = JSON.parse(init.body as string);
+    expect(body.messages[0].content).toContain(
+      "race/species design editor",
+    );
+    expect(JSON.parse(body.messages[1].content)).toEqual({
+      race: {
+        name: "Starborn",
+        display_name: undefined,
+        short_description: "Humanoids infused with stellar energy.",
+        appearance: "Luminescent skin and silver hair.",
+        personality: "Philosophical, aloof, and curious.",
+        backstory: "Descended from astral travelers.",
+        hidden_description: "Vulnerable to void decay.",
+      },
+      universe: {
+        name: "Cosmic Realm",
+        display_name: undefined,
+        short_description: "Interstellar empires.",
+        appearance: undefined,
+        personality: undefined,
+        backstory: undefined,
+        hidden_description: undefined,
+      },
+    });
+  });
+
   it.each([
     "",
     "No review",

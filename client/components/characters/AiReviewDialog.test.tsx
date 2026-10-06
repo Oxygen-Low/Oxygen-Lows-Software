@@ -163,4 +163,67 @@ describe("AiReviewDialog", () => {
     second.unmount();
     await waitFor(() => expect(secondSignal.aborted).toBe(true));
   });
+
+  it("renders universe-specific review labels and triggers review with entityType universe", async () => {
+    const universe = {
+      name: "Cyber City",
+      short_description: "Neon lit dystopia",
+      is_universe: true,
+    };
+    render(
+      <AiReviewDialog
+        character={universe}
+        entityType="universe"
+        onClose={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(/Review world lore, geography, tone, history, and secrets/),
+    ).toBeDefined();
+    start();
+    await screen.findByText(result.summary);
+    expect(reviewCharacter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        character: universe,
+        entityType: "universe",
+      }),
+    );
+    expect(screen.getByText("History & Factions")).toBeDefined();
+    expect(screen.getByText("Geography & Environment")).toBeDefined();
+    expect(screen.getByText("Tone & Atmosphere")).toBeDefined();
+    expect(screen.getByText("World Consistency")).toBeDefined();
+  });
+
+  it("renders race-specific review labels and triggers review with entityType race", async () => {
+    const race = {
+      name: "Androids",
+      short_description: "Synthetic beings",
+      is_race: true,
+    };
+    const universe = { name: "Cyber City" };
+    render(
+      <AiReviewDialog
+        character={race}
+        universe={universe}
+        entityType="race"
+        onClose={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(/Review biology, culture, lineage, and lore/),
+    ).toBeDefined();
+    start();
+    await screen.findByText(result.summary);
+    expect(reviewCharacter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        character: race,
+        universe,
+        entityType: "race",
+      }),
+    );
+    expect(screen.getByText("Origins & Lineage")).toBeDefined();
+    expect(screen.getByText("Biology & Physical Traits")).toBeDefined();
+    expect(screen.getByText("Culture & Society")).toBeDefined();
+    expect(screen.getByText("Lore & Universe Fit")).toBeDefined();
+  });
 });

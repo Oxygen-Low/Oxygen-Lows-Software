@@ -1108,8 +1108,14 @@ export const ko = {
       title: "{name} 검토",
       description:
         "선택한 모델로 비공개 메모와 연결된 종족 또는 세계관 설정을 포함한 저장된 설명을 검토합니다. 피드백은 참고용이며 캐릭터를 변경하지 않습니다.",
+      descriptionUniverse:
+        "선택한 모델로 세계관 설정, 지리, 분위기, 역사 및 비밀 메모를 검토합니다. 피드백은 참고용이며 세계관을 변경하지 않습니다.",
+      descriptionRace:
+        "선택한 모델로 생물학적 특징, 문화, 혈통 및 전승을 검토합니다. 피드백은 참고용이며 종족을 변경하지 않습니다.",
       start: "검토 시작",
       reviewing: "캐릭터 검토 중…",
+      reviewingUniverse: "세계관 검토 중…",
+      reviewingRace: "종족 검토 중…",
       error: "검토를 완료하지 못했습니다. 모델 연결을 확인하고 다시 시도하세요.",
       strengths: "잘된 점",
       improvements: "개선할 점",
@@ -1117,6 +1123,14 @@ export const ko = {
       appearance: "외모",
       personality: "성격",
       consistency: "일관성",
+      universeStory: "역사 및 세력",
+      universeAppearance: "지리 및 환경",
+      universePersonality: "어조 및 분위기",
+      universeConsistency: "세계관 일관성",
+      raceStory: "기원 및 혈통",
+      raceAppearance: "생체 및 외형적 특징",
+      racePersonality: "문화 및 사회",
+      raceConsistency: "설정 및 세계관 조화",
     },
     aiGenerate: {
       button: "AI ìƒì„±",

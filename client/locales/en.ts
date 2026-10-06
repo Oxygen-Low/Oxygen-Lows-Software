@@ -1117,8 +1117,14 @@ export const en = {
       title: "Review {name}",
       description:
         "Review saved descriptions, including private notes and linked race or universe lore, with the selected model. Feedback is advisory and does not change your character.",
+      descriptionUniverse:
+        "Review world lore, geography, tone, history, and secrets with the selected model. Feedback is advisory and does not change your universe.",
+      descriptionRace:
+        "Review biology, culture, lineage, and lore with the selected model. Feedback is advisory and does not change your race.",
       start: "Start review",
       reviewing: "Reviewing character…",
+      reviewingUniverse: "Reviewing universe…",
+      reviewingRace: "Reviewing race…",
       error:
         "Could not complete the review. Check your model connection and try again.",
       strengths: "What works well",
@@ -1127,6 +1133,14 @@ export const en = {
       appearance: "Appearance",
       personality: "Personality",
       consistency: "Consistency",
+      universeStory: "History & Factions",
+      universeAppearance: "Geography & Environment",
+      universePersonality: "Tone & Atmosphere",
+      universeConsistency: "World Consistency",
+      raceStory: "Origins & Lineage",
+      raceAppearance: "Biology & Physical Traits",
+      racePersonality: "Culture & Society",
+      raceConsistency: "Lore & Universe Fit",
     },
     aiGenerate: {
       button: "AI Generate",

@@ -1698,17 +1698,15 @@ export default function Characters() {
                           </Button>
                         </div>
 
-                        {!char.is_universe && !char.is_race && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full border-cyan-800/60 text-cyan-300 hover:bg-cyan-950/60"
-                            onClick={() => setReviewingCharacter(char)}
-                          >
-                            <Sparkles className="w-4 h-4 mr-2" />
-                            {t("characters.aiReview.action")}
-                          </Button>
-                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-cyan-800/60 text-cyan-300 hover:bg-cyan-950/60"
+                          onClick={() => setReviewingCharacter(char)}
+                        >
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          {t("characters.aiReview.action")}
+                        </Button>
 
                         {char.is_race && (
                           <Button
@@ -2087,8 +2085,23 @@ export default function Characters() {
         <AiReviewDialog
           key={reviewingCharacter.id}
           character={reviewingCharacter}
-          universe={universesMap.get(reviewingCharacter.universe_id || "")}
-          race={racesMap.get(reviewingCharacter.race_id || "")}
+          entityType={
+            reviewingCharacter.is_universe
+              ? "universe"
+              : reviewingCharacter.is_race
+                ? "race"
+                : "character"
+          }
+          universe={
+            reviewingCharacter.is_universe
+              ? undefined
+              : universesMap.get(reviewingCharacter.universe_id || "")
+          }
+          race={
+            reviewingCharacter.is_race || reviewingCharacter.is_universe
+              ? undefined
+              : racesMap.get(reviewingCharacter.race_id || "")
+          }
           onClose={() => setReviewingCharacter(null)}
         />
       )}

@@ -1133,8 +1133,14 @@ export const es = {
       title: "Revisar a {name}",
       description:
         "Revisa las descripciones guardadas, incluidas las notas privadas y la información de la raza o el universo vinculados, con el modelo seleccionado. Los comentarios son orientativos y no modifican tu personaje.",
+      descriptionUniverse:
+        "Revisa la historia del mundo, la geografía, el tono, la historia y los secretos con el modelo seleccionado. Los comentarios son orientativos y no modifican tu universo.",
+      descriptionRace:
+        "Revisa la biología, la cultura, el linaje y la historia con el modelo seleccionado. Los comentarios son orientativos y no modifican tu raza.",
       start: "Iniciar revisión",
       reviewing: "Revisando personaje…",
+      reviewingUniverse: "Revisando universo…",
+      reviewingRace: "Revisando raza…",
       error:
         "No se pudo completar la revisión. Comprueba la conexión con el modelo e inténtalo de nuevo.",
       strengths: "Lo que funciona bien",
@@ -1143,6 +1149,14 @@ export const es = {
       appearance: "Apariencia",
       personality: "Personalidad",
       consistency: "Coherencia",
+      universeStory: "Historia y facciones",
+      universeAppearance: "Geografía y entorno",
+      universePersonality: "Tono y atmósfera",
+      universeConsistency: "Coherencia del mundo",
+      raceStory: "Orígenes y linaje",
+      raceAppearance: "Biología y rasgos físicos",
+      racePersonality: "Cultura y sociedad",
+      raceConsistency: "Coherencia con el universo",
     },
     aiGenerate: {
       button: "Generar con IA",

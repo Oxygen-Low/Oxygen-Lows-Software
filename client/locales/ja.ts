@@ -1120,8 +1120,14 @@ export const ja = {
       title: "{name}のレビュー",
       description:
         "選択したモデルで、非公開メモや関連する種族・世界観の情報を含む保存済みの説明をレビューします。提案は参考情報であり、キャラクターは変更されません。",
+      descriptionUniverse:
+        "選択したモデルで、世界観の設定、地理、トーン、歴史、秘密メモをレビューします。提案は参考情報であり、世界観は変更されません。",
+      descriptionRace:
+        "選択したモデルで、生態、文化、出自、伝承をレビューします。提案は参考情報であり、種族は変更されません。",
       start: "レビューを開始",
       reviewing: "キャラクターをレビュー中…",
+      reviewingUniverse: "世界観をレビュー中…",
+      reviewingRace: "種族をレビュー中…",
       error: "レビューを完了できませんでした。モデルへの接続を確認して、もう一度お試しください。",
       strengths: "良い点",
       improvements: "改善できる点",
@@ -1129,6 +1135,14 @@ export const ja = {
       appearance: "外見",
       personality: "性格",
       consistency: "整合性",
+      universeStory: "歴史と勢力",
+      universeAppearance: "地理と環境",
+      universePersonality: "トーンと雰囲気",
+      universeConsistency: "世界の整合性",
+      raceStory: "起源と系譜",
+      raceAppearance: "生体と身体的特徴",
+      racePersonality: "文化と社会",
+      raceConsistency: "設定と世界の調和",
     },
     aiGenerate: {
       button: "AIç”Ÿæˆ",

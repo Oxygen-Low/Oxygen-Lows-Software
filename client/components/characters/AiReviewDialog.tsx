@@ -21,6 +21,7 @@ interface AiReviewDialogProps {
   character: ReviewCharacter;
   universe?: ReviewCharacter | null;
   race?: ReviewCharacter | null;
+  entityType?: "character" | "universe" | "race";
   onClose: () => void;
 }
 
@@ -31,9 +32,17 @@ export function AiReviewDialog({
   character,
   universe,
   race,
+  entityType,
   onClose,
 }: AiReviewDialogProps) {
   const { t, language } = useTranslation();
+  const resolvedType =
+    entityType ||
+    ((character as any).is_universe
+      ? "universe"
+      : (character as any).is_race
+        ? "race"
+        : "character");
   const {
     models,
     selectedModel,
@@ -101,6 +110,7 @@ export function AiReviewDialog({
         character,
         universe,
         race,
+        entityType: resolvedType,
         model: chosenModel,
         language,
         apiKey,
@@ -116,6 +126,44 @@ export function AiReviewDialog({
       }
     }
   };
+
+  const getAreaLabel = (
+    area: "story" | "appearance" | "personality" | "consistency",
+  ) => {
+    if (resolvedType === "universe") {
+      const keyMap = {
+        story: "universeStory",
+        appearance: "universeAppearance",
+        personality: "universePersonality",
+        consistency: "universeConsistency",
+      } as const;
+      return t(`characters.aiReview.${keyMap[area]}`);
+    }
+    if (resolvedType === "race") {
+      const keyMap = {
+        story: "raceStory",
+        appearance: "raceAppearance",
+        personality: "racePersonality",
+        consistency: "raceConsistency",
+      } as const;
+      return t(`characters.aiReview.${keyMap[area]}`);
+    }
+    return t(`characters.aiReview.${area}`);
+  };
+
+  const descriptionText =
+    resolvedType === "universe"
+      ? t("characters.aiReview.descriptionUniverse")
+      : resolvedType === "race"
+        ? t("characters.aiReview.descriptionRace")
+        : t("characters.aiReview.description");
+
+  const reviewingText =
+    resolvedType === "universe"
+      ? t("characters.aiReview.reviewingUniverse")
+      : resolvedType === "race"
+        ? t("characters.aiReview.reviewingRace")
+        : t("characters.aiReview.reviewing");
 
   return (
     <Dialog
@@ -133,7 +181,7 @@ export function AiReviewDialog({
             })}
           </DialogTitle>
           <DialogDescription className="text-slate-400">
-            {t("characters.aiReview.description")}
+            {descriptionText}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
@@ -161,7 +209,7 @@ export function AiReviewDialog({
         {isReviewing && (
           <p role="status" className="flex items-center gap-2 text-cyan-300">
             <Loader2 className="w-4 h-4 animate-spin" />
-            {t("characters.aiReview.reviewing")}
+            {reviewingText}
           </p>
         )}
         {error && (
@@ -194,7 +242,7 @@ export function AiReviewDialog({
                   className="rounded-lg border border-slate-700 bg-slate-950/40 p-4"
                 >
                   <h4 className="font-medium text-cyan-300">
-                    {t(`characters.aiReview.${area}`)}
+                    {getAreaLabel(area)}
                   </h4>
                   <p className="mt-2 text-sm text-slate-300 whitespace-pre-wrap">
                     {result.improvements[area]}
