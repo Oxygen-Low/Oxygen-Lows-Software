@@ -162,8 +162,12 @@ export function WebBrowserApp() {
   // Listen to navigation events from proxied iframe (works cleanly across sandboxed origins)
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
-      if (e.data && e.data.type === "OXYLOW_BROWSER_NAVIGATE" && e.data.url) {
-        navigateTo(e.data.url);
+      if (e.source !== iframeRef.current?.contentWindow || e.origin !== "null") return;
+      if (e.data?.type === "OXYLOW_BROWSER_NAVIGATE" && typeof e.data.url === "string") {
+        try {
+          const target = new URL(e.data.url);
+          if (target.protocol === "https:" || target.protocol === "http:") navigateTo(target.href);
+        } catch { /* Ignore malformed messages from remote pages. */ }
       }
     };
     window.addEventListener("message", handleMessage);

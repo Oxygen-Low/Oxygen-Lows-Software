@@ -1,3 +1,4 @@
+import { fetchPublicUrl } from "./publicFetch.ts";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -640,7 +641,7 @@ export async function getRobotsRules(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 6000);
 
-    const res = await fetch(robotsUrl, {
+    const res = await fetchPublicUrl(robotsUrl, {
       method: "GET",
       headers: {
         "User-Agent": OXYLOW_USER_AGENT,
@@ -706,7 +707,7 @@ export async function parseSitemap(sitemapUrl: string, domain: string, crawlDela
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
-    const res = await fetch(sitemapUrl, {
+    const res = await fetchPublicUrl(sitemapUrl, {
       headers: {
         "User-Agent": OXYLOW_USER_AGENT,
         "From": OXYLOW_CONTACT_EMAIL,
@@ -1194,7 +1195,7 @@ export async function crawlSite(
           ? (AbortSignal as any).any([controller.signal, abortSignal])
           : controller.signal;
 
-        const res = await fetch(currentUrl, {
+        const res = await fetchPublicUrl(currentUrl, {
           method: "GET",
           headers: {
             "User-Agent": OXYLOW_USER_AGENT,

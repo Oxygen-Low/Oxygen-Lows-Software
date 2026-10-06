@@ -44,6 +44,7 @@ export interface InboundInferenceJob {
 }
 
 export interface JobHandler {
+  hostUserId: string;
   onChunk: (data: { chunk?: string; delta?: any; tokens?: number }) => void;
   onComplete: (data: { tokens?: number; text?: string; embeddings?: any }) => void;
   onError: (error: string) => void;
@@ -253,7 +254,7 @@ modelsRouter.post("/relay/register", async (c) => {
   let host = activeHosts.get(userId);
   if (!host) {
     host = {
-      hostId: `host_${userId}_${crypto.randomBytes(4).toString("hex")}`,
+      hostId: `host_${userId}_${crypto.randomBytes(16).toString("hex")}`,
       userId,
       username,
       models: new Map(),
@@ -350,7 +351,7 @@ modelsRouter.get("/relay/tunnel", async (c) => {
     let host = activeHosts.get(userId);
     if (!host) {
       host = {
-        hostId: `host_${userId}_${crypto.randomBytes(4).toString("hex")}`,
+        hostId: `host_${userId}_${crypto.randomBytes(16).toString("hex")}`,
         userId,
         username,
         models: new Map(),
@@ -415,6 +416,9 @@ modelsRouter.get("/relay/tunnel", async (c) => {
 
 // Host posts stream chunks back to server
 modelsRouter.post("/relay/chunk", async (c) => {
+  const token = c.req.header("Authorization")?.replace(/^Bearer\s+/i, "");
+  const user = token ? await resolveUserFromToken(token) : null;
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
   const body = await c.req.json().catch(() => ({}));
   const { jobId, chunk, delta, done, error, embeddings, tokens } = body;
 
@@ -426,6 +430,8 @@ modelsRouter.post("/relay/chunk", async (c) => {
   if (!handler) {
     return c.json({ error: "Job handler not found or already completed" }, 404);
   }
+
+  if (String(user.id) !== handler.hostUserId) return c.json({ error: "Unauthorized" }, 403);
 
   if (error) {
     handler.onError(error);
@@ -605,7 +611,7 @@ modelsRouter.post("/shared/:id/chat", async (c) => {
 
   // Priority: 1 = Owner, 2 = Friend, 3 = Public
   const priority = isOwner ? 1 : isFriend ? 2 : 3;
-  const jobId = `job_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+  const jobId = `job_${Date.now()}_${crypto.randomBytes(16).toString("hex")}`;
 
   const inferenceJob: InboundInferenceJob = {
     jobId,
@@ -628,6 +634,7 @@ modelsRouter.post("/shared/:id/chat", async (c) => {
       host.totalRequests++;
 
       activeJobs.set(jobId, {
+        hostUserId: model.hostUserId,
         onChunk: async ({ chunk, delta, tokens }) => {
           try {
             if (tokens) {
@@ -813,7 +820,7 @@ modelsRouter.post("/shared/:id/embeddings", async (c) => {
     }
   }
 
-  const jobId = `job_emb_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
+  const jobId = `job_emb_${Date.now()}_${crypto.randomBytes(16).toString("hex")}`;
   const inferenceJob: InboundInferenceJob = {
     jobId,
     type: "embeddings",
@@ -829,6 +836,7 @@ modelsRouter.post("/shared/:id/embeddings", async (c) => {
     }, 30_000);
 
     activeJobs.set(jobId, {
+        hostUserId: model.hostUserId,
       onChunk: () => {},
       onComplete: ({ embeddings }) => {
         clearTimeout(timeout);

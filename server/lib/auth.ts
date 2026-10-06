@@ -16,7 +16,7 @@ function getSecretKey(): string {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     const newSecret = crypto.randomBytes(32).toString("hex");
-    fs.writeFileSync(secretPath, newSecret, "utf-8");
+    fs.writeFileSync(secretPath, newSecret, { encoding: "utf-8", mode: 0o600, flag: "wx" });
     return newSecret;
   } catch (err) {
     const error = new Error("Failed to read or generate AUTH_SECRET. Please set the AUTH_SECRET environment variable or ensure file system permissions.");
@@ -64,6 +64,7 @@ export interface TokenPayload {
   email: string;
   role?: string;
   exp: number;
+  purpose: "session";
 }
 
 export function generateToken(
@@ -73,6 +74,7 @@ export function generateToken(
   const secret = getSecretKey();
   const role = String(user.id) === "1" ? "admin" : user.role || "user";
   const payload: TokenPayload = {
+    purpose: "session",
     userId: user.id,
     username: user.username,
     email: user.email,
@@ -96,7 +98,7 @@ export function verifyToken(token: string): TokenPayload | null {
     if (!token || !token.startsWith("ol_")) return null;
     const cleanToken = token.slice(3);
     const [encodedPayload, signature] = cleanToken.split(".");
-    if (!encodedPayload || !signature) return null;
+    if (!encodedPayload || !signature || cleanToken.split(".").length !== 2) return null;
 
     const secret = getSecretKey();
     const expectedSig = crypto
@@ -115,7 +117,7 @@ export function verifyToken(token: string): TokenPayload | null {
     );
     const payload: TokenPayload = JSON.parse(payloadStr);
 
-    if (payload.exp < Date.now()) {
+    if (payload.purpose !== "session" || typeof payload.userId !== "string" || !Number.isFinite(payload.exp) || payload.exp <= Date.now()) {
       return null;
     }
 
@@ -132,6 +134,7 @@ export function generateOAuthState(
   const secret = getSecretKey();
   const data = {
     ...payload,
+    purpose: "oauth-state",
     exp: Date.now() + expiresInMs,
     nonce: crypto.randomBytes(8).toString("hex"),
   };
@@ -147,7 +150,7 @@ export function verifyOAuthState(state: string): Record<string, any> | null {
   try {
     if (!state) return null;
     const [encoded, sig] = state.split(".");
-    if (!encoded || !sig) return null;
+    if (!encoded || !sig || state.split(".").length !== 2) return null;
     const secret = getSecretKey();
     const expectedSig = crypto
       .createHmac("sha256", secret)
@@ -159,7 +162,7 @@ export function verifyOAuthState(state: string): Record<string, any> | null {
     const data = JSON.parse(
       Buffer.from(encoded, "base64url").toString("utf-8"),
     );
-    if (typeof data.exp === "number" && data.exp < Date.now()) {
+    if (data.purpose !== "oauth-state" || !Number.isFinite(data.exp) || data.exp <= Date.now()) {
       return null;
     }
     return data;
@@ -183,7 +186,7 @@ export async function resolveUserFromToken(token: string) {
       const role =
         String(user.id) === "1" || String(localPayload.userId) === "1"
           ? "admin"
-          : user.role || localPayload.role || "user";
+          : user.role || "user";
       return {
         id: user.id,
         email: user.email,

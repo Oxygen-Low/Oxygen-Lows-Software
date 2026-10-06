@@ -13,6 +13,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 class UpdateManager(private val context: Context) {
 
@@ -45,7 +46,9 @@ class UpdateManager(private val context: Context) {
     data class UpdateInfo(
         val hasUpdate: Boolean,
         val downloadUrl: String? = null,
-        val version: String? = null
+        val version: String? = null,
+        val digest: String? = null,
+        val size: Long = 0
     )
 
     val currentVersion: String
@@ -97,10 +100,15 @@ class UpdateManager(private val context: Context) {
             for (i in 0 until assets.length()) {
                 val asset = assets.optJSONObject(i) ?: continue
                 val name = asset.optString("name", "")
-                if (name.endsWith(".apk", ignoreCase = true)) {
+                if (name == "OxygenLowsSoftware.apk") {
                     val downloadUrl = asset.optString("browser_download_url", "")
                     if (downloadUrl.isNotEmpty()) {
-                        return UpdateInfo(hasUpdate = true, downloadUrl = downloadUrl, version = latestVersion)
+                        val digest = asset.optString("digest")
+                        val size = asset.optLong("size")
+                        if (NativeSecurity.isReleaseUrl(downloadUrl) &&
+                            digest.matches(Regex("sha256:[0-9a-fA-F]{64}")) && size in 1..(512L * 1024 * 1024)) {
+                            return UpdateInfo(true, downloadUrl, latestVersion, digest.substring(7), size)
+                        }
                     }
                 }
             }
@@ -119,13 +127,13 @@ class UpdateManager(private val context: Context) {
         downloadUrl: String,
         progressCallback: ((Int) -> Unit)? = null
     ): Boolean {
-        val updatesDir = File(context.externalCacheDir ?: context.cacheDir, "updates")
+        val updatesDir = File(context.cacheDir, "updates")
         if (!updatesDir.exists()) {
             updatesDir.mkdirs()
         }
 
-        val apkFile = File(updatesDir, "OxygenLowsSoftware.apk")
-        val tempFile = File(updatesDir, "OxygenLowsSoftware.apk.tmp")
+        val tempFile = File.createTempFile("release-", ".tmp", updatesDir)
+        val apkFile = File(updatesDir, tempFile.nameWithoutExtension + ".apk")
         if (tempFile.exists()) {
             tempFile.delete()
         }
@@ -135,13 +143,18 @@ class UpdateManager(private val context: Context) {
         var connection: HttpURLConnection? = null
 
         try {
+            val release = checkForUpdates()
+            require(release.hasUpdate && release.downloadUrl == downloadUrl && release.digest != null) { "Unverified update" }
+            val digest = MessageDigest.getInstance("SHA-256")
+            var downloadedBytes = 0L
             while (true) {
+                require(NativeSecurity.isDownloadUrl(currentUrl)) { "Invalid update destination" }
                 val url = URL(currentUrl)
                 connection = url.openConnection() as HttpURLConnection
                 connection.connectTimeout = 15000
                 connection.readTimeout = 30000
                 connection.setRequestProperty("User-Agent", "OxygenLowsSoftware-Android/$currentVersion")
-                connection.instanceFollowRedirects = true
+                connection.instanceFollowRedirects = false
 
                 val status = connection.responseCode
                 if (status == HttpURLConnection.HTTP_MOVED_TEMP ||
@@ -152,12 +165,13 @@ class UpdateManager(private val context: Context) {
                 ) {
                     val newUrl = connection.getHeaderField("Location")
                     if (!newUrl.isNullOrEmpty() && redirects < 5) {
-                        currentUrl = newUrl
+                        currentUrl = URL(URL(currentUrl), newUrl).toString()
                         redirects++
                         connection.disconnect()
                         continue
                     }
                 }
+                require(status == HttpURLConnection.HTTP_OK) { "Invalid update response" }
                 break
             }
 
@@ -171,8 +185,11 @@ class UpdateManager(private val context: Context) {
                     var totalRead = 0L
 
                     while (input.read(buffer).also { bytesRead = it } != -1) {
-                        output.write(buffer, 0, bytesRead)
                         totalRead += bytesRead
+                        downloadedBytes = totalRead
+                        require(totalRead <= release.size) { "Update too large" }
+                        digest.update(buffer, 0, bytesRead)
+                        output.write(buffer, 0, bytesRead)
 
                         if (canReportProgress) {
                             val progress = ((totalRead * 100) / totalBytes).toInt()
@@ -183,6 +200,9 @@ class UpdateManager(private val context: Context) {
                 }
             }
 
+            val actualDigest = digest.digest().joinToString("") { "%02x".format(it) }
+            require(downloadedBytes == release.size && actualDigest.equals(release.digest, true)) { "Update integrity check failed" }
+
             if (apkFile.exists()) {
                 apkFile.delete()
             }
@@ -191,10 +211,8 @@ class UpdateManager(private val context: Context) {
                 tempFile.delete()
             }
 
-            apkFile.setReadable(true, false)
-
             val archiveInfo = context.packageManager.getPackageArchiveInfo(apkFile.absolutePath, 0)
-            if (archiveInfo == null) {
+            if (archiveInfo == null || archiveInfo.packageName != context.packageName) {
                 Log.e(TAG, "Downloaded APK is invalid or corrupt")
                 if (apkFile.exists()) {
                     apkFile.delete()
@@ -209,9 +227,8 @@ class UpdateManager(private val context: Context) {
             return true
         } catch (e: Exception) {
             Log.e(TAG, "Error downloading update", e)
-            if (tempFile.exists()) {
-                tempFile.delete()
-            }
+            tempFile.delete()
+            apkFile.delete()
             activity.runOnUiThread {
                 Toast.makeText(activity, activity.getString(R.string.update_failed), Toast.LENGTH_SHORT).show()
             }

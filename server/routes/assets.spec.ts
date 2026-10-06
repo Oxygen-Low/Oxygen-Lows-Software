@@ -31,7 +31,8 @@ vi.mock("../lib/auth.ts", () => ({
   }),
 }));
 
-vi.mock("../lib/storage.ts", () => ({
+vi.mock("../lib/storage.ts", async original => ({
+  ...(await original<any>()),
   serverStorage: {
     download: vi.fn(async () => ({ data: Buffer.from("test"), error: null })),
     upload: vi.fn(async () => ({ data: {}, error: null })),
@@ -283,4 +284,12 @@ describe("Assets & Verification Routes", () => {
       "user-123/my-asset.mp3",
     );
   });
+});
+
+it("rejects verification requests for another user's private file", async () => {
+  const res = await app.request("/verifications/submit", {
+    method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer user-token" },
+    body: JSON.stringify({ asset_type: "file", title: "unauthorized", original_file_path: "user-other/private.txt" }),
+  });
+  expect(res.status).toBe(400);
 });

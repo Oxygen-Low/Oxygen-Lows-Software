@@ -60,7 +60,7 @@ public partial class MainWindow : Window
                 var uri = new Uri(message);
                 if (webView != null && webView.CoreWebView2 != null)
                 {
-                    var currentOrigin = webView.Source?.GetLeftPart(UriPartial.Authority) ?? "https://oxygenlow.com";
+                    const string currentOrigin = "https://oxygenlow.com";
                     var query = uri.Query;
                     var fragment = uri.Fragment;
                     webView.CoreWebView2.Navigate($"{currentOrigin}/auth/callback{query}{fragment}");
@@ -76,13 +76,23 @@ public partial class MainWindow : Window
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         var userDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OxygenLowsSoftware", "WebView2");
-        var options = new CoreWebView2EnvironmentOptions
-        {
-            AdditionalBrowserArguments = "--allow-running-insecure-content --disable-web-security --allow-insecure-localhost --disable-features=BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights"
-        };
+        var options = new CoreWebView2EnvironmentOptions();
         var environment = await CoreWebView2Environment.CreateAsync(null, userDataFolder, options);
         await webView.EnsureCoreWebView2Async(environment);
         
+        webView.CoreWebView2.NavigationStarting += (_, args) =>
+        {
+            if (!NativeSecurity.IsTrustedOrigin(args.Uri))
+            {
+                args.Cancel = true;
+                OpenExternalUrl(args.Uri);
+            }
+        };
+        webView.CoreWebView2.NewWindowRequested += (_, args) =>
+        {
+            args.Handled = true;
+            OpenExternalUrl(args.Uri);
+        };
         webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
         webView.CoreWebView2.ContainsFullScreenElementChanged += CoreWebView2_ContainsFullScreenElementChanged;
         webView.PreviewKeyDown += MainWindow_PreviewKeyDown;
@@ -102,7 +112,7 @@ public partial class MainWindow : Window
         {
             Dispatcher.Invoke(() =>
             {
-                SendWebMessage(new { @event = "python_server_ready", data = new { url, port = PythonServerManager.Instance.Port } });
+                SendWebMessage(new { @event = "python_server_ready", data = new { url, port = PythonServerManager.Instance.Port, token = PythonServerManager.Instance.AuthToken } });
             });
         };
         _ = PythonServerManager.Instance.StartAsync();
@@ -206,6 +216,8 @@ public partial class MainWindow : Window
     {
         try
         {
+            // CoreWebView2 raises this event for the top-level document only.
+            if (!NativeSecurity.IsTrustedOrigin(e.Source) || !NativeSecurity.IsTrustedOrigin(webView.CoreWebView2.Source)) return;
             string raw = e.TryGetWebMessageAsString();
             using var doc = JsonDocument.Parse(raw);
             if (!doc.RootElement.TryGetProperty("command", out var cmdProp)) return;
@@ -238,14 +250,7 @@ public partial class MainWindow : Window
                 else if (cmd == "open_browser")
                 {
                     string url = doc.RootElement.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "";
-                    if (!string.IsNullOrEmpty(url))
-                    {
-                        Process.Start(new ProcessStartInfo
-                        {
-                            FileName = url,
-                            UseShellExecute = true
-                        });
-                    }
+                    OpenExternalUrl(url);
                     if (!string.IsNullOrEmpty(id)) SendWebMessage(new { id, success = true });
                 }
                 else if (cmd == "select_directory")
@@ -540,6 +545,7 @@ public partial class MainWindow : Window
                             isRunning = PythonServerManager.Instance.IsRunning,
                             port = PythonServerManager.Instance.Port,
                             url = PythonServerManager.Instance.ServerUrl,
+                            token = PythonServerManager.Instance.AuthToken,
                             status = PythonServerManager.Instance.Status,
                             error = PythonServerManager.Instance.LastError
                         } 
@@ -558,6 +564,7 @@ public partial class MainWindow : Window
                             isRunning = PythonServerManager.Instance.IsRunning,
                             port = PythonServerManager.Instance.Port,
                             url = PythonServerManager.Instance.ServerUrl,
+                            token = PythonServerManager.Instance.AuthToken,
                             status = PythonServerManager.Instance.Status,
                             error = PythonServerManager.Instance.LastError
                         } 
@@ -893,10 +900,18 @@ public partial class MainWindow : Window
         return fullPath;
     }
 
+    private static void OpenExternalUrl(string url)
+    {
+        if (!NativeSecurity.IsWebUrl(url)) return;
+        try { Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true }); }
+        catch (Exception ex) { Debug.WriteLine("Could not open browser: " + ex.Message); }
+    }
+
     private void SendWebMessage(object payload)
     {
         try
         {
+            if (webView.CoreWebView2 == null || !NativeSecurity.IsTrustedOrigin(webView.CoreWebView2.Source)) return;
             string json = JsonSerializer.Serialize(payload);
             webView.CoreWebView2.PostWebMessageAsJson(json);
         }
