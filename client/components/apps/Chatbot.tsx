@@ -2658,15 +2658,21 @@ export function ChatbotApp() {
           if (chatUpdateError) throw chatUpdateError;
         }
 
-        if (isLiveOpenRef.current && finalContent) {
-          liveVoice.speakText(finalContent);
+        if (isLiveOpenRef.current) {
+          if (finalContent && finalContent.trim()) {
+            liveVoice.speakText(finalContent);
+          } else {
+            liveVoice.speakText("I didn't receive a response.");
+          }
         }
       }
     } catch (e: any) {
       toast.error(e.message);
       if (input === "") setInput(originalInput);
-      if (isLiveOpenRef.current && e?.message) {
-        liveVoice.speakText(`Sorry, an error occurred: ${e.message}`);
+      if (isLiveOpenRef.current) {
+        liveVoice.speakText(
+          `Sorry, an error occurred: ${e?.message || "Failed to generate response"}`,
+        );
       }
       setAllMessages((prev) =>
         prev.filter((m) => m.id !== "temp-streaming" && m.id !== "temp-user"),

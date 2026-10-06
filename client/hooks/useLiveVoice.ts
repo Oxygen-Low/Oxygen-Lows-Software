@@ -100,13 +100,14 @@ export function useLiveVoice({
     "speechSynthesis" in window;
 
   const recognitionRef = useRef<any>(null);
+  const isRecognitionRunningRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const silenceTimerRef = useRef<any>(null);
   const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const activeUtterancesRef = useRef<SpeechSynthesisUtterance[]>([]);
+  const speechSessionIdRef = useRef(0);
   const resumeTimerRef = useRef<any>(null);
   const isSpeakingRef = useRef(false);
   const isMutedRef = useRef(isMuted);
@@ -162,7 +163,7 @@ export function useLiveVoice({
         const langPrefix = targetLocale.split("-")[0].toLowerCase();
         const bestMatch =
           voices.find((v) => v.lang.toLowerCase() === targetLocale.toLowerCase()) ||
-          voices.find((v) => v.lang.toLowerCase().startsWith(langPrefix)) ||
+          voices.find((v) => v.lang.toLowerCase().replace("_", "-").startsWith(langPrefix)) ||
           voices.find((v) => v.default) ||
           voices[0];
         return bestMatch ? bestMatch.voiceURI : prev;
@@ -277,18 +278,20 @@ export function useLiveVoice({
           window.speechSynthesis.resume();
         }
       }
-    }, 10000);
+    }, 8000);
   }, [clearResumeTimer]);
 
   // Text-To-Speech (TTS)
   const stopSpeaking = useCallback(() => {
+    speechSessionIdRef.current++;
     clearResumeTimer();
-    activeUtterancesRef.current = [];
     isSpeakingRef.current = false;
     activeUtteranceRef.current = null;
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
-        window.speechSynthesis.cancel();
+        if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+          window.speechSynthesis.cancel();
+        }
       } catch {
         // Ignore
       }
@@ -302,10 +305,25 @@ export function useLiveVoice({
         return;
       }
 
-      stopSpeaking();
+      const currentSessionId = ++speechSessionIdRef.current;
+      clearResumeTimer();
+
+      // Only cancel previous speech if active
+      if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {
+          // Ignore
+        }
+      }
 
       const chunks = splitTextIntoSentences(text);
       if (chunks.length === 0) {
+        if (isSessionActiveRef.current && !isMutedRef.current) {
+          setVoiceState("listening");
+        } else {
+          setVoiceState("idle");
+        }
         onDone?.();
         return;
       }
@@ -315,7 +333,7 @@ export function useLiveVoice({
       isSpeakingRef.current = true;
       setVoiceState("speaking");
 
-      const voices = window.speechSynthesis.getVoices();
+      const voices = window.speechSynthesis.getVoices() || [];
       let selectedVoice: SpeechSynthesisVoice | undefined = undefined;
       if (selectedVoiceUri) {
         selectedVoice = voices.find((v) => v.voiceURI === selectedVoiceUri);
@@ -324,78 +342,86 @@ export function useLiveVoice({
         const langPrefix = targetLocale.split("-")[0].toLowerCase();
         selectedVoice =
           voices.find((v) => v.lang.toLowerCase() === targetLocale.toLowerCase()) ||
-          voices.find((v) => v.lang.toLowerCase().startsWith(langPrefix)) ||
+          voices.find((v) => v.lang.toLowerCase().replace("_", "-").startsWith(langPrefix)) ||
           voices.find((v) => v.default) ||
           voices[0];
       }
 
-      const utterances = chunks.map((chunk, index) => {
-        const utterance = new SpeechSynthesisUtterance(chunk);
+      let chunkIndex = 0;
+
+      const finishSpeaking = () => {
+        if (speechSessionIdRef.current !== currentSessionId) return;
+        clearResumeTimer();
+        isSpeakingRef.current = false;
+        activeUtteranceRef.current = null;
+        if (isSessionActiveRef.current && !isMutedRef.current) {
+          setVoiceState("listening");
+        } else if (isMutedRef.current) {
+          setVoiceState("muted");
+        } else {
+          setVoiceState("idle");
+        }
+        onDone?.();
+      };
+
+      const speakNextChunk = () => {
+        if (speechSessionIdRef.current !== currentSessionId) return;
+        if (chunkIndex >= chunks.length) {
+          finishSpeaking();
+          return;
+        }
+
+        const chunkText = chunks[chunkIndex];
+        chunkIndex++;
+
+        const utterance = new SpeechSynthesisUtterance(chunkText);
         utterance.rate = speechRate;
         utterance.pitch = speechPitch;
-        utterance.lang = targetLocale;
+        utterance.lang = selectedVoice?.lang || targetLocale;
         if (selectedVoice) {
           utterance.voice = selectedVoice;
         }
 
-        const isLastChunk = index === chunks.length - 1;
-
         utterance.onend = () => {
-          if (isLastChunk) {
-            clearResumeTimer();
-            isSpeakingRef.current = false;
-            activeUtteranceRef.current = null;
-            activeUtterancesRef.current = [];
-            if (isSessionActiveRef.current && !isMutedRef.current) {
-              setVoiceState("listening");
-            } else if (isMutedRef.current) {
-              setVoiceState("muted");
-            } else {
-              setVoiceState("idle");
-            }
-            onDone?.();
-          }
+          if (speechSessionIdRef.current !== currentSessionId) return;
+          speakNextChunk();
         };
 
-        utterance.onerror = () => {
-          if (isLastChunk || activeUtterancesRef.current.length <= 1) {
-            clearResumeTimer();
-            isSpeakingRef.current = false;
-            activeUtteranceRef.current = null;
-            activeUtterancesRef.current = [];
-            if (isSessionActiveRef.current && !isMutedRef.current) {
-              setVoiceState("listening");
-            } else {
-              setVoiceState("idle");
-            }
-            onDone?.();
+        utterance.onerror = (event: any) => {
+          if (speechSessionIdRef.current !== currentSessionId) return;
+          if (event.error === "canceled" || event.error === "interrupted") {
+            return;
           }
+          speakNextChunk();
         };
 
-        return utterance;
-      });
+        activeUtteranceRef.current = utterance;
 
-      activeUtterancesRef.current = utterances;
-      activeUtteranceRef.current = utterances[0] || null;
+        try {
+          if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
+          }
+          window.speechSynthesis.speak(utterance);
+          window.speechSynthesis.resume();
+        } catch (err) {
+          console.error("[useLiveVoice] Speech synthesis speak error:", err);
+          speakNextChunk();
+        }
+      };
 
       startResumeTimer();
-
-      try {
-        if (window.speechSynthesis.paused) {
-          window.speechSynthesis.resume();
+      // Allow speech cancellation IPC to settle in Chromium before queueing the first utterance
+      setTimeout(() => {
+        if (speechSessionIdRef.current === currentSessionId) {
+          speakNextChunk();
         }
-        utterances.forEach((utt) => window.speechSynthesis.speak(utt));
-        window.speechSynthesis.resume();
-      } catch (err) {
-        console.error("Speech synthesis speak error:", err);
-      }
+      }, 30);
     },
     [
       speechRate,
       speechPitch,
       targetLocale,
       selectedVoiceUri,
-      stopSpeaking,
       startResumeTimer,
       clearResumeTimer,
     ],
@@ -455,6 +481,7 @@ export function useLiveVoice({
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
+      isRecognitionRunningRef.current = true;
       if (isMutedRef.current) {
         setVoiceState("muted");
       } else if (!isSpeakingRef.current && voiceStateRef.current !== "thinking") {
@@ -509,6 +536,7 @@ export function useLiveVoice({
         return;
       }
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        isRecognitionRunningRef.current = false;
         setErrorMessage("Microphone access denied. Please grant microphone permissions.");
         setVoiceState("error");
         return;
@@ -520,6 +548,7 @@ export function useLiveVoice({
     };
 
     recognition.onend = () => {
+      isRecognitionRunningRef.current = false;
       // If recognition ended but session is still active and not muted, automatically restart
       if (isSessionActiveRef.current && !isMutedRef.current) {
         try {
