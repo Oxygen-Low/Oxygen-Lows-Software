@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
-import { queryTable } from "../lib/dataStore.ts";
 import { WEBSITE_KNOWLEDGE_SYSTEM_PROMPT } from "../../shared/websiteKnowledge.ts";
 import { safeParseJson } from "../../shared/jsonRepair.ts";
 import {
