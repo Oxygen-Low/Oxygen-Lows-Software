@@ -15,7 +15,7 @@ import {
 } from "./GrassShaders";
 import { TreeFactory } from "./TreeFactory";
 import { EnvironmentManager } from "../environment/EnvironmentManager";
-import { getGraphicsPresetConfig, GRAPHICS_PRESETS } from "../environment/GraphicsPresets";
+import { getGraphicsPresetConfig } from "../environment/GraphicsPresets";
 import { EnvironmentSettings } from "@/types/threeDBackground";
 
 const DEFAULT_TEST_ENVIRONMENT: EnvironmentSettings = {
