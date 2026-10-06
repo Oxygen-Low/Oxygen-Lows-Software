@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import crypto from "node:crypto";
-import { serverStorage } from "../lib/storage.ts";
+import { serverStorage, isOwnedStoragePath } from "../lib/storage.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
 import {
   queryTable,
@@ -78,6 +78,10 @@ assetsRouter.post("/verifications/submit", async (c) => {
     }
     if (!title || typeof title !== "string" || !title.trim()) {
       return c.json({ error: "Title is required" }, 400);
+    }
+
+    if (asset_type === "file" && !isOwnedStoragePath(original_file_path, user.id)) {
+      return c.json({ error: "Invalid path" }, 400);
     }
 
     // Enforce 1 verification per file/asset for the user by deleting previous verification requests

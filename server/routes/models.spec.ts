@@ -22,6 +22,17 @@ describe("Models Server Relay Routes", () => {
     vi.restoreAllMocks();
   });
 
+  it("rejects anonymous and invalid-token relay responses", async () => {
+    vi.spyOn(auth, "resolveUserFromToken").mockResolvedValue(null);
+    for (const token of ["", "Bearer forged-token"]) {
+      const response = await app.request("/api/models/relay/chunk", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: token },
+        body: JSON.stringify({ jobId: "synthetic-job", chunk: "injected", done: true }),
+      });
+      expect(response.status).toBe(401);
+    }
+  });
+
   it("should reject non-desktop host registration with 403", async () => {
     const res = await app.request("/api/models/relay/register", {
       method: "POST",

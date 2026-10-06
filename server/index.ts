@@ -2,6 +2,7 @@ import "dotenv/config";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { compress } from "hono/compress";
+import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
 import { demoRouter } from "./routes/demo.ts";
 import { proxyRouter } from "./routes/proxy.ts";
@@ -53,6 +54,27 @@ setRealtimeBroadcast(broadcastChange);
 wipeServerPasswordsAndMigrateSchema();
 
 const app = new Hono();
+
+// Register outside secureHeaders so its post-handler defaults cannot overwrite
+// the isolation required by responses containing untrusted documents.
+app.use("*", async (c, next) => {
+  await next();
+  const path = c.req.path;
+  const browserDocument = path === "/api/browser/proxy";
+  const storedDocument = path.startsWith("/api/storage/download/") || path.startsWith("/api/storage/public/");
+  if (browserDocument || storedDocument) {
+    const policy = c.res.headers.get("Content-Security-Policy") || "";
+    c.header("Content-Security-Policy", `${browserDocument ? "sandbox allow-scripts" : "sandbox"}; ${policy}`);
+    c.header("X-Content-Type-Options", "nosniff");
+  }
+});
+
+const apiBodyLimit = bodyLimit({ maxSize: 10 * 1024 * 1024 });
+app.use("*", (c, next) => {
+  // Full file uploads have their own quota-sized limit; chunks stay bounded.
+  if (c.req.path.startsWith("/api/storage/upload/")) return next();
+  return apiBodyLimit(c, next);
+});
 
 app.use(compress());
 

@@ -36,9 +36,8 @@ android {
                 storePassword = System.getenv("KEYSTORE_PASSWORD") ?: project.findProperty("KEYSTORE_PASSWORD") as? String
                 keyAlias = System.getenv("KEY_ALIAS") ?: project.findProperty("KEY_ALIAS") as? String
                 keyPassword = System.getenv("KEY_PASSWORD") ?: project.findProperty("KEY_PASSWORD") as? String
-            } else {
-                initWith(getByName("debug"))
             }
+            // Never fall back to the public Android debug key for a release.
         }
     }
 
@@ -59,6 +58,7 @@ android {
 dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
+    implementation("androidx.webkit:webkit:1.12.1")
     implementation(libs.material)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -69,5 +69,16 @@ configurations.configureEach {
     if (name == "compileClasspath" || name == "runtimeClasspath"
             || name.endsWith("CompileClasspath") || name.endsWith("RuntimeClasspath")) {
         resolutionStrategy.activateDependencyLocking()
+    }
+}
+// Fail closed only for release packaging; debug builds remain available locally.
+tasks.configureEach {
+    if (name == "validateSigningRelease") {
+        val releaseKeystore = android.signingConfigs.getByName("release").storeFile
+        doFirst {
+            require(releaseKeystore?.isFile == true) {
+                "Release signing requires a configured keystore"
+            }
+        }
     }
 }

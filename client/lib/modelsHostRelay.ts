@@ -541,7 +541,7 @@ class ModelsHostRelayManager {
     try {
       await fetch("/api/models/relay/chunk", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.authToken}` },
         body: JSON.stringify({ jobId, ...payload }),
       });
     } catch (err) {

@@ -20,6 +20,8 @@ public class PythonServerManager
     private readonly SemaphoreSlim _startLock = new(1, 1);
     private TaskCompletionSource<bool>? _readyTcs;
 
+    public string AuthToken { get; private set; } = "";
+
     public bool IsRunning { get; private set; }
     public int Port { get; private set; } = 54123;
     public string ServerUrl => $"http://127.0.0.1:{Port}";
@@ -103,6 +105,10 @@ public class PythonServerManager
             startInfo.ArgumentList.Add("--port");
             startInfo.ArgumentList.Add(Port.ToString());
             startInfo.ArgumentList.Add("--watch-stdin");
+
+            AuthToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", AuthToken);
+            startInfo.Environment["OXYGEN_PYTHON_TOKEN"] = AuthToken;
 
             _serverProcess = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
 

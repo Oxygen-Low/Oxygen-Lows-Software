@@ -1,9 +1,12 @@
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
+import crypto from "node:crypto";
 import fs from "fs";
 import path from "path";
 import {
   serverStorage,
   getUserTotalSize,
+  getFolderSize,
   MAX_USER_QUOTA,
   getMimeType,
   sanitizePath,
@@ -32,6 +35,20 @@ import {
 } from "../lib/safety/openAiModeration.ts";
 
 export const storageRouter = new Hono();
+const STORAGE_BUCKETS = new Set(["Storage", "public-assets", "room-models"]);
+const canReadPath = (bucket: string, filePath: string, user: any) =>
+  bucket === "public-assets" || user.role === "admin" ||
+  filePath === String(user.id) || filePath.startsWith(`${user.id}/`);
+
+storageRouter.use("/upload/*", bodyLimit({ maxSize: MAX_USER_QUOTA + 1024 * 1024 }));
+storageRouter.use("/upload-chunk/*", bodyLimit({ maxSize: 10 * 1024 * 1024 }));
+// Uploaded HTML/SVG/PDF must never execute with the application's origin.
+storageRouter.use("*", async (c, next) => {
+  await next();
+  c.header("Content-Security-Policy", "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data: blob:;");
+  c.header("X-Content-Type-Options", "nosniff");
+  if (!c.req.path.includes("/public/")) c.header("Cache-Control", "no-store");
+});
 
 const authMiddleware = async (c: any, next: any) => {
   let token = c.req.header("Authorization")?.replace(/^Bearer /i, "");
@@ -55,6 +72,7 @@ const authMiddleware = async (c: any, next: any) => {
 storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
   try {
     const bucket = c.req.param("bucket");
+    if (!STORAGE_BUCKETS.has(bucket)) return c.json({ error: "Invalid path" }, 400);
     let rawFilePath =
       c.req.param("*") ||
       c.req.param("path") ||
@@ -104,7 +122,7 @@ storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
       return c.json({ error: "Invalid file format" }, 400);
     }
 
-    const newFileSize = file.size ?? buffer.length;
+    const newFileSize = buffer.length;
     const currentSize = getUserTotalSize(user.id);
 
     if (currentSize + newFileSize > MAX_USER_QUOTA) {
@@ -174,6 +192,7 @@ storageRouter.post("/upload/:bucket/*", authMiddleware, async (c) => {
 storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
   try {
     const bucket = c.req.param("bucket");
+    if (!STORAGE_BUCKETS.has(bucket)) return c.json({ error: "Invalid path" }, 400);
     let rawFilePath =
       c.req.param("*") ||
       c.req.param("path") ||
@@ -206,7 +225,9 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
     const totalSize = parseInt(body["totalSize"] as string, 10) || 0;
     const file = body["file"] as any;
 
-    if (!uploadId || isNaN(chunkIndex) || isNaN(totalChunks) || !file) {
+    if (typeof uploadId !== "string" || !uploadId || !Number.isSafeInteger(chunkIndex) ||
+        !Number.isSafeInteger(totalChunks) || chunkIndex < 0 || totalChunks < 1 || totalChunks > 512 ||
+        chunkIndex >= totalChunks || !Number.isSafeInteger(totalSize) || totalSize < 1 || totalSize > MAX_USER_QUOTA || !file) {
       return c.json({ error: "Missing chunk parameters" }, 400);
     }
 
@@ -242,8 +263,10 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
       return c.json({ error: "Invalid file format" }, 400);
     }
 
-    const tmpBase = assertSafeStoragePath(STORAGE_DIR, ".tmp");
-    const tmpDir = assertSafeStoragePath(tmpBase, safeUploadId);
+    const tmpBase = assertSafeStoragePath(STORAGE_DIR, ".tmp", String(user.id));
+    const uploadKey = crypto.createHash("sha256").update(JSON.stringify([bucket, filePath, safeUploadId, totalChunks, totalSize])).digest("hex");
+    const tmpDir = assertSafeStoragePath(tmpBase, uploadKey);
+    if (getFolderSize(tmpBase) + buffer.length > MAX_USER_QUOTA) return c.json({ error: "Quota exceeded" }, 400);
     fs.mkdirSync(tmpDir, { recursive: true });
 
     const chunkPath = assertSafeStoragePath(tmpDir, `chunk_${chunkIndex}`);
@@ -266,6 +289,10 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
 
       const assembledChunks = await Promise.all(readPromises);
       const completeBuffer = Buffer.concat(assembledChunks);
+      if (completeBuffer.length !== totalSize || getUserTotalSize(user.id) + completeBuffer.length > MAX_USER_QUOTA) {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+        return c.json({ error: "Quota exceeded" }, 400);
+      }
 
       // Safety Inspection for Uploaded Media
       const mime = getMimeType(filePath);
@@ -341,9 +368,11 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
 storageRouter.post("/list/:bucket", authMiddleware, async (c) => {
   try {
     const bucket = c.req.param("bucket");
+    if (!STORAGE_BUCKETS.has(bucket)) return c.json({ error: "Invalid path" }, 400);
     const body = await c.req.json().catch(() => ({}));
     const prefixPath = body.path || "";
 
+    if (!canReadPath(bucket, sanitizePath(prefixPath || ""), c.get("user" as any))) return c.json({ error: "Unauthorized" }, 403);
     const { data, error } = await serverStorage.list(bucket, prefixPath);
     if (error) {
       return c.json({ data: [], error: error.message });
@@ -358,6 +387,7 @@ storageRouter.post("/list/:bucket", authMiddleware, async (c) => {
 storageRouter.delete("/remove/:bucket", authMiddleware, async (c) => {
   try {
     const bucket = c.req.param("bucket");
+    if (!STORAGE_BUCKETS.has(bucket)) return c.json({ error: "Invalid path" }, 400);
     const body = await c.req.json().catch(() => ({}));
     const paths: string[] = body.paths || [];
     const user = c.get("user" as any) as any;
@@ -395,6 +425,7 @@ storageRouter.delete("/remove/:bucket", authMiddleware, async (c) => {
 storageRouter.post("/rename/:bucket", authMiddleware, async (c) => {
   try {
     const bucket = c.req.param("bucket");
+    if (!STORAGE_BUCKETS.has(bucket)) return c.json({ error: "Invalid path" }, 400);
     const body = await c.req.json().catch(() => ({}));
     const fromPathRaw = body.fromPath || body.oldPath;
     const toPathRaw = body.toPath || body.newPath || body.newName;
@@ -466,6 +497,7 @@ storageRouter.post("/move/:bucket", authMiddleware, async (c) => {
     const fromPathRaw = body.fromPath || body.oldPath;
     const toPathRaw = body.toPath || body.newPath;
     const toBucket = body.toBucket || fromBucket;
+    if (!STORAGE_BUCKETS.has(fromBucket) || !STORAGE_BUCKETS.has(toBucket)) return c.json({ error: "Invalid path" }, 400);
 
     if (!fromPathRaw || !toPathRaw) {
       return c.json({ error: "Missing fromPath or toPath" }, 400);
@@ -533,6 +565,7 @@ storageRouter.post("/move/:bucket", authMiddleware, async (c) => {
 storageRouter.get("/download/:bucket/*", authMiddleware, async (c) => {
   try {
     const bucket = c.req.param("bucket");
+    if (!STORAGE_BUCKETS.has(bucket)) return c.json({ error: "Invalid path" }, 400);
     let rawFilePath =
       c.req.param("*") || c.req.path.split(`/download/${bucket}/`)[1];
 
@@ -546,6 +579,7 @@ storageRouter.get("/download/:bucket/*", authMiddleware, async (c) => {
       return c.json({ error: "Invalid path" }, 400);
     }
 
+    if (!canReadPath(bucket, filePath, c.get("user" as any))) return c.json({ error: "Unauthorized" }, 403);
     const { data, error } = await serverStorage.download(bucket, filePath);
     if (error || !data) {
       return c.text("Not found", 404);
@@ -587,6 +621,8 @@ storageRouter.get("/download/:bucket/*", authMiddleware, async (c) => {
 storageRouter.get("/public/:bucket/*", async (c) => {
   try {
     const bucket = c.req.param("bucket");
+    if (!STORAGE_BUCKETS.has(bucket)) return c.json({ error: "Invalid path" }, 400);
+    if (bucket !== "public-assets") return c.text("Not found", 404);
     let rawFilePath =
       c.req.param("*") || c.req.path.split(`/public/${bucket}/`)[1];
 
@@ -641,6 +677,7 @@ storageRouter.get("/public/:bucket/*", async (c) => {
 storageRouter.post("/signed-urls/:bucket", authMiddleware, async (c) => {
   try {
     const bucket = c.req.param("bucket");
+    if (!STORAGE_BUCKETS.has(bucket)) return c.json({ error: "Invalid path" }, 400);
     const body = await c.req.json().catch(() => ({}));
     const paths = body.paths || [];
     const token = c.get("token" as any);
@@ -648,7 +685,7 @@ storageRouter.post("/signed-urls/:bucket", authMiddleware, async (c) => {
     const result = paths.map((p: string) => {
       try {
         const clean = sanitizePath(p);
-        if (isHiddenStoragePath(clean)) throw new Error("Invalid path");
+        if (isHiddenStoragePath(clean) || !canReadPath(bucket, clean, c.get("user" as any))) throw new Error("Invalid path");
         return {
           error: null,
           signedUrl: serverStorage.createSignedUrl(bucket, clean, token),

@@ -7,9 +7,54 @@ import {
   deleteTable,
   callRpc,
 } from "../lib/dataStore.ts";
-import { localAuthMiddleware } from "../lib/auth.ts";
+import { localAuthMiddleware, resolveUserFromToken } from "../lib/auth.ts";
 
 export const dataRouter = new Hono();
+
+// Internal global/auth tables must only be accessed by their dedicated routers.
+const PUBLIC_TABLES = new Set(["profiles", "profile_pictures", "public_assets", "public_characters", "follows", "public_asset_likes", "public_character_likes"]);
+const USER_TABLES = new Set([
+  ...PUBLIC_TABLES, "user_preferences", "data_saves", "data_save_categories", "chats", "chatbot_messages",
+  "characters", "universes", "races", "user_passwords", "vpn_configs", "support_tickets", "support_messages",
+  "friendships", "friends", "blocks", "asset_verifications", "user_models", "user_api_keys", "projects",
+  "user_games", "games", "game_library", "installed_games", "custom_games", "user_playtime", "game_playtime",
+  "playtime", "playtimes", "user_presence", "game_presence", "presence", "presences", "game_conflicts",
+]);
+
+dataRouter.use("*", async (c, next) => {
+  const body = await c.req.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) return c.json({ error: "Invalid JSON" }, 400);
+  const token = c.req.header("Authorization")?.replace(/^Bearer /i, "");
+  const user = token ? await resolveUserFromToken(token) : null;
+  if (c.req.path.endsWith("/rpc")) {
+    if (!user) return c.json({ error: "Unauthorized" }, 401);
+    return next();
+  }
+  if (typeof body.table !== "string") return c.json({ error: "Table name is required" }, 400);
+  body.table = body.table.trim().toLowerCase();
+  if (!USER_TABLES.has(body.table)) return c.json({ error: "Unauthorized" }, 403);
+  const query = c.req.path.endsWith("/query");
+  if (!user && (!query || !PUBLIC_TABLES.has(body.table))) return c.json({ error: "Unauthorized" }, 401);
+  if (!query && ["public_assets", "public_characters", "asset_verifications"].includes(body.table)) return c.json({ error: "Unauthorized" }, 403);
+  if (!query && body.data !== undefined) {
+    const items = Array.isArray(body.data) ? body.data : [body.data];
+    for (const item of items) {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return c.json({ error: "Invalid JSON" }, 400);
+      if (item.user_id !== undefined && String(item.user_id) !== String(user!.id)) return c.json({ error: "Unauthorized" }, 403);
+      item.user_id = String(user!.id);
+      if (["profiles", "profile_pictures"].includes(body.table)) {
+        item.id = String(user!.id);
+        for (const key of ["role", "is_admin", "verified", "is_verified", "suspended", "status"]) delete item[key];
+      }
+      if (["characters", "universes", "races"].includes(body.table)) {
+        if (item.is_public === true || item.is_verified_public === true) return c.json({ error: "Unauthorized" }, 403);
+      }
+      if (body.table === "support_messages") item.sender_id = String(user!.id);
+      if (body.table === "asset_verifications" && (item.status || item.verified || item.is_verified)) return c.json({ error: "Unauthorized" }, 403);
+    }
+  }
+  await next();
+});
 
 // Optional auth for public queries, required for mutations
 dataRouter.post("/query", async (c) => {

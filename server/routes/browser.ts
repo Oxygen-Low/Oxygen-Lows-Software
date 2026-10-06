@@ -1,3 +1,4 @@
+import { fetchPublicUrl } from "../lib/publicFetch.ts";
 import { Hono } from "hono";
 import {
   validateCrawlUrl,
@@ -39,7 +40,7 @@ browserRouter.get("/reader", async (c) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 
-    const res = await fetch(validated.href, {
+    const res = await fetchPublicUrl(validated.href, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
@@ -142,7 +143,7 @@ browserRouter.get("/proxy", async (c) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
-    const res = await fetch(validated.href, {
+    const res = await fetchPublicUrl(validated.href, {
       method: "GET",
       headers: {
         "User-Agent":
@@ -161,7 +162,7 @@ browserRouter.get("/proxy", async (c) => {
       let html = await res.text();
 
       // Ensure <base href="..."> is set and relative URLs are rewritten
-      const baseTag = `<base href="${validated.href}">`;
+      const baseTag = `<base href="${escapeHtml(validated.href)}">`;
       const injectionScript = `
         <script>
           (function() {
@@ -223,7 +224,7 @@ browserRouter.get("/proxy", async (c) => {
       // Return sanitized HTML with permissive proxy CSP so external stylesheets/images/fonts render accurately
       c.header(
         "Content-Security-Policy",
-        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data: blob:; media-src * data: blob:; font-src * data:; style-src * 'unsafe-inline'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; base-uri *; frame-src *; object-src 'none';"
+        "sandbox allow-scripts; default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data: blob:; media-src * data: blob:; font-src * data:; style-src * 'unsafe-inline'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; base-uri *; frame-src *; object-src 'none';"
       );
       c.header("X-Frame-Options", "SAMEORIGIN");
 
@@ -237,7 +238,7 @@ browserRouter.get("/proxy", async (c) => {
     const arrayBuffer = await res.arrayBuffer();
     c.header(
       "Content-Security-Policy",
-      "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data: blob:; media-src * data: blob:; font-src * data:; style-src * 'unsafe-inline'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; base-uri *; frame-src *;"
+      "sandbox allow-scripts; default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; img-src * data: blob:; media-src * data: blob:; font-src * data:; style-src * 'unsafe-inline'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src *; base-uri *; frame-src *;"
     );
     return c.body(arrayBuffer, 200, {
       "Content-Type": originalContentType,

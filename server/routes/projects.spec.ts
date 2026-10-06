@@ -50,23 +50,23 @@ vi.mock("../lib/dataStore.ts", () => ({
 }));
 
 vi.mock("../lib/auth.ts", () => ({
-  verifyToken: vi.fn((token: string) => {
-    if (token === "valid-user-token") {
-      return {
-        userId: "user-abc",
-        username: "testuser",
-        email: "test@example.com",
-        role: "user",
-        exp: Date.now() + 3600000,
-      };
-    }
-    return null;
-  }),
+  localAuthMiddleware: async (c: any, next: any) => {
+    if (c.req.header("Authorization") !== "Bearer valid-user-token") return c.json({ error: "Unauthorized" }, 401);
+    c.set("userId", "user-abc");
+    await next();
+  },
 }));
 
 describe("Projects API Routes (/api/projects)", () => {
   beforeEach(() => {
     mockProjectsDb = [];
+  });
+
+  it("rejects anonymous project reads and writes", async () => {
+    mockProjectsDb = [{ id: "guest-secret", user_id: "guest" }];
+    expect((await app.request("/api/projects")).status).toBe(401);
+    expect((await app.request("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "forged" }) })).status).toBe(401);
+    expect(mockProjectsDb).toHaveLength(1);
   });
 
   it("POST /api/projects creates a new project with default orchestrator and memory", async () => {

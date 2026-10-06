@@ -102,6 +102,15 @@ export function sanitizePath(rawPath: string): string {
   return clean;
 }
 
+/** Used before an administrator publishes a user-submitted private file. */
+export function isOwnedStoragePath(rawPath: unknown, userId: unknown): boolean {
+  if (typeof rawPath !== "string" || !userId) return false;
+  try {
+    const clean = sanitizePath(rawPath);
+    return clean === rawPath && clean.startsWith(`${userId}/`) && !isHiddenStoragePath(clean);
+  } catch { return false; }
+}
+
 export function getFolderSize(folderPath: string): number {
   let size = 0;
   if (!fs.existsSync(folderPath)) return 0;

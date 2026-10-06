@@ -6,6 +6,7 @@ import socket
 import argparse
 import threading
 import logging
+import hmac
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 from urllib.parse import urlparse, unquote
@@ -30,21 +31,80 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
+    def __init__(self, address, handler, auth_token):
+        if not auth_token or len(auth_token) < 64:
+            raise ValueError("A per-process authentication token is required")
+        self.auth_token = auth_token
+        self.request_slots = threading.BoundedSemaphore(32)
+        super().__init__(address, handler)
+
+    def process_request(self, request, client_address):
+        if not self.request_slots.acquire(blocking=False):
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except Exception:
+            self.request_slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.request_slots.release()
+
 class RequestHandler(BaseHTTPRequestHandler):
     server_version = "OxygenLowsPythonServer/1.0"
+
+    MAX_BODY_BYTES = 1024 * 1024
+    ALLOWED_ORIGINS = {"https://oxygenlow.com", "https://www.oxygenlow.com"}
+
+    def setup(self):
+        super().setup()
+        self.connection.settimeout(5)
+
+    def _error(self, status, message):
+        self._set_headers(status)
+        self.wfile.write(json.dumps({"error": message}).encode("utf-8"))
+
+    def _authorize(self, preflight=False):
+        hosts = {f"127.0.0.1:{self.server.server_port}", f"localhost:{self.server.server_port}"}
+        if len(self.headers.get_all("Host", [])) != 1 or self.headers.get("Host") not in hosts:
+            self._error(403, "Forbidden")
+            return False
+        origins = self.headers.get_all("Origin", [])
+        if len(origins) > 1 or (origins and origins[0] not in self.ALLOWED_ORIGINS):
+            self._error(403, "Forbidden")
+            return False
+        if not preflight:
+            supplied = self.headers.get("Authorization", "").encode("utf-8")
+            expected = ("Bearer " + self.server.auth_token).encode("utf-8")
+            if len(self.headers.get_all("Authorization", [])) != 1 or not hmac.compare_digest(supplied, expected):
+                self._error(401, "Unauthorized")
+                return False
+        return True
 
     def _set_headers(self, status=200, content_type="application/json"):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+        origin = self.headers.get("Origin")
+        if origin in self.ALLOWED_ORIGINS:
+            self.send_header("Access-Control-Allow-Origin", origin)
+        self.send_header("Vary", "Origin")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
         self.end_headers()
 
     def do_OPTIONS(self):
-        self._set_headers(204)
+        if self._authorize(preflight=True):
+            self._set_headers(204)
 
     def do_GET(self):
+        if not self._authorize():
+            return
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/")
         if not path:
@@ -87,22 +147,34 @@ class RequestHandler(BaseHTTPRequestHandler):
         }).encode("utf-8"))
 
     def do_POST(self):
+        if not self._authorize():
+            return
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/")
 
-        content_length = int(self.headers.get("Content-Length", 0))
-        body = b""
-        if content_length > 0:
+        lengths = self.headers.get_all("Content-Length", [])
+        if self.headers.get("Transfer-Encoding") or len(lengths) != 1 or not lengths[0].isascii() or not lengths[0].isdigit():
+            self._error(400, "Invalid content length")
+            return
+        if len(lengths[0]) > 10 or int(lengths[0]) > self.MAX_BODY_BYTES:
+            self._error(413, "Request too large")
+            return
+        content_length = int(lengths[0])
+        try:
             body = self.rfile.read(content_length)
-
-        json_data = {}
-        if body:
-            try:
-                json_data = json.loads(body.decode("utf-8"))
-            except Exception as e:
-                self._set_headers(400)
-                self.wfile.write(json.dumps({"error": f"Invalid JSON body: {str(e)}"}).encode("utf-8"))
+            if len(body) != content_length:
+                self._error(400, "Incomplete request")
                 return
+        except (TimeoutError, socket.timeout):
+            self._error(408, "Request timeout")
+            return
+        try:
+            json_data = json.loads(body.decode("utf-8")) if body else {}
+            if not isinstance(json_data, dict):
+                raise ValueError()
+        except (ValueError, UnicodeError):
+            self._error(400, "Invalid JSON body")
+            return
 
         if path == "/shutdown":
             self._set_headers(200)
@@ -129,7 +201,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 except Exception as ex:
                     logger.error(f"Error executing {app_id}.{action}: {ex}", exc_info=True)
                     self._set_headers(500)
-                    self.wfile.write(json.dumps({"error": str(ex)}).encode("utf-8"))
+                    self.wfile.write(json.dumps({"error": "Internal server error"}).encode("utf-8"))
                     return
 
         self._set_headers(404)
@@ -222,6 +294,11 @@ def main():
     parser.add_argument("--watch-stdin", action="store_true", help="Monitor stdin for EOF to terminate")
     args = parser.parse_args()
 
+    # Consume the secret before loading apps; never put it in arguments or logs.
+    auth_token = os.environ.pop("OXYGEN_PYTHON_TOKEN", "")
+    if len(auth_token) < 64:
+        parser.error("A per-process authentication token is required")
+
     # Start watchers
     if args.watch_stdin and sys.stdin:
         threading.Thread(target=stdin_watcher, daemon=True).start()
@@ -235,7 +312,7 @@ def main():
     # Bind server
     port = find_available_port(args.port)
     server_address = ("127.0.0.1", port)
-    HTTP_SERVER = ThreadedHTTPServer(server_address, RequestHandler)
+    HTTP_SERVER = ThreadedHTTPServer(server_address, RequestHandler, auth_token)
 
     logger.info(f"Python server starting on http://127.0.0.1:{port}")
     # Write handshake to stdout for DesktopApp

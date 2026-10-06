@@ -1,3 +1,4 @@
+import { fetchPublicUrl } from "../lib/publicFetch.ts";
 import { Hono } from "hono";
 import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
@@ -255,7 +256,7 @@ async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
   }
 
   try {
-    const res = await fetch(cleanUrl, {
+    const res = await fetchPublicUrl(cleanUrl, {
       headers: AI_SEARCH_HEADERS,
       signal: AbortSignal.timeout(6000),
     });
@@ -284,7 +285,7 @@ async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
           try {
             const wikiContent = await Promise.any(
               apiEndpoints.map(async (endpoint) => {
-                const apiRes = await fetch(endpoint, {
+                const apiRes = await fetchPublicUrl(endpoint, {
                   headers: {
                     "User-Agent": AI_SEARCH_USER_AGENT,
                     From: AI_SEARCH_CONTACT_EMAIL,
@@ -801,7 +802,7 @@ agentSearchRouter.post(
         const imagePromises = images.map(async (img: any) => {
           if (img.data.startsWith("https://")) {
             try {
-              const imgRes = await fetch(img.data, {
+              const imgRes = await fetchPublicUrl(img.data, {
                 signal: AbortSignal.timeout(8000),
               });
               if (imgRes.ok) {

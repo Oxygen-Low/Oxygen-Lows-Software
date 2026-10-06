@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+import { DATA_DIR } from "../lib/dataStore.ts";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
 import { authRouter, getSafeReturnTo, sanitizeOAuthError } from "./auth.ts";
@@ -90,7 +93,7 @@ describe("authRouter", () => {
     expect(res.status).toBe(400);
   });
 
-  it("should detect unmigrated account and migrate credentials successfully", async () => {
+  it("rejects account takeover through unauthenticated migration", async () => {
     const migSuffix = Date.now().toString().slice(-6) + "_mig";
     // Register user with null auth_verifier (simulate wiped account)
     const { initUserFolder, getNextUserId } = await import("../lib/dataStore.ts");
@@ -110,10 +113,9 @@ describe("authRouter", () => {
         login: `miguser_${migSuffix}`,
       }),
     });
-    expect(loginRes.status).toBe(200);
+    expect(loginRes.status).toBe(400);
     const loginJson = await loginRes.json();
-    expect(loginJson.needsMigration).toBe(true);
-    expect(loginJson.user.username).toBe(`miguser_${migSuffix}`);
+    expect(loginJson.user).toBeUndefined();
 
     // Call migrate-account with new password
     const migRes = await app.request("/api/auth/migrate-account", {
@@ -124,9 +126,9 @@ describe("authRouter", () => {
         password: "newSecurePassword456!",
       }),
     });
-    expect(migRes.status).toBe(200);
+    expect(migRes.status).toBe(401);
     const migJson = await migRes.json();
-    expect(migJson.token).toBeDefined();
+    expect(migJson.token).toBeUndefined();
 
     // Now login should succeed with the new password
     const postMigLoginRes = await app.request("/api/auth/login", {
@@ -137,9 +139,10 @@ describe("authRouter", () => {
         password: "newSecurePassword456!",
       }),
     });
-    expect(postMigLoginRes.status).toBe(200);
+    expect(postMigLoginRes.status).toBe(400);
     const postMigLoginJson = await postMigLoginRes.json();
-    expect(postMigLoginJson.token).toBeDefined();
+    expect(postMigLoginJson.token).toBeUndefined();
+    fs.rmSync(path.join(DATA_DIR, String(uid)), { recursive: true, force: true });
   });
 
   describe("Google OAuth", () => {
