@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
-import { defenderRouter, torDetector, vpnDetector, threatActorDetector } from "./webdefender.ts";
+import { defenderRouter, torDetector, threatActorDetector } from "./webdefender.ts";
 import { insertTable, initUserFolder } from "../lib/dataStore.ts";
 import { DEFENDER_BANS_OWNER_ID } from "../lib/defenderBannedIps.ts";
 
