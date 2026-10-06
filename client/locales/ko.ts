@@ -357,9 +357,9 @@ export const ko = {
     chatbotMasterKeyLocked:
       "ë§ˆìŠ¤í„° í‚¤ê°€ ìž ê²¨ ìžˆìŠµë‹ˆë‹¤. ì„¤ì •ëœ API í‚¤ë¥¼ ì‚¬ìš©í•˜ë ¤ë©´ ê³„ì • ë˜ëŠ” ëª¨ë¸ ì„¤ì •ì—ì„œ ìž ê¸ˆì„ í•´ì œí•˜ì„¸ìš”.",
     defaultModelFallbackWarning:
-      "기본 모델(Pollinations Ling 3.1 Flash)을 현재 사용할 수 없습니다(요청 한도 초과). AI Horde Smart로 대체됩니다. 품질이 저하될 수 있습니다.",
+      "기본 모델(Pollinations Ling 3.1 Flash)을 현재 사용할 수 없습니다(요청 한도 초과). AI Horde({model}) 모델로 대체됩니다. 품질이 저하될 수 있습니다.",
     defaultModelFallbackNotice:
-      "메인 기본 모델 사용 불가로 인해 AI Horde Smart 대체 모델을 통해 생성되었습니다.",
+      "메인 기본 모델 사용 불가로 인해 AI Horde({model}) 대체 모델을 통해 생성되었습니다.",
     agentSearchTitle: "ì—ì´ì „íŠ¸ ê²€ìƒ‰",
     agentSearchDesc: "ì›¹ì„ ì¡°ì‚¬í•˜ê³  ë‹µë³€ì„ í•©ì„±í•˜ëŠ” AI ê¸°ë°˜ ì—ì´ì „íŠ¸ ê²€ìƒ‰.",
     agentSearchPlaceholder: "ë¬´ì—‡ì„ ì¡°ì‚¬í•˜ì‹œê² ìŠµë‹ˆê¹Œ?",

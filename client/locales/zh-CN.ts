@@ -339,9 +339,9 @@ export const zhCN = {
     chatbotMasterKeyLocked:
       "ä¸»å¯†é’¥å·²é”å®šã€‚è¯·åœ¨è´¦æˆ·æˆ–æ¨¡åž‹è®¾ç½®ä¸­è§£é”ï¼Œä»¥ä½¿ç”¨å·²é…ç½®çš„ API å¯†é’¥ã€‚",
     defaultModelFallbackWarning:
-      "默认主要模型（Pollinations Ling 3.1 Flash）当前不可用（超出速率限制）。正在回退至 AI Horde Smart，质量可能会有所下降。",
+      "默认主要模型（Pollinations Ling 3.1 Flash）当前不可用（超出速率限制）。正在回退至 AI Horde（{model}），质量可能会有所下降。",
     defaultModelFallbackNotice:
-      "由于默认主要模型不可用，已通过 AI Horde Smart 回退模型生成。",
+      "由于默认主要模型不可用，已通过 AI Horde（{model}）回退模型生成。",
     agentSearchTitle: "æ™ºèƒ½æœç´¢",
     agentSearchDesc: "ç”±AIé©±åŠ¨çš„æ™ºèƒ½æœç´¢ï¼Œç ”ç©¶ç½‘ç»œå¹¶ç»¼åˆç­”æ¡ˆã€‚",
     agentSearchPlaceholder: "æ‚¨æƒ³ç ”ç©¶ä»€ä¹ˆï¼Ÿ",

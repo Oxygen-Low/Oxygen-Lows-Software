@@ -358,9 +358,9 @@ export const en = {
     chatbotMasterKeyLocked:
       "Your Master Key is locked. Please unlock it in Account or Models settings to use configured API keys.",
     defaultModelFallbackWarning:
-      "The main default model (Pollinations Ling 3.1 Flash) is currently unavailable (rate limited). Falling back to AI Horde Smart. Quality may be decreased.",
+      "The main default model (Pollinations Ling 3.1 Flash) is currently unavailable (rate limited). Falling back to AI Horde ({model}). Quality may be decreased.",
     defaultModelFallbackNotice:
-      "Generated via AI Horde Smart fallback due to main default model unavailability.",
+      "Generated via AI Horde ({model}) fallback due to main default model unavailability.",
     agentSearchTitle: "Agent Search",
     agentSearchDesc:
       "AI-powered agentic search that researches the web and synthesizes answers.",

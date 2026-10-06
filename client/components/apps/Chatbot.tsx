@@ -205,6 +205,7 @@ interface Message {
   image_url?: string;
   image_model?: string;
   usedFallback?: boolean;
+  fallbackModel?: string;
 }
 
 interface Chat {
@@ -237,6 +238,11 @@ interface Artifact {
   language: string;
   content: string;
 }
+
+const HORDE_FALLBACK_FAST_MODEL =
+  "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M";
+const HORDE_FALLBACK_SMART_MODEL =
+  "aphrodite/TheDrummer/Behemoth-X-123B-v2.1";
 
 const ARTIFACT_REGEX =
   /`\/([^/]+)\/\/([^/]+)\/`[\s\n]*\/\/\/\/([\s\S]*?)(?:\\\\|$)/g;
@@ -403,8 +409,12 @@ const ChatMessage = React.memo(
                 <span>
                   {t(
                     "apps.defaultModelFallbackNotice",
-                    undefined,
-                    "Generated via AI Horde Smart fallback due to main default model unavailability.",
+                    {
+                      model:
+                        m.fallbackModel ||
+                        "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+                    },
+                    `Generated via AI Horde (${m.fallbackModel || "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"}) fallback due to main default model unavailability.`,
                   )}
                 </span>
               </div>
@@ -1236,6 +1246,7 @@ export function ChatbotApp() {
   const generateChatTitle = async (chatId: string, firstMsg: string) => {
     try {
       let title = "New Chat";
+
       try {
         const directTitle = await fetchPollinationsClient({
           model: "inclusionai/ling-3.1-flash",
@@ -1255,25 +1266,32 @@ export function ChatbotApp() {
           err instanceof PollinationsRateLimitError ||
           err?.statusCode === 429
         ) {
-          const response = await fetch("/api/ai/proxy", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session?.access_token}`,
-            },
-            body: JSON.stringify({
-              provider: "horde",
-              model: "Smart",
-              messages: [
-                {
-                  role: "user",
-                  content: `Generate a short 3-5 word title for a chat that starts with this message: "${firstMsg}". Output ONLY the title, no quotes or prefix.`,
-                },
-              ],
-              stream: false,
-              apiKey: "0000000000",
-            }),
-          });
+          const fetchTitleViaProxy = async (hordeModel: string) => {
+            return await fetch("/api/ai/proxy", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session?.access_token}`,
+              },
+              body: JSON.stringify({
+                provider: "horde",
+                model: hordeModel,
+                messages: [
+                  {
+                    role: "user",
+                    content: `Generate a short 3-5 word title for a chat that starts with this message: "${firstMsg}". Output ONLY the title, no quotes or prefix.`,
+                  },
+                ],
+                stream: false,
+                apiKey: "0000000000",
+              }),
+            });
+          };
+
+          let response = await fetchTitleViaProxy(HORDE_FALLBACK_FAST_MODEL);
+          if (!response.ok) {
+            response = await fetchTitleViaProxy(HORDE_FALLBACK_SMART_MODEL);
+          }
 
           if (response.ok) {
             const data = await response.json();
@@ -1315,9 +1333,205 @@ export function ChatbotApp() {
     msgs: Message[],
     signal: AbortSignal,
     streamCallback: (content: string, reasoning?: string) => void,
-    onFallback?: () => void,
+    onFallback?: (modelUsed?: string) => void,
   ): Promise<string> => {
     const apiKey = getDecryptedApiKey(provider);
+
+    const streamResponseData = async (
+      response: Response,
+      streamProvider: string,
+    ): Promise<string> => {
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = "";
+
+      const toolSearch = response.headers.get("X-Tool-Search");
+      if (toolSearch) {
+        const query = decodeURIComponent(toolSearch);
+        fullContent += `<tool_call>{"name":"Web Search", "args":{"query":"${query}"}}</tool_call>\n\n`;
+        streamCallback(fullContent);
+      }
+
+      let streamBuffer = "";
+      const openAnthropicToolBlocks = new Map<number, { hasArgs: boolean }>();
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          streamBuffer += decoder.decode(value, { stream: true });
+          const lines = streamBuffer.split("\n");
+          streamBuffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.trim() || !line.startsWith("data: ")) continue;
+            const dataStr = line.replace("data: ", "");
+            if (dataStr === "[DONE]") break;
+
+            try {
+              const data = JSON.parse(dataStr);
+              if (data.error) throw new Error(data.error);
+              if (data.queue_info) setQueueStatus(data.queue_info);
+
+              let delta = "";
+              if (streamProvider === "anthropic") {
+                if (
+                  data.type === "content_block_start" &&
+                  data.content_block?.type === "tool_use"
+                ) {
+                  const idx = data.index ?? openAnthropicToolBlocks.size;
+                  openAnthropicToolBlocks.set(idx, { hasArgs: false });
+                  delta += `<tool_call>\n{"name": "${data.content_block.name}", "args": `;
+                } else if (
+                  data.type === "content_block_delta" &&
+                  data.delta?.type === "input_json_delta"
+                ) {
+                  const idx = data.index ?? openAnthropicToolBlocks.size - 1;
+                  if (openAnthropicToolBlocks.has(idx)) {
+                    openAnthropicToolBlocks.get(idx)!.hasArgs = true;
+                  }
+                  delta += data.delta.partial_json || "";
+                } else if (
+                  data.type === "content_block_delta" &&
+                  data.delta?.type === "text_delta"
+                ) {
+                  delta += data.delta.text || "";
+                } else if (data.type === "content_block_stop") {
+                  const idx = data.index ?? openAnthropicToolBlocks.size - 1;
+                  if (openAnthropicToolBlocks.has(idx)) {
+                    const block = openAnthropicToolBlocks.get(idx)!;
+                    if (!block.hasArgs) {
+                      delta += "{}";
+                    }
+                    delta += `\n}</tool_call>`;
+                    openAnthropicToolBlocks.delete(idx);
+                  }
+                } else if (
+                  data.type === "message_stop" ||
+                  data.type === "message_delta"
+                ) {
+                  if (openAnthropicToolBlocks.size > 0) {
+                    for (const [, block] of openAnthropicToolBlocks.entries()) {
+                      if (!block.hasArgs) delta += "{}";
+                      delta += `\n}</tool_call>`;
+                    }
+                    openAnthropicToolBlocks.clear();
+                  }
+                } else {
+                  delta = data.delta?.text || "";
+                }
+              } else if (
+                [
+                  "openai",
+                  "openrouter",
+                  "grok",
+                  "custom",
+                  "lmstudio",
+                  "koboldcpp",
+                  "kobold",
+                  "horde",
+                ].includes(streamProvider) ||
+                streamProvider.startsWith("local-")
+              ) {
+                delta = data.choices?.[0]?.delta?.content || data.response || "";
+                const tc = data.choices?.[0]?.delta?.tool_calls?.[0];
+                if (tc) {
+                  if (tc.function?.name)
+                    delta += `<tool_call>\n{"name": "${tc.function.name}", "args": `;
+                  if (tc.function?.arguments) delta += tc.function.arguments;
+                }
+                if (data.choices?.[0]?.finish_reason === "tool_calls") {
+                  delta += `\n}</tool_call>`;
+                }
+              } else if (streamProvider === "ollama") {
+                delta = data.message?.content || data.response || "";
+              } else if (streamProvider === "google") {
+                delta =
+                  data.delta?.content ||
+                  data.message?.content?.text ||
+                  data.candidates?.[0]?.content?.parts?.[0]?.text ||
+                  "";
+                const fc =
+                  data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
+                if (fc) {
+                  delta += `<tool_call>\n{"name": "${fc.name}", "args": ${JSON.stringify(fc.args)}}\n</tool_call>`;
+                }
+              }
+
+              if (delta) {
+                setQueueStatus(null);
+                fullContent += delta;
+                streamCallback(fullContent);
+              }
+            } catch (e: any) {
+              if (
+                e.message &&
+                e.message !== "Unexpected end of JSON input" &&
+                !e.message.includes("JSON")
+              ) {
+                toast.error(e.message);
+              }
+            }
+          }
+        }
+
+        if (openAnthropicToolBlocks.size > 0) {
+          let unclosedDelta = "";
+          for (const [, block] of openAnthropicToolBlocks.entries()) {
+            if (!block.hasArgs) unclosedDelta += "{}";
+            unclosedDelta += `\n}</tool_call>`;
+          }
+          openAnthropicToolBlocks.clear();
+          if (unclosedDelta) {
+            fullContent += unclosedDelta;
+            streamCallback(fullContent);
+          }
+        }
+      }
+      return fullContent;
+    };
+
+    const runHordeFallback = async (
+      fallbackModelId: string,
+    ): Promise<string> => {
+      onFallback?.(fallbackModelId);
+      setAllMessages((prevAll) =>
+        prevAll.map((m) =>
+          m.id === "temp-streaming"
+            ? { ...m, usedFallback: true, fallbackModel: fallbackModelId }
+            : m,
+        ),
+      );
+      toast.warning(
+        t(
+          "apps.defaultModelFallbackWarning",
+          { model: fallbackModelId },
+          `The main default model (Pollinations Ling 3.1 Flash) is currently unavailable (rate limited). Falling back to AI Horde (${fallbackModelId}). Quality may be decreased.`,
+        ),
+      );
+
+      const fetchOptions: RequestInit = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        signal,
+        body: JSON.stringify({
+          provider: "horde",
+          model: fallbackModelId,
+          messages: msgs,
+          stream: true,
+        }),
+      };
+
+      const res = await fetch("/api/ai/proxy", fetchOptions);
+      if (!res.ok) {
+        throw new Error(await parseAiProxyError(res));
+      }
+      return await streamResponseData(res, "horde");
+    };
 
     if (provider === "pollinations") {
       try {
@@ -1341,23 +1555,15 @@ export function ChatbotApp() {
           err instanceof PollinationsRateLimitError ||
           err?.statusCode === 429
         ) {
-          toast.warning(
-            t(
-              "apps.defaultModelFallbackWarning",
-              undefined,
-              "The main default model (Pollinations Ling 3.1 Flash) is currently unavailable (rate limited). Falling back to AI Horde Smart. Quality may be decreased.",
-            ),
-          );
-          onFallback?.();
-          setAllMessages((prevAll) =>
-            prevAll.map((m) =>
-              m.id === "temp-streaming" ? { ...m, usedFallback: true } : m,
-            ),
-          );
-
-          // Route to Horde Smart fallback via proxy
-          provider = "horde";
-          model = "Smart";
+          try {
+            return await runHordeFallback(HORDE_FALLBACK_FAST_MODEL);
+          } catch (fastErr: any) {
+            console.warn(
+              "Horde Fast fallback failed, attempting Smart fallback:",
+              fastErr,
+            );
+            return await runHordeFallback(HORDE_FALLBACK_SMART_MODEL);
+          }
         } else {
           throw err;
         }
@@ -1443,155 +1649,7 @@ export function ChatbotApp() {
       throw new Error(errText);
     }
 
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    let fullContent = "";
-
-    const toolSearch = response.headers.get("X-Tool-Search");
-    if (toolSearch) {
-      const query = decodeURIComponent(toolSearch);
-      fullContent += `<tool_call>{"name":"Web Search", "args":{"query":"${query}"}}</tool_call>\n\n`;
-      streamCallback(fullContent);
-    }
-
-    let streamBuffer = "";
-    const openAnthropicToolBlocks = new Map<number, { hasArgs: boolean }>();
-
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        streamBuffer += decoder.decode(value, { stream: true });
-        const lines = streamBuffer.split("\n");
-        streamBuffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.trim() || !line.startsWith("data: ")) continue;
-          const dataStr = line.replace("data: ", "");
-          if (dataStr === "[DONE]") break;
-
-          try {
-            const data = JSON.parse(dataStr);
-            if (data.error) throw new Error(data.error);
-            if (data.queue_info) setQueueStatus(data.queue_info);
-
-            let delta = "";
-            if (provider === "anthropic") {
-              if (
-                data.type === "content_block_start" &&
-                data.content_block?.type === "tool_use"
-              ) {
-                const idx = data.index ?? openAnthropicToolBlocks.size;
-                openAnthropicToolBlocks.set(idx, { hasArgs: false });
-                delta += `<tool_call>\n{"name": "${data.content_block.name}", "args": `;
-              } else if (
-                data.type === "content_block_delta" &&
-                data.delta?.type === "input_json_delta"
-              ) {
-                const idx = data.index ?? openAnthropicToolBlocks.size - 1;
-                if (openAnthropicToolBlocks.has(idx)) {
-                  openAnthropicToolBlocks.get(idx)!.hasArgs = true;
-                }
-                delta += data.delta.partial_json || "";
-              } else if (
-                data.type === "content_block_delta" &&
-                data.delta?.type === "text_delta"
-              ) {
-                delta += data.delta.text || "";
-              } else if (data.type === "content_block_stop") {
-                const idx = data.index ?? openAnthropicToolBlocks.size - 1;
-                if (openAnthropicToolBlocks.has(idx)) {
-                  const block = openAnthropicToolBlocks.get(idx)!;
-                  if (!block.hasArgs) {
-                    delta += "{}";
-                  }
-                  delta += `\n}</tool_call>`;
-                  openAnthropicToolBlocks.delete(idx);
-                }
-              } else if (
-                data.type === "message_stop" ||
-                data.type === "message_delta"
-              ) {
-                if (openAnthropicToolBlocks.size > 0) {
-                  for (const [, block] of openAnthropicToolBlocks.entries()) {
-                    if (!block.hasArgs) delta += "{}";
-                    delta += `\n}</tool_call>`;
-                  }
-                  openAnthropicToolBlocks.clear();
-                }
-              } else {
-                delta = data.delta?.text || "";
-              }
-            } else if (
-              [
-                "openai",
-                "openrouter",
-                "grok",
-                "custom",
-                "lmstudio",
-                "koboldcpp",
-                "kobold",
-                "horde",
-              ].includes(provider) ||
-              provider.startsWith("local-")
-            ) {
-              delta = data.choices?.[0]?.delta?.content || data.response || "";
-              const tc = data.choices?.[0]?.delta?.tool_calls?.[0];
-              if (tc) {
-                if (tc.function?.name)
-                  delta += `<tool_call>\n{"name": "${tc.function.name}", "args": `;
-                if (tc.function?.arguments) delta += tc.function.arguments;
-              }
-              if (data.choices?.[0]?.finish_reason === "tool_calls") {
-                delta += `\n}</tool_call>`;
-              }
-            } else if (provider === "ollama") {
-              delta = data.message?.content || data.response || "";
-            } else if (provider === "google") {
-              delta =
-                data.delta?.content ||
-                data.message?.content?.text ||
-                data.candidates?.[0]?.content?.parts?.[0]?.text ||
-                "";
-              const fc =
-                data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
-              if (fc) {
-                delta += `<tool_call>\n{"name": "${fc.name}", "args": ${JSON.stringify(fc.args)}}\n</tool_call>`;
-              }
-            }
-
-            if (delta) {
-              setQueueStatus(null);
-              fullContent += delta;
-              streamCallback(fullContent);
-            }
-          } catch (e: any) {
-            if (
-              e.message &&
-              e.message !== "Unexpected end of JSON input" &&
-              !e.message.includes("JSON")
-            ) {
-              toast.error(e.message);
-            }
-          }
-        }
-      }
-
-      if (openAnthropicToolBlocks.size > 0) {
-        let unclosedDelta = "";
-        for (const [, block] of openAnthropicToolBlocks.entries()) {
-          if (!block.hasArgs) unclosedDelta += "{}";
-          unclosedDelta += `\n}</tool_call>`;
-        }
-        openAnthropicToolBlocks.clear();
-        if (unclosedDelta) {
-          fullContent += unclosedDelta;
-          streamCallback(fullContent);
-        }
-      }
-    }
-    return fullContent;
+    return await streamResponseData(response, provider);
   };
 
   const getInjectedSystemPrompt = (): string => {
@@ -1730,6 +1788,7 @@ export function ChatbotApp() {
     reasoningContent: string;
     isWebSearch: boolean;
     usedFallback?: boolean;
+    fallbackModel?: string;
   }> => {
     let finalContent = "";
     let reasoningContent = "";
@@ -1927,8 +1986,10 @@ export function ChatbotApp() {
       );
 
     let hadFallback = false;
-    const onFallback = () => {
+    let fallbackModelUsed: string | undefined = undefined;
+    const onFallback = (modelUsed?: string) => {
       hadFallback = true;
+      if (modelUsed) fallbackModelUsed = modelUsed;
     };
 
     // Perform synthesis with the selected chatbot model
@@ -2041,11 +2102,14 @@ export function ChatbotApp() {
       reasoningContent: reasoningContent || null,
       isWebSearch: true,
       usedFallback: hadFallback,
+      fallbackModel: fallbackModelUsed,
     };
   } else if (isReasoningEnabled) {
     let hadFallback = false;
-    const onFallback = () => {
+    let fallbackModelUsed: string | undefined = undefined;
+    const onFallback = (modelUsed?: string) => {
       hadFallback = true;
+      if (modelUsed) fallbackModelUsed = modelUsed;
     };
 
     // Reasoning only (no web search)
@@ -2114,11 +2178,14 @@ export function ChatbotApp() {
       reasoningContent,
       isWebSearch: false,
       usedFallback: hadFallback,
+      fallbackModel: fallbackModelUsed,
     };
   } else {
     let hadFallback = false;
-    const onFallback = () => {
+    let fallbackModelUsed: string | undefined = undefined;
+    const onFallback = (modelUsed?: string) => {
       hadFallback = true;
+      if (modelUsed) fallbackModelUsed = modelUsed;
     };
 
     // Direct completion
@@ -2151,6 +2218,7 @@ export function ChatbotApp() {
       reasoningContent: "",
       isWebSearch: false,
       usedFallback: hadFallback,
+      fallbackModel: fallbackModelUsed,
     };
   }
   };
@@ -2441,8 +2509,13 @@ export function ChatbotApp() {
         iterations++;
         shouldContinue = false;
 
-        const { finalContent, reasoningContent, isWebSearch, usedFallback } =
-          await executeAiGeneration(currentMessages, controller.signal);
+        const {
+          finalContent,
+          reasoningContent,
+          isWebSearch,
+          usedFallback,
+          fallbackModel,
+        } = await executeAiGeneration(currentMessages, controller.signal);
 
         let insertData: any = {
           parent_id: userMsgData.id,
@@ -2452,6 +2525,7 @@ export function ChatbotApp() {
           reasoning: reasoningContent || null,
           is_web_search: isWebSearch || false,
           usedFallback: usedFallback || false,
+          fallbackModel: fallbackModel || null,
         };
 
         let assistantMsgData = {
@@ -2499,6 +2573,13 @@ export function ChatbotApp() {
               delete retryPayload.usedFallback;
               hasAdjusted = true;
             }
+            if (
+              assistantInsertError.message?.includes("fallbackModel") ||
+              assistantInsertError.details?.includes("fallbackModel")
+            ) {
+              delete retryPayload.fallbackModel;
+              hasAdjusted = true;
+            }
             if (hasAdjusted) {
               const { data: retryData, error: retryError } = await supabase
                 .from("chatbot_messages")
@@ -2527,6 +2608,7 @@ export function ChatbotApp() {
                   is_web_search: isWebSearch || false,
                   web_search_status: undefined,
                   usedFallback: usedFallback || false,
+                  fallbackModel: fallbackModel || undefined,
                 }
               : m,
           ),
@@ -2604,8 +2686,13 @@ export function ChatbotApp() {
       );
       let currentMessages = messages.slice(0, lastUserMessageIndex + 1);
 
-      const { finalContent, reasoningContent, isWebSearch, usedFallback } =
-        await executeAiGeneration(currentMessages, controller.signal);
+      const {
+        finalContent,
+        reasoningContent,
+        isWebSearch,
+        usedFallback,
+        fallbackModel,
+      } = await executeAiGeneration(currentMessages, controller.signal);
 
       let insertData: any = {
         chat_id: currentChatId,
@@ -2615,6 +2702,7 @@ export function ChatbotApp() {
         reasoning: reasoningContent || null,
         is_web_search: isWebSearch || false,
         usedFallback: usedFallback || false,
+        fallbackModel: fallbackModel || null,
       };
 
       let assistantMsgData = {
@@ -2663,6 +2751,13 @@ export function ChatbotApp() {
             delete retryPayload.usedFallback;
             hasAdjusted = true;
           }
+          if (
+            assistantInsertError.message?.includes("fallbackModel") ||
+            assistantInsertError.details?.includes("fallbackModel")
+          ) {
+            delete retryPayload.fallbackModel;
+            hasAdjusted = true;
+          }
           if (hasAdjusted) {
             const { data: retryData, error: retryError } = await supabase
               .from("chatbot_messages")
@@ -2690,6 +2785,7 @@ export function ChatbotApp() {
                 is_web_search: isWebSearch || false,
                 web_search_status: undefined,
                 usedFallback: usedFallback || false,
+                fallbackModel: fallbackModel || undefined,
               }
             : m,
         ),

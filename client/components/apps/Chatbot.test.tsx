@@ -1359,7 +1359,7 @@ describe("ChatbotApp", () => {
     }
   });
 
-  it("handles Pollinations HTTP 429 by falling back to AI Horde Smart and showing warning notification & notice banner", async () => {
+  it("handles Pollinations HTTP 429 by falling back to AI Horde Fast model (and Smart if Fast fails) and showing model name in notification & banner", async () => {
     mockUserPreferences = {
       theme: "default",
       use_gradient: true,
@@ -1371,7 +1371,7 @@ describe("ChatbotApp", () => {
     mockUserModels = [];
     const originalFetch = global.fetch;
     const toastWarnSpy = vi.spyOn(toast, "warning");
-    let hordeFallbackCalled = false;
+    let hordeFastCalled = false;
 
     try {
       global.fetch = vi.fn((url: any, options: any) => {
@@ -1389,8 +1389,11 @@ describe("ChatbotApp", () => {
         // AI Proxy handles Horde fallback
         if (urlStr.includes("/api/ai/proxy")) {
           const bodyJson = JSON.parse(options?.body || "{}");
-          if (bodyJson.provider === "horde" && bodyJson.model === "Smart") {
-            hordeFallbackCalled = true;
+          if (
+            bodyJson.provider === "horde" &&
+            bodyJson.model === "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"
+          ) {
+            hordeFastCalled = true;
           }
 
           if (bodyJson.stream === false) {
@@ -1407,7 +1410,7 @@ describe("ChatbotApp", () => {
             start(controller) {
               controller.enqueue(
                 new TextEncoder().encode(
-                  'data: {"choices":[{"delta":{"content":"Response from AI Horde Smart fallback."}}]}\n',
+                  'data: {"choices":[{"delta":{"content":"Response from AI Horde Fast fallback."}}]}\n',
                 ),
               );
               controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
@@ -1444,24 +1447,24 @@ describe("ChatbotApp", () => {
       const sendButton = screen.getByLabelText("Send message");
       fireEvent.click(sendButton);
 
-      // Verify warning toast is shown
+      // Verify warning toast is shown with actual model name
       await waitFor(() => {
         expect(toastWarnSpy).toHaveBeenCalledWith(
-          expect.stringContaining("Pollinations Ling 3.1 Flash"),
+          expect.stringContaining("koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"),
         );
       });
 
-      // Verify AI Horde Smart fallback was called
-      expect(hordeFallbackCalled).toBe(true);
+      // Verify AI Horde Fast fallback was called
+      expect(hordeFastCalled).toBe(true);
 
-      // Verify response and fallback notice banner in UI
+      // Verify response and fallback notice banner in UI with actual model name
       await screen.findByText(
-        "Response from AI Horde Smart fallback.",
+        "Response from AI Horde Fast fallback.",
         {},
         { timeout: 10000 },
       );
       await screen.findByText(
-        /Generated via AI Horde Smart fallback/i,
+        /koboldcpp\/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M/i,
         {},
         { timeout: 10000 },
       );

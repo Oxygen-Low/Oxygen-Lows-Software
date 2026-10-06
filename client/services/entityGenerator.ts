@@ -331,11 +331,45 @@ export async function callModel(
       });
     } catch (err: any) {
       if (err instanceof PollinationsRateLimitError || err?.statusCode === 429) {
-        // Fallback to Horde Smart via server proxy
-        model = {
-          provider: "horde",
-          model_id: "Smart",
-        };
+        // Fallback to Horde Fast, then Smart via server proxy
+        try {
+          let headers: Record<string, string> = { "Content-Type": "application/json" };
+          try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData?.session?.access_token;
+            if (token) {
+              headers["Authorization"] = `Bearer ${token}`;
+            }
+          } catch {}
+
+          const fastRes = await fetch("/api/ai/proxy", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              model: "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+              provider: "horde",
+              messages,
+              apiKey: apiKey || undefined,
+            }),
+            signal,
+          });
+
+          if (fastRes.ok) {
+            const json = await fastRes.json();
+            return (
+              json?.choices?.[0]?.message?.content ||
+              json?.message?.content ||
+              json?.result ||
+              ""
+            );
+          }
+          throw new Error(`Fast fallback failed: ${fastRes.status}`);
+        } catch {
+          model = {
+            provider: "horde",
+            model_id: "aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
+          };
+        }
       } else {
         throw err;
       }

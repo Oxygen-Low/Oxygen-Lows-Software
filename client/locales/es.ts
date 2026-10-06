@@ -371,9 +371,9 @@ export const es = {
     chatbotMasterKeyLocked:
       "Tu clave maestra estÃ¡ bloqueada. DesbloquÃ©ala en la configuraciÃ³n de Cuenta o Modelos para usar las claves API configuradas.",
     defaultModelFallbackWarning:
-      "El modelo predeterminado principal (Pollinations Ling 3.1 Flash) no está disponible actualmente (límite de velocidad). Recurriendo a AI Horde Smart. La calidad puede verse reducida.",
+      "El modelo predeterminado principal (Pollinations Ling 3.1 Flash) no está disponible actualmente (límite de velocidad). Recurriendo a AI Horde ({model}). La calidad puede verse reducida.",
     defaultModelFallbackNotice:
-      "Generado a través del respaldo AI Horde Smart debido a la indisponibilidad del modelo principal.",
+      "Generado a través del respaldo AI Horde ({model}) debido a la indisponibilidad del modelo principal.",
     agentSearchTitle: "BÃºsqueda Agente",
     agentSearchDesc:
       "BÃºsqueda agÃ©ntica impulsada por IA que investiga la web y sintetiza respuestas.",
