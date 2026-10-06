@@ -1112,6 +1112,22 @@ export const en = {
     verifiedBadge: "Verified",
     reverificationRequired:
       "Character modified. Verification status has been reset and requires re-verification for multiplayer usage.",
+    aiReview: {
+      action: "Review with AI",
+      title: "Review {name}",
+      description:
+        "Review saved descriptions, including private notes and linked race or universe lore, with the selected model. Feedback is advisory and does not change your character.",
+      start: "Start review",
+      reviewing: "Reviewing character…",
+      error:
+        "Could not complete the review. Check your model connection and try again.",
+      strengths: "What works well",
+      improvements: "Areas to improve",
+      story: "Story",
+      appearance: "Appearance",
+      personality: "Personality",
+      consistency: "Consistency",
+    },
     aiGenerate: {
       button: "AI Generate",
       includeStats: "Generate Character Stats",

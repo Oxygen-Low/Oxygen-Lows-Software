@@ -17,6 +17,7 @@ import {
   Lock,
   Sparkles,
 } from "lucide-react";
+import { AiReviewDialog } from "@/components/characters/AiReviewDialog";
 import { AiGenerateDialog } from "@/components/characters/AiGenerateDialog";
 import type { GeneratedEntityResult } from "@/services/entityGenerator";
 
@@ -156,6 +157,10 @@ export default function Characters() {
     null,
   );
   const [publishModalAnonymous, setPublishModalAnonymous] = useState(false);
+
+  const [reviewingCharacter, setReviewingCharacter] = useState<Character | null>(
+    null,
+  );
 
   // AI Generation Modal State
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
@@ -1693,6 +1698,18 @@ export default function Characters() {
                           </Button>
                         </div>
 
+                        {!char.is_universe && !char.is_race && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full border-cyan-800/60 text-cyan-300 hover:bg-cyan-950/60"
+                            onClick={() => setReviewingCharacter(char)}
+                          >
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            {t("characters.aiReview.action")}
+                          </Button>
+                        )}
+
                         {char.is_race && (
                           <Button
                             variant="outline"
@@ -2065,6 +2082,16 @@ export default function Characters() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {reviewingCharacter && !encryptionLocked && (
+        <AiReviewDialog
+          key={reviewingCharacter.id}
+          character={reviewingCharacter}
+          universe={universesMap.get(reviewingCharacter.universe_id || "")}
+          race={racesMap.get(reviewingCharacter.race_id || "")}
+          onClose={() => setReviewingCharacter(null)}
+        />
+      )}
 
       {/* AI Entity Generation Modal */}
       <AiGenerateDialog

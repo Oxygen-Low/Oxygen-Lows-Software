@@ -1103,6 +1103,21 @@ export const ko = {
     verifiedBadge: "ê²€ì¦ ì™„ë£Œ",
     reverificationRequired:
       "ìºë¦­í„°ê°€ ìˆ˜ì •ë˜ì—ˆìŠµë‹ˆë‹¤. ê²€ì¦ ìƒíƒœê°€ ì´ˆê¸°í™”ë˜ì—ˆìœ¼ë©° ë©€í‹°í”Œë ˆì´ì–´ìš© ìž¬ê²€ì¦ì´ í•„ìš”í•©ë‹ˆë‹¤.",
+    aiReview: {
+      action: "AI로 검토",
+      title: "{name} 검토",
+      description:
+        "선택한 모델로 비공개 메모와 연결된 종족 또는 세계관 설정을 포함한 저장된 설명을 검토합니다. 피드백은 참고용이며 캐릭터를 변경하지 않습니다.",
+      start: "검토 시작",
+      reviewing: "캐릭터 검토 중…",
+      error: "검토를 완료하지 못했습니다. 모델 연결을 확인하고 다시 시도하세요.",
+      strengths: "잘된 점",
+      improvements: "개선할 점",
+      story: "이야기",
+      appearance: "외모",
+      personality: "성격",
+      consistency: "일관성",
+    },
     aiGenerate: {
       button: "AI ìƒì„±",
       includeStats: "ìºë¦­í„° ìŠ¤íƒ¯ ìƒì„±",

@@ -1128,6 +1128,22 @@ export const es = {
     verifiedBadge: "Verificado",
     reverificationRequired:
       "Personaje modificado. El estado de verificaciÃ³n se ha restablecido y requiere una nueva verificaciÃ³n para multijugador.",
+    aiReview: {
+      action: "Revisar con IA",
+      title: "Revisar a {name}",
+      description:
+        "Revisa las descripciones guardadas, incluidas las notas privadas y la información de la raza o el universo vinculados, con el modelo seleccionado. Los comentarios son orientativos y no modifican tu personaje.",
+      start: "Iniciar revisión",
+      reviewing: "Revisando personaje…",
+      error:
+        "No se pudo completar la revisión. Comprueba la conexión con el modelo e inténtalo de nuevo.",
+      strengths: "Lo que funciona bien",
+      improvements: "Aspectos a mejorar",
+      story: "Historia",
+      appearance: "Apariencia",
+      personality: "Personalidad",
+      consistency: "Coherencia",
+    },
     aiGenerate: {
       button: "Generar con IA",
       includeStats: "Generar EstadÃ­sticas del Personaje",

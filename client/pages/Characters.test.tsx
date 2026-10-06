@@ -19,6 +19,15 @@ import {
 } from "@/lib/crypto";
 
 const mockToast = vi.fn();
+const { reviewDialogProps } = vi.hoisted(() => ({
+  reviewDialogProps: vi.fn(),
+}));
+vi.mock("@/components/characters/AiReviewDialog", () => ({
+  AiReviewDialog: (props: any) => {
+    reviewDialogProps(props);
+    return <div data-testid="character-review">{props.character.name}</div>;
+  },
+}));
 
 const { mockStorage, mockStorageFrom } = vi.hoisted(() => {
   const mockStorageFrom = {
@@ -141,6 +150,40 @@ describe("Characters Component", () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it("opens a review of the saved character with its linked lore", async () => {
+    const universe = { id: "world", name: "Moon City", is_universe: true };
+    const race = { id: "race", name: "Elves", is_race: true };
+    const character = {
+      id: "hero",
+      name: "Mira",
+      backstory: "Saved history",
+      universe_id: "world",
+      race_id: "race",
+    };
+    const builder = supabase.from("characters").select("*");
+    vi.mocked(builder.order).mockResolvedValueOnce({
+      data: [character, universe, race],
+      error: null,
+      count: 3,
+    });
+    render(<Characters />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Review with AI" }),
+    );
+    expect(screen.getByTestId("character-review")).toBeDefined();
+    expect(reviewDialogProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining(character),
+        universe: expect.objectContaining(universe),
+        race: expect.objectContaining(race),
+      }),
+    );
+    expect(builder.update).not.toHaveBeenCalled();
+    expect(builder.insert).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("My Universes"));
+    expect(screen.queryByRole("button", { name: "Review with AI" })).toBeNull();
   });
 
   it("renders characters tabs and new character button", async () => {

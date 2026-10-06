@@ -308,7 +308,7 @@ export function buildUniverseGenerationPrompt(params: {
   return { system, user: userParts.join("\n\n") };
 }
 
-async function callModel(
+export async function callModel(
   model: EntityGenerationOptions["model"],
   messages: Array<{ role: string; content: string }>,
   signal?: AbortSignal,

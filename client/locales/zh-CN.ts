@@ -1067,6 +1067,20 @@ export const zhCN = {
     verifiedBadge: "å·²éªŒè¯",
     reverificationRequired:
       "è§’è‰²å·²è¢«ä¿®æ”¹ã€‚éªŒè¯çŠ¶æ€å·²é‡ç½®ï¼Œåœ¨å¤šäººæ¸¸æˆä¸­ä½¿ç”¨éœ€è¦é‡æ–°éªŒè¯ã€‚",
+    aiReview: {
+      action: "使用 AI 评审",
+      title: "评审 {name}",
+      description: "使用所选模型评审已保存的描述，包括私密笔记以及关联的种族或世界观设定。反馈仅供参考，不会修改角色。",
+      start: "开始评审",
+      reviewing: "正在评审角色…",
+      error: "无法完成评审。请检查模型连接后重试。",
+      strengths: "优点",
+      improvements: "改进建议",
+      story: "故事",
+      appearance: "外貌",
+      personality: "性格",
+      consistency: "一致性",
+    },
     aiGenerate: {
       button: "AI ç”Ÿæˆ",
       includeStats: "ç”Ÿæˆè§’è‰²å±žæ€§",
