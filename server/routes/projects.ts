@@ -9,76 +9,27 @@ import { verifyToken } from "../lib/auth.ts";
 
 export const projectsRouter = new Hono();
 
-export interface ProjectAgent {
-  id: string;
-  name: string;
-  role: string;
-  description: string;
-  systemPrompt: string;
-  modelProvider?: string;
-  modelId?: string;
-  isOrchestrator?: boolean;
-  status?: "idle" | "thinking" | "executing";
-  createdAt: string;
-}
-
-export interface ProjectMemoryFile {
-  id: string;
-  filename: string;
-  title: string;
-  content: string;
-  always_shown?: boolean;
-  updatedAt: string;
-}
-
-export interface ProjectTask {
-  id: string;
-  title: string;
-  description?: string;
-  status: "todo" | "in_progress" | "done";
-  assignedAgentId?: string;
-  priority?: "low" | "medium" | "high";
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ProjectChatMessage {
-  id: string;
-  sender: "user" | "orchestrator" | "agent" | "system";
-  agentName?: string;
-  agentId?: string;
-  content: string;
-  actions?: Array<{
-    type: "create_agent" | "fire_agent" | "read_memory" | "write_memory" | "add_task" | "update_task" | "web_search";
-    status: "pending" | "running" | "completed" | "failed";
-    details?: string;
-  }>;
-  model?: string;
-  createdAt: string;
-}
-
-export interface ProjectRecord {
-  id: string;
-  user_id?: string;
-  name: string;
-  description: string;
-  orchestratorName: string;
-  orchestratorModelProvider: string;
-  orchestratorModelId: string;
-  orchestratorPrompt?: string;
-  agents: ProjectAgent[];
-  memoryFiles: ProjectMemoryFile[];
-  tasks: ProjectTask[];
-  messages: ProjectChatMessage[];
-  userName?: string;
-  isSetupComplete?: boolean;
-  setupState?: {
-    step: number;
-    isComplete: boolean;
-  };
-  created_at: string;
-  updated_at: string;
-}
+import type {
+  ProjectAgent,
+  ProjectMemoryFile,
+  ProjectTask,
+  ProjectChatMessage,
+  ProjectRecord,
+} from "../../shared/projects.ts";
+import {
+  normalizeProject,
+  submitAction,
+  decideRequest,
+  undoAction,
+  ProjectActionError,
+} from "../lib/projectActions.ts";
+export type {
+  ProjectAgent,
+  ProjectMemoryFile,
+  ProjectTask,
+  ProjectChatMessage,
+  ProjectRecord,
+} from "../../shared/projects.ts";
 
 function resolveUserId(c: any): string {
   const authHeader = c.req.header("Authorization");
@@ -92,6 +43,205 @@ function resolveUserId(c: any): string {
   return "guest";
 }
 
+projectsRouter.onError((err, c) => {
+  if (err instanceof SyntaxError)
+    return c.json({ data: null, error: "invalidAction" }, 400);
+  if (err instanceof ProjectActionError)
+    return c.json({ data: null, error: err.code }, err.status);
+  console.error("Project operation failed", err);
+  return c.json({ data: null, error: "saveFailed" }, 500);
+});
+
+function loadProject(c: any): ProjectRecord {
+  const userId = resolveUserId(c);
+  const project = queryTable({
+    table: "projects",
+    filters: [
+      { field: "id", operator: "eq", value: c.req.param("id") },
+      { field: "user_id", operator: "eq", value: userId },
+    ],
+    single: true,
+    userId,
+  }) as ProjectRecord | null;
+  if (!project) throw new ProjectActionError("projectNotFound", 404);
+  return structuredClone(normalizeProject(project));
+}
+function saveProject(c: any, project: ProjectRecord) {
+  const updated = {
+    ...project,
+    revision: (project.revision ?? 0) + 1,
+    updated_at: new Date().toISOString(),
+  };
+  const rows = updateTable(
+    "projects",
+    [
+      { field: "id", operator: "eq", value: project.id },
+      { field: "user_id", operator: "eq", value: resolveUserId(c) },
+    ],
+    updated,
+    resolveUserId(c),
+  );
+  if (!rows?.[0]) throw new Error("Project save failed");
+  return normalizeProject(rows[0]);
+}
+function stringField(value: unknown, fallback = ""): string {
+  if (value === undefined) return fallback;
+  if (typeof value !== "string")
+    throw new ProjectActionError("invalidAction", 400);
+  return value;
+}
+function makeAction(project: ProjectRecord, body: any) {
+  const now = new Date().toISOString();
+  if (!body || typeof body !== "object" || Array.isArray(body))
+    throw new ProjectActionError("invalidAction", 400);
+  const payload = body.payload;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload))
+    throw new ProjectActionError("invalidAction", 400);
+  if (body.type === "hire_agent") {
+    const name = stringField(payload.name, "Agent").trim();
+    const role = stringField(payload.role, "Specialist").trim();
+    if (!name || !role) throw new ProjectActionError("invalidAction", 400);
+    return {
+      type: "hire_agent" as const,
+      agent: {
+        id: crypto.randomUUID(),
+        name,
+        role,
+        description: stringField(payload.description),
+        systemPrompt: stringField(
+          payload.systemPrompt,
+          `You are ${name}, specialized in ${role}.`,
+        ),
+        modelProvider: stringField(
+          payload.modelProvider,
+          project.orchestratorModelProvider,
+        ),
+        modelId: stringField(payload.modelId, project.orchestratorModelId),
+        isOrchestrator: false,
+        status: "idle" as const,
+        createdAt: now,
+      },
+    };
+  }
+  if (body.type === "fire_agent") {
+    const agent = project.agents.find((a) => a.id === payload.id);
+    if (!agent) throw new ProjectActionError("agentNotFound", 404);
+    if (agent.isOrchestrator)
+      throw new ProjectActionError("orchestratorProtected", 400);
+    return { type: "fire_agent" as const, agent };
+  }
+  if (body.type === "write_memory") {
+    const filename = stringField(payload.filename, "context.md").trim();
+    if (!filename) throw new ProjectActionError("invalidAction", 400);
+    const existing = payload.id
+      ? project.memoryFiles.find((f) => f.id === payload.id)
+      : project.memoryFiles.find(
+          (f) => f.filename.toLowerCase() === filename.toLowerCase(),
+        );
+    if (payload.id && !existing)
+      throw new ProjectActionError("memoryNotFound", 404);
+    if (
+      payload.always_shown !== undefined &&
+      typeof payload.always_shown !== "boolean"
+    )
+      throw new ProjectActionError("invalidAction", 400);
+    return {
+      type: existing ? ("modify_memory" as const) : ("create_memory" as const),
+      file: {
+        id: existing?.id ?? crypto.randomUUID(),
+        filename,
+        title: stringField(payload.title, existing?.title ?? filename),
+        content: stringField(payload.content, existing?.content ?? ""),
+        always_shown: payload.always_shown ?? existing?.always_shown ?? false,
+        updatedAt: now,
+      },
+    };
+  }
+  if (body.type === "delete_memory") {
+    const file = project.memoryFiles.find((f) => f.id === payload.id);
+    if (!file) throw new ProjectActionError("memoryNotFound", 404);
+    return { type: "delete_memory" as const, file };
+  }
+  throw new ProjectActionError("invalidAction", 400);
+}
+function performAction(
+  c: any,
+  project: ProjectRecord,
+  body: any,
+  pending = false,
+) {
+  if (!body || typeof body !== "object" || Array.isArray(body))
+    throw new ProjectActionError("invalidAction", 400);
+  if (body.revision !== undefined && body.revision !== project.revision)
+    throw new ProjectActionError("staleProject");
+  const action = makeAction(project, body);
+  const origin =
+    body.origin?.kind === "agent"
+      ? {
+          kind: "agent" as const,
+          agentId: stringField(body.origin.agentId),
+          agentName:
+            project.agents.find((a) => a.id === body.origin.agentId)?.name ??
+            stringField(body.origin.agentName),
+        }
+      : { kind: "user" as const };
+  // Agent-origin sensitive actions always go through approval.
+  return saveProject(
+    c,
+    submitAction(
+      project,
+      action,
+      origin,
+      pending ||
+        (origin.kind === "agent" &&
+          (action.type === "hire_agent" || action.type === "fire_agent")),
+    ),
+  );
+}
+
+projectsRouter.post("/:id/actions", async (c) => {
+  const body = await c.req.json();
+  return c.json({ data: performAction(c, loadProject(c), body), error: null });
+});
+projectsRouter.post("/:id/requests", async (c) => {
+  const body = await c.req.json();
+  return c.json(
+    { data: performAction(c, loadProject(c), body, true), error: null },
+    201,
+  );
+});
+projectsRouter.post("/:id/requests/:requestId/:decision", async (c) => {
+  const decision = c.req.param("decision");
+  if (decision !== "accept" && decision !== "deny")
+    throw new ProjectActionError("invalidAction", 400);
+  return c.json({
+    data: saveProject(
+      c,
+      decideRequest(loadProject(c), c.req.param("requestId"), decision),
+    ),
+    error: null,
+  });
+});
+projectsRouter.post("/:id/history/:entryId/undo", (c) => {
+  return c.json({
+    data: saveProject(c, undoAction(loadProject(c), c.req.param("entryId"))),
+    error: null,
+  });
+});
+projectsRouter.patch("/:id/agents/:agentId", async (c) => {
+  const body = await c.req.json();
+  const project = loadProject(c);
+  const agent = project.agents.find((a) => a.id === c.req.param("agentId"));
+  if (!agent) throw new ProjectActionError("agentNotFound", 404);
+  for (const key of ["role", "systemPrompt"] as const) {
+    if (body[key] !== undefined) agent[key] = stringField(body[key]);
+  }
+  if (agent.isOrchestrator && body.systemPrompt !== undefined) {
+    project.orchestratorPrompt = agent.systemPrompt;
+  }
+  return c.json({ data: saveProject(c, project), error: null });
+});
+
 // GET /api/projects - list projects
 projectsRouter.get("/", async (c) => {
   const userId = resolveUserId(c);
@@ -103,7 +253,7 @@ projectsRouter.get("/", async (c) => {
   });
 
   const projects = (Array.isArray(result) ? result : result?.data || []) as ProjectRecord[];
-  return c.json({ data: projects, error: null });
+  return c.json({ data: projects.map(normalizeProject), error: null });
 });
 
 // POST /api/projects - create new project
@@ -165,6 +315,9 @@ projectsRouter.post("/", async (c) => {
     tasks: [],
     messages: starterMessages,
     userName: body.userName ?? "",
+    revision: 0,
+    requests: [],
+    history: [],
     created_at: now,
     updated_at: now,
   };
@@ -193,7 +346,7 @@ projectsRouter.get("/:id", async (c) => {
     return c.json({ data: null, error: "Project not found" }, 404);
   }
 
-  return c.json({ data: project, error: null });
+  return c.json({ data: normalizeProject(project), error: null });
 });
 
 // PATCH /api/projects/:id - update project details
@@ -217,6 +370,14 @@ projectsRouter.patch("/:id", async (c) => {
     return c.json({ data: null, error: "Project not found" }, 404);
   }
 
+  if (
+    ["agents", "memoryFiles", "requests", "history"].some((key) => key in body)
+  ) {
+    throw new ProjectActionError("protectedFields", 400);
+  }
+  if (body.revision !== (existing.revision ?? 0))
+    throw new ProjectActionError("staleProject");
+
   const updated: Partial<ProjectRecord> = {
     ...existing,
     name: body.name ?? existing.name,
@@ -225,8 +386,8 @@ projectsRouter.patch("/:id", async (c) => {
     orchestratorModelProvider: body.orchestratorModelProvider ?? existing.orchestratorModelProvider,
     orchestratorModelId: body.orchestratorModelId ?? existing.orchestratorModelId,
     orchestratorPrompt: body.orchestratorPrompt ?? existing.orchestratorPrompt,
-    agents: body.agents ?? existing.agents,
-    memoryFiles: body.memoryFiles ?? existing.memoryFiles,
+    agents: existing.agents,
+    memoryFiles: existing.memoryFiles,
     tasks: body.tasks ?? existing.tasks,
     messages: body.messages ?? existing.messages,
     userName: body.userName ?? existing.userName,
@@ -249,17 +410,10 @@ projectsRouter.patch("/:id", async (c) => {
     });
   }
 
-  const updatedRows = updateTable(
-    "projects",
-    [
-      { field: "id", operator: "eq", value: id },
-      { field: "user_id", operator: "eq", value: userId },
-    ],
-    updated,
-    userId,
-  );
-
-  return c.json({ data: updatedRows?.[0] || updated, error: null });
+  return c.json({
+    data: saveProject(c, updated as ProjectRecord),
+    error: null,
+  });
 });
 
 // DELETE /api/projects/:id - delete project
@@ -279,184 +433,57 @@ projectsRouter.delete("/:id", async (c) => {
   return c.json({ data: { success: true, id }, error: null });
 });
 
-// POST /api/projects/:id/agents - add agent
+// Legacy direct operations retain their response shape and also return the saved project.
 projectsRouter.post("/:id/agents", async (c) => {
-  const userId = resolveUserId(c);
-  const id = c.req.param("id");
-  const body = await c.req.json().catch(() => ({}));
-
-  const existing = queryTable({
-    table: "projects",
-    filters: [
-      { field: "id", operator: "eq", value: id },
-      { field: "user_id", operator: "eq", value: userId },
-    ],
-    single: true,
-    userId: userId,
-  }) as ProjectRecord | null;
-
-  if (!existing) {
-    return c.json({ data: null, error: "Project not found" }, 404);
-  }
-
-  const now = new Date().toISOString();
-
-  const newAgent: ProjectAgent = {
-    id: crypto.randomUUID(),
-    name: body.name || "Agent",
-    role: body.role || "Specialist",
-    description: body.description || "",
-    systemPrompt: body.systemPrompt || `You are ${body.name}, specialized in ${body.role}.`,
-    modelProvider: body.modelProvider || existing.orchestratorModelProvider,
-    modelId: body.modelId || existing.orchestratorModelId,
-    isOrchestrator: false,
-    status: "idle",
-    createdAt: now,
-  };
-
-  const updatedAgents = [...existing.agents, newAgent];
-  updateTable(
-    "projects",
-    [
-      { field: "id", operator: "eq", value: id },
-      { field: "user_id", operator: "eq", value: userId },
-    ],
-    { agents: updatedAgents, updated_at: now },
-    userId,
+  const body = await c.req.json();
+  const project = performAction(c, loadProject(c), {
+    type: "hire_agent",
+    payload: body,
+    origin: body.origin,
+  });
+  return c.json(
+    {
+      data: project.history[project.history.length - 1]?.after,
+      project,
+      error: null,
+    },
+    201,
   );
-
-  return c.json({ data: newAgent, error: null }, 201);
 });
-
-// DELETE /api/projects/:id/agents/:agentId - fire agent
-projectsRouter.delete("/:id/agents/:agentId", async (c) => {
-  const userId = resolveUserId(c);
-  const id = c.req.param("id");
-  const agentId = c.req.param("agentId");
-
-  const existing = queryTable({
-    table: "projects",
-    filters: [
-      { field: "id", operator: "eq", value: id },
-      { field: "user_id", operator: "eq", value: userId },
-    ],
-    single: true,
-    userId: userId,
-  }) as ProjectRecord | null;
-
-  if (!existing) {
-    return c.json({ data: null, error: "Project not found" }, 404);
-  }
-
-  const target = existing.agents.find((a) => a.id === agentId);
-  if (target?.isOrchestrator) {
-    return c.json({ data: null, error: "Cannot fire the Lead Orchestrator" }, 400);
-  }
-
-  const updatedAgents = existing.agents.filter((a) => a.id !== agentId);
-  const now = new Date().toISOString();
-
-  updateTable(
-    "projects",
-    [
-      { field: "id", operator: "eq", value: id },
-      { field: "user_id", operator: "eq", value: userId },
-    ],
-    { agents: updatedAgents, updated_at: now },
-    userId,
-  );
-
-  return c.json({ data: { success: true, firedAgentId: agentId }, error: null });
+projectsRouter.delete("/:id/agents/:agentId", (c) => {
+  const project = performAction(c, loadProject(c), {
+    type: "fire_agent",
+    payload: { id: c.req.param("agentId") },
+  });
+  return c.json({
+    data: { success: true, firedAgentId: c.req.param("agentId") },
+    project,
+    error: null,
+  });
 });
-
-// POST /api/projects/:id/memory - create/update memory file
 projectsRouter.post("/:id/memory", async (c) => {
-  const userId = resolveUserId(c);
-  const id = c.req.param("id");
-  const body = await c.req.json().catch(() => ({}));
-
-  const existing = queryTable({
-    table: "projects",
-    filters: [
-      { field: "id", operator: "eq", value: id },
-      { field: "user_id", operator: "eq", value: userId },
-    ],
-    single: true,
-    userId: userId,
-  }) as ProjectRecord | null;
-
-  if (!existing) {
-    return c.json({ data: null, error: "Project not found" }, 404);
-  }
-
-  const now = new Date().toISOString();
-  const fileId = body.id || crypto.randomUUID();
-
-  const fileRecord: ProjectMemoryFile = {
-    id: fileId,
-    filename: body.filename || "context.md",
-    title: body.title || body.filename || "Context Document",
-    content: body.content ?? "",
-    always_shown: body.always_shown ?? false,
-    updatedAt: now,
-  };
-
-  const existingIdx = existing.memoryFiles.findIndex((m) => m.id === fileId || m.filename === fileRecord.filename);
-  let updatedMemory: ProjectMemoryFile[];
-  if (existingIdx >= 0) {
-    updatedMemory = [...existing.memoryFiles];
-    updatedMemory[existingIdx] = fileRecord;
-  } else {
-    updatedMemory = [...existing.memoryFiles, fileRecord];
-  }
-
-  updateTable(
-    "projects",
-    [
-      { field: "id", operator: "eq", value: id },
-      { field: "user_id", operator: "eq", value: userId },
-    ],
-    { memoryFiles: updatedMemory, updated_at: now },
-    userId,
-  );
-
-  return c.json({ data: fileRecord, error: null });
+  const body = await c.req.json();
+  const project = performAction(c, loadProject(c), {
+    type: "write_memory",
+    payload: body,
+    origin: body.origin,
+  });
+  return c.json({
+    data: project.history[project.history.length - 1]?.after,
+    project,
+    error: null,
+  });
 });
-
-// DELETE /api/projects/:id/memory/:fileId - delete memory file
-projectsRouter.delete("/:id/memory/:fileId", async (c) => {
-  const userId = resolveUserId(c);
-  const id = c.req.param("id");
-  const fileId = c.req.param("fileId");
-
-  const existing = queryTable({
-    table: "projects",
-    filters: [
-      { field: "id", operator: "eq", value: id },
-      { field: "user_id", operator: "eq", value: userId },
-    ],
-    single: true,
-    userId: userId,
-  }) as ProjectRecord | null;
-
-  if (!existing) {
-    return c.json({ data: null, error: "Project not found" }, 404);
-  }
-
-  const updatedMemory = existing.memoryFiles.filter((m) => m.id !== fileId);
-  const now = new Date().toISOString();
-
-  updateTable(
-    "projects",
-    [
-      { field: "id", operator: "eq", value: id },
-      { field: "user_id", operator: "eq", value: userId },
-    ],
-    { memoryFiles: updatedMemory, updated_at: now },
-    userId,
-  );
-
-  return c.json({ data: { success: true, deletedFileId: fileId }, error: null });
+projectsRouter.delete("/:id/memory/:fileId", (c) => {
+  const project = performAction(c, loadProject(c), {
+    type: "delete_memory",
+    payload: { id: c.req.param("fileId") },
+  });
+  return c.json({
+    data: { success: true, deletedFileId: c.req.param("fileId") },
+    project,
+    error: null,
+  });
 });
 
 // POST /api/projects/:id/tasks - add task
@@ -500,7 +527,11 @@ projectsRouter.post("/:id/tasks", async (c) => {
       { field: "id", operator: "eq", value: id },
       { field: "user_id", operator: "eq", value: userId },
     ],
-    { tasks: updatedTasks, updated_at: now },
+    {
+      tasks: updatedTasks,
+      updated_at: now,
+      revision: (existing.revision ?? 0) + 1,
+    },
     userId,
   );
 
@@ -551,7 +582,11 @@ projectsRouter.patch("/:id/tasks/:taskId", async (c) => {
       { field: "id", operator: "eq", value: id },
       { field: "user_id", operator: "eq", value: userId },
     ],
-    { tasks: updatedTasks, updated_at: now },
+    {
+      tasks: updatedTasks,
+      updated_at: now,
+      revision: (existing.revision ?? 0) + 1,
+    },
     userId,
   );
 
@@ -588,7 +623,11 @@ projectsRouter.delete("/:id/tasks/:taskId", async (c) => {
       { field: "id", operator: "eq", value: id },
       { field: "user_id", operator: "eq", value: userId },
     ],
-    { tasks: updatedTasks, updated_at: now },
+    {
+      tasks: updatedTasks,
+      updated_at: now,
+      revision: (existing.revision ?? 0) + 1,
+    },
     userId,
   );
 
@@ -636,7 +675,11 @@ projectsRouter.post("/:id/messages", async (c) => {
       { field: "id", operator: "eq", value: id },
       { field: "user_id", operator: "eq", value: userId },
     ],
-    { messages: updatedMessages, updated_at: now },
+    {
+      messages: updatedMessages,
+      updated_at: now,
+      revision: (existing.revision ?? 0) + 1,
+    },
     userId,
   );
 

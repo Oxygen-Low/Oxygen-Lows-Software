@@ -11,6 +11,24 @@ import { localAuthMiddleware } from "../lib/auth.ts";
 
 export const dataRouter = new Hono();
 
+// Projects must use the action-aware API so writes cannot bypass approval/history.
+dataRouter.use("*", async (c, next) => {
+  if (
+    ["/insert", "/update", "/upsert", "/delete"].some((path) =>
+      c.req.path.endsWith(path),
+    )
+  ) {
+    const body = await c.req.json().catch(() => ({}));
+    if (
+      typeof body.table === "string" &&
+      body.table.toLowerCase() === "projects"
+    ) {
+      return c.json({ data: null, error: "Use the projects API" }, 400);
+    }
+  }
+  await next();
+});
+
 // Optional auth for public queries, required for mutations
 dataRouter.post("/query", async (c) => {
   try {
