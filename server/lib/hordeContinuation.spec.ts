@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   stripEosTokens,
   deduplicateOverlap,
@@ -110,7 +110,7 @@ describe("hordeContinuation", () => {
     });
 
     it("should preserve regular content without prefixes", () => {
-      const input = "[ACTION: CREATE_AGENT name=\"John\"]";
+      const input = '[ACTION: CREATE_AGENT name="John"]';
       expect(stripContinuationPrefixes(input)).toBe(input);
     });
   });
@@ -121,31 +121,55 @@ describe("hordeContinuation", () => {
     });
 
     it("returns true if finishReason is tool_calls", () => {
-      expect(isGenerationComplete("Calling tool", "", false, "tool_calls")).toBe(true);
+      expect(
+        isGenerationComplete("Calling tool", "", false, "tool_calls"),
+      ).toBe(true);
     });
 
     it("returns false if finishReason is length", () => {
-      expect(isGenerationComplete("Sentence ending.", "", false, "length")).toBe(false);
+      expect(
+        isGenerationComplete("Sentence ending.", "", false, "length"),
+      ).toBe(false);
     });
 
     it("returns false if there is an unclosed action tag", () => {
-      expect(isGenerationComplete("[ACTION: CREATE_AGENT name=\"Bob\"", "", false, "stop")).toBe(false);
+      expect(
+        isGenerationComplete(
+          '[ACTION: CREATE_AGENT name="Bob"',
+          "",
+          false,
+          "stop",
+        ),
+      ).toBe(false);
     });
 
     it("returns false if there is an unclosed code block", () => {
-      expect(isGenerationComplete("```ts\nconst a = 1;", "", false, "stop")).toBe(false);
+      expect(
+        isGenerationComplete("```ts\nconst a = 1;", "", false, "stop"),
+      ).toBe(false);
     });
 
     it("returns false if finishReason is null and no EOS was found", () => {
-      expect(isGenerationComplete("Some partial text", "", false, null)).toBe(false);
+      expect(isGenerationComplete("Some partial text", "", false, null)).toBe(
+        false,
+      );
     });
 
     it("returns true if finishReason is stop and ends with terminal punctuation", () => {
-      expect(isGenerationComplete("Execution finished successfully.", "", false, "stop")).toBe(true);
+      expect(
+        isGenerationComplete(
+          "Execution finished successfully.",
+          "",
+          false,
+          "stop",
+        ),
+      ).toBe(true);
     });
 
     it("returns false if finishReason is stop but ends mid-word", () => {
-      expect(isGenerationComplete("Execution finished and", "", false, "stop")).toBe(false);
+      expect(
+        isGenerationComplete("Execution finished and", "", false, "stop"),
+      ).toBe(false);
     });
   });
 
@@ -221,7 +245,9 @@ describe("hordeContinuation", () => {
         `data: [DONE]\n\n`,
       ];
 
-      globalThis.fetch = vi.fn().mockResolvedValue(createMockSseResponse(mockChunks));
+      globalThis.fetch = vi
+        .fn()
+        .mockResolvedValue(createMockSseResponse(mockChunks));
 
       const res = await streamHordeWithContinuation({
         targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
@@ -354,7 +380,9 @@ describe("hordeContinuation", () => {
         }
       }
 
-      expect(streamContent).toBe('[ACTION: CREATE_AGENT name="Alice" role="Dev" prompt="You are Alice."]');
+      expect(streamContent).toBe(
+        '[ACTION: CREATE_AGENT name="Alice" role="Dev" prompt="You are Alice."]',
+      );
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
@@ -365,7 +393,9 @@ describe("hordeContinuation", () => {
         `data: [DONE]\n\n`,
       ];
 
-      const fetchMock = vi.fn().mockResolvedValue(createMockSseResponse(mockChunks));
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(createMockSseResponse(mockChunks));
       globalThis.fetch = fetchMock;
 
       const res = await streamHordeWithContinuation({
@@ -542,7 +572,9 @@ describe("hordeContinuation", () => {
 
       expect(res.ok).toBe(true);
       const data = await res.json();
-      expect(data.choices[0].message.content).toBe("Burst 1 - Burst 2 - Burst 3 completed.");
+      expect(data.choices[0].message.content).toBe(
+        "Burst 1 - Burst 2 - Burst 3 completed.",
+      );
       expect(data.choices[0].finish_reason).toBe("stop");
       expect(fetchMock).toHaveBeenCalledTimes(3);
     });
@@ -556,7 +588,11 @@ describe("hordeContinuation", () => {
           json: async () => ({
             choices: [
               {
-                message: { role: "assistant", content: 'I am creating the agent.\n\n[ACTION: CREATE_AGENT name="Marcus" role="Security"' },
+                message: {
+                  role: "assistant",
+                  content:
+                    'I am creating the agent.\n\n[ACTION: CREATE_AGENT name="Marcus" role="Security"',
+                },
                 finish_reason: "stop",
               },
             ],
@@ -568,7 +604,10 @@ describe("hordeContinuation", () => {
           json: async () => ({
             choices: [
               {
-                message: { role: "assistant", content: ' prompt="Security guidelines."]' },
+                message: {
+                  role: "assistant",
+                  content: ' prompt="Security guidelines."]',
+                },
                 finish_reason: "stop",
               },
             ],
