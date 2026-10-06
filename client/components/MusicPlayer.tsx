@@ -62,7 +62,7 @@ export const MusicPlayer = () => {
 
   if (!currentTrack) {
     return (
-      <div className="p-4 bg-card rounded-lg border border-border flex items-center justify-between">
+      <div className="p-4 bg-card rounded-lg border border-border flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Music className="w-5 h-5 text-muted-foreground" />
           <p className="text-muted-foreground text-sm">No track playing</p>
@@ -144,9 +144,9 @@ export const MusicPlayer = () => {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center justify-center gap-2 sm:gap-4">
+      <div className="flex flex-wrap items-center justify-center gap-1">
         <Button
-          size="sm"
+          size="icon"
           variant="ghost"
           onClick={playPrev}
           className="hover:text-primary"
@@ -157,7 +157,7 @@ export const MusicPlayer = () => {
         </Button>
 
         <Button
-          size="sm"
+          size="icon"
           onClick={isPlaying ? pause : play}
           className="bg-primary hover:bg-primary/90 min-w-[40px]"
           title={isPlaying ? "Pause track" : "Play track"}
@@ -171,7 +171,7 @@ export const MusicPlayer = () => {
         </Button>
 
         <Button
-          size="sm"
+          size="icon"
           variant="ghost"
           onClick={playNext}
           className="hover:text-primary"
@@ -182,7 +182,7 @@ export const MusicPlayer = () => {
         </Button>
 
         <Button
-          size="sm"
+          size="icon"
           variant={shuffle ? "default" : "ghost"}
           onClick={() => toggleShuffle(!shuffle)}
           className={
@@ -196,7 +196,7 @@ export const MusicPlayer = () => {
         </Button>
 
         <Button
-          size="sm"
+          size="icon"
           variant={loop ? "default" : "ghost"}
           onClick={() => toggleLoop(!loop)}
           className={

@@ -264,7 +264,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
         className={`${styles["header"]} backdrop-blur-md sticky top-0 z-[60] h-[61px] sm:h-[73px] flex items-center`}
       >
         <div className="w-full h-full px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0 shrink">
             {/* Mobile Hamburger Toggle Button */}
             <button
               type="button"
@@ -296,14 +296,14 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               href="https://trello.com/b/OmFTZeVK/oxygen-lows-software-development"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:inline-flex px-2.5 py-0.5 text-xs font-bold text-yellow-900 bg-yellow-400 hover:bg-yellow-300 transition-colors rounded-md uppercase tracking-wide cursor-pointer shrink-0"
+              className="hidden lg:inline-flex px-2.5 py-0.5 text-xs font-bold text-yellow-900 bg-yellow-400 hover:bg-yellow-300 transition-colors rounded-md uppercase tracking-wide cursor-pointer shrink-0"
             >
               {t("nav.beta", undefined, "Beta")}
             </a>
 
             <Link
               to="/download"
-              className="hidden sm:flex items-center justify-center p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-white shrink-0"
+              className="hidden lg:flex items-center justify-center p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-white shrink-0"
               title={t("nav.downloadApp", undefined, "Download Desktop App")}
             >
               <DownloadIcon className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -313,7 +313,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               href="https://discord.gg/tNczTe66jK"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center justify-center p-2 rounded-lg bg-[#5865F2] hover:bg-[#4752C4] transition-colors text-white shrink-0"
+              className="hidden lg:flex items-center justify-center p-2 rounded-lg bg-[#5865F2] hover:bg-[#4752C4] transition-colors text-white shrink-0"
               title={t("nav.discord", undefined, "Join our Discord")}
             >
               <svg
@@ -328,7 +328,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
           </div>
 
           {/* Topbar Music Player / Playlist directly in the middle */}
-          <div className="flex-1 h-full flex items-center justify-center min-w-0 max-w-2xl mx-1 sm:mx-2 py-1 sm:py-1.5">
+          <div className="@container/music flex-1 h-full flex items-center justify-center min-w-[92px] max-w-2xl mx-1 sm:mx-2 py-1 sm:py-1.5">
             <TopbarMusicPlayer />
           </div>
 
@@ -351,7 +351,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
             {session ? (
               <>
                 <span
-                  className={`${styles["user-email"]} text-xs sm:text-sm hidden md:inline truncate max-w-[180px]`}
+                  className={`${styles["user-email"]} text-xs sm:text-sm hidden xl:inline truncate max-w-[180px]`}
                 >
                   {session.user.email}
                 </span>
