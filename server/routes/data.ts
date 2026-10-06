@@ -34,6 +34,10 @@ dataRouter.use("*", async (c, next) => {
   body.table = body.table.trim().toLowerCase();
   if (!USER_TABLES.has(body.table)) return c.json({ error: "Unauthorized" }, 403);
   const query = c.req.path.endsWith("/query");
+  // Projects must use the action-aware API so writes cannot bypass approval/history.
+  if (!query && body.table === "projects") {
+    return c.json({ data: null, error: "Use the projects API" }, 400);
+  }
   if (!user && (!query || !PUBLIC_TABLES.has(body.table))) return c.json({ error: "Unauthorized" }, 401);
   if (!query && ["public_assets", "public_characters", "asset_verifications"].includes(body.table)) return c.json({ error: "Unauthorized" }, 403);
   if (!query && body.data !== undefined) {
