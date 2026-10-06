@@ -31,6 +31,17 @@ describe("All Locales Verification", () => {
     { code: "ru", name: "Russian", flag: "🇷🇺", countryCode: "ru", dict: ru },
   ];
 
+  it("provides every character review label in every locale", () => {
+    for (const { dict } of allLocales) {
+      for (const key of Object.keys(en.characters.aiReview)) {
+        expect(
+          (dict.characters?.aiReview as Record<string, string>)?.[key],
+        ).toEqual(expect.any(String));
+      }
+      expect(dict.characters?.aiReview?.title).toContain("{name}");
+    }
+  });
+
   it("should have all requested languages present in SUPPORTED_LANGUAGES", () => {
     allLocales.forEach(({ code, name, flag, countryCode }) => {
       const option = SUPPORTED_LANGUAGES.find((l) => l.code === code);
