@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import crypto from "node:crypto";
-import { serverStorage } from "../lib/storage.ts";
+import { serverStorage, isOwnedStoragePath } from "../lib/storage.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
 import {
   queryTable,
@@ -95,6 +95,10 @@ adminVerificationRouter.post("/:id/approve", async (c) => {
 
     if (!verification) {
       return c.json({ error: "Verification request not found" }, 404);
+    }
+
+    if (verification.asset_type === "file" && !isOwnedStoragePath(verification.original_file_path, verification.user_id)) {
+      return c.json({ error: "Invalid path" }, 400);
     }
 
     let publicAssetId = verification.public_asset_id;

@@ -1,3 +1,4 @@
+import { fetchPublicUrl } from "../lib/publicFetch.ts";
 import { Hono } from "hono";
 import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
@@ -583,7 +584,7 @@ imageGenRouter.post("/save-to-storage", imageLimiter, async (c) => {
       buffer = Buffer.from(match[2], "base64");
     } else if (image.startsWith("http")) {
       // Remote URL (e.g. AI Horde R2 image)
-      const res = await fetch(image);
+      const res = await fetchPublicUrl(image);
       if (!res.ok) {
         return c.json({ error: "Failed to download image from source" }, 400);
       }

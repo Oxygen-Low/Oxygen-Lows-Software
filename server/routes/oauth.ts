@@ -52,7 +52,7 @@ export function isValidRedirectUri(rawUri: string): boolean {
   try {
     const parsed = new URL(rawUri);
     // Hash fragments are forbidden in OAuth 2.0 redirect URIs
-    if (parsed.hash) return false;
+    if (parsed.hash || parsed.username || parsed.password) return false;
 
     // Allow localhost/127.0.0.1 over http
     const isLocal =
@@ -399,7 +399,7 @@ oauthRouter.get("/authorize-details", authLimiter, async (c) => {
   // Verify redirect URI is in app's allowed list
   const cleanRedirectUri = redirectUri.trim();
   const uriMatched = (app.redirect_uris || []).some(
-    (allowed: string) => allowed.toLowerCase() === cleanRedirectUri.toLowerCase(),
+    (allowed: string) => allowed === cleanRedirectUri,
   );
 
   if (!uriMatched) {
@@ -495,7 +495,7 @@ oauthRouter.post("/authorize", authLimiter, requireUserAuth, async (c) => {
 
   const cleanRedirectUri = redirect_uri.trim();
   const uriMatched = (app.redirect_uris || []).some(
-    (allowed: string) => allowed.toLowerCase() === cleanRedirectUri.toLowerCase(),
+    (allowed: string) => allowed === cleanRedirectUri,
   );
 
   if (!uriMatched) {
@@ -796,7 +796,7 @@ oauthRouter.post("/token", authLimiter, async (c) => {
 
   if (
     redirectUri &&
-    codeRecord.redirect_uri.toLowerCase() !== redirectUri.trim().toLowerCase()
+    codeRecord.redirect_uri !== redirectUri.trim()
   ) {
     return c.json(
       {

@@ -34,6 +34,10 @@ vi.mock("../../server/lib/dataStore.ts", () => ({
 }));
 vi.mock("../../server/lib/auth.ts", () => ({
   verifyToken: () => ({ userId: "user-1" }),
+  localAuthMiddleware: async (c: any, next: any) => {
+    c.set("userId", "user-1");
+    await next();
+  },
 }));
 const projectApi = new Hono().route("/api/projects", projectsRouter);
 function installProjectApi() {

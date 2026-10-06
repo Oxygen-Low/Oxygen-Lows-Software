@@ -49,6 +49,7 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "sudoku-gen": "^1.0.3",
+    "undici": "^8.11.2",
     "ws": "^8.22.0",
     "zod": "^4.6.5"
   },

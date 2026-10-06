@@ -5,7 +5,7 @@ import {
   updateTable,
   deleteTable,
 } from "../lib/dataStore.ts";
-import { verifyToken } from "../lib/auth.ts";
+import { localAuthMiddleware } from "../lib/auth.ts";
 
 export const projectsRouter = new Hono();
 
@@ -31,16 +31,10 @@ export type {
   ProjectRecord,
 } from "../../shared/projects.ts";
 
+projectsRouter.use("*", localAuthMiddleware);
+
 function resolveUserId(c: any): string {
-  const authHeader = c.req.header("Authorization");
-  if (authHeader) {
-    const token = authHeader.replace(/^Bearer /i, "");
-    const payload = verifyToken(token);
-    if (payload?.userId) {
-      return String(payload.userId);
-    }
-  }
-  return "guest";
+  return String(c.get("userId"));
 }
 
 projectsRouter.onError((err, c) => {

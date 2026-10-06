@@ -106,6 +106,8 @@ void* kmalloc(size_t size) {
     if (size == 0) {
         size = HEAP_MIN_ALLOC_SIZE;
     }
+    // Reject before alignment can wrap a huge request into a small allocation.
+    if (size > HEAP_STATIC_SIZE - sizeof(HeapBlockHeader)) return nullptr;
     size = ALIGN_UP(size, 16);
 
     size_t start_bin = heap_get_bin_index(size);

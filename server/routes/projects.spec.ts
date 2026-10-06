@@ -50,23 +50,28 @@ vi.mock("../lib/dataStore.ts", () => ({
 }));
 
 vi.mock("../lib/auth.ts", () => ({
-  verifyToken: vi.fn((token: string) => {
-    if (token === "valid-user-token") {
-      return {
-        userId: "user-abc",
-        username: "testuser",
-        email: "test@example.com",
-        role: "user",
-        exp: Date.now() + 3600000,
-      };
+  localAuthMiddleware: async (c: any, next: any) => {
+    const auth = c.req.header("Authorization");
+    if (!auth) return c.json({ error: "Unauthorized" }, 401);
+    if (auth === "Bearer valid-user-token") {
+      c.set("userId", "user-abc");
+    } else {
+      c.set("userId", "outsider-user");
     }
-    return null;
-  }),
+    await next();
+  },
 }));
 
 describe("Projects API Routes (/api/projects)", () => {
   beforeEach(() => {
     mockProjectsDb = [];
+  });
+
+  it("rejects anonymous project reads and writes", async () => {
+    mockProjectsDb = [{ id: "guest-secret", user_id: "guest" }];
+    expect((await app.request("/api/projects")).status).toBe(401);
+    expect((await app.request("/api/projects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "forged" }) })).status).toBe(401);
+    expect(mockProjectsDb).toHaveLength(1);
   });
 
   it("POST /api/projects creates a new project with default orchestrator and memory", async () => {
@@ -460,7 +465,10 @@ describe("Project requests and undo history", () => {
   it("enforces ownership, protected fields, stale saves, and orchestrator protection", async () => {
     const outsider = await app.request(`/api/projects/${id}/requests`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer outsider-token",
+      },
       body: JSON.stringify({
         type: "hire_agent",
         payload: { name: "Intruder" },
