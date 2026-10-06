@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { injectSeoTags, DEFAULT_BASE_URL, getSeoMetadata } from "./seo.ts";
 
 function escapeHtml(str: string): string {
@@ -34,11 +34,15 @@ describe("injectSeoTags", () => {
 
     // Check if new tags are injected properly (escaping HTML characters in title)
     expect(result).toContain(`<title>${escapeHtml(metadata.title)}</title>`);
-    expect(result).toContain(`<meta name="description" content="${escapeHtml(metadata.description)}" />`);
-    expect(result).toContain(`<link rel="canonical" href="${DEFAULT_BASE_URL}" />`);
+    expect(result).toContain(
+      `<meta name="description" content="${escapeHtml(metadata.description)}" />`,
+    );
+    expect(result).toContain(
+      `<link rel="canonical" href="${DEFAULT_BASE_URL}" />`,
+    );
   });
 
-  it("should replace <div id=\"root\">...</div> with semantic fallback content", () => {
+  it('should replace <div id="root">...</div> with semantic fallback content', () => {
     const result = injectSeoTags(MOCK_HTML_WITH_TAGS, "/");
     const metadata = getSeoMetadata("/");
 
@@ -48,8 +52,10 @@ describe("injectSeoTags", () => {
     expect(result).toContain('<header class="sr-only">');
     expect(result).toContain(`<h1>${escapeHtml(metadata.h1)}</h1>`);
     expect(result).toContain(`<p>${escapeHtml(metadata.description)}</p>`);
-    expect(result).toContain('<nav aria-label="Site Navigation" class="sr-only">');
-    expect(result).toContain('<ul>');
+    expect(result).toContain(
+      '<nav aria-label="Site Navigation" class="sr-only">',
+    );
+    expect(result).toContain("<ul>");
   });
 });
 
@@ -70,16 +76,24 @@ describe("injectSeoTags - Edge Cases", () => {
     const metadata = getSeoMetadata("/");
 
     expect(result).toContain(`<title>${escapeHtml(metadata.title)}</title>`);
-    expect(result).toContain(`<meta name="description" content="${escapeHtml(metadata.description)}" />`);
-    expect(result).toContain(`<link rel="canonical" href="${DEFAULT_BASE_URL}" />`);
+    expect(result).toContain(
+      `<meta name="description" content="${escapeHtml(metadata.description)}" />`,
+    );
+    expect(result).toContain(
+      `<link rel="canonical" href="${DEFAULT_BASE_URL}" />`,
+    );
   });
 
   it("should use a custom baseUrl correctly", () => {
     const customBaseUrl = "https://custom.com";
     const result = injectSeoTags(MOCK_HTML_MISSING_TAGS, "/", customBaseUrl);
 
-    expect(result).toContain(`<link rel="canonical" href="${customBaseUrl}" />`);
-    expect(result).toContain(`<meta property="og:url" content="${customBaseUrl}" />`);
+    expect(result).toContain(
+      `<link rel="canonical" href="${customBaseUrl}" />`,
+    );
+    expect(result).toContain(
+      `<meta property="og:url" content="${customBaseUrl}" />`,
+    );
   });
 
   it("should remove existing OG and Twitter tags to prevent duplicates", () => {
@@ -123,7 +137,10 @@ describe("injectSeoTags - Edge Cases", () => {
     // The happy path already verifies escapeHtml is applied. Let's make it explicit
     // by manually finding a route or just checking if `escapeHtml`'s output is exactly matched.
     const metadata = getSeoMetadata("/apps/file-compressor");
-    const result = injectSeoTags(MOCK_HTML_MISSING_TAGS, "/apps/file-compressor");
+    const result = injectSeoTags(
+      MOCK_HTML_MISSING_TAGS,
+      "/apps/file-compressor",
+    );
 
     // Check it's escaped (the title for this has an apostrophe normally or we can just verify the helper matches)
     expect(result).toContain(`<title>${escapeHtml(metadata.title)}</title>`);
