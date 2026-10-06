@@ -726,7 +726,7 @@ export const CATEGORY_ENCRYPTION_STORAGE_KEYS: Record<
 export function isCategoryEncryptionEnabled(
   category: EncryptionCategory,
 ): boolean {
-  if (category === "api_keys") return true;
+  if (category === "api_keys") return false; // API keys use server-side encryption for autonomous tasks
   const key = CATEGORY_ENCRYPTION_STORAGE_KEYS[category];
   try {
     if (typeof localStorage !== "undefined") {
@@ -738,7 +738,7 @@ export function isCategoryEncryptionEnabled(
 }
 
 /**
- * Encrypts an API key with the active or provided AES-256 master key.
+ * Encrypts an API key with the active or provided AES-256 master key (legacy/fallback).
  */
 export async function encryptApiKey(
   apiKey: string,
@@ -747,12 +747,12 @@ export async function encryptApiKey(
   const clean = apiKey.trim();
   if (!clean) return "";
   const key = masterKey ?? getActiveMasterKey();
-  if (!key) throw new Error("Master key is required to encrypt API key");
+  if (!key) return clean;
   return encryptAes256Gcm(clean, key);
 }
 
 /**
- * Decrypts an encrypted API key with the active or provided AES-256 master key.
+ * Decrypts an encrypted API key with the active or provided AES-256 master key (legacy/fallback).
  */
 export async function decryptApiKey(
   encryptedKey: string,
@@ -761,7 +761,7 @@ export async function decryptApiKey(
   if (!encryptedKey) return "";
   if (!isEncrypted(encryptedKey)) return encryptedKey;
   const key = masterKey ?? getActiveMasterKey();
-  if (!key) throw new Error("Master key is required to decrypt API key");
+  if (!key) return encryptedKey;
   return decryptAes256Gcm(encryptedKey, key);
 }
 

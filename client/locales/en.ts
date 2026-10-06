@@ -357,6 +357,10 @@ export const en = {
       'Provider "{provider}" is not configured with an API key. Please add an API key in Models or Account settings.',
     chatbotMasterKeyLocked:
       "Your Master Key is locked. Please unlock it in Account or Models settings to use configured API keys.",
+    defaultModelFallbackWarning:
+      "The main default model (Pollinations Ling 3.1 Flash) is currently unavailable (rate limited). Falling back to AI Horde Smart. Quality may be decreased.",
+    defaultModelFallbackNotice:
+      "Generated via AI Horde Smart fallback due to main default model unavailability.",
     agentSearchTitle: "Agent Search",
     agentSearchDesc:
       "AI-powered agentic search that researches the web and synthesizes answers.",
@@ -2690,7 +2694,10 @@ export const en = {
     customModelsTab: "Custom Models",
     localSharedTab: "Local & Shared",
     zeroKnowledgeActive: "Zero-Knowledge Encryption Active",
-    zeroKnowledgeDesc: "Your API keys are encrypted client-side with AES-256-GCM before saving to your account. Plaintext keys are never stored on the server.",
+    zeroKnowledgeDesc: "Your data is encrypted client-side with AES-256-GCM. Plaintext data is never stored on the server.",
+    serverVaultActive: "Secure Server-Side Key Vault Active",
+    serverVaultDesc: "Your API keys are encrypted at rest on the server with AES-256-GCM. Keys are securely decrypted in memory for autonomous agents, background reports, and proxy requests.",
+    keyModalDesc: "Your API key is securely encrypted on the server with AES-256-GCM for autonomous agents and background execution.",
     sessionLocked: "Master Key Locked",
     sessionLockedDesc: "Unlock your Master Key to input, encrypt, or manage private provider API keys.",
     unlockMasterKey: "Unlock Master Key",

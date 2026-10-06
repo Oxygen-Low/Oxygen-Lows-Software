@@ -166,9 +166,12 @@ describe("useAiModels Hook", () => {
     expect(BUILTIN_MODELS.some((m) => m.provider === "cloudflare")).toBe(false);
     expect(
       BUILTIN_MODELS.some(
-        (m) => m.provider === "horde" && m.model_id === "Fast",
+        (m) =>
+          m.provider === "pollinations" &&
+          m.model_id === "inclusionai/ling-3.1-flash",
       ),
     ).toBe(true);
+    expect(BUILTIN_MODELS.some((m) => m.provider === "horde")).toBe(false);
 
     // Verify probed local models
     expect(

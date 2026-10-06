@@ -30,12 +30,18 @@ import {
   RotateCw,
   Square,
   ArrowUp,
+  AlertTriangle,
 } from "lucide-react";
 import {
   fetchImageModels,
   generateImage,
   ImageModelInfo,
 } from "@/services/imageGen";
+import {
+  streamPollinationsClient,
+  fetchPollinationsClient,
+  PollinationsRateLimitError,
+} from "@/services/pollinationsClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -198,6 +204,7 @@ interface Message {
   is_image_gen?: boolean;
   image_url?: string;
   image_model?: string;
+  usedFallback?: boolean;
 }
 
 interface Chat {
@@ -390,6 +397,18 @@ const ChatMessage = React.memo(
             Chatbot
           </p>
           <div className="w-full">
+            {m.usedFallback && (
+              <div className="w-full max-w-full rounded-lg border border-amber-500/30 bg-amber-500/10 mb-3 px-4 py-2 flex items-center gap-2 text-xs font-mono text-amber-300">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>
+                  {t(
+                    "apps.defaultModelFallbackNotice",
+                    undefined,
+                    "Generated via AI Horde Smart fallback due to main default model unavailability.",
+                  )}
+                </span>
+              </div>
+            )}
             {m.is_web_search && (
               <div className="w-full max-w-full rounded-lg border border-white/10 bg-white/5 mb-3 px-4 py-2 flex items-center gap-2 text-xs font-mono text-slate-400">
                 <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
@@ -1215,37 +1234,56 @@ export function ChatbotApp() {
   };
 
   const generateChatTitle = async (chatId: string, firstMsg: string) => {
-    // We prompt the "TitleGen" model to generate a title
-    const titleModel = { provider: "horde", model_id: "TitleGen" };
-
     try {
-      const response = await fetch("/api/ai/proxy", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
-          provider: titleModel.provider,
-          model: titleModel.model_id,
+      let title = "New Chat";
+      try {
+        const directTitle = await fetchPollinationsClient({
+          model: "inclusionai/ling-3.1-flash",
           messages: [
             {
               role: "user",
               content: `Generate a short 3-5 word title for a chat that starts with this message: "${firstMsg}". Output ONLY the title, no quotes or prefix.`,
             },
           ],
-          stream: false,
-          apiKey: "0000000000",
-        }),
-      });
+          apiKey: getDecryptedApiKey("pollinations") || undefined,
+        });
+        if (directTitle) {
+          title = directTitle.trim().replace(/^["']|["']$/g, "");
+        }
+      } catch (err: any) {
+        if (
+          err instanceof PollinationsRateLimitError ||
+          err?.statusCode === 429
+        ) {
+          const response = await fetch("/api/ai/proxy", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify({
+              provider: "horde",
+              model: "Smart",
+              messages: [
+                {
+                  role: "user",
+                  content: `Generate a short 3-5 word title for a chat that starts with this message: "${firstMsg}". Output ONLY the title, no quotes or prefix.`,
+                },
+              ],
+              stream: false,
+              apiKey: "0000000000",
+            }),
+          });
 
-      if (!response.ok) return;
-      const data = await response.json();
-      let title = "New Chat";
-      if (data.choices?.[0]?.message?.content) {
-        title = data.choices[0].message.content
-          .trim()
-          .replace(/^["']|["']$/g, "");
+          if (response.ok) {
+            const data = await response.json();
+            if (data.choices?.[0]?.message?.content) {
+              title = data.choices[0].message.content
+                .trim()
+                .replace(/^["']|["']$/g, "");
+            }
+          }
+        }
       }
 
       if (session?.user?.id) {
@@ -1277,8 +1315,54 @@ export function ChatbotApp() {
     msgs: Message[],
     signal: AbortSignal,
     streamCallback: (content: string, reasoning?: string) => void,
-  ) => {
+    onFallback?: () => void,
+  ): Promise<string> => {
     const apiKey = getDecryptedApiKey(provider);
+
+    if (provider === "pollinations") {
+      try {
+        let directContent = "";
+        await streamPollinationsClient({
+          model: model || "inclusionai/ling-3.1-flash",
+          messages: msgs.map((m) => ({
+            role: (m.role || "user") as "system" | "user" | "assistant",
+            content: m.content || "",
+          })),
+          signal,
+          apiKey: apiKey || undefined,
+          onChunk: (delta) => {
+            directContent += delta;
+            streamCallback(directContent);
+          },
+        });
+        return directContent;
+      } catch (err: any) {
+        if (
+          err instanceof PollinationsRateLimitError ||
+          err?.statusCode === 429
+        ) {
+          toast.warning(
+            t(
+              "apps.defaultModelFallbackWarning",
+              undefined,
+              "The main default model (Pollinations Ling 3.1 Flash) is currently unavailable (rate limited). Falling back to AI Horde Smart. Quality may be decreased.",
+            ),
+          );
+          onFallback?.();
+          setAllMessages((prevAll) =>
+            prevAll.map((m) =>
+              m.id === "temp-streaming" ? { ...m, usedFallback: true } : m,
+            ),
+          );
+
+          // Route to Horde Smart fallback via proxy
+          provider = "horde";
+          model = "Smart";
+        } else {
+          throw err;
+        }
+      }
+    }
 
     let url = "/api/ai/proxy";
     let fetchOptions: RequestInit = {
@@ -1841,115 +1925,23 @@ export function ChatbotApp() {
         ),
       );
 
-      // Perform synthesis with the selected chatbot model
-      if (isReasoningEnabled) {
-        const reasoningMessages = [
-          ...baseChatMessages,
-          {
-            role: "assistant",
-            content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}`,
-          } as Message,
-          {
-            role: "user",
-            content:
-              "Based on the web search findings above, please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
-          } as Message,
-        ];
+    let hadFallback = false;
+    const onFallback = () => {
+      hadFallback = true;
+    };
 
-        reasoningContent = await callAiStream(
-          selectedProvider,
-          selectedModel,
-          getApiMessages(reasoningMessages),
-          signal,
-          (content) => {
-            setAllMessages((prevAll) =>
-              prevAll.map((m) =>
-                m.id === "temp-streaming" ? { ...m, reasoning: content } : m,
-              ),
-            );
-          },
-        );
-
-        const finalMessages = [
-          ...baseChatMessages,
-          {
-            role: "assistant",
-            content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}\n\nMy internal reasoning:\n${reasoningContent}`,
-          } as Message,
-          {
-            role: "user",
-            content:
-              "Great. Now based on your web search findings and reasoning, provide the final response.",
-          } as Message,
-        ];
-
-        finalContent = await callAiStream(
-          selectedProvider,
-          selectedModel,
-          getApiMessages(finalMessages),
-          signal,
-          (content) => {
-            setAllMessages((prevAll) =>
-              prevAll.map((m) =>
-                m.id === "temp-streaming" ? { ...m, content } : m,
-              ),
-            );
-
-            if (
-              content.length - lastParsedLengthRef.current > 50 ||
-              content.includes("\\\\")
-            ) {
-              const arts = parseArtifacts(content);
-              if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-              lastParsedLengthRef.current = content.length;
-            }
-          },
-        );
-      } else {
-        const synthesisMessages = [
-          ...baseChatMessages,
-          {
-            role: "assistant",
-            content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}`,
-          } as Message,
-          {
-            role: "user",
-            content:
-              "Based on the web search findings above, synthesize a high-quality, comprehensive, and well-structured response to answer my request. Cite sources where relevant.",
-          } as Message,
-        ];
-
-        finalContent = await callAiStream(
-          selectedProvider,
-          selectedModel,
-          getApiMessages(synthesisMessages),
-          signal,
-          (content) => {
-            setAllMessages((prevAll) =>
-              prevAll.map((m) =>
-                m.id === "temp-streaming" ? { ...m, content } : m,
-              ),
-            );
-
-            if (
-              content.length - lastParsedLengthRef.current > 50 ||
-              content.includes("\\\\")
-            ) {
-              const arts = parseArtifacts(content);
-              if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-              lastParsedLengthRef.current = content.length;
-            }
-          },
-        );
-      }
-    } else if (isReasoningEnabled) {
-      // Reasoning only (no web search)
+    // Perform synthesis with the selected chatbot model
+    if (isReasoningEnabled) {
       const reasoningMessages = [
         ...baseChatMessages,
         {
+          role: "assistant",
+          content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}`,
+        } as Message,
+        {
           role: "user",
           content:
-            "Please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
+            "Based on the web search findings above, please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
         } as Message,
       ];
 
@@ -1965,20 +1957,22 @@ export function ChatbotApp() {
             ),
           );
         },
+        onFallback,
       );
 
       const finalMessages = [
         ...baseChatMessages,
         {
           role: "assistant",
-          content: `My internal reasoning: \n${reasoningContent}`,
+          content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}\n\nMy internal reasoning:\n${reasoningContent}`,
         } as Message,
         {
           role: "user",
           content:
-            "Great. Now based on your reasoning, provide the final response.",
+            "Great. Now based on your web search findings and reasoning, provide the final response.",
         } as Message,
       ];
+
       finalContent = await callAiStream(
         selectedProvider,
         selectedModel,
@@ -2000,13 +1994,26 @@ export function ChatbotApp() {
             lastParsedLengthRef.current = content.length;
           }
         },
+        onFallback,
       );
     } else {
-      // Direct completion
+      const synthesisMessages = [
+        ...baseChatMessages,
+        {
+          role: "assistant",
+          content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}`,
+        } as Message,
+        {
+          role: "user",
+          content:
+            "Based on the web search findings above, synthesize a high-quality, comprehensive, and well-structured response to answer my request. Cite sources where relevant.",
+        } as Message,
+      ];
+
       finalContent = await callAiStream(
         selectedProvider,
         selectedModel,
-        getApiMessages(baseChatMessages),
+        getApiMessages(synthesisMessages),
         signal,
         (content) => {
           setAllMessages((prevAll) =>
@@ -2024,14 +2031,134 @@ export function ChatbotApp() {
             lastParsedLengthRef.current = content.length;
           }
         },
+        onFallback,
       );
     }
 
     return {
       finalContent,
-      reasoningContent,
-      isWebSearch: isWebSearchEnabled,
+      reasoningContent: reasoningContent || null,
+      isWebSearch: true,
+      usedFallback: hadFallback,
     };
+  } else if (isReasoningEnabled) {
+    let hadFallback = false;
+    const onFallback = () => {
+      hadFallback = true;
+    };
+
+    // Reasoning only (no web search)
+    const reasoningMessages = [
+      ...baseChatMessages,
+      {
+        role: "user",
+        content:
+          "Please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
+      } as Message,
+    ];
+
+    reasoningContent = await callAiStream(
+      selectedProvider,
+      selectedModel,
+      getApiMessages(reasoningMessages),
+      signal,
+      (content) => {
+        setAllMessages((prevAll) =>
+          prevAll.map((m) =>
+            m.id === "temp-streaming" ? { ...m, reasoning: content } : m,
+          ),
+        );
+      },
+      onFallback,
+    );
+
+    const finalMessages = [
+      ...baseChatMessages,
+      {
+        role: "assistant",
+        content: `My internal reasoning: \n${reasoningContent}`,
+      } as Message,
+      {
+        role: "user",
+        content:
+          "Great. Now based on your reasoning, provide the final response.",
+      } as Message,
+    ];
+    finalContent = await callAiStream(
+      selectedProvider,
+      selectedModel,
+      getApiMessages(finalMessages),
+      signal,
+      (content) => {
+        setAllMessages((prevAll) =>
+          prevAll.map((m) =>
+            m.id === "temp-streaming" ? { ...m, content } : m,
+          ),
+        );
+
+        if (
+          content.length - lastParsedLengthRef.current > 50 ||
+          content.includes("\\\\")
+        ) {
+          const arts = parseArtifacts(content);
+          if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
+          lastParsedLengthRef.current = content.length;
+        }
+      },
+      onFallback,
+    );
+
+    return {
+      finalContent,
+      reasoningContent,
+      isWebSearch: false,
+      usedFallback: hadFallback,
+    };
+  } else {
+    let hadFallback = false;
+    const onFallback = () => {
+      hadFallback = true;
+    };
+
+    // Direct completion
+    finalContent = await callAiStream(
+      selectedProvider,
+      selectedModel,
+      getApiMessages(baseChatMessages),
+      signal,
+      (content) => {
+        setAllMessages((prevAll) =>
+          prevAll.map((m) =>
+            m.id === "temp-streaming" ? { ...m, content } : m,
+          ),
+        );
+
+        if (
+          content.length - lastParsedLengthRef.current > 50 ||
+          content.includes("\\\\")
+        ) {
+          const arts = parseArtifacts(content);
+          if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
+          lastParsedLengthRef.current = content.length;
+        }
+      },
+      onFallback,
+    );
+
+    return {
+      finalContent,
+      reasoningContent: "",
+      isWebSearch: false,
+      usedFallback: hadFallback,
+    };
+  }
+
+  return {
+    finalContent,
+    reasoningContent,
+    isWebSearch: isWebSearchEnabled,
+    usedFallback: hadFallback,
+  };
   };
 
   const handleSendMessage = async () => {
@@ -2320,7 +2447,7 @@ export function ChatbotApp() {
         iterations++;
         shouldContinue = false;
 
-        const { finalContent, reasoningContent, isWebSearch } =
+        const { finalContent, reasoningContent, isWebSearch, usedFallback } =
           await executeAiGeneration(currentMessages, controller.signal);
 
         let insertData: any = {
@@ -2330,6 +2457,7 @@ export function ChatbotApp() {
           content: finalContent,
           reasoning: reasoningContent || null,
           is_web_search: isWebSearch || false,
+          usedFallback: usedFallback || false,
         };
 
         let assistantMsgData = {
@@ -2370,6 +2498,13 @@ export function ChatbotApp() {
               delete retryPayload.is_web_search;
               hasAdjusted = true;
             }
+            if (
+              assistantInsertError.message?.includes("usedFallback") ||
+              assistantInsertError.details?.includes("usedFallback")
+            ) {
+              delete retryPayload.usedFallback;
+              hasAdjusted = true;
+            }
             if (hasAdjusted) {
               const { data: retryData, error: retryError } = await supabase
                 .from("chatbot_messages")
@@ -2397,6 +2532,7 @@ export function ChatbotApp() {
                   reasoning: reasoningContent || undefined,
                   is_web_search: isWebSearch || false,
                   web_search_status: undefined,
+                  usedFallback: usedFallback || false,
                 }
               : m,
           ),
@@ -2474,7 +2610,7 @@ export function ChatbotApp() {
       );
       let currentMessages = messages.slice(0, lastUserMessageIndex + 1);
 
-      const { finalContent, reasoningContent, isWebSearch } =
+      const { finalContent, reasoningContent, isWebSearch, usedFallback } =
         await executeAiGeneration(currentMessages, controller.signal);
 
       let insertData: any = {
@@ -2484,6 +2620,7 @@ export function ChatbotApp() {
         content: finalContent,
         reasoning: reasoningContent || null,
         is_web_search: isWebSearch || false,
+        usedFallback: usedFallback || false,
       };
 
       let assistantMsgData = {
@@ -2525,6 +2662,13 @@ export function ChatbotApp() {
             delete retryPayload.is_web_search;
             hasAdjusted = true;
           }
+          if (
+            assistantInsertError.message?.includes("usedFallback") ||
+            assistantInsertError.details?.includes("usedFallback")
+          ) {
+            delete retryPayload.usedFallback;
+            hasAdjusted = true;
+          }
           if (hasAdjusted) {
             const { data: retryData, error: retryError } = await supabase
               .from("chatbot_messages")
@@ -2551,6 +2695,7 @@ export function ChatbotApp() {
                 reasoning: reasoningContent || undefined,
                 is_web_search: isWebSearch || false,
                 web_search_status: undefined,
+                usedFallback: usedFallback || false,
               }
             : m,
         ),

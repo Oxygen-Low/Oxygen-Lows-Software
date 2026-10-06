@@ -87,7 +87,6 @@ import {
   type ProviderInfo,
   type Model,
 } from "@/hooks/useAiModels";
-import { EncryptionRequiredPrompt } from "@/components/EncryptionRequiredPrompt";
 
 export interface SharedModelItem {
   id: string;
@@ -126,6 +125,7 @@ export function Models() {
     refreshModels,
     encryptedKeys,
     decryptedKeys,
+    keyPrefixes,
     isMasterKeyActive,
     loadApiKeys,
     saveProviderApiKey,
@@ -151,9 +151,6 @@ export function Models() {
   const [showKeyPassword, setShowKeyPassword] = useState(false);
   const [isSavingKey, setIsSavingKey] = useState(false);
   const [keySaveError, setKeySaveError] = useState<string | null>(null);
-
-  // Master key unlock modal state
-  const [isUnlockPromptOpen, setIsUnlockPromptOpen] = useState(false);
 
   // Add custom model form state
   const [newModelProvider, setNewModelProvider] = useState<string>("openai");
@@ -1061,79 +1058,38 @@ export function Models() {
         {/* TAB 0: CUSTOM MODELS (BYO API KEYS & MODELS)                      */}
         {/* ------------------------------------------------------------------ */}
         <TabsContent value="custom" className="space-y-6 pt-4">
-          {/* Zero-Knowledge Master Key Status Card */}
+          {/* Server-Side Encrypted Key Vault Status Card */}
           <Card className="bg-slate-900/40 border-slate-800 backdrop-blur-sm">
             <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div
-                  className={`p-2 rounded-lg border ${
-                    isMasterKeyActive
-                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                      : "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                  }`}
-                >
-                  {isMasterKeyActive ? (
-                    <ShieldCheck className="w-5 h-5" />
-                  ) : (
-                    <Lock className="w-5 h-5" />
-                  )}
+                <div className="p-2 rounded-lg border bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
+                  <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold text-white">
-                      {isMasterKeyActive
-                        ? t(
-                            "models.zeroKnowledgeActive",
-                            undefined,
-                            "Zero-Knowledge Encryption Active",
-                          )
-                        : t(
-                            "models.sessionLocked",
-                            undefined,
-                            "Master Key Locked",
-                          )}
+                      {t(
+                        "models.serverVaultActive",
+                        undefined,
+                        "Secure Server-Side Key Vault Active",
+                      )}
                     </h3>
                     <Badge
                       variant="outline"
-                      className={`text-[10px] px-1.5 py-0 ${
-                        isMasterKeyActive
-                          ? "border-emerald-500/30 text-emerald-400 bg-emerald-950/20"
-                          : "border-amber-500/30 text-amber-400 bg-amber-950/20"
-                      }`}
+                      className="text-[10px] px-1.5 py-0 border-emerald-500/30 text-emerald-400 bg-emerald-950/20 font-mono"
                     >
-                      {isMasterKeyActive ? "AES-256-GCM" : "Locked"}
+                      AES-256-GCM
                     </Badge>
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    {isMasterKeyActive
-                      ? t(
-                          "models.zeroKnowledgeDesc",
-                          undefined,
-                          "Your API keys are encrypted client-side with AES-256-GCM before saving to your account. Plaintext keys are never stored on the server.",
-                        )
-                      : t(
-                          "models.sessionLockedDesc",
-                          undefined,
-                          "Unlock your Master Key to input, encrypt, or manage private provider API keys.",
-                        )}
+                    {t(
+                      "models.serverVaultDesc",
+                      undefined,
+                      "Your API keys are encrypted at rest on the server with AES-256-GCM. Keys are securely decrypted in memory for autonomous agents, background reports, and proxy requests.",
+                    )}
                   </p>
                 </div>
               </div>
-
-              {!isMasterKeyActive && (
-                <Button
-                  size="sm"
-                  onClick={() => setIsUnlockPromptOpen(true)}
-                  className="bg-amber-600 hover:bg-amber-700 text-white shrink-0 text-xs gap-1.5"
-                >
-                  <Key className="w-3.5 h-3.5" />
-                  {t(
-                    "models.unlockMasterKey",
-                    undefined,
-                    "Unlock Master Key",
-                  )}
-                </Button>
-              )}
             </CardContent>
           </Card>
 
@@ -1145,16 +1101,18 @@ export function Models() {
                 AI Providers & Credentials
               </h2>
               <p className="text-xs text-slate-400">
-                Input your private provider API keys to encrypt and store securely with Zero-Knowledge encryption.
+                Input your private provider API keys to store securely with server-managed AES-256-GCM encryption.
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {SUPPORTED_PROVIDERS.map((prov) => {
+                const prefix = keyPrefixes[prov.id.toLowerCase()];
                 const isConfigured =
                   !prov.requiresKey ||
-                  !!encryptedKeys[prov.id.toLowerCase()] ||
-                  !!decryptedKeys[prov.id.toLowerCase()];
+                  !!prefix ||
+                  !!decryptedKeys[prov.id.toLowerCase()] ||
+                  !!encryptedKeys[prov.id.toLowerCase()];
                 const modelCount = registeredCustomModels.filter(
                   (m) => m.provider.toLowerCase() === prov.id.toLowerCase(),
                 ).length;
@@ -1173,10 +1131,10 @@ export function Models() {
                           isConfigured ? (
                             <Badge
                               variant="outline"
-                              className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 text-[10px] gap-1 py-0"
+                              className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 text-[10px] gap-1 py-0 font-mono"
                             >
                               <Check className="w-2.5 h-2.5" />
-                              Active
+                              {prefix && prefix !== "configured" ? prefix : "Active"}
                             </Badge>
                           ) : (
                             <Badge
@@ -2736,7 +2694,7 @@ export function Models() {
       </Dialog>
 
       {/* -------------------------------------------------------------------- */}
-      {/* DIALOG: CONFIGURE PROVIDER API KEY (ZERO-KNOWLEDGE ENCRYPTED)        */}
+      {/* DIALOG: CONFIGURE PROVIDER API KEY (SERVER-SIDE AES-256-GCM ENCRYPTED) */}
       {/* -------------------------------------------------------------------- */}
       <Dialog open={keyModalOpen} onOpenChange={setKeyModalOpen}>
         <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-md">
@@ -2746,32 +2704,15 @@ export function Models() {
               Configure API Key: {selectedProviderCard?.name}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-400">
-              {selectedProviderCard?.requiresKey
-                ? "Your key will be encrypted client-side with AES-256-GCM using your Zero-Knowledge Master Key."
-                : "Pollinations is free and keyless by default. An optional key can be configured if you have a priority or custom tier token."}
+              {t(
+                "models.keyModalDesc",
+                undefined,
+                "Your API key is securely encrypted on the server with AES-256-GCM for autonomous agents and background execution.",
+              )}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {!isMasterKeyActive && (
-              <div className="p-3 rounded-lg bg-amber-950/30 border border-amber-800/50 flex flex-col gap-2">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-200">
-                    Master Key is locked. You must unlock your Master Key to encrypt or decrypt API keys.
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => setIsUnlockPromptOpen(true)}
-                  className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-7 self-start gap-1.5"
-                >
-                  <Key className="w-3 h-3" />
-                  Unlock Master Key
-                </Button>
-              </div>
-            )}
-
             <div className="space-y-1.5">
               <Label className="text-xs text-slate-300">
                 API Key {selectedProviderCard?.requiresKey && <span className="text-red-400">*</span>}
@@ -2820,7 +2761,8 @@ export function Models() {
 
           <DialogFooter className="gap-2 sm:gap-0 justify-between">
             {selectedProviderCard &&
-              (encryptedKeys[selectedProviderCard.id.toLowerCase()] ||
+              (keyPrefixes[selectedProviderCard.id.toLowerCase()] ||
+                encryptedKeys[selectedProviderCard.id.toLowerCase()] ||
                 decryptedKeys[selectedProviderCard.id.toLowerCase()]) && (
                 <Button
                   variant="ghost"
@@ -2852,30 +2794,12 @@ export function Models() {
                 {isSavingKey ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
                 ) : (
-                  <Lock className="w-3.5 h-3.5 mr-1.5" />
+                  <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />
                 )}
-                Save & Encrypt
+                Save Key
               </Button>
             </div>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* -------------------------------------------------------------------- */}
-      {/* DIALOG: MASTER KEY UNLOCK PROMPT                                     */}
-      {/* -------------------------------------------------------------------- */}
-      <Dialog open={isUnlockPromptOpen} onOpenChange={setIsUnlockPromptOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-white max-w-md">
-          <EncryptionRequiredPrompt
-            category="api_keys"
-            title="Unlock Master Key"
-            description="Enter your master password to unlock Zero-Knowledge decryption for your private API keys."
-            onUnlocked={() => {
-              loadApiKeys();
-              setIsUnlockPromptOpen(false);
-              toast({ title: "Master Key unlocked successfully!" });
-            }}
-          />
         </DialogContent>
       </Dialog>
 

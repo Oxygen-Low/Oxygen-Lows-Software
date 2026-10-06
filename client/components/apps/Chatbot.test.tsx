@@ -204,18 +204,7 @@ vi.mock("@/lib/db", () => {
   };
 
   return {
-    getAuthenticatedClient: vi.fn(() => ({
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            maybeSingle: vi.fn(() =>
-              Promise.resolve({ data: {}, error: null }),
-            ),
-            single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
-          })),
-        })),
-      })),
-    })),
+    getAuthenticatedClient: vi.fn(() => mockClient),
     db: mockClient,
     supabase: mockClient,
     getLocalSession: vi.fn(() => ({
@@ -230,7 +219,8 @@ vi.mock("@/lib/db", () => {
 
 // Mock fetch for streaming
 global.fetch = vi.fn((url, options: any) => {
-  if (url === "/api/ai/proxy") {
+  const urlStr = String(url || "");
+  if (urlStr === "/api/ai/proxy" || urlStr.includes("pollinations.ai")) {
     if (options?.body && options.body.includes('"stream":false')) {
       return Promise.resolve({
         ok: true,
@@ -352,6 +342,12 @@ describe("ChatbotApp", () => {
   }, 30000);
 
   it("displays queue status when receiving queue_info on horde default model", async () => {
+    mockUserPreferences = {
+      ...mockUserPreferences,
+      last_provider: "horde",
+      last_model_id: "Smart",
+    };
+    mockUserModels = [{ provider: "horde", model_id: "Smart" }];
     const originalFetch = global.fetch;
     try {
       global.fetch = vi.fn((url, options: any) => {
@@ -716,7 +712,8 @@ describe("ChatbotApp", () => {
 
     try {
       global.fetch = vi.fn((url: string, options: any) => {
-        if (url === "/api/ai/proxy") {
+        const urlStr = String(url || "");
+        if (urlStr === "/api/ai/proxy" || urlStr.includes("pollinations.ai")) {
           const bodyStr = options?.body || "";
           if (bodyStr.includes('"stream":false')) {
             return Promise.resolve({
@@ -895,7 +892,8 @@ describe("ChatbotApp", () => {
     const originalFetch = global.fetch;
     try {
       global.fetch = vi.fn((url: string, options: any) => {
-        if (url === "/api/ai/proxy") {
+        const urlStr = String(url || "");
+        if (urlStr === "/api/ai/proxy" || urlStr.includes("pollinations.ai")) {
           const bodyStr = options?.body || "";
           if (bodyStr.includes('"stream":false')) {
             return Promise.resolve({
@@ -1118,7 +1116,7 @@ describe("ChatbotApp", () => {
 
     global.fetch = vi.fn((url: any, options: any) => {
       const urlStr = typeof url === "string" ? url : url.toString();
-      if (urlStr.includes("/api/ai/proxy")) {
+      if (urlStr.includes("/api/ai/proxy") || urlStr.includes("pollinations.ai")) {
         if (options?.body && options.body.includes('"stream":false')) {
           return Promise.resolve({
             ok: true,
@@ -1225,7 +1223,7 @@ describe("ChatbotApp", () => {
 
     global.fetch = vi.fn((url: any, options: any) => {
       const urlStr = typeof url === "string" ? url : url.toString();
-      if (urlStr.includes("/api/ai/proxy")) {
+      if (urlStr.includes("/api/ai/proxy") || urlStr.includes("pollinations.ai")) {
         if (options?.body && options.body.includes('"stream":false')) {
           return Promise.resolve({
             ok: true,
@@ -1304,6 +1302,12 @@ describe("ChatbotApp", () => {
   });
 
   it("displays localized error when proxy returns Provider not configured", async () => {
+    mockUserPreferences = {
+      ...mockUserPreferences,
+      last_provider: "openai",
+      last_model_id: "gpt-4",
+    };
+    mockUserModels = [{ provider: "openai", model_id: "gpt-4" }];
     const originalFetch = global.fetch;
     const toastSpy = vi.spyOn(toast, "error");
     try {
@@ -1322,7 +1326,7 @@ describe("ChatbotApp", () => {
             json: () => Promise.resolve({ error: "Provider not configured" }),
           } as unknown as Response);
         }
-        return originalFetch(url);
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       });
 
       render(
@@ -1330,6 +1334,11 @@ describe("ChatbotApp", () => {
           <ChatbotApp />
         </ThemeProvider>,
       );
+
+      const newChatButton = await screen.findByRole("button", {
+        name: "New Chat",
+      });
+      fireEvent.click(newChatButton);
 
       const input = await screen.findByPlaceholderText("Type a message...");
       fireEvent.change(input, {
@@ -1347,6 +1356,118 @@ describe("ChatbotApp", () => {
     } finally {
       global.fetch = originalFetch;
       toastSpy.mockRestore();
+    }
+  });
+
+  it("handles Pollinations HTTP 429 by falling back to AI Horde Smart and showing warning notification & notice banner", async () => {
+    mockUserPreferences = {
+      theme: "default",
+      use_gradient: true,
+      language: "English",
+      sub_language: "GB",
+      last_provider: "pollinations",
+      last_model_id: "inclusionai/ling-3.1-flash",
+    };
+    mockUserModels = [];
+    const originalFetch = global.fetch;
+    const toastWarnSpy = vi.spyOn(toast, "warning");
+    let hordeFallbackCalled = false;
+
+    try {
+      global.fetch = vi.fn((url: any, options: any) => {
+        const urlStr = String(url || "");
+
+        // Direct Pollinations call returns 429
+        if (urlStr.includes("pollinations.ai")) {
+          return Promise.resolve({
+            ok: false,
+            status: 429,
+            statusText: "Too Many Requests",
+          });
+        }
+
+        // AI Proxy handles Horde fallback
+        if (urlStr.includes("/api/ai/proxy")) {
+          const bodyJson = JSON.parse(options?.body || "{}");
+          if (bodyJson.provider === "horde" && bodyJson.model === "Smart") {
+            hordeFallbackCalled = true;
+          }
+
+          if (bodyJson.stream === false) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  choices: [{ message: { content: "Fallback Title" } }],
+                }),
+            });
+          }
+
+          const stream = new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                new TextEncoder().encode(
+                  'data: {"choices":[{"delta":{"content":"Response from AI Horde Smart fallback."}}]}\n',
+                ),
+              );
+              controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
+              controller.close();
+            },
+          });
+
+          return Promise.resolve({
+            ok: true,
+            body: stream,
+            headers: { get: () => null },
+          });
+        }
+
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }) as any;
+
+      render(
+        <ThemeProvider>
+          <ChatbotApp />
+        </ThemeProvider>,
+      );
+
+      const newChatButton = await screen.findByRole("button", {
+        name: "New Chat",
+      });
+      fireEvent.click(newChatButton);
+
+      const input = await screen.findByPlaceholderText("Type a message...");
+      fireEvent.change(input, {
+        target: { value: "Testing fallback mechanism" },
+      });
+
+      const sendButton = screen.getByLabelText("Send message");
+      fireEvent.click(sendButton);
+
+      // Verify warning toast is shown
+      await waitFor(() => {
+        expect(toastWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Pollinations Ling 3.1 Flash"),
+        );
+      });
+
+      // Verify AI Horde Smart fallback was called
+      expect(hordeFallbackCalled).toBe(true);
+
+      // Verify response and fallback notice banner in UI
+      await screen.findByText(
+        "Response from AI Horde Smart fallback.",
+        {},
+        { timeout: 10000 },
+      );
+      await screen.findByText(
+        /Generated via AI Horde Smart fallback/i,
+        {},
+        { timeout: 10000 },
+      );
+    } finally {
+      global.fetch = originalFetch;
+      toastWarnSpy.mockRestore();
     }
   });
 });

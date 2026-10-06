@@ -10,6 +10,7 @@ import {
   fetchHordeNonStreamWithContinuation,
 } from "../lib/hordeContinuation.ts";
 import { safeParseJson } from "../../shared/jsonRepair.ts";
+import { getUserApiKey } from "../lib/userApiKeys.ts";
 
 export const agentSearchRouter = new Hono();
 
@@ -760,10 +761,22 @@ agentSearchRouter.post(
         return "";
       };
 
+      let resolvedResearchApiKey = apiKey;
+      let resolvedSummarizerApiKey = apiKey;
+
+      if (!resolvedResearchApiKey && user?.id) {
+        resolvedResearchApiKey =
+          (await getUserApiKey(user.id, effectiveResearchProvider)) || "";
+      }
+      if (!resolvedSummarizerApiKey && user?.id) {
+        resolvedSummarizerApiKey =
+          (await getUserApiKey(user.id, effectiveSummarizerProvider)) || "";
+      }
+
       const effectiveResearchApiKey =
-        apiKey || resolveEnvKey(effectiveResearchProvider);
+        resolvedResearchApiKey || resolveEnvKey(effectiveResearchProvider);
       const effectiveSummarizerApiKey =
-        apiKey || resolveEnvKey(effectiveSummarizerProvider);
+        resolvedSummarizerApiKey || resolveEnvKey(effectiveSummarizerProvider);
 
       if (
         !effectiveResearchApiKey &&

@@ -92,19 +92,9 @@ export const SUPPORTED_PROVIDERS: ProviderInfo[] = [
 
 export const BUILTIN_MODELS: Model[] = [
   {
-    provider: "horde",
-    model_id: "Fast",
-    name: "Fast - koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
-  },
-  {
-    provider: "horde",
-    model_id: "Smart",
-    name: "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
-  },
-  {
-    provider: "horde",
-    model_id: "Writing",
-    name: "Writing - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
+    provider: "pollinations",
+    model_id: "inclusionai/ling-3.1-flash",
+    name: "Ling 3.1 Flash (Pollinations)",
   },
 ];
 
@@ -121,6 +111,10 @@ export const POPULAR_PRESETS: Record<
     { model_id: "gpt-4-turbo", name: "GPT-4 Turbo" },
   ],
   pollinations: [
+    {
+      model_id: "inclusionai/ling-3.1-flash",
+      name: "Ling 3.1 Flash (Pollinations)",
+    },
     { model_id: "openai", name: "GPT-4o Mini (Pollinations)" },
     { model_id: "mistral", name: "Mistral Nemo (Pollinations)" },
     { model_id: "deepseek", name: "DeepSeek V3 (Pollinations)" },
@@ -286,8 +280,8 @@ async function probeDirectLocalModels(): Promise<{
 }
 
 export const useAiModels = (
-  defaultModelId = "gpt-4o",
-  defaultProvider = "openai",
+  defaultModelId = "inclusionai/ling-3.1-flash",
+  defaultProvider = "pollinations",
 ) => {
   const {
     lastModelId,
@@ -310,24 +304,26 @@ export const useAiModels = (
       : lastProvider && lastProvider !== "cloudflare"
         ? lastProvider
         : defaultProvider === "cloudflare"
-          ? "horde"
-          : defaultProvider) || "horde";
+          ? "pollinations"
+          : defaultProvider) || "pollinations";
   const initialModel =
-    (initialProvider === "horde" &&
+    (initialProvider === "pollinations" &&
     (chatbotDefaultModel?.startsWith("@cf/") ||
       lastModelId?.startsWith("@cf/") ||
       defaultModelId?.startsWith("@cf/"))
-      ? "Fast"
-      : chatbotDefaultModel || lastModelId || defaultModelId) || "Fast";
+      ? "inclusionai/ling-3.1-flash"
+      : chatbotDefaultModel || lastModelId || defaultModelId) || "inclusionai/ling-3.1-flash";
 
   const [models, setModels] = useState<Model[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>(initialModel);
   const [selectedProvider, setSelectedProvider] = useState<string>(initialProvider);
   const [isLoading, setIsLoading] = useState(true);
+  const hasUserChangedRef = useRef(false);
 
-  // Encrypted & Decrypted API Keys state
+  // Encrypted & Decrypted API Keys state + Server Key Prefixes
   const [encryptedKeys, setEncryptedKeys] = useState<Record<string, string>>({});
   const [decryptedKeys, setDecryptedKeys] = useState<Record<string, string>>({});
+  const [keyPrefixes, setKeyPrefixes] = useState<Record<string, string>>({});
   const [isMasterKeyActive, setIsMasterKeyActive] = useState<boolean>(() => !!getActiveMasterKey());
 
   const configuredProviders = useMemo(() => {
@@ -344,8 +340,11 @@ export const useAiModels = (
     for (const p of Object.keys(decryptedKeys)) {
       set.add(p.toLowerCase());
     }
+    for (const p of Object.keys(keyPrefixes)) {
+      set.add(p.toLowerCase());
+    }
     return Array.from(set);
-  }, [encryptedKeys, decryptedKeys]);
+  }, [encryptedKeys, decryptedKeys, keyPrefixes]);
 
   const [localStatus, setLocalStatus] = useState<LocalProviderStatus>({
     ollama: false,
@@ -360,47 +359,49 @@ export const useAiModels = (
       const activeMasterKey = getActiveMasterKey();
       setIsMasterKeyActive(!!activeMasterKey);
 
-      let storedMap: Record<string, string> = {};
-      try {
-        const rawLocal = localStorage.getItem("oxygen_encrypted_api_keys");
-        if (rawLocal) {
-          const parsed = JSON.parse(rawLocal);
-          if (parsed && typeof parsed === "object") storedMap = parsed;
-        }
-      } catch {}
+      const prefixesMap: Record<string, string> = {};
+      let storedGuestMap: Record<string, string> = {};
 
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const sessionUser = sessionData?.session?.user;
-        if (sessionUser?.id) {
-          const { data: dbKeys } = await db
-            .from("user_api_keys")
-            .select("provider, encrypted_key")
-            .eq("user_id", sessionUser.id);
-          if (Array.isArray(dbKeys)) {
-            for (const row of dbKeys) {
-              if (row.provider && row.encrypted_key) {
-                storedMap[row.provider.toLowerCase()] = row.encrypted_key;
+        const rawLocal =
+          localStorage.getItem("oxygen_api_keys") ||
+          localStorage.getItem("oxygen_encrypted_api_keys");
+        if (rawLocal) {
+          const parsed = JSON.parse(rawLocal);
+          if (parsed && typeof parsed === "object") {
+            storedGuestMap = parsed;
+            for (const [k, v] of Object.entries(parsed)) {
+              if (typeof v === "string" && v) {
+                prefixesMap[k.toLowerCase()] = v.length > 8 ? `${v.slice(0, 4)}...${v.slice(-2)}` : "***";
               }
             }
           }
         }
       } catch {}
 
-      setEncryptedKeys(storedMap);
-
-      if (activeMasterKey) {
-        const decrypted: Record<string, string> = {};
-        for (const [prov, enc] of Object.entries(storedMap)) {
-          try {
-            const dec = await decryptApiKey(enc, activeMasterKey);
-            if (dec) decrypted[prov.toLowerCase()] = dec;
-          } catch {}
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (token) {
+          const res = await fetch("/api/ai/keys", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data?.keys)) {
+              for (const k of data.keys) {
+                if (k.provider) {
+                  prefixesMap[k.provider.toLowerCase()] = k.prefix || "configured";
+                }
+              }
+            }
+          }
         }
-        setDecryptedKeys(decrypted);
-      } else {
-        setDecryptedKeys({});
-      }
+      } catch {}
+
+      setKeyPrefixes(prefixesMap);
+      setEncryptedKeys(storedGuestMap);
+      setDecryptedKeys((prev) => ({ ...storedGuestMap, ...prev }));
     } catch (e) {
       console.error("Failed to load API keys", e);
     }
@@ -583,6 +584,7 @@ export const useAiModels = (
       });
 
       const combined = [
+        ...BUILTIN_MODELS,
         ...(dbModels || []),
         ...guestModels,
         ...(localServerModels || []),
@@ -617,6 +619,17 @@ export const useAiModels = (
       setModels(allModels);
 
       if (allModels.length > 0) {
+        const targetModel = chatbotDefaultModel || lastModelId;
+        const targetProvider = chatbotDefaultProvider || lastProvider;
+
+        const prefValid =
+          targetModel &&
+          targetProvider &&
+          allModels.some(
+            (m) =>
+              m.model_id === targetModel && m.provider === targetProvider,
+          );
+
         // Check if current selection is valid in the new list
         const isValid = allModels.some(
           (m) =>
@@ -624,18 +637,10 @@ export const useAiModels = (
             m.provider === selectedProviderRef.current,
         );
 
-        if (!isValid) {
-          const targetModel = lastModelId || chatbotDefaultModel;
-          const targetProvider = lastProvider || chatbotDefaultProvider;
-
-          const prefValid =
-            targetModel &&
-            targetProvider &&
-            allModels.some(
-              (m) =>
-                m.model_id === targetModel && m.provider === targetProvider,
-            );
-
+        if (!hasUserChangedRef.current && prefValid) {
+          setSelectedModel(targetModel!);
+          setSelectedProvider(targetProvider!);
+        } else if (!isValid) {
           const defaultValid =
             defaultModelId &&
             defaultProvider &&
@@ -661,7 +666,7 @@ export const useAiModels = (
     } finally {
       setIsLoading(false);
     }
-  }, [lastModelId, lastProvider, chatbotDefaultModel, chatbotDefaultProvider]);
+  }, [lastModelId, lastProvider, chatbotDefaultModel, chatbotDefaultProvider, defaultModelId, defaultProvider]);
 
   useEffect(() => {
     fetchModels();
@@ -686,6 +691,7 @@ export const useAiModels = (
 
   const updateSelection = useCallback(
     (modelId: string, provider: string) => {
+      hasUserChangedRef.current = true;
       setSelectedModel(modelId);
       setSelectedProvider(provider);
       setModelPreference(modelId, provider);
@@ -819,54 +825,45 @@ export const useAiModels = (
       try {
         const cleanKey = rawKey.trim();
         const cleanProvider = provider.toLowerCase().trim();
-        const masterKey = getActiveMasterKey();
-
-        if (!masterKey) {
-          return {
-            success: false,
-            error:
-              "Master Key is locked. Please unlock your master key to encrypt API keys.",
-          };
+        if (!cleanKey) {
+          return { success: false, error: "API Key is required" };
         }
 
-        const encrypted = await encryptApiKey(cleanKey, masterKey);
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
 
-        const updatedEncrypted = {
-          ...encryptedKeys,
-          [cleanProvider]: encrypted,
-        };
-        const updatedDecrypted = {
-          ...decryptedKeys,
-          [cleanProvider]: cleanKey,
-        };
-        setEncryptedKeys(updatedEncrypted);
-        setDecryptedKeys(updatedDecrypted);
+        let prefix = cleanKey.length > 8 ? `${cleanKey.slice(0, 4)}...${cleanKey.slice(-2)}` : "***";
 
-        try {
-          localStorage.setItem(
-            "oxygen_encrypted_api_keys",
-            JSON.stringify(updatedEncrypted),
-          );
-        } catch {}
-
-        try {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const sessionUser = sessionData?.session?.user;
-          if (sessionUser?.id) {
-            await db
-              .from("user_api_keys")
-              .delete()
-              .eq("user_id", sessionUser.id)
-              .eq("provider", cleanProvider);
-
-            await db.from("user_api_keys").insert({
-              user_id: sessionUser.id,
-              provider: cleanProvider,
-              encrypted_key: encrypted,
-              updated_at: new Date().toISOString(),
-            });
+        if (token) {
+          const res = await fetch("/api/ai/keys", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ provider: cleanProvider, apiKey: cleanKey }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            return {
+              success: false,
+              error: data?.error || "Failed to save API key to server",
+            };
           }
-        } catch {}
+          if (data.prefix) prefix = data.prefix;
+        } else {
+          // Guest mode fallback
+          try {
+            const rawLocal = localStorage.getItem("oxygen_api_keys");
+            const existing = rawLocal ? JSON.parse(rawLocal) : {};
+            existing[cleanProvider] = cleanKey;
+            localStorage.setItem("oxygen_api_keys", JSON.stringify(existing));
+          } catch {}
+        }
+
+        setKeyPrefixes((prev) => ({ ...prev, [cleanProvider]: prefix }));
+        setDecryptedKeys((prev) => ({ ...prev, [cleanProvider]: cleanKey }));
+        setEncryptedKeys((prev) => ({ ...prev, [cleanProvider]: cleanKey }));
 
         await fetchModels();
         return { success: true };
@@ -877,7 +874,7 @@ export const useAiModels = (
         };
       }
     },
-    [encryptedKeys, decryptedKeys, fetchModels],
+    [fetchModels],
   );
 
   const removeProviderApiKey = useCallback(
@@ -886,32 +883,41 @@ export const useAiModels = (
     ): Promise<{ success: boolean; error?: string }> => {
       try {
         const cleanProvider = provider.toLowerCase().trim();
-        const updatedEncrypted = { ...encryptedKeys };
-        delete updatedEncrypted[cleanProvider];
-        const updatedDecrypted = { ...decryptedKeys };
-        delete updatedDecrypted[cleanProvider];
 
-        setEncryptedKeys(updatedEncrypted);
-        setDecryptedKeys(updatedDecrypted);
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
 
-        try {
-          localStorage.setItem(
-            "oxygen_encrypted_api_keys",
-            JSON.stringify(updatedEncrypted),
-          );
-        } catch {}
+        if (token) {
+          await fetch(`/api/ai/keys/${encodeURIComponent(cleanProvider)}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        }
 
         try {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const sessionUser = sessionData?.session?.user;
-          if (sessionUser?.id) {
-            await db
-              .from("user_api_keys")
-              .delete()
-              .eq("user_id", sessionUser.id)
-              .eq("provider", cleanProvider);
+          const rawLocal = localStorage.getItem("oxygen_api_keys");
+          if (rawLocal) {
+            const existing = JSON.parse(rawLocal);
+            delete existing[cleanProvider];
+            localStorage.setItem("oxygen_api_keys", JSON.stringify(existing));
           }
         } catch {}
+
+        setKeyPrefixes((prev) => {
+          const next = { ...prev };
+          delete next[cleanProvider];
+          return next;
+        });
+        setDecryptedKeys((prev) => {
+          const next = { ...prev };
+          delete next[cleanProvider];
+          return next;
+        });
+        setEncryptedKeys((prev) => {
+          const next = { ...prev };
+          delete next[cleanProvider];
+          return next;
+        });
 
         await fetchModels();
         return { success: true };
@@ -922,7 +928,7 @@ export const useAiModels = (
         };
       }
     },
-    [encryptedKeys, decryptedKeys, fetchModels],
+    [fetchModels],
   );
 
   const getDecryptedApiKey = useCallback(
@@ -945,8 +951,13 @@ export const useAiModels = (
         const cleanProvider = provider.toLowerCase().trim();
         const key = explicitKey || decryptedKeys[cleanProvider];
 
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        const isServerConfigured = !!keyPrefixes[cleanProvider];
+
         if (
           !key &&
+          !isServerConfigured &&
           cleanProvider !== "pollinations" &&
           cleanProvider !== "openrouter"
         ) {
@@ -955,10 +966,15 @@ export const useAiModels = (
           };
         }
 
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
         const res = await fetch("/api/ai/fetch-provider-models", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ provider: cleanProvider, apiKey: key }),
+          headers,
+          body: JSON.stringify({ provider: cleanProvider, apiKey: key || undefined }),
         });
 
         const data = await res.json();
@@ -970,7 +986,7 @@ export const useAiModels = (
         return { error: err?.message || "Network error fetching models" };
       }
     },
-    [decryptedKeys],
+    [decryptedKeys, keyPrefixes],
   );
 
   const isProviderConfigured = useCallback(
@@ -999,6 +1015,7 @@ export const useAiModels = (
     // API Key & Provider helpers
     encryptedKeys,
     decryptedKeys,
+    keyPrefixes,
     isMasterKeyActive,
     loadApiKeys,
     saveProviderApiKey,

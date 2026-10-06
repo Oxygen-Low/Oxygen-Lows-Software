@@ -1,5 +1,9 @@
 import { supabase } from "@/lib/db";
 import { safeParseJson } from "@shared/jsonRepair";
+import {
+  fetchPollinationsClient,
+  PollinationsRateLimitError,
+} from "./pollinationsClient";
 
 export interface EntityGenerationOptions {
   type: "character" | "universe" | "race";
@@ -314,6 +318,30 @@ export async function callModel(
   signal?: AbortSignal,
   apiKey?: string,
 ): Promise<string> {
+  if (model.provider === "pollinations") {
+    try {
+      return await fetchPollinationsClient({
+        model: model.model_id || "inclusionai/ling-3.1-flash",
+        messages: messages.map((m) => ({
+          role: (m.role || "user") as "system" | "user" | "assistant",
+          content: m.content || "",
+        })),
+        signal,
+        apiKey,
+      });
+    } catch (err: any) {
+      if (err instanceof PollinationsRateLimitError || err?.statusCode === 429) {
+        // Fallback to Horde Smart via server proxy
+        model = {
+          provider: "horde",
+          model_id: "Smart",
+        };
+      } else {
+        throw err;
+      }
+    }
+  }
+
   const isLocalOllama = model.isLocal && model.provider === "local-ollama";
   const isLocalLmStudio = model.isLocal && model.provider === "local-lmstudio";
   const isLocalKobold = model.isLocal && model.provider === "local-kobold";

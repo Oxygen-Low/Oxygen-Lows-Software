@@ -338,6 +338,10 @@ export const zhCN = {
       'æä¾›å•† "{provider}" æœªé…ç½® API å¯†é’¥ã€‚è¯·åœ¨æ¨¡åž‹æˆ–è´¦æˆ·è®¾ç½®ä¸­æ·»åŠ  API å¯†é’¥ã€‚',
     chatbotMasterKeyLocked:
       "ä¸»å¯†é’¥å·²é”å®šã€‚è¯·åœ¨è´¦æˆ·æˆ–æ¨¡åž‹è®¾ç½®ä¸­è§£é”ï¼Œä»¥ä½¿ç”¨å·²é…ç½®çš„ API å¯†é’¥ã€‚",
+    defaultModelFallbackWarning:
+      "默认主要模型（Pollinations Ling 3.1 Flash）当前不可用（超出速率限制）。正在回退至 AI Horde Smart，质量可能会有所下降。",
+    defaultModelFallbackNotice:
+      "由于默认主要模型不可用，已通过 AI Horde Smart 回退模型生成。",
     agentSearchTitle: "æ™ºèƒ½æœç´¢",
     agentSearchDesc: "ç”±AIé©±åŠ¨çš„æ™ºèƒ½æœç´¢ï¼Œç ”ç©¶ç½‘ç»œå¹¶ç»¼åˆç­”æ¡ˆã€‚",
     agentSearchPlaceholder: "æ‚¨æƒ³ç ”ç©¶ä»€ä¹ˆï¼Ÿ",
@@ -2595,6 +2599,9 @@ notificationsTitle: "é€šçŸ¥",
     customModelsTab: "è‡ªå®šä¹‰æ¨¡åž‹",
     localSharedTab: "æœ¬åœ°ä¸Žå…±äº«æ¨¡åž‹",
     zeroKnowledgeActive: "é›¶çŸ¥è¯†åŠ å¯†å·²æ¿€æ´»",
+    serverVaultActive: "安全服务端密钥保管库已激活",
+    serverVaultDesc: "您的 API 密钥已在服务端使用 AES-256-GCM 安全加密存储。支持自主代理、后台报告和代理请求。",
+    keyModalDesc: "您的 API 密钥已在服务端通过 AES-256-GCM 安全加密，用于自主代理和后台任务执行。",
     zeroKnowledgeDesc: "æ‚¨çš„ API å¯†é’¥åœ¨ä¿å­˜åˆ°æ‚¨çš„è´¦æˆ·ä¹‹å‰å·²åœ¨å®¢æˆ·ç«¯ä½¿ç”¨ AES-256-GCM åŠ å¯†ã€‚æ˜Žæ–‡å¯†é’¥ç»ä¸ä¼šå­˜å‚¨åœ¨æœåŠ¡å™¨ä¸Šã€‚",
     sessionLocked: "ä¸»å¯†é’¥å·²é”å®š",
     sessionLockedDesc: "è§£é”æ‚¨çš„ä¸»å¯†é’¥ä»¥è¾“å…¥ã€åŠ å¯†æˆ–ç®¡ç†ç§æœ‰æä¾›å•†çš„ API å¯†é’¥ã€‚",

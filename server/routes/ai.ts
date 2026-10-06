@@ -14,13 +14,17 @@ import {
   moderateText,
   handleModerationEnforcement,
 } from "../lib/safety/openAiModeration.ts";
+import {
+  getUserApiKey,
+  getAllUserApiKeys,
+  setUserApiKey,
+  deleteUserApiKey,
+} from "../lib/userApiKeys.ts";
 
 export const aiRouter = new Hono();
 
 const DEFAULT_MODELS = [
-  { provider: "horde", model_id: "Fast" },
-  { provider: "horde", model_id: "Smart" },
-  { provider: "horde", model_id: "Writing" },
+  { provider: "pollinations", model_id: "inclusionai/ling-3.1-flash" },
 ];
 
 export const HORDE_MODELS_MAP: Record<string, string[]> = {
@@ -150,6 +154,52 @@ aiRouter.get("/local-providers", apiLimiter, async (c) => {
   return c.json([...DEFAULT_MODELS]);
 });
 
+// User LLM API Key Management (Server-side Encrypted)
+aiRouter.get("/keys", apiLimiter, async (c) => {
+  const authHeader = c.req.header("authorization");
+  const token = extractBearerToken(authHeader);
+  if (!token) return c.json({ error: "Unauthorized" }, 401);
+  const user = await resolveUserFromToken(token);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  const keys = await getAllUserApiKeys(user.id);
+  return c.json({ keys });
+});
+
+aiRouter.post("/keys", apiLimiter, async (c) => {
+  const authHeader = c.req.header("authorization");
+  const token = extractBearerToken(authHeader);
+  if (!token) return c.json({ error: "Unauthorized" }, 401);
+  const user = await resolveUserFromToken(token);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  const body = await c.req.json().catch(() => ({}));
+  const { provider, apiKey } = body;
+  if (!provider || typeof provider !== "string") {
+    return c.json({ error: "Provider is required" }, 400);
+  }
+  if (!apiKey || typeof apiKey !== "string" || !apiKey.trim()) {
+    return c.json({ error: "API key is required" }, 400);
+  }
+
+  const result = await setUserApiKey(user.id, provider, apiKey);
+  return c.json({ success: true, provider: result.provider, prefix: result.prefix });
+});
+
+aiRouter.delete("/keys/:provider", apiLimiter, async (c) => {
+  const authHeader = c.req.header("authorization");
+  const token = extractBearerToken(authHeader);
+  if (!token) return c.json({ error: "Unauthorized" }, 401);
+  const user = await resolveUserFromToken(token);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  const provider = c.req.param("provider");
+  if (!provider) return c.json({ error: "Provider is required" }, 400);
+
+  await deleteUserApiKey(user.id, provider);
+  return c.json({ success: true, provider: provider.toLowerCase() });
+});
+
 aiRouter.get("/horde-status", apiLimiter, async (c) => {
   try {
     const response = await fetch(
@@ -222,7 +272,13 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     envKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY || "";
   }
 
-  const effectiveApiKey = apiKey || envKey;
+  let effectiveApiKey = apiKey;
+  if (!effectiveApiKey && user?.id) {
+    effectiveApiKey = (await getUserApiKey(user.id, provider)) || "";
+  }
+  if (!effectiveApiKey) {
+    effectiveApiKey = envKey;
+  }
   let integration: any = effectiveApiKey ? { api_key: effectiveApiKey } : null;
   if (baseUrl) {
     try {
@@ -614,7 +670,19 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
       });
     }
 
-    if (!apiKey && cleanProvider !== "openrouter") {
+    let effectiveApiKey = apiKey;
+    if (!effectiveApiKey) {
+      const authHeader = c.req.header("authorization");
+      const token = extractBearerToken(authHeader);
+      if (token) {
+        const user = await resolveUserFromToken(token);
+        if (user?.id) {
+          effectiveApiKey = (await getUserApiKey(user.id, cleanProvider)) || "";
+        }
+      }
+    }
+
+    if (!effectiveApiKey && cleanProvider !== "openrouter") {
       return c.json(
         { error: "API key is required to fetch models for this provider" },
         400,
@@ -623,7 +691,7 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
 
     if (cleanProvider === "openai") {
       const res = await fetch("https://api.openai.com/v1/models", {
-        headers: { Authorization: `Bearer ${apiKey}` },
+        headers: { Authorization: `Bearer ${effectiveApiKey}` },
       });
       if (!res.ok) {
         const err = await res.text();
@@ -648,7 +716,7 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
 
     if (cleanProvider === "openrouter") {
       const headers: Record<string, string> = {};
-      if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+      if (effectiveApiKey) headers["Authorization"] = `Bearer ${effectiveApiKey}`;
       const res = await fetch("https://openrouter.ai/api/v1/models", { headers });
       if (!res.ok) {
         const err = await res.text();
@@ -667,7 +735,7 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
 
     if (cleanProvider === "grok" || cleanProvider === "xai") {
       const res = await fetch("https://api.x.ai/v1/models", {
-        headers: { Authorization: `Bearer ${apiKey}` },
+        headers: { Authorization: `Bearer ${effectiveApiKey}` },
       });
       if (!res.ok) {
         const err = await res.text();
@@ -684,7 +752,7 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
     if (cleanProvider === "google" || cleanProvider === "gemini") {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(
-          apiKey,
+          effectiveApiKey,
         )}`,
       );
       if (!res.ok) {

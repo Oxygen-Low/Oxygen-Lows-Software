@@ -370,6 +370,10 @@ export const es = {
       'El proveedor "{provider}" no estÃ¡ configurado con una clave API. AÃ±ade una clave API en la configuraciÃ³n de Modelos o Cuenta.',
     chatbotMasterKeyLocked:
       "Tu clave maestra estÃ¡ bloqueada. DesbloquÃ©ala en la configuraciÃ³n de Cuenta o Modelos para usar las claves API configuradas.",
+    defaultModelFallbackWarning:
+      "El modelo predeterminado principal (Pollinations Ling 3.1 Flash) no está disponible actualmente (límite de velocidad). Recurriendo a AI Horde Smart. La calidad puede verse reducida.",
+    defaultModelFallbackNotice:
+      "Generado a través del respaldo AI Horde Smart debido a la indisponibilidad del modelo principal.",
     agentSearchTitle: "BÃºsqueda Agente",
     agentSearchDesc:
       "BÃºsqueda agÃ©ntica impulsada por IA que investiga la web y sintetiza respuestas.",
@@ -2709,7 +2713,10 @@ export const es = {
     customModelsTab: "Modelos Personalizados",
     localSharedTab: "Locales y Compartidos",
     zeroKnowledgeActive: "Cifrado de Conocimiento Cero Activo",
-    zeroKnowledgeDesc: "Tus claves API se cifran en el cliente con AES-256-GCM antes de guardarse en tu cuenta. Las claves en texto plano nunca se almacenan en el servidor.",
+    zeroKnowledgeDesc: "Tus datos se cifran en el cliente con AES-256-GCM. Los datos en texto plano nunca se almacenan en el servidor.",
+    serverVaultActive: "Bóveda Segura de Claves del Servidor Activa",
+    serverVaultDesc: "Tus claves API están cifradas en reposo en el servidor con AES-256-GCM. Las claves se descifran de forma segura en memoria para agentes autónomos, informes en segundo plano y solicitudes proxy.",
+    keyModalDesc: "Tu clave API se cifra de forma segura en el servidor con AES-256-GCM para agentes autónomos y ejecución en segundo plano.",
     sessionLocked: "Clave Maestra Bloqueada",
     sessionLockedDesc: "Desbloquea tu clave maestra para ingresar, cifrar o administrar claves API privadas de proveedores.",
     unlockMasterKey: "Desbloquear Clave Maestra",
