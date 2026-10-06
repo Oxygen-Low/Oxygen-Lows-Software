@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { ProjectTextField } from "@/components/projects/ProjectTextField";
 import { Layout } from "@/components/Layout";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -45,86 +46,9 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { formatModelLabel } from "@/utils/aiUtils";
 
-export interface ProjectAgent {
-  id: string;
-  name: string;
-  role: string;
-  description: string;
-  systemPrompt: string;
-  modelProvider?: string;
-  modelId?: string;
-  isOrchestrator?: boolean;
-  status?: "idle" | "thinking" | "executing";
-  createdAt: string;
-}
+import type { ProjectAgent, ProjectMemoryFile, ProjectTask, ProjectChatMessage, ProjectRecord, TaskLogEntry } from "@shared/projects";
+export type { ProjectAgent, ProjectMemoryFile, ProjectTask, ProjectChatMessage, ProjectRecord, TaskLogEntry } from "@shared/projects";
 
-export interface ProjectMemoryFile {
-  id: string;
-  filename: string;
-  title: string;
-  content: string;
-  always_shown?: boolean;
-  updatedAt: string;
-}
-
-export interface TaskLogEntry {
-  id: string;
-  step: string;
-  status: "running" | "done" | "info" | "error";
-  timestamp: string;
-}
-
-export interface ProjectTask {
-  id: string;
-  title: string;
-  description?: string;
-  status: "todo" | "in_progress" | "done";
-  assignedAgentId?: string;
-  priority?: "low" | "medium" | "high";
-  logs?: TaskLogEntry[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ProjectChatMessage {
-  id: string;
-  sender: "user" | "orchestrator" | "agent" | "system";
-  agentName?: string;
-  agentId?: string;
-  content: string;
-  actions?: Array<{
-    type: "create_agent" | "fire_agent" | "read_memory" | "write_memory" | "add_task" | "update_task" | "web_search";
-    status: "pending" | "running" | "completed" | "failed";
-    details?: string;
-  }>;
-  model?: string;
-  createdAt: string;
-}
-
-export interface ProjectRecord {
-  id: string;
-  user_id?: string;
-  name: string;
-  description: string;
-  orchestratorName: string;
-  orchestratorModelProvider: string;
-  orchestratorModelId: string;
-  orchestratorPrompt?: string;
-  agents: ProjectAgent[];
-  memoryFiles: ProjectMemoryFile[];
-  tasks: ProjectTask[];
-  messages?: ProjectChatMessage[];
-  userName?: string;
-  isSetupComplete?: boolean;
-  setupState?: {
-    step: number;
-    isComplete: boolean;
-  };
-  created_at: string;
-  updated_at: string;
-}
-
-const LOCAL_STORAGE_KEY = "oxygenlow_projects_cache_v1";
 
 interface ProjectMarkdownProps {
   content: string;
@@ -262,11 +186,19 @@ export default function Projects() {
   } = aiHook;
 
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [projectError, setProjectError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const projectsRef = useRef<ProjectRecord[]>([]);
+  const operationRef = useRef(false);
+  const authorization = useRef<{ projectId: string; type: "hire" | "fire"; agentId?: string } | null>(null);
+  const hireConfirmed = useRef(false);
+  const requestText = (key: string) => t(`projects.requests.${key}`);
+  useEffect(() => { projectsRef.current = projects; }, [projects]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(projectId || null);
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [chatInput, setChatInput] = useState("");
-  const [activeRightTab, setActiveRightTab] = useState<"agent" | "memory" | "details" | "tasks">("agent");
+  const [activeRightTab, setActiveRightTab] = useState<"agent" | "memory" | "details" | "tasks" | "requests">("agent");
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [selectedMemoryFileId, setSelectedMemoryFileId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -338,66 +270,32 @@ export default function Projects() {
 
   // Reset/Clear chat to a fresh session
   const handleClearChat = useCallback(() => {
+    authorization.current = null;
     setSessionMessages(createGreeting(selectedAgent));
     setChatInput("");
   }, [createGreeting, selectedAgent]);
 
-  // Load projects from backend or fallback local storage
+  // Project data is server-owned. Remove the retired cache without importing it.
   const loadProjects = useCallback(async () => {
+    authorization.current = null;
     setLoading(true);
-    let loadedProjects: ProjectRecord[] = [];
+    try { localStorage.removeItem("oxygenlow_projects_cache_v1"); } catch {}
     try {
       const headers: Record<string, string> = {};
-      if (session?.access_token) {
-        headers["Authorization"] = `Bearer ${session.access_token}`;
-      }
+      if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
       const res = await fetch("/api/projects", { headers });
-      if (res.ok) {
-        const json = await res.json();
-        if (Array.isArray(json.data) && json.data.length > 0) {
-          loadedProjects = json.data;
-        }
-      }
-    } catch {}
-
-    if (loadedProjects.length === 0) {
-      try {
-        const cached = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            loadedProjects = parsed;
-          }
-        }
-      } catch {}
-    }
-
-    setProjects(loadedProjects);
-    if (loadedProjects.length > 0) {
-      const chosenProj = (projectId && loadedProjects.find((p) => p.id === projectId)) || loadedProjects[0];
-      setActiveProjectId((prev) => (prev && loadedProjects.some((p) => p.id === prev) ? prev : chosenProj.id));
-      setSessionMessages(createGreeting(null));
-    } else {
-      setActiveProjectId(null);
-      setSessionMessages([]);
-    }
-    setLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.access_token, session?.user?.id, projectId]);
-
-  useEffect(() => {
-    loadProjects();
-  }, [session?.access_token, session?.user?.id, projectId, loadProjects]);
-
-  // Sync active project state to localStorage as backup
-  useEffect(() => {
-    if (loading) return;
-    if (projects.length > 0) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(projects));
-    } else {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-    }
-  }, [projects, loading]);
+      if (!res.ok) throw new Error("loadFailed");
+      const json = await res.json();
+      if (!Array.isArray(json.data)) throw new Error("loadFailed");
+      projectsRef.current = json.data;
+      setProjects(json.data);
+      const chosen = json.data.find((p: ProjectRecord) => p.id === projectId) || json.data[0];
+      setActiveProjectId(prev => json.data.some((p: ProjectRecord) => p.id === prev) ? prev : chosen?.id ?? null);
+      setProjectError("");
+    } catch { setProjectError("loadFailed"); }
+    finally { setLoading(false); }
+  }, [session?.access_token, projectId]);
+  useEffect(() => { loadProjects(); }, [loadProjects]);
 
   // Selected memory file for inspector
   const selectedMemoryFile = useMemo(() => {
@@ -413,7 +311,7 @@ export default function Projects() {
       setMemoryEditContent(selectedMemoryFile.content);
       setMemoryEditAlwaysShown(selectedMemoryFile.always_shown ?? false);
     }
-  }, [selectedMemoryFile]);
+  }, [selectedMemoryFile?.id, selectedMemoryFile?.title, selectedMemoryFile?.filename, selectedMemoryFile?.content, selectedMemoryFile?.always_shown]);
 
   // Messages to display in session
   const displayedMessages = useMemo(() => {
@@ -428,25 +326,45 @@ export default function Projects() {
     }
   }, [displayedMessages, isGenerating]);
 
-  // Update a project in state and server
-  const updateProjectInStateAndServer = useCallback(
-    async (updated: ProjectRecord) => {
-      setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-      try {
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
-        await fetch(`/api/projects/${updated.id}`, {
-          method: "PATCH",
-          headers,
-          body: JSON.stringify(updated),
-        });
-      } catch {}
-    },
-    [session],
-  );
+  const mutateProject = async (id: string, path: string, body?: unknown, method = "POST"): Promise<ProjectRecord | null> => {
+    if (operationRef.current) { setProjectError("busy"); return null; }
+    operationRef.current = true;
+    setSaving(true);
+    setProjectError("");
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+      const res = await fetch(`/api/projects/${id}${path}`, { method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
+      const json = await res.json();
+      if (!res.ok || json.error || !json.data?.id) throw new Error(json.error || "saveFailed");
+      const updated = json.data as ProjectRecord;
+      const next = projectsRef.current.map(p => p.id === id ? updated : p);
+      projectsRef.current = next;
+      setProjects(next);
+      return updated;
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "saveFailed";
+      setProjectError(["undoConflict", "actionConflict", "requestResolved", "alreadyUndone", "orchestratorProtected", "invalidAction", "agentNotFound", "memoryNotFound", "projectNotFound", "staleProject"].includes(code) ? code : "saveFailed");
+      return null;
+    } finally { operationRef.current = false; setSaving(false); }
+  };
+
+  const updateProjectInStateAndServer = async (updated: ProjectRecord) => {
+    const body = { name: updated.name, description: updated.description, orchestratorName: updated.orchestratorName,
+      orchestratorModelProvider: updated.orchestratorModelProvider, orchestratorModelId: updated.orchestratorModelId,
+      orchestratorPrompt: updated.orchestratorPrompt, tasks: updated.tasks, userName: updated.userName,
+      revision: updated.revision ?? 0 };
+    return mutateProject(updated.id, "", body, "PATCH");
+  };
+  const runProjectAction = (project: ProjectRecord, type: string, payload: unknown, pending = false, agent?: ProjectAgent) =>
+    mutateProject(project.id, pending ? "/requests" : "/actions", {
+      type, payload, revision: project.revision ?? 0,
+      origin: agent ? { kind: "agent", agentId: agent.id, agentName: agent.name } : { kind: "user" },
+    });
 
   // Handle agent click / re-click -> clear chat and start fresh session for that agent
   const handleSelectAgent = (agent: ProjectAgent) => {
+    authorization.current = null;
     setSelectedAgentId(agent.id);
     setActiveRightTab("agent");
     // Clear chat and initialize fresh session for this agent
@@ -474,6 +392,7 @@ export default function Projects() {
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
+    authorization.current = null;
 
     const newId = crypto.randomUUID();
     const now = new Date().toISOString();
@@ -528,9 +447,7 @@ export default function Projects() {
         if (json.data) {
           const updatedList = [json.data, ...projects.filter((p) => p.id !== json.data.id)];
           setProjects(updatedList);
-          try {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedList));
-          } catch {}
+          projectsRef.current = updatedList;
           setActiveProjectId(json.data.id);
           setSelectedAgentId(null);
           setSessionMessages(createGreeting(null));
@@ -542,17 +459,7 @@ export default function Projects() {
       }
     } catch {}
 
-    const fallbackList = [newProj, ...projects.filter((p) => p.id !== newProj.id)];
-    setProjects(fallbackList);
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(fallbackList));
-    } catch {}
-    setActiveProjectId(newProj.id);
-    setSelectedAgentId(null);
-    setSessionMessages(createGreeting(null));
-    setShowNewProjectModal(false);
-    setNewProjectName("");
-    setNewProjectDesc("");
+    setProjectError("saveFailed");
   };
 
   // Delete project
@@ -563,13 +470,15 @@ export default function Projects() {
     try {
       const headers: Record<string, string> = {};
       if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
-      await fetch(`/api/projects/${id}`, { method: "DELETE", headers });
-    } catch {}
+      const res = await fetch(`/api/projects/${id}`, { method: "DELETE", headers });
+      if (!res.ok) throw new Error();
+    } catch { setProjectError("saveFailed"); return; }
 
+    if (activeProjectId === id) authorization.current = null;
     const remaining = projects.filter((p) => p.id !== id);
+    projectsRef.current = remaining;
     setProjects(remaining);
     if (remaining.length === 0) {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
       setActiveProjectId(null);
       setSessionMessages([]);
     } else if (activeProjectId === id) {
@@ -581,67 +490,27 @@ export default function Projects() {
     }
   };
 
-  // Save edited memory file
+  // Every memory mutation is saved together with its undo history.
   const handleSaveMemoryFile = async () => {
     if (!activeProject || !selectedMemoryFile) return;
-    const now = new Date().toISOString();
-    const updatedMemory = activeProject.memoryFiles.map((m) => {
-      if (m.id === selectedMemoryFile.id) {
-        return {
-          ...m,
-          title: memoryEditTitle.trim() || m.title,
-          filename: memoryEditFilename.trim() || m.filename,
-          content: memoryEditContent,
-          always_shown: memoryEditAlwaysShown,
-          updatedAt: now,
-        };
-      }
-      return m;
+    await runProjectAction(activeProject, "write_memory", {
+      id: selectedMemoryFile.id, title: memoryEditTitle.trim() || selectedMemoryFile.title,
+      filename: memoryEditFilename.trim() || selectedMemoryFile.filename,
+      content: memoryEditContent, always_shown: memoryEditAlwaysShown,
     });
-
-    const updatedProj: ProjectRecord = {
-      ...activeProject,
-      memoryFiles: updatedMemory,
-      updated_at: now,
-    };
-    await updateProjectInStateAndServer(updatedProj);
   };
-
-  // Add new memory file
   const handleAddMemoryFile = async () => {
     if (!activeProject) return;
-    const now = new Date().toISOString();
-    const newFile: ProjectMemoryFile = {
-      id: crypto.randomUUID(),
-      filename: `doc_${activeProject.memoryFiles.length + 1}.md`,
-      title: `Document ${activeProject.memoryFiles.length + 1}`,
-      content: `# New Document\n\nAdd project notes or context here.\n`,
-      always_shown: false,
-      updatedAt: now,
-    };
-    const updatedProj: ProjectRecord = {
-      ...activeProject,
-      memoryFiles: [...activeProject.memoryFiles, newFile],
-      updated_at: now,
-    };
-    await updateProjectInStateAndServer(updatedProj);
-    setSelectedMemoryFileId(newFile.id);
-    setActiveRightTab("memory");
+    let suffix = activeProject.memoryFiles.length + 1;
+    while (activeProject.memoryFiles.some(f => f.filename.toLowerCase() === `doc_${suffix}.md`)) suffix++;
+    const filename = `doc_${suffix}.md`;
+    const saved = await runProjectAction(activeProject, "write_memory", { filename, title: filename, content: "" });
+    if (saved) { setSelectedMemoryFileId(saved.memoryFiles.find(f => f.filename === filename)?.id ?? null); setActiveRightTab("memory"); }
   };
-
-  // Delete memory file
   const handleDeleteMemoryFile = async (fileId: string) => {
     if (!activeProject) return;
-    const updatedMemory = activeProject.memoryFiles.filter((m) => m.id !== fileId);
-    const updatedProj: ProjectRecord = {
-      ...activeProject,
-      memoryFiles: updatedMemory,
-      updated_at: new Date().toISOString(),
-    };
-    await updateProjectInStateAndServer(updatedProj);
-    if (selectedMemoryFileId === fileId) {
-      setSelectedMemoryFileId(updatedMemory[0]?.id || null);
-    }
+    const saved = await runProjectAction(activeProject, "delete_memory", { id: fileId });
+    if (saved && selectedMemoryFileId === fileId) setSelectedMemoryFileId(saved.memoryFiles[0]?.id ?? null);
   };
 
   // Toggle Task Status
@@ -910,12 +779,14 @@ export default function Projects() {
       params: Record<string, string>;
     }>,
     currentProj: ProjectRecord,
+    requester: ProjectAgent = selectedAgent,
+    allowButtonAuthorization = false,
   ) => {
     let proj: ProjectRecord = {
       ...currentProj,
       agents: [...currentProj.agents],
       memoryFiles: [...currentProj.memoryFiles],
-      tasks: [...currentProj.tasks],
+      tasks: currentProj.tasks.map(task => ({ ...task })),
     };
     const actionsFound: Array<{ type: any; status: any; details?: string }> = [];
     const observations: string[] = [];
@@ -959,74 +830,39 @@ export default function Projects() {
         }
       } else if (call.type === "write_memory") {
         const filename = call.params.filename || "doc.md";
-        const content = call.params.content || "";
-        const existingIdx = proj.memoryFiles.findIndex((m) => m.filename.toLowerCase() === filename.toLowerCase());
-        const now = new Date().toISOString();
-        if (existingIdx >= 0) {
-          proj.memoryFiles[existingIdx] = {
-            ...proj.memoryFiles[existingIdx],
-            content,
-            updatedAt: now,
-          };
-        } else {
-          proj.memoryFiles.push({
-            id: crypto.randomUUID(),
-            filename,
-            title: filename,
-            content,
-            always_shown: false,
-            updatedAt: now,
-          });
+        const saved = await runProjectAction(proj, "write_memory", { filename, content: call.params.content || "" }, false, requester);
+        if (!saved) throw new Error("saveFailed");
+        proj = saved;
+        observations.push(`[Tool Output: Saved memory file "${filename}".]`);
+        actionsFound.push({ type: "write_memory", status: "completed", details: filename });
+      } else if (call.type === "create_agent" || call.type === "fire_agent") {
+        const intent = authorization.current;
+        const authorizedTarget = allowButtonAuthorization && intent?.projectId === proj.id && intent.type === "fire"
+          ? proj.agents.find(a => a.id === intent.agentId) : undefined;
+        const matchingAgents = proj.agents.filter(a => a.name.toLowerCase() === call.params.name.toLowerCase());
+        const target = call.type === "fire_agent"
+          ? authorizedTarget?.name.toLowerCase() === call.params.name.toLowerCase() ? authorizedTarget
+            : matchingAgents.length === 1 ? matchingAgents[0] : undefined
+          : undefined;
+        if (call.type === "fire_agent" && (!target || target.isOrchestrator)) {
+          observations.push(`[Tool Output: Cannot fire the specified agent.]`);
+          actionsFound.push({ type: call.type, status: "failed", details: call.params.name });
+          continue;
         }
-        observations.push(`[Tool Output: Successfully updated memory file "${filename}".]`);
-        actionsFound.push({
-          type: "write_memory",
-          status: "completed",
-          details: `Updated memory file "${filename}"`,
-        });
-      } else if (call.type === "create_agent") {
-        const name = call.params.name;
-        const role = call.params.role;
-        const prompt = call.params.prompt || `You are ${name}, specialized in ${role}.`;
-        const newAgent: ProjectAgent = {
-          id: crypto.randomUUID(),
-          name,
-          role,
-          description: `Specialized agent for ${role}`,
-          systemPrompt: prompt,
-          modelProvider: proj.orchestratorModelProvider,
-          modelId: proj.orchestratorModelId,
-          isOrchestrator: false,
-          status: "idle",
-          createdAt: new Date().toISOString(),
-        };
-        proj.agents.push(newAgent);
-        observations.push(`[Tool Output: Successfully hired and created agent "${name}" with role "${role}".]`);
-        actionsFound.push({
-          type: "create_agent",
-          status: "completed",
-          details: `Hired agent "${name}" (${role})`,
-        });
-      } else if (call.type === "fire_agent") {
-        const name = call.params.name;
-        const target = proj.agents.find(
-          (a) =>
-            a.name.toLowerCase() === name.toLowerCase() ||
-            name.toLowerCase().includes(a.name.toLowerCase()) ||
-            a.name.toLowerCase().includes(name.toLowerCase()),
+        const authorized = allowButtonAuthorization && intent?.projectId === proj.id && (
+          call.type === "create_agent" ? intent.type === "hire" && hireConfirmed.current : intent.type === "fire" && intent.agentId === target?.id
         );
-        if (target && !target.isOrchestrator) {
-          proj.agents = proj.agents.filter((a) => a.id !== target.id);
-          proj.tasks = proj.tasks.map((t) => (t.assignedAgentId === target.id ? { ...t, assignedAgentId: undefined } : t));
-          observations.push(`[Tool Output: Successfully offboarded agent "${target.name}".]`);
-          actionsFound.push({
-            type: "fire_agent",
-            status: "completed",
-            details: `Fired agent "${target.name}"`,
-          });
-        } else {
-          observations.push(`[Tool Output: Agent "${name}" could not be offboarded.]`);
-        }
+        const payload = call.type === "create_agent" ? {
+          name: call.params.name, role: call.params.role,
+          systemPrompt: call.params.prompt || `You are ${call.params.name}, specialized in ${call.params.role}.`,
+        } : { id: target.id };
+        const saved = await runProjectAction(proj, call.type === "create_agent" ? "hire_agent" : "fire_agent", payload, !authorized, authorized ? undefined : requester);
+        if (!saved) throw new Error("saveFailed");
+        if (authorized) authorization.current = null;
+        proj = saved;
+        const status = authorized ? "completed" : "pending";
+        observations.push(`[Tool Output: ${call.type} for "${call.params.name}" is ${status}${authorized ? "." : "; awaiting user approval in Requests. Do not repeat this request or claim it completed."}]`);
+        actionsFound.push({ type: call.type, status, details: `${call.params.name}: ${requestText(status)}` });
       } else if (call.type === "add_task") {
         const title = call.params.title;
         const priority = (call.params.priority as "low" | "medium" | "high") || "medium";
@@ -1065,6 +901,11 @@ export default function Projects() {
           });
         }
       }
+      if (call.type === "add_task" || call.type === "update_task") {
+        const saved = await updateProjectInStateAndServer(proj);
+        if (!saved) throw new Error("saveFailed");
+        proj = saved;
+      }
     }
 
     return { updatedProj: proj, actionsFound, observations };
@@ -1074,6 +915,10 @@ export default function Projects() {
   const handleSendMessage = async (customPrompt?: string) => {
     const promptToSend = (customPrompt || chatInput).trim();
     if (!promptToSend || !activeProject || isGenerating) return;
+    hireConfirmed.current = /^(confirm|yes|proceed|looks good)[.!]?$/i.test(promptToSend.trim()) &&
+      /4\. Confirmation|summary of the new agent/i.test([...sessionMessages].reverse().find(m => m.sender === "agent" || m.sender === "orchestrator")?.content || "");
+    if (/^(cancel|stop|never mind|nevermind|no)[.!]?$/i.test(promptToSend.trim())) authorization.current = null;
+
 
     if (!customPrompt) setChatInput("");
     setIsGenerating(true);
@@ -1165,6 +1010,7 @@ ${tasksList || "No tasks."}
 WORKSPACES PROTOCOLS:
 1. ALWAYS check before doing things! Before creating tasks, creating agents, or making major project decisions, you MUST read the relevant memory files using [MEMORY: READ filename="<filename>"] if the information is not already present in Core Workspace Memory.
 2. Web Search & Real-Time Facts: When you need up-to-date real-world facts, live information, documentation, or answers about external topics, NEVER hallucinate or pretend to search. You MUST use the live web search tool: [ACTION: WEB_SEARCH query="<search query>"]. The system will execute the real web search and return live search results.
+Hiring and firing require user approval unless explicitly authorized by a button workflow. Treat pending tool results as awaiting approval, never completed. Do not repeat pending requests.
 3. Multi-tool Batch Execution: You may output tool calls. The system will batch-execute all detected tool calls, strip text after the tool calls, provide observations, and re-run until finished.
 4. Hiring Workflow: When hiring an agent, strictly follow this sequential 4-step interview. You MUST ask ONLY ONE step at a time and WAIT for the user's response. NEVER skip steps, NEVER combine multiple steps into a single message, and NEVER pick a name on the user's behalf without asking them:
    - Step 1 (Role): Ask the user what domain specialization or role the new agent should handle (e.g., Security Engineer, Growth Specialist, Data Analyst). Do NOT ask for or suggest a name yet.
@@ -1286,7 +1132,7 @@ WORKSPACES PROTOCOLS:
                   .split(/[.\n]/)[0]
                   .trim()
                   .replace(/['"]/g, "") || "Specialist";
-            replyText = `Understood. I have offboarded **${targetName}** and removed them from the workspace roster.\n\n[ACTION: FIRE_AGENT name="${targetName}"]`;
+            replyText = `Understood. I will submit the action for **${targetName}**.\n\n[ACTION: FIRE_AGENT name="${targetName}"]`;
           } else if (lower.includes("task") || lower.includes("plan") || lower.includes("generate")) {
             if (iteration === 1 && workingProj.memoryFiles.length > 0) {
               const targetDoc = workingProj.memoryFiles[0].filename;
@@ -1326,7 +1172,7 @@ WORKSPACES PROTOCOLS:
             const newName = candidateName || "Jade";
             const newRole = candidateRole || "Domain Specialist";
             const newPersonality = candidatePersonality || "Dedicated and proactive";
-            replyText = `Agent **${newName}** has been successfully hired and onboarded to the workspace!\n\n[ACTION: CREATE_AGENT name="${newName}" role="${newRole}" prompt="You are ${newName}, specialized in ${newRole}. Personality: ${newPersonality}."]\n[TASK: ADD title="Initial workspace orientation for ${newName}" priority="medium"]`;
+            replyText = `I will submit the hiring action for **${newName}**.\n\n[ACTION: CREATE_AGENT name="${newName}" role="${newRole}" prompt="You are ${newName}, specialized in ${newRole}. Personality: ${newPersonality}."]\n[TASK: ADD title="Initial workspace orientation for ${newName}" priority="medium"]`;
           } else if (
             lower.includes("engineer") ||
             lower.includes("specialist") ||
@@ -1358,7 +1204,7 @@ WORKSPACES PROTOCOLS:
           } else if (lower.includes("confirm") || lower.includes("proceed") || lower === "yes") {
             const newName = "John";
             const newRole = "Domain Specialist";
-            replyText = `Agent **${newName}** has been successfully hired and onboarded to the workspace!\n\n[ACTION: CREATE_AGENT name="${newName}" role="${newRole}" prompt="You are ${newName}, specialized in ${newRole}."]\n[TASK: ADD title="Initial workspace orientation for ${newName}" priority="medium"]`;
+            replyText = `I will submit the hiring action for **${newName}**.\n\n[ACTION: CREATE_AGENT name="${newName}" role="${newRole}" prompt="You are ${newName}, specialized in ${newRole}."]\n[TASK: ADD title="Initial workspace orientation for ${newName}" priority="medium"]`;
           } else {
             replyText = `Acknowledged. I am managing the workspace, coordinating agents, and keeping memory docs updated.`;
           }
@@ -1370,12 +1216,12 @@ WORKSPACES PROTOCOLS:
           // Keep text before the first tool call
           const firstToolIndex = toolCalls[0].startIndex;
           const textBeforeTool = replyText.slice(0, firstToolIndex).trim();
-          if (textBeforeTool) {
+          if (textBeforeTool && !toolCalls.some(call => call.type === "create_agent" || call.type === "fire_agent")) {
             displayedTextChunks.push(textBeforeTool);
           }
 
           // Execute batch of all detected tool calls
-          const { updatedProj, actionsFound, observations } = await executeBatchTools(toolCalls, workingProj);
+          const { updatedProj, actionsFound, observations } = await executeBatchTools(toolCalls, workingProj, selectedAgent, true);
           workingProj = updatedProj;
           accumulatedActions = [...accumulatedActions, ...actionsFound];
 
@@ -1392,7 +1238,7 @@ WORKSPACES PROTOCOLS:
 
       // Clean displayed text to guarantee no raw tags remain
       const combinedText = displayedTextChunks.join("\n\n");
-      const cleanContent = cleanDisplayedText(combinedText) || "Actions executed successfully.";
+      const cleanContent = cleanDisplayedText(combinedText) || requestText(accumulatedActions.some(a => a.status === "pending") ? "pending" : "completed");
 
       const replyMsg: ProjectChatMessage = {
         id: crypto.randomUUID(),
@@ -1406,11 +1252,6 @@ WORKSPACES PROTOCOLS:
 
       setSessionMessages((prev) => [...prev, replyMsg]);
 
-      // Persist workspace structural changes
-      await updateProjectInStateAndServer({
-        ...workingProj,
-        updated_at: new Date().toISOString(),
-      });
     } catch (err) {
       const errorMsg: ProjectChatMessage = {
         id: crypto.randomUUID(),
@@ -1462,7 +1303,9 @@ WORKSPACES PROTOCOLS:
       tasks: activeProject.tasks.map((t) => (t.id === task.id ? inProgressTask : t)),
       updated_at: now,
     };
-    await updateProjectInStateAndServer(workingProj);
+    const savedProgress = await updateProjectInStateAndServer(workingProj);
+    if (!savedProgress) { setTaskRunningId(null); return; }
+    workingProj = savedProgress;
 
     let accumulatedActions: Array<{ type: any; status: any; details?: string }> = [];
     let displayedTextChunks: string[] = [];
@@ -1536,6 +1379,7 @@ ${tasksList || "No tasks."}
 TASK EXECUTION PROTOCOLS:
 1. Autonomously execute the task to completion.
 2. If real-time or external web information is required, execute live web searches using [ACTION: WEB_SEARCH query="<search query>"]. Never hallucinate or pretend to search.
+Hiring and firing require user approval. Pending requests are not completed actions; do not repeat them.
 3. Read required memory using [MEMORY: READ filename="<filename>"].
 4. Save key deliverables, documentation, or code artifacts to workspace memory files using [MEMORY: WRITE filename="<filename>" content="<markdown>"].
 5. If follow-up work is required, add tasks using [TASK: ADD title="<title>" priority="high|medium|low"].
@@ -1604,11 +1448,11 @@ TASK EXECUTION PROTOCOLS:
         if (toolCalls.length > 0) {
           const firstToolIndex = toolCalls[0].startIndex;
           const textBeforeTool = replyText.slice(0, firstToolIndex).trim();
-          if (textBeforeTool) {
+          if (textBeforeTool && !toolCalls.some(call => call.type === "create_agent" || call.type === "fire_agent")) {
             displayedTextChunks.push(textBeforeTool);
           }
 
-          const { updatedProj, actionsFound, observations } = await executeBatchTools(toolCalls, workingProj);
+          const { updatedProj, actionsFound, observations } = await executeBatchTools(toolCalls, workingProj, assignedAgent);
           workingProj = updatedProj;
           accumulatedActions = [...accumulatedActions, ...actionsFound];
 
@@ -1617,7 +1461,7 @@ TASK EXECUTION PROTOCOLS:
             currentLogs.push({
               id: crypto.randomUUID(),
               step: act.details || `${agentName} executed ${act.type}`,
-              status: "done",
+              status: act.status === "pending" ? "info" : act.status === "failed" ? "error" : "done",
               timestamp: getTimeStr(),
             });
           });
@@ -1633,9 +1477,11 @@ TASK EXECUTION PROTOCOLS:
           };
           workingProj = {
             ...workingProj,
-            tasks: workingProj.tasks.map((t) => (t.id === task.id ? { ...inProgressTask } : t)),
+            tasks: workingProj.tasks.map((t) => (t.id === task.id ? { ...t, logs: [...currentLogs], updatedAt: inProgressTask.updatedAt } : t)),
           };
-          await updateProjectInStateAndServer(workingProj);
+          const savedProgress = await updateProjectInStateAndServer(workingProj);
+          if (!savedProgress) throw new Error("saveFailed");
+          workingProj = savedProgress;
 
           currentPrompt = `Previous thoughts:\n${textBeforeTool || "Executed tool actions."}\n\n${observations.join(
             "\n",
@@ -1647,7 +1493,7 @@ TASK EXECUTION PROTOCOLS:
       }
 
       // Mark all logs done
-      currentLogs = currentLogs.map((l) => ({ ...l, status: "done" as const }));
+      currentLogs = currentLogs.map((l) => ({ ...l, status: l.status === "running" ? "done" as const : l.status }));
 
       // Add final completion log
       const finalLog: TaskLogEntry = {
@@ -1670,7 +1516,7 @@ TASK EXECUTION PROTOCOLS:
 
       const finalProj: ProjectRecord = {
         ...workingProj,
-        tasks: workingProj.tasks.map((t) => (t.id === task.id ? completedTask : t)),
+        tasks: workingProj.tasks.map((t) => (t.id === task.id ? { ...t, status: completedTask.status, logs: currentLogs, updatedAt: completedTask.updatedAt } : t)),
         updated_at: new Date().toISOString(),
       };
 
@@ -1686,8 +1532,8 @@ TASK EXECUTION PROTOCOLS:
         createdAt: new Date().toISOString(),
       };
 
+      if (!await updateProjectInStateAndServer(finalProj)) throw new Error("saveFailed");
       setSessionMessages((prev) => [...prev, deliverableMsg]);
-      await updateProjectInStateAndServer(finalProj);
     } catch (err) {
       const errorLog: TaskLogEntry = {
         id: crypto.randomUUID(),
@@ -1702,7 +1548,7 @@ TASK EXECUTION PROTOCOLS:
       };
       const errProj: ProjectRecord = {
         ...workingProj,
-        tasks: workingProj.tasks.map((t) => (t.id === task.id ? failedTask : t)),
+        tasks: workingProj.tasks.map((t) => (t.id === task.id ? { ...t, logs: failedTask.logs, updatedAt: failedTask.updatedAt } : t)),
         updated_at: new Date().toISOString(),
       };
       await updateProjectInStateAndServer(errProj);
@@ -1713,6 +1559,8 @@ TASK EXECUTION PROTOCOLS:
 
   // Quick Action: Pre-fill & send "Hire Agent" request to Orchestrator
   const handleQuickAddAgent = (suggestedRole?: string) => {
+    if (!activeProject || isGenerating) return;
+    authorization.current = { projectId: activeProject.id, type: "hire" };
     const prompt = suggestedRole
       ? `Help me create a new agent with specialization: ${suggestedRole}.`
       : t("projects.hireAgentPrompt", undefined, "I would like to hire a new agent for our project.");
@@ -1721,10 +1569,12 @@ TASK EXECUTION PROTOCOLS:
 
   // Quick Action: Pre-fill & send "Fire Agent" request to Orchestrator
   const handleQuickFireAgent = (agent: ProjectAgent) => {
+    if (!activeProject || isGenerating) return;
     if (agent.isOrchestrator) {
-      alert("The Lead Orchestrator cannot be fired.");
+      setProjectError("orchestratorProtected");
       return;
     }
+    authorization.current = { projectId: activeProject.id, type: "fire", agentId: agent.id };
     const prompt = `Fire agent "${agent.name}".`;
     handleSendMessage(prompt);
   };
@@ -1744,6 +1594,11 @@ TASK EXECUTION PROTOCOLS:
 
   return (
     <Layout fullWidth>
+      {projectError && <div role="alert" className="flex items-center gap-3 bg-rose-950 p-3 text-sm text-rose-100">
+        <span>{requestText(projectError)}</span>
+        <button type="button" onClick={() => loadProjects()} className="underline">{requestText("reload")}</button>
+      </div>}
+
       <div className="flex h-[calc(100vh-4rem)] flex-col bg-slate-950 text-slate-100">
         {/* TOP WORKSPACE BAR */}
         <header className="flex h-14 items-center justify-between border-b border-slate-800/80 bg-slate-900/60 px-4 backdrop-blur">
@@ -1756,6 +1611,7 @@ TASK EXECUTION PROTOCOLS:
                 className="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm font-medium text-white shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 value={activeProjectId || ""}
                 onChange={(e) => {
+                  authorization.current = null;
                   setActiveProjectId(e.target.value);
                   setSelectedAgentId(null);
                   setSessionMessages(createGreeting(null));
@@ -2343,6 +2199,9 @@ TASK EXECUTION PROTOCOLS:
               <>
                 {/* Inspector Navigation Tabs */}
                 <div className="flex border-b border-slate-800/80 bg-slate-900/80 text-[11px] font-semibold">
+              <button onClick={() => setActiveRightTab("requests")} className={`flex-1 py-2.5 px-1 ${activeRightTab === "requests" ? "border-b-2 border-primary text-white" : "text-slate-400"}`}>
+                {requestText("tab")} ({activeProject.requests?.length ?? 0})
+              </button>
               <button
                 onClick={() => setActiveRightTab("agent")}
                 className={`flex-1 py-2.5 text-center transition-colors ${
@@ -2385,6 +2244,31 @@ TASK EXECUTION PROTOCOLS:
               </button>
             </div>
 
+            {activeRightTab === "requests" && <div className="p-3 space-y-4 overflow-y-auto flex-1 text-xs" aria-busy={saving}>
+              <h3 className="font-semibold text-white">{requestText("pending")}</h3>
+              {!(activeProject.requests?.length) && <p className="text-slate-400">{requestText("emptyPending")}</p>}
+              {[...(activeProject.requests ?? [])].reverse().map(request => <div key={request.id} className="rounded border border-slate-700 p-3 space-y-2">
+                <strong>{requestText(request.action.type)}</strong>
+                <p>{"agent" in request.action ? `${request.action.agent.name} — ${request.action.agent.role}` : request.action.file.filename}</p>
+                {"agent" in request.action && <p className="whitespace-pre-wrap break-words text-slate-400">{request.action.agent.systemPrompt}</p>}
+                <p className="text-slate-400">{request.origin.agentName || requestText("user")} · {new Date(request.createdAt).toLocaleString()}</p>
+                <div className="flex gap-3">
+                  <button disabled={saving} onClick={() => mutateProject(activeProject.id, `/requests/${request.id}/accept`)} className="text-emerald-300 disabled:opacity-40">{requestText("accept")}</button>
+                  <button disabled={saving} onClick={() => mutateProject(activeProject.id, `/requests/${request.id}/deny`)} className="text-rose-300 disabled:opacity-40">{requestText("deny")}</button>
+                </div>
+              </div>)}
+              <h3 className="font-semibold text-white">{requestText("history")}</h3>
+              <p className="text-slate-400">{requestText("retention")}</p>
+              {!(activeProject.history?.length) && <p className="text-slate-400">{requestText("emptyHistory")}</p>}
+              {[...(activeProject.history ?? [])].reverse().map(entry => <div key={entry.id} className="rounded border border-slate-700 p-3 space-y-2">
+                <strong>{requestText(entry.action.type)}</strong>
+                <p>{"agent" in entry.action ? entry.action.agent.name : entry.action.file.filename}</p>
+                <p>{requestText(entry.status)}</p>
+                <p className="text-slate-400">{entry.origin.agentName || requestText("user")} · {new Date(entry.resolvedAt).toLocaleString()}</p>
+                <button disabled={saving || entry.status === "undone"} onClick={() => mutateProject(activeProject.id, `/history/${entry.id}/undo`)} className="text-cyan-300 disabled:opacity-40">{requestText("undo")}</button>
+              </div>)}
+            </div>}
+
             {/* TAB 1: AGENT INSPECTOR */}
             {activeRightTab === "agent" && (
               <div className="p-4 space-y-4 overflow-y-auto flex-1 text-xs">
@@ -2402,15 +2286,13 @@ TASK EXECUTION PROTOCOLS:
 
                     <div className="space-y-1.5">
                       <label className="text-slate-400 font-semibold">{t("projects.agentRole", undefined, "Role & Specialization")}</label>
-                      <input
-                        type="text"
+                      <ProjectTextField
+
+                        key={`${activeProject.id}:${selectedAgent.id}:agent-role`}
                         value={selectedAgent.role}
-                        onChange={(e) => {
+                        onSave={(value) => {
                           if (!activeProject) return;
-                          const updated = activeProject.agents.map((a) =>
-                            a.id === selectedAgent.id ? { ...a, role: e.target.value } : a,
-                          );
-                          updateProjectInStateAndServer({ ...activeProject, agents: updated });
+                          return mutateProject(activeProject.id, `/agents/${selectedAgent.id}`, { role: value }, "PATCH");
                         }}
                         className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-white"
                       />
@@ -2418,15 +2300,13 @@ TASK EXECUTION PROTOCOLS:
 
                     <div className="space-y-1.5">
                       <label className="text-slate-400 font-semibold">{t("projects.agentPrompt", undefined, "System Prompt")}</label>
-                      <textarea
+                      <ProjectTextField multiline
                         rows={6}
+                        key={`${activeProject.id}:${selectedAgent.id}:agent-prompt`}
                         value={selectedAgent.systemPrompt}
-                        onChange={(e) => {
+                        onSave={(value) => {
                           if (!activeProject) return;
-                          const updated = activeProject.agents.map((a) =>
-                            a.id === selectedAgent.id ? { ...a, systemPrompt: e.target.value } : a,
-                          );
-                          updateProjectInStateAndServer({ ...activeProject, agents: updated });
+                          return mutateProject(activeProject.id, `/agents/${selectedAgent.id}`, { systemPrompt: value }, "PATCH");
                         }}
                         className="w-full rounded-md border border-slate-700 bg-slate-800 p-2.5 text-white font-mono text-xs leading-relaxed"
                       />
@@ -2592,15 +2472,16 @@ TASK EXECUTION PROTOCOLS:
 
                     <div className="space-y-1.5">
                       <label className="text-slate-400 font-semibold">{t("projects.taskTitle", undefined, "Task Title")}</label>
-                      <input
-                        type="text"
+                      <ProjectTextField
+
+                        key={`${activeProject.id}:${selectedTask.id}:task-title`}
                         value={selectedTask.title}
-                        onChange={(e) => {
+                        onSave={(value) => {
                           if (!activeProject) return;
                           const updated = activeProject.tasks.map((t) =>
-                            t.id === selectedTask.id ? { ...t, title: e.target.value, updatedAt: new Date().toISOString() } : t,
+                            t.id === selectedTask.id ? { ...t, title: value, updatedAt: new Date().toISOString() } : t,
                           );
-                          updateProjectInStateAndServer({ ...activeProject, tasks: updated });
+                          return updateProjectInStateAndServer({ ...activeProject, tasks: updated });
                         }}
                         className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-white"
                       />
@@ -2608,16 +2489,17 @@ TASK EXECUTION PROTOCOLS:
 
                     <div className="space-y-1.5">
                       <label className="text-slate-400 font-semibold">{t("projects.taskDescription", undefined, "Task Description")}</label>
-                      <textarea
+                      <ProjectTextField multiline
                         rows={3}
+                        key={`${activeProject.id}:${selectedTask.id}:task-description`}
                         value={selectedTask.description || ""}
                         placeholder="Detailed task objectives, requirements, and instructions for the agent..."
-                        onChange={(e) => {
+                        onSave={(value) => {
                           if (!activeProject) return;
                           const updated = activeProject.tasks.map((t) =>
-                            t.id === selectedTask.id ? { ...t, description: e.target.value, updatedAt: new Date().toISOString() } : t,
+                            t.id === selectedTask.id ? { ...t, description: value, updatedAt: new Date().toISOString() } : t,
                           );
-                          updateProjectInStateAndServer({ ...activeProject, tasks: updated });
+                          return updateProjectInStateAndServer({ ...activeProject, tasks: updated });
                         }}
                         className="w-full rounded-md border border-slate-700 bg-slate-800 p-2.5 text-white text-xs"
                       />
@@ -2766,20 +2648,22 @@ TASK EXECUTION PROTOCOLS:
                   <>
                     <div className="space-y-1.5">
                       <label className="text-slate-400 font-semibold">{t("projects.projectName", undefined, "Project Name")}</label>
-                      <input
-                        type="text"
+                      <ProjectTextField
+
+                        key={`${activeProject.id}:${activeProject.id}:project-name`}
                         value={activeProject.name}
-                        onChange={(e) => updateProjectInStateAndServer({ ...activeProject, name: e.target.value })}
+                        onSave={(value) => updateProjectInStateAndServer({ ...activeProject, name: value })}
                         className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-white"
                       />
                     </div>
 
                     <div className="space-y-1.5">
                       <label className="text-slate-400 font-semibold">{t("projects.projectDescription", undefined, "Description")}</label>
-                      <textarea
+                      <ProjectTextField multiline
                         rows={3}
+                        key={`${activeProject.id}:${activeProject.id}:project-description`}
                         value={activeProject.description}
-                        onChange={(e) => updateProjectInStateAndServer({ ...activeProject, description: e.target.value })}
+                        onSave={(value) => updateProjectInStateAndServer({ ...activeProject, description: value })}
                         className="w-full rounded-md border border-slate-700 bg-slate-800 p-2 text-white"
                       />
                     </div>
