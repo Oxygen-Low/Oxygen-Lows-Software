@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
 import { DefenderClient } from "./webdefender.js";
-import { createDefender } from "./hono.js";
 
 describe("WebDefender path exclusions and skipBodyScanPaths", () => {
   const mockAppConfig = {
@@ -66,7 +65,12 @@ describe("WebDefender path exclusions and skipBodyScanPaths", () => {
       path: "/api/ai/proxy",
       query: {},
       body: JSON.stringify({
-        messages: [{ role: "user", content: "How do I connect to http://127.0.0.1:11434?" }],
+        messages: [
+          {
+            role: "user",
+            content: "How do I connect to http://127.0.0.1:11434?",
+          },
+        ],
       }),
       headers: {},
       userAgent: "Mozilla/5.0",
