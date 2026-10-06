@@ -272,94 +272,91 @@ storageRouter.post("/upload-chunk/:bucket/*", authMiddleware, async (c) => {
     const chunkPath = assertSafeStoragePath(tmpDir, `chunk_${chunkIndex}`);
     fs.writeFileSync(chunkPath, buffer);
 
-    // If this is the last chunk
-    if (chunkIndex === totalChunks - 1) {
-      // Check if all chunks from 0 to totalChunks - 1 exist
-      const readPromises: Promise<Buffer>[] = [];
-      for (let i = 0; i < totalChunks; i++) {
-        const p = assertSafeStoragePath(tmpDir, `chunk_${i}`);
-        if (!fs.existsSync(p)) {
-          return c.json({
-            data: { chunkIndex, status: "pending" },
-            error: null,
-          });
-        }
-        readPromises.push(fs.promises.readFile(p));
+    // Any chunk can complete the upload when requests arrive out of order.
+    const chunkPaths: string[] = [];
+    for (let i = 0; i < totalChunks; i++) {
+      const p = assertSafeStoragePath(tmpDir, `chunk_${i}`);
+      if (!fs.existsSync(p)) {
+        return c.json({
+          data: { chunkIndex, status: "pending" },
+          error: null,
+        });
       }
-
-      const assembledChunks = await Promise.all(readPromises);
-      const completeBuffer = Buffer.concat(assembledChunks);
-      if (completeBuffer.length !== totalSize || getUserTotalSize(user.id) + completeBuffer.length > MAX_USER_QUOTA) {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-        return c.json({ error: "Quota exceeded" }, 400);
-      }
-
-      // Safety Inspection for Uploaded Media
-      const mime = getMimeType(filePath);
-      if (mime.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(filePath)) {
-        const scanResult = await scanImage(completeBuffer, mime);
-        if (!scanResult.safe && scanResult.severity >= 2) {
-          try {
-            fs.rmSync(tmpDir, { recursive: true, force: true });
-          } catch {}
-          const ip = extractClientIp(c);
-          const userAgent = c.req.header("user-agent");
-          const lockdown = await executeZeroToleranceLockdown({
-            ip,
-            user,
-            userAgent,
-            surface: "storage_chunked_upload",
-            fileName: filePath,
-            fileHash: scanResult.details?.hash,
-            mimeType: mime,
-            severity: scanResult.severity,
-            reason: scanResult.reason || "Uploaded chunked image flagged by child safety scanner",
-          });
-          return c.json(lockdown.clientResponse, 400);
-        }
-
-        // Post-CSAM OpenAI Image Moderation
-        const openAiChunkScan = await moderateImage(completeBuffer, mime);
-        if (!openAiChunkScan.allowed) {
-          try {
-            fs.rmSync(tmpDir, { recursive: true, force: true });
-          } catch {}
-          const ip = extractClientIp(c);
-          const userAgent = c.req.header("user-agent");
-          const enforcement = await handleModerationEnforcement(openAiChunkScan, {
-            ip,
-            user,
-            userAgent,
-            surface: "storage_chunked_upload",
-            fileName: filePath,
-            fileHash: scanResult.details?.hash,
-            mimeType: mime,
-          });
-          if (enforcement) {
-            return c.json(enforcement.clientResponse, 400);
-          }
-        }
-      }
-
-      const { data, error } = await serverStorage.upload(
-        bucket,
-        filePath,
-        completeBuffer,
-      );
-
-      // Clean up tmp files
-      try {
-        fs.rmSync(tmpDir, { recursive: true, force: true });
-      } catch {}
-
-      if (error) {
-        return c.json({ error: error.message }, 500);
-      }
-
-      return c.json({ data, error: null });
+      chunkPaths.push(p);
     }
 
-    return c.json({ data: { chunkIndex, status: "uploaded" }, error: null });
+    const assembledChunks = await Promise.all(
+      chunkPaths.map((p) => fs.promises.readFile(p)),
+    );
+    const completeBuffer = Buffer.concat(assembledChunks);
+    if (completeBuffer.length !== totalSize || getUserTotalSize(user.id) + completeBuffer.length > MAX_USER_QUOTA) {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      return c.json({ error: "Quota exceeded" }, 400);
+    }
+
+    // Safety Inspection for Uploaded Media
+    const mime = getMimeType(filePath);
+    if (mime.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(filePath)) {
+      const scanResult = await scanImage(completeBuffer, mime);
+      if (!scanResult.safe && scanResult.severity >= 2) {
+        try {
+          fs.rmSync(tmpDir, { recursive: true, force: true });
+        } catch {}
+        const ip = extractClientIp(c);
+        const userAgent = c.req.header("user-agent");
+        const lockdown = await executeZeroToleranceLockdown({
+          ip,
+          user,
+          userAgent,
+          surface: "storage_chunked_upload",
+          fileName: filePath,
+          fileHash: scanResult.details?.hash,
+          mimeType: mime,
+          severity: scanResult.severity,
+          reason: scanResult.reason || "Uploaded chunked image flagged by child safety scanner",
+        });
+        return c.json(lockdown.clientResponse, 400);
+      }
+
+      // Post-CSAM OpenAI Image Moderation
+      const openAiChunkScan = await moderateImage(completeBuffer, mime);
+      if (!openAiChunkScan.allowed) {
+        try {
+          fs.rmSync(tmpDir, { recursive: true, force: true });
+        } catch {}
+        const ip = extractClientIp(c);
+        const userAgent = c.req.header("user-agent");
+        const enforcement = await handleModerationEnforcement(openAiChunkScan, {
+          ip,
+          user,
+          userAgent,
+          surface: "storage_chunked_upload",
+          fileName: filePath,
+          fileHash: scanResult.details?.hash,
+          mimeType: mime,
+        });
+        if (enforcement) {
+          return c.json(enforcement.clientResponse, 400);
+        }
+      }
+    }
+
+    const { data, error } = await serverStorage.upload(
+      bucket,
+      filePath,
+      completeBuffer,
+    );
+
+    // Clean up tmp files
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch {}
+
+    if (error) {
+      return c.json({ error: error.message }, 500);
+    }
+
+    return c.json({ data, error: null });
   } catch (err: any) {
     return c.json({ error: err.message || "Chunk upload failed" }, 500);
   }
