@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Hono } from "hono";
-import { defenderRouter, torDetector, vpnDetector, threatActorDetector } from "./webdefender.ts";
+import {
+  defenderRouter,
+  torDetector,
+  threatActorDetector,
+} from "./webdefender.ts";
 import { insertTable, initUserFolder } from "../lib/dataStore.ts";
 import { DEFENDER_BANS_OWNER_ID } from "../lib/defenderBannedIps.ts";
 
@@ -32,14 +36,18 @@ describe("Web Defender Known Threats API", () => {
     });
 
     it("returns 400 when ip is not a valid IP format in GET", async () => {
-      const res = await app.request("/api/webdefender/known-threats?ip=not-an-ip");
+      const res = await app.request(
+        "/api/webdefender/known-threats?ip=not-an-ip",
+      );
       expect(res.status).toBe(400);
       const data = await res.json();
       expect(data.error).toBe("Invalid IP address format");
     });
 
     it("returns 400 when ip octets are out of range", async () => {
-      const res = await app.request("/api/webdefender/known-threats?ip=999.999.999.999");
+      const res = await app.request(
+        "/api/webdefender/known-threats?ip=999.999.999.999",
+      );
       expect(res.status).toBe(400);
       const data = await res.json();
       expect(data.error).toBe("Invalid IP address format");
@@ -81,7 +89,9 @@ describe("Web Defender Known Threats API", () => {
 
   describe("Threat Detection", () => {
     it("returns false flags for a clean, unknown IP", async () => {
-      const res = await app.request("/api/webdefender/known-threats?ip=8.8.8.8");
+      const res = await app.request(
+        "/api/webdefender/known-threats?ip=8.8.8.8",
+      );
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data).toEqual({
@@ -99,7 +109,9 @@ describe("Web Defender Known Threats API", () => {
     });
 
     it("supports valid IPv6 addresses", async () => {
-      const res = await app.request("/api/webdefender/known-threats?ip=2001:0db8:85a3:0000:0000:8a2e:0370:7334");
+      const res = await app.request(
+        "/api/webdefender/known-threats?ip=2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+      );
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.ip).toBe("2001:0db8:85a3:0000:0000:8a2e:0370:7334");
@@ -122,19 +134,25 @@ describe("Web Defender Known Threats API", () => {
         DEFENDER_BANS_OWNER_ID,
       );
 
-      const res = await app.request("/api/webdefender/known-threats?ip=" + bannedIp);
+      const res = await app.request(
+        "/api/webdefender/known-threats?ip=" + bannedIp,
+      );
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.is_known_threat).toBe(true);
       expect(data.details.banned).toBe(true);
-      expect(data.details.banned_reason).toBe("Active credential stuffing node");
+      expect(data.details.banned_reason).toBe(
+        "Active credential stuffing node",
+      );
     });
 
     it("identifies known threat actors as known threats", async () => {
       const threatIp = "192.0.2.200";
       threatActorDetector.addThreatIp("bruteforce", threatIp);
 
-      const res = await app.request("/api/webdefender/known-threats?ip=" + threatIp);
+      const res = await app.request(
+        "/api/webdefender/known-threats?ip=" + threatIp,
+      );
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.is_known_threat).toBe(true);
@@ -146,7 +164,9 @@ describe("Web Defender Known Threats API", () => {
       const torIp = "198.51.100.50";
       torDetector.addExitNode(torIp);
 
-      const res = await app.request("/api/webdefender/known-threats?ip=" + torIp);
+      const res = await app.request(
+        "/api/webdefender/known-threats?ip=" + torIp,
+      );
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.is_tor).toBe(true);
@@ -155,7 +175,9 @@ describe("Web Defender Known Threats API", () => {
     it("identifies established Tor exit nodes from seed data and TOR subnets", async () => {
       const torIps = ["185.220.101.5", "198.96.155.3", "171.25.193.20"];
       for (const ip of torIps) {
-        const res = await app.request("/api/webdefender/known-threats?ip=" + ip);
+        const res = await app.request(
+          "/api/webdefender/known-threats?ip=" + ip,
+        );
         expect(res.status).toBe(200);
         const data = await res.json();
         expect(data.is_tor).toBe(true);
@@ -166,7 +188,9 @@ describe("Web Defender Known Threats API", () => {
     it("correctly identifies standard cloud infrastructure and public DNS as not VPN", async () => {
       const nonVpnIps = ["8.8.8.8", "54.239.28.85", "142.250.190.46"];
       for (const ip of nonVpnIps) {
-        const res = await app.request("/api/webdefender/known-threats?ip=" + ip);
+        const res = await app.request(
+          "/api/webdefender/known-threats?ip=" + ip,
+        );
         expect(res.status).toBe(200);
         const data = await res.json();
         expect(data.is_vpn).toBe(false);
@@ -175,7 +199,9 @@ describe("Web Defender Known Threats API", () => {
 
     it("identifies known VPN networks", async () => {
       const vpnIp = "198.7.58.196";
-      const res = await app.request("/api/webdefender/known-threats?ip=" + vpnIp);
+      const res = await app.request(
+        "/api/webdefender/known-threats?ip=" + vpnIp,
+      );
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.is_vpn).toBe(true);
@@ -200,18 +226,24 @@ describe("Web Defender Known Threats API", () => {
       const testIpHeader = { "x-forwarded-for": "203.0.113.99" };
       // Rapidly make 5000 requests
       for (let i = 0; i < 5000; i++) {
-        const res = await app.request("/api/webdefender/known-threats?ip=8.8.8.8", {
-          headers: testIpHeader,
-        });
+        const res = await app.request(
+          "/api/webdefender/known-threats?ip=8.8.8.8",
+          {
+            headers: testIpHeader,
+          },
+        );
         if (i === 0) {
           expect(res.status).toBe(200);
         }
       }
 
       // 5001st request should be rate limited (429)
-      const blockedRes = await app.request("/api/webdefender/known-threats?ip=8.8.8.8", {
-        headers: testIpHeader,
-      });
+      const blockedRes = await app.request(
+        "/api/webdefender/known-threats?ip=8.8.8.8",
+        {
+          headers: testIpHeader,
+        },
+      );
       expect(blockedRes.status).toBe(429);
       expect(blockedRes.headers.get("Retry-After")).toBeDefined();
       const body = await blockedRes.json();
