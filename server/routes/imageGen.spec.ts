@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { imageGenRouter, HORDE_SFW_CURATED } from "./imageGen.ts";
+import { imageGenRouter } from "./imageGen.ts";
 import { CSAM_TEST_CANARY } from "../lib/safety/csamGuard.ts";
 
 describe("Image Generation Router", () => {
