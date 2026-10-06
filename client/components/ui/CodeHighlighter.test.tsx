@@ -1,9 +1,13 @@
 /** @vitest-environment jsdom */
-import { render, screen, waitFor } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
+import { afterEach, describe, it, expect } from "vitest";
+import { loadGrammars } from "@/lib/prism";
 import { CodeHighlighter } from "./CodeHighlighter";
 
 describe("CodeHighlighter", () => {
+  // Vitest globals are disabled, so Testing Library cannot register auto-cleanup.
+  afterEach(cleanup);
+
   it("renders code with Prism syntax highlighting", async () => {
     const code = `const greeting = "Hello, world!";`;
     const { container } = render(
@@ -24,28 +28,31 @@ describe("CodeHighlighter", () => {
     });
   });
 
-  it("handles plaintext or unknown languages safely", () => {
+  it("handles plaintext or unknown languages safely", async () => {
     const raw = `<div>Hello & goodbye</div>`;
-    const { container } = render(
-      <CodeHighlighter language="unknownlang">{raw}</CodeHighlighter>,
-    );
+    // Wait for the grammar update even though plaintext does not gain tokens.
+    await act(async () => {
+      render(<CodeHighlighter language="unknownlang">{raw}</CodeHighlighter>);
+      await loadGrammars();
+    });
 
-    const codeElement = container.querySelector("code");
+    const codeElement = document.querySelector("code");
     expect(codeElement?.textContent).toBe("<div>Hello & goodbye</div>");
   });
 
-  it("handles code prop directly", () => {
+  it("handles code prop directly", async () => {
     const code = `function add(a: number, b: number) { return a + b; }`;
-    const { container } = render(
-      <CodeHighlighter language="ts" code={code} />,
-    );
+    const { container } = render(<CodeHighlighter language="ts" code={code} />);
 
     const codeElement = container.querySelector("code");
     expect(codeElement?.className).toContain("language-typescript");
     expect(codeElement?.textContent).toContain("add(a: number, b: number)");
+    await waitFor(() => {
+      expect(codeElement?.querySelector(".token")).not.toBeNull();
+    });
   });
 
-  it("supports PreTag override", () => {
+  it("supports PreTag override", async () => {
     const { container } = render(
       <CodeHighlighter language="json" PreTag="div">
         {`{"key": "value"}`}
@@ -54,5 +61,8 @@ describe("CodeHighlighter", () => {
 
     const divElement = container.querySelector("div.code-highlighter-root");
     expect(divElement).not.toBeNull();
+    await waitFor(() => {
+      expect(divElement?.querySelector(".token")).not.toBeNull();
+    });
   });
 });
