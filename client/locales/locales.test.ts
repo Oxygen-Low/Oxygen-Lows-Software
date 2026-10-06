@@ -31,6 +31,14 @@ describe("All Locales Verification", () => {
     { code: "ru", name: "Russian", flag: "🇷🇺", countryCode: "ru", dict: ru },
   ];
 
+  it("provides all project request labels in every locale", () => {
+    for (const { dict } of allLocales) {
+      for (const key of Object.keys(en.projects.requests)) {
+        expect(dict.projects.requests[key]).toEqual(expect.any(String));
+      }
+    }
+  });
+
   it("provides every character review label in every locale", () => {
     for (const { dict } of allLocales) {
       for (const key of Object.keys(en.characters.aiReview)) {
