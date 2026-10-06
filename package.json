@@ -84,7 +84,7 @@
     "@radix-ui/react-tooltip": "^1.2.16",
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.8.1",
-    "@swc/core": "^1.16.2",
+    "@swc/core": "^1.16.13",
     "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "4.3.3",
     "@tanstack/react-query": "^5.104.0",
