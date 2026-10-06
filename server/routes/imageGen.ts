@@ -1,11 +1,13 @@
 import { Hono } from "hono";
 import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
-import { queryTable } from "../lib/dataStore.ts";
 import { serverStorage } from "../lib/storage.ts";
 import { extractBearerToken, stripHtmlTags } from "./ai.ts";
 import { scanText, scanImage } from "../lib/safety/csamGuard.ts";
-import { executeZeroToleranceLockdown, extractClientIp } from "../lib/safety/enforcement.ts";
+import {
+  executeZeroToleranceLockdown,
+  extractClientIp,
+} from "../lib/safety/enforcement.ts";
 import {
   moderateText,
   moderateImage,
@@ -32,9 +34,11 @@ export const IMAGE_GENERATOR_PRESETS: CuratedModelPreset[] = [
   {
     id: "quality",
     name: "Quality",
-    description: "High-resolution photorealistic checkpoint with maximum detail and clarity",
+    description:
+      "High-resolution photorealistic checkpoint with maximum detail and clarity",
     baseHordeModel: "SDXL 1.0",
-    stylePrompt: "masterpiece, ultra detailed, sharp focus, 8k resolution, high fidelity",
+    stylePrompt:
+      "masterpiece, ultra detailed, sharp focus, 8k resolution, high fidelity",
     negativePromptAdditions: "blurry, low quality, artifacts, distorted, noisy",
     defaultSteps: 25,
     maxSteps: 30,
@@ -43,10 +47,13 @@ export const IMAGE_GENERATOR_PRESETS: CuratedModelPreset[] = [
   {
     id: "pixel_art",
     name: "Pixel Art",
-    description: "Retro 16-bit pixel graphic and nostalgic arcade game aesthetic",
+    description:
+      "Retro 16-bit pixel graphic and nostalgic arcade game aesthetic",
     baseHordeModel: "stable_diffusion",
-    stylePrompt: "pixel art, 16-bit pixel graphic, detailed pixelated style, retro game sprite aesthetic",
-    negativePromptAdditions: "photorealistic, 3D render, realistic photo, smooth gradients, vector, blurry",
+    stylePrompt:
+      "pixel art, 16-bit pixel graphic, detailed pixelated style, retro game sprite aesthetic",
+    negativePromptAdditions:
+      "photorealistic, 3D render, realistic photo, smooth gradients, vector, blurry",
     defaultSteps: 20,
     maxSteps: 30,
     aspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
@@ -54,7 +61,8 @@ export const IMAGE_GENERATOR_PRESETS: CuratedModelPreset[] = [
   {
     id: "fast",
     name: "Fast",
-    description: "Rapid lightweight generation optimized for quick previews and speed",
+    description:
+      "Rapid lightweight generation optimized for quick previews and speed",
     baseHordeModel: "stable_diffusion",
     stylePrompt: "",
     negativePromptAdditions: "blurry, low quality",
@@ -65,10 +73,13 @@ export const IMAGE_GENERATOR_PRESETS: CuratedModelPreset[] = [
   {
     id: "anime",
     name: "Anime",
-    description: "Vibrant studio anime artwork with clean lines and stylized shading",
+    description:
+      "Vibrant studio anime artwork with clean lines and stylized shading",
     baseHordeModel: "DreamShaper",
-    stylePrompt: "anime artwork, anime key visual, studio anime aesthetic, vibrant anime colors, clean lineart",
-    negativePromptAdditions: "photorealistic, real photo, 3D CGI, deformed, disfigured",
+    stylePrompt:
+      "anime artwork, anime key visual, studio anime aesthetic, vibrant anime colors, clean lineart",
+    negativePromptAdditions:
+      "photorealistic, real photo, 3D CGI, deformed, disfigured",
     defaultSteps: 20,
     maxSteps: 30,
     aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
@@ -76,10 +87,13 @@ export const IMAGE_GENERATOR_PRESETS: CuratedModelPreset[] = [
   {
     id: "realistic",
     name: "Realistic",
-    description: "Authentic 35mm photographic realism with natural depth and lighting",
+    description:
+      "Authentic 35mm photographic realism with natural depth and lighting",
     baseHordeModel: "ICBINP - I Can't Believe It's Not Photography",
-    stylePrompt: "photorealistic, 35mm photography, realistic lighting, highly detailed photograph, RAW photo",
-    negativePromptAdditions: "drawing, painting, illustration, cartoon, anime, 3d render, CGI, unrealistic",
+    stylePrompt:
+      "photorealistic, 35mm photography, realistic lighting, highly detailed photograph, RAW photo",
+    negativePromptAdditions:
+      "drawing, painting, illustration, cartoon, anime, 3d render, CGI, unrealistic",
     defaultSteps: 25,
     maxSteps: 30,
     aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
@@ -87,10 +101,13 @@ export const IMAGE_GENERATOR_PRESETS: CuratedModelPreset[] = [
   {
     id: "cartoon",
     name: "Cartoon",
-    description: "Playful character designs, expressive shapes, and bold cartoon colors",
+    description:
+      "Playful character designs, expressive shapes, and bold cartoon colors",
     baseHordeModel: "Deliberate",
-    stylePrompt: "cartoon illustration, vibrant cartoon style, expressive stylized character, 2D animation art",
-    negativePromptAdditions: "photorealistic, real life photo, 3D render, dark, gritty",
+    stylePrompt:
+      "cartoon illustration, vibrant cartoon style, expressive stylized character, 2D animation art",
+    negativePromptAdditions:
+      "photorealistic, real life photo, 3D render, dark, gritty",
     defaultSteps: 20,
     maxSteps: 30,
     aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
@@ -98,10 +115,13 @@ export const IMAGE_GENERATOR_PRESETS: CuratedModelPreset[] = [
   {
     id: "simplistic",
     name: "simplistic",
-    description: "Clean minimalist design with simple shapes, flat colors, and elegant lines",
+    description:
+      "Clean minimalist design with simple shapes, flat colors, and elegant lines",
     baseHordeModel: "stable_diffusion",
-    stylePrompt: "simplistic minimalist illustration, flat art style, clean simple shapes, minimalist design, elegant minimalism",
-    negativePromptAdditions: "cluttered, busy, complex background, hyperdetailed, photorealistic, chaotic",
+    stylePrompt:
+      "simplistic minimalist illustration, flat art style, clean simple shapes, minimalist design, elegant minimalism",
+    negativePromptAdditions:
+      "cluttered, busy, complex background, hyperdetailed, photorealistic, chaotic",
     defaultSteps: 20,
     maxSteps: 30,
     aspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
@@ -212,7 +232,10 @@ imageGenRouter.post("/generate", imageLimiter, async (c) => {
     return c.json({ error: "Prompt is required" }, 400);
   }
   if (prompt.length > 2000) {
-    return c.json({ error: "Prompt exceeds maximum length of 2000 characters" }, 400);
+    return c.json(
+      { error: "Prompt exceeds maximum length of 2000 characters" },
+      400,
+    );
   }
 
   const negative_prompt = rawNegPrompt
@@ -248,7 +271,9 @@ imageGenRouter.post("/generate", imageLimiter, async (c) => {
       surface: "image_gen_prompt",
       promptText: prompt,
       severity: textSafetyResult.severity,
-      reason: textSafetyResult.reason || "Prohibited minor safety or child exploitation pattern in prompt",
+      reason:
+        textSafetyResult.reason ||
+        "Prohibited minor safety or child exploitation pattern in prompt",
     });
     return c.json(lockdown.clientResponse, 400);
   }
@@ -280,8 +305,12 @@ imageGenRouter.post("/generate", imageLimiter, async (c) => {
         p.name.toLowerCase() === requestedModel.toLowerCase(),
     );
 
-    const baseHordeModel = matchedPreset ? matchedPreset.baseHordeModel : requestedModel;
-    const responseModelName = matchedPreset ? matchedPreset.name : requestedModel;
+    const baseHordeModel = matchedPreset
+      ? matchedPreset.baseHordeModel
+      : requestedModel;
+    const responseModelName = matchedPreset
+      ? matchedPreset.name
+      : requestedModel;
 
     // Enhance prompt with preset style if applicable
     let enhancedPrompt = prompt;
@@ -293,7 +322,8 @@ imageGenRouter.post("/generate", imageLimiter, async (c) => {
     }
 
     // Enhance negative prompt with preset exclusions and server-enforced child safety exclusions
-    const SERVER_SAFETY_NEGATIVE = "child, minor, underage, infant, sexual, nsfw";
+    const SERVER_SAFETY_NEGATIVE =
+      "child, minor, underage, infant, sexual, nsfw";
     let enhancedNegativePrompt = negative_prompt;
     if (matchedPreset?.negativePromptAdditions) {
       if (enhancedNegativePrompt) {
@@ -330,15 +360,18 @@ imageGenRouter.post("/generate", imageLimiter, async (c) => {
     };
 
     try {
-      const response = await fetch("https://stablehorde.net/api/v2/generate/async", {
-        method: "POST",
-        headers: {
-          apikey: hordeApiKey,
-          "Client-Agent": "OxygenLowsSoftware:1.0:image-gen",
-          "Content-Type": "application/json",
+      const response = await fetch(
+        "https://stablehorde.net/api/v2/generate/async",
+        {
+          method: "POST",
+          headers: {
+            apikey: hordeApiKey,
+            "Client-Agent": "OxygenLowsSoftware:1.0:image-gen",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(hordePayload),
         },
-        body: JSON.stringify(hordePayload),
-      });
+      );
 
       if (!response.ok) {
         const errorData: any = await response.json().catch(() => ({}));
@@ -475,14 +508,16 @@ imageGenRouter.get("/status/:id", imageLimiter, async (c) => {
             surface: "image_gen_output",
             fileHash: safetyCheck.details?.hash,
             severity: safetyCheck.severity,
-            reason: safetyCheck.reason || "Generated image failed safety inspection",
+            reason:
+              safetyCheck.reason || "Generated image failed safety inspection",
           });
 
           return c.json(
             {
               done: true,
               faulted: true,
-              error: "Generated image was permanently blocked due to safety policy violation.",
+              error:
+                "Generated image was permanently blocked due to safety policy violation.",
             },
             400,
           );
@@ -579,7 +614,11 @@ imageGenRouter.post("/save-to-storage", imageLimiter, async (c) => {
         return c.json({ error: "Invalid data URL format" }, 400);
       }
       const mime = match[1];
-      ext = mime.includes("webp") ? "webp" : mime.includes("jpeg") ? "jpg" : "png";
+      ext = mime.includes("webp")
+        ? "webp"
+        : mime.includes("jpeg")
+          ? "jpg"
+          : "png";
       buffer = Buffer.from(match[2], "base64");
     } else if (image.startsWith("http")) {
       // Remote URL (e.g. AI Horde R2 image)
@@ -590,7 +629,11 @@ imageGenRouter.post("/save-to-storage", imageLimiter, async (c) => {
       const arrayBuf = await res.arrayBuffer();
       buffer = Buffer.from(arrayBuf);
       const contentType = res.headers.get("content-type") || "";
-      ext = contentType.includes("webp") ? "webp" : contentType.includes("jpeg") ? "jpg" : "png";
+      ext = contentType.includes("webp")
+        ? "webp"
+        : contentType.includes("jpeg")
+          ? "jpg"
+          : "png";
     } else {
       buffer = Buffer.from(image, "base64");
     }
@@ -607,7 +650,9 @@ imageGenRouter.post("/save-to-storage", imageLimiter, async (c) => {
         surface: "image_gen_save",
         fileHash: saveCheck.details?.hash,
         severity: saveCheck.severity,
-        reason: saveCheck.reason || "Attempted to persist prohibited image to storage",
+        reason:
+          saveCheck.reason ||
+          "Attempted to persist prohibited image to storage",
       });
       return c.json(lockdown.clientResponse, 400);
     }
