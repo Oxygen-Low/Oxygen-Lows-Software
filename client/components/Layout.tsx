@@ -296,7 +296,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               href="https://trello.com/b/OmFTZeVK/oxygen-lows-software-development"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden lg:inline-flex px-2.5 py-0.5 text-xs font-bold text-yellow-900 bg-yellow-400 hover:bg-yellow-300 transition-colors rounded-md uppercase tracking-wide cursor-pointer shrink-0"
+              className="hidden sm:inline-flex px-2.5 py-0.5 text-xs font-bold text-yellow-900 bg-yellow-400 hover:bg-yellow-300 transition-colors rounded-md uppercase tracking-wide cursor-pointer shrink-0"
             >
               {t("nav.beta", undefined, "Beta")}
             </a>
@@ -313,7 +313,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               href="https://discord.gg/tNczTe66jK"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden lg:flex items-center justify-center p-2 rounded-lg bg-[#5865F2] hover:bg-[#4752C4] transition-colors text-white shrink-0"
+              className="hidden sm:flex items-center justify-center p-2 rounded-lg bg-[#5865F2] hover:bg-[#4752C4] transition-colors text-white shrink-0"
               title={t("nav.discord", undefined, "Join our Discord")}
             >
               <svg
