@@ -397,6 +397,10 @@ export const es = {
       "Pollinations devolvió un error 404 (No encontrado). Cambiando a la copia de seguridad de AI Horde ({model}). La calidad puede verse reducida.",
     pollinations404FallbackNotice:
       "Generado a través del respaldo AI Horde ({model}) debido a un error 404 de Pollinations.",
+    pollinations401FallbackWarning:
+      "Pollinations requiere una clave API (HTTP 401). Cambiando a la copia de seguridad de AI Horde ({model}). Puedes añadir una clave de enter.pollinations.ai en Modelos.",
+    pollinations401FallbackNotice:
+      "Generado a través del respaldo AI Horde ({model}) debido al requisito de clave API de Pollinations (401).",
     agentSearchTitle: "BÃºsqueda Agente",
     agentSearchDesc:
       "BÃºsqueda agÃ©ntica impulsada por IA que investiga la web y sintetiza respuestas.",

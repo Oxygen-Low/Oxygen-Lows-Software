@@ -44,6 +44,7 @@ import {
   fetchPollinationsClient,
   PollinationsRateLimitError,
   PollinationsNotFoundError,
+  PollinationsAuthError,
 } from "@/services/pollinationsClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -414,7 +415,17 @@ const ChatMessage = React.memo(
               <div className="w-full max-w-full rounded-lg border border-amber-500/30 bg-amber-500/10 mb-3 px-4 py-2 flex items-center gap-2 text-xs font-mono text-amber-300">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span>
-                  {m.fallbackReason === "not_found"
+                  {m.fallbackReason === "auth_required"
+                    ? t(
+                        "apps.pollinations401FallbackNotice",
+                        {
+                          model:
+                            m.fallbackModel ||
+                            "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+                        },
+                        `Generated via AI Horde (${m.fallbackModel || "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"}) fallback due to Pollinations API key requirement (401).`,
+                      )
+                    : m.fallbackReason === "not_found"
                     ? t(
                         "apps.pollinations404FallbackNotice",
                         {
@@ -1301,11 +1312,16 @@ export function ChatbotApp() {
         if (
           err instanceof PollinationsRateLimitError ||
           err instanceof PollinationsNotFoundError ||
+          err instanceof PollinationsAuthError ||
           err?.statusCode === 429 ||
           err?.statusCode === 404 ||
           err?.statusCode === 402 ||
+          err?.statusCode === 401 ||
+          err?.statusCode === 403 ||
           err?.message?.includes("404") ||
-          err?.message?.includes("402")
+          err?.message?.includes("402") ||
+          err?.message?.includes("401") ||
+          err?.message?.includes("403")
         ) {
           const fetchTitleViaProxy = async (hordeModel: string) => {
             return await fetch("/api/ai/proxy", {
@@ -1535,7 +1551,7 @@ export function ChatbotApp() {
 
     const runHordeFallback = async (
       fallbackModelId: string,
-      reason: "rate_limit" | "not_found" = "rate_limit",
+      reason: "rate_limit" | "not_found" | "auth_required" = "rate_limit",
     ): Promise<string> => {
       onFallback?.(fallbackModelId);
       setAllMessages((prevAll) =>
@@ -1550,7 +1566,15 @@ export function ChatbotApp() {
             : m,
         ),
       );
-      if (reason === "not_found") {
+      if (reason === "auth_required") {
+        toast.warning(
+          t(
+            "apps.pollinations401FallbackWarning",
+            { model: fallbackModelId },
+            `Pollinations requires an API key (HTTP 401). Falling back to AI Horde backup (${fallbackModelId}). You can add a key from enter.pollinations.ai in Models settings.`,
+          ),
+        );
+      } else if (reason === "not_found") {
         toast.warning(
           t(
             "apps.pollinations404FallbackWarning",
@@ -1608,6 +1632,12 @@ export function ChatbotApp() {
         });
         return directContent;
       } catch (err: any) {
+        const is401 =
+          err instanceof PollinationsAuthError ||
+          err?.statusCode === 401 ||
+          err?.statusCode === 403 ||
+          err?.message?.includes("401") ||
+          err?.message?.includes("403");
         const is404 =
           err instanceof PollinationsNotFoundError ||
           err?.statusCode === 404 ||
@@ -1619,8 +1649,10 @@ export function ChatbotApp() {
           err?.statusCode === 402 ||
           err?.message?.includes("402");
 
-        if (is404 || isRateLimit || is402) {
-          const fallbackReason: "rate_limit" | "not_found" = is404
+        if (is401 || is404 || isRateLimit || is402) {
+          const fallbackReason: "rate_limit" | "not_found" | "auth_required" = is401
+            ? "auth_required"
+            : is404
             ? "not_found"
             : "rate_limit";
           try {

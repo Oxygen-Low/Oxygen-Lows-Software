@@ -384,6 +384,10 @@ export const en = {
       "Pollinations returned a 404 (Not Found) error. Falling back to AI Horde backup ({model}). Quality may be decreased.",
     pollinations404FallbackNotice:
       "Generated via AI Horde ({model}) fallback due to Pollinations 404 error.",
+    pollinations401FallbackWarning:
+      "Pollinations requires an API key (HTTP 401). Falling back to AI Horde backup ({model}). You can add a key from enter.pollinations.ai in Models settings.",
+    pollinations401FallbackNotice:
+      "Generated via AI Horde ({model}) fallback due to Pollinations API key requirement (401).",
     agentSearchTitle: "Agent Search",
     agentSearchDesc:
       "AI-powered agentic search that researches the web and synthesizes answers.",

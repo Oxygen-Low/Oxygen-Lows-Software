@@ -383,6 +383,10 @@ export const ko = {
       "Pollinations에서 404(찾을 수 없음) 오류가 발생했습니다. AI Horde({model}) 백업 모델로 대체됩니다. 품질이 저하될 수 있습니다.",
     pollinations404FallbackNotice:
       "Pollinations 404 오류로 인해 AI Horde({model}) 대체 모델을 통해 생성되었습니다.",
+    pollinations401FallbackWarning:
+      "Pollinations는 API 키가 필요합니다 (HTTP 401). AI Horde({model}) 백업 모델로 전환합니다. 모델 설정에서 enter.pollinations.ai의 키를 추가할 수 있습니다.",
+    pollinations401FallbackNotice:
+      "Pollinations API 키 요구 사항(401)으로 인해 AI Horde({model}) 대체 모델을 통해 생성되었습니다.",
     agentSearchTitle: "ì—ì´ì „íŠ¸ ê²€ìƒ‰",
     agentSearchDesc: "ì›¹ì„ ì¡°ì‚¬í•˜ê³  ë‹µë³€ì„ í•©ì„±í•˜ëŠ” AI ê¸°ë°˜ ì—ì´ì „íŠ¸ ê²€ìƒ‰.",
     agentSearchPlaceholder: "ë¬´ì—‡ì„ ì¡°ì‚¬í•˜ì‹œê² ìŠµë‹ˆê¹Œ?",

@@ -365,6 +365,10 @@ export const zhCN = {
       "Pollinations 返回 404 (未找到) 错误。正在回退到 AI Horde ({model}) 备用模型，质量可能会有所下降。",
     pollinations404FallbackNotice:
       "由于 Pollinations 404 错误，已通过 AI Horde ({model}) 备用模型生成。",
+    pollinations401FallbackWarning:
+      "Pollinations 需要 API 密钥 (HTTP 401)。正在回退到 AI Horde ({model}) 备用模型。您可以在模型设置中添加来自 enter.pollinations.ai 的密钥。",
+    pollinations401FallbackNotice:
+      "由于 Pollinations 需要 API 密钥 (401)，已通过 AI Horde ({model}) 备用模型生成。",
     agentSearchTitle: "æ™ºèƒ½æœç´¢",
     agentSearchDesc: "ç”±AIé©±åŠ¨çš„æ™ºèƒ½æœç´¢ï¼Œç ”ç©¶ç½‘ç»œå¹¶ç»¼åˆç­”æ¡ˆã€‚",
     agentSearchPlaceholder: "æ‚¨æƒ³ç ”ç©¶ä»€ä¹ˆï¼Ÿ",

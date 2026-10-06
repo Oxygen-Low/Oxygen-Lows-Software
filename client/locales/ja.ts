@@ -388,6 +388,10 @@ export const ja = {
       "Pollinationsが404エラー（未検出）を返しました。AI Horde（{model}）バックアップに切り替えます。品質が低下する場合があります。",
     pollinations404FallbackNotice:
       "Pollinations 404エラーのため、AI Horde（{model}）バックアップ経由で生成されました。",
+    pollinations401FallbackWarning:
+      "PollinationsにはAPIキーが必要です（HTTP 401）。AI Horde（{model}）バックアップに切り替えます。enter.pollinations.aiからモデル設定でキーを追加できます。",
+    pollinations401FallbackNotice:
+      "PollinationsのAPIキーが必要なため（401）、AI Horde（{model}）バックアップ経由で生成されました。",
     agentSearchTitle: "ã‚¨ãƒ¼ã‚¸ã‚§ãƒ³ãƒˆæ¤œç´¢",
     agentSearchDesc: "ã‚¦ã‚§ãƒ–ã‚’èª¿æŸ»ã—ã€å›žç­”ã‚’åˆæˆã™ã‚‹AIæ­è¼‰ã®ã‚¨ãƒ¼ã‚¸ã‚§ãƒ³ãƒˆæ¤œç´¢ã€‚",
     agentSearchPlaceholder: "ä½•ã‚’èª¿ã¹ãŸã„ã§ã™ã‹ï¼Ÿ",

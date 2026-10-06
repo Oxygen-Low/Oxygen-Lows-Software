@@ -392,6 +392,10 @@ export const ru = {
       "Pollinations вернул ошибку 404 (Не найдено). Выполняется переключение на резервную модель AI Horde ({model}). Качество может снизиться.",
     pollinations404FallbackNotice:
       "Сгенерировано через резервную модель AI Horde ({model}) из-за ошибки 404 в Pollinations.",
+    pollinations401FallbackWarning:
+      "Для Pollinations требуется ключ API (HTTP 401). Выполняется переключение на резервную модель AI Horde ({model}). Вы можете добавить ключ с enter.pollinations.ai в настройках Моделей.",
+    pollinations401FallbackNotice:
+      "Сгенерировано через резервную модель AI Horde ({model}) из-за требования ключа API в Pollinations (401).",
     agentSearchTitle: "ÐÐ³ÐµÐ½Ñ‚ÑÐºÐ¸Ð¹ Ð¿Ð¾Ð¸ÑÐº",
     agentSearchDesc:
       "ÐÐ³ÐµÐ½Ñ‚ÑÐºÐ¸Ð¹ Ð¿Ð¾Ð¸ÑÐº Ð½Ð° Ð¾ÑÐ½Ð¾Ð²Ðµ Ð˜Ð˜, ÐºÐ¾Ñ‚Ð¾Ñ€Ñ‹Ð¹ Ð¸ÑÑÐ»ÐµÐ´ÑƒÐµÑ‚ Ð²ÐµÐ± Ð¸ ÑÐ¸Ð½Ñ‚ÐµÐ·Ð¸Ñ€ÑƒÐµÑ‚ Ð¾Ñ‚Ð²ÐµÑ‚Ñ‹.",
