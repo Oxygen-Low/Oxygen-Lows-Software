@@ -1473,6 +1473,34 @@ describe("ChatbotApp", () => {
       toastWarnSpy.mockRestore();
     }
   });
+
+  it("renders Live voice button and opens Live voice overlay when clicked", async () => {
+    render(
+      <ThemeProvider>
+        <ChatbotApp />
+      </ThemeProvider>,
+    );
+
+    const liveButtons = await screen.findAllByRole("button", {
+      name: /Live Voice Mode/i,
+    });
+    expect(liveButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(liveButtons[0]);
+
+    const liveDialog = await screen.findByRole("dialog", {
+      name: /Live Voice Mode/i,
+    });
+    expect(liveDialog).toBeDefined();
+
+    const endBtn = screen.getAllByRole("button", { name: /End Live Chat/i })[0];
+    fireEvent.click(endBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+  });
 });
+
 
 

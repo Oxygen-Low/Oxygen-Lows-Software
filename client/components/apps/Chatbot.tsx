@@ -31,6 +31,8 @@ import {
   Square,
   ArrowUp,
   AlertTriangle,
+  Radio,
+  Mic,
 } from "lucide-react";
 import {
   fetchImageModels,
@@ -50,6 +52,7 @@ import { db, supabase } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useAiModels, type Model } from "@/hooks/useAiModels";
+import { useLiveVoice } from "@/hooks/useLiveVoice";
 import { WEBSITE_KNOWLEDGE_SYSTEM_PROMPT } from "@shared/websiteKnowledge";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -57,6 +60,7 @@ import remarkGfm from "remark-gfm";
 import { CodeHighlighter } from "@/components/ui/CodeHighlighter";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
 import { ArtifactSidebar } from "./ArtifactSidebar";
+import { LiveVoiceOverlay } from "./Chatbot/LiveVoiceOverlay";
 import { EncryptionRequiredPrompt } from "@/components/EncryptionRequiredPrompt";
 import {
   isCategoryLocked,
@@ -896,7 +900,26 @@ export function ChatbotApp() {
   const lastParsedLengthRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { t } = useTranslation();
+  const { t, languageCode } = useTranslation();
+  const [isLiveOpen, setIsLiveOpen] = useState(false);
+  const isLiveOpenRef = useRef(false);
+  useEffect(() => {
+    isLiveOpenRef.current = isLiveOpen;
+  }, [isLiveOpen]);
+
+  const handleSendMessageRef = useRef<(textOverride?: string) => Promise<void>>(async () => {});
+  const handleStopRef = useRef<() => void>(() => {});
+
+  const liveVoice = useLiveVoice({
+    languageCode,
+    onSendSpeech: (transcript) => {
+      handleSendMessageRef.current(transcript);
+    },
+    onInterrupt: () => {
+      handleStopRef.current();
+    },
+  });
+
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [isWebSearchEnabled, setIsWebSearchEnabled] = useState(false);
   const [isImageGenEnabled, setIsImageGenEnabled] = useState(false);
@@ -1777,6 +1800,9 @@ export function ChatbotApp() {
         if (uni.backstory) injected += `Lore/History: ${uni.backstory}\n`;
       }
     }
+    if (isLiveOpenRef.current) {
+      injected += `\n[VOICE MODE GUIDELINE]\nYou are interacting via Live Voice chat. Keep your response concise, conversational, natural, and friendly so it is easy to listen to when spoken aloud by text-to-speech. Avoid large blocks of code, markdown tables, or excessive formatting unless specifically requested.\n`;
+    }
     return injected;
   };
 
@@ -2223,8 +2249,9 @@ export function ChatbotApp() {
   }
   };
 
-  const handleSendMessage = async () => {
-    if (!input.trim() || isTyping) return;
+  const handleSendMessage = async (textOverride?: string) => {
+    const rawInput = typeof textOverride === "string" ? textOverride : input;
+    if (!rawInput.trim() || isTyping) return;
 
     const isGuest = !session?.user?.id;
     let activeChatId = currentChatId;
@@ -2283,14 +2310,14 @@ export function ChatbotApp() {
     const controller = new AbortController();
     setAbortController(controller);
 
-    const originalInput = input;
+    const originalInput = rawInput;
     const lastMessageId =
       messages.length > 0 ? messages[messages.length - 1].id : null;
     const userMessage: Message = {
       id: "temp-user",
       parent_id: lastMessageId,
       role: "user",
-      content: input,
+      content: rawInput,
     };
     const isFirstMessage = messages.length === 0;
 
@@ -2312,7 +2339,7 @@ export function ChatbotApp() {
       "temp-user": "temp-streaming",
     };
     setActiveChildren(activeChildrenRef.current);
-    setInput("");
+    if (!textOverride) setInput("");
     setIsTyping(true);
     isTypingRef.current = true;
     lastParsedLengthRef.current = 0;
@@ -2498,6 +2525,10 @@ export function ChatbotApp() {
             .eq("id", activeChatId);
         }
 
+        if (isLiveOpenRef.current) {
+          liveVoice.speakText("I have generated the image for you.");
+        }
+
         return;
       }
 
@@ -2626,10 +2657,17 @@ export function ChatbotApp() {
             .eq("id", activeChatId);
           if (chatUpdateError) throw chatUpdateError;
         }
+
+        if (isLiveOpenRef.current && finalContent) {
+          liveVoice.speakText(finalContent);
+        }
       }
     } catch (e: any) {
       toast.error(e.message);
       if (input === "") setInput(originalInput);
+      if (isLiveOpenRef.current && e?.message) {
+        liveVoice.speakText(`Sorry, an error occurred: ${e.message}`);
+      }
       setAllMessages((prev) =>
         prev.filter((m) => m.id !== "temp-streaming" && m.id !== "temp-user"),
       );
@@ -2825,7 +2863,13 @@ export function ChatbotApp() {
     if (abortController) {
       abortController.abort();
     }
+    liveVoice.stopSpeaking();
   };
+
+  useEffect(() => {
+    handleSendMessageRef.current = handleSendMessage;
+    handleStopRef.current = handleStop;
+  });
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -3109,6 +3153,18 @@ export function ChatbotApp() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => {
+                setIsLiveOpen(true);
+                liveVoice.startSession();
+              }}
+              aria-label={t("apps.chatbotLiveMode", undefined, "Live Voice Mode")}
+              title={t("apps.chatbotLiveMode", undefined, "Live Voice Mode")}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-primary/20 via-purple-500/20 to-accent/20 hover:from-primary/30 hover:to-accent/30 text-white text-xs font-medium border border-primary/30 transition-all shadow-sm"
+            >
+              <Radio className="w-3.5 h-3.5 text-primary animate-pulse" />
+              <span>{t("apps.chatbotLiveMode", undefined, "Live")}</span>
+            </button>
             <button
               onClick={handleNewChatClick}
               aria-label="New chat"
@@ -3778,6 +3834,19 @@ export function ChatbotApp() {
                 </div>
                 )}
 
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLiveOpen(true);
+                    liveVoice.startSession();
+                  }}
+                  className="w-10 h-10 rounded-full bg-transparent hover:bg-white/5 flex items-center justify-center text-white/70 hover:text-white transition-colors duration-200 mr-1 flex-shrink-0"
+                  title={t("apps.chatbotLiveMode", undefined, "Live Voice Mode")}
+                  aria-label={t("apps.chatbotLiveMode", undefined, "Live Voice Mode")}
+                >
+                  <Mic className="w-5 h-5" />
+                </button>
+
                 {isTyping ? (
                   <button
                     onClick={handleStop}
@@ -3788,7 +3857,7 @@ export function ChatbotApp() {
                   </button>
                 ) : (
                   <button
-                    onClick={handleSendMessage}
+                    onClick={() => handleSendMessage()}
                     disabled={!input.trim()}
                     className="w-10 h-10 rounded-full bg-transparent hover:bg-white/5 flex items-center justify-center text-white transition-colors duration-200 mr-2 flex-shrink-0 disabled:opacity-50"
                     aria-label="Send message"
@@ -3808,6 +3877,35 @@ export function ChatbotApp() {
           onClose={() => setActiveArtifact(null)}
         />
       )}
+
+      <LiveVoiceOverlay
+        isOpen={isLiveOpen}
+        onClose={() => {
+          setIsLiveOpen(false);
+          liveVoice.endSession();
+        }}
+        voiceState={liveVoice.voiceState}
+        audioLevel={liveVoice.audioLevel}
+        interimTranscript={liveVoice.interimTranscript}
+        finalTranscript={liveVoice.finalTranscript}
+        lastAssistantText={liveVoice.lastAssistantText}
+        isMuted={liveVoice.isMuted}
+        isHandsFree={liveVoice.isHandsFree}
+        isPushToTalkActive={liveVoice.isPushToTalkActive}
+        errorMessage={liveVoice.errorMessage}
+        availableVoices={liveVoice.availableVoices}
+        selectedVoiceUri={liveVoice.selectedVoiceUri}
+        speechRate={liveVoice.speechRate}
+        speechPitch={liveVoice.speechPitch}
+        onToggleMute={liveVoice.toggleMute}
+        onToggleHandsFree={liveVoice.toggleHandsFree}
+        onPushToTalkStart={liveVoice.handlePushToTalkStart}
+        onPushToTalkEnd={liveVoice.handlePushToTalkEnd}
+        onInterrupt={liveVoice.interrupt}
+        onSelectVoice={liveVoice.updateSelectedVoiceUri}
+        onChangeRate={liveVoice.updateSpeechRate}
+        onChangePitch={liveVoice.updateSpeechPitch}
+      />
     </div>
   );
 }
