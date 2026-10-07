@@ -156,6 +156,11 @@ const ChatApp = lazy(() =>
     default: m.ChatApp,
   })),
 );
+const AgentsManagerApp = lazy(() =>
+  import("@/components/apps/AgentsManager").then((m) => ({
+    default: m.AgentsManagerApp,
+  })),
+);
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -427,6 +432,19 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <KeyRound className="w-8 h-8 text-cyan-500" />,
     component: PasswordManagerApp,
+    authRequired: true,
+  },
+  {
+    id: "agents",
+    nameKey: "apps.agentsTitle",
+    defaultName: "Agent Accounts",
+    descKey: "apps.agentsDesc",
+    defaultDesc:
+      "Authorize and manage LLM bots, configure sub-allocated storage, and inspect agent activity.",
+    categories: ["All", "LLM/AI", "Development", "Security"],
+    availability: "web-and-desktop",
+    icon: <Bot className="w-8 h-8 text-cyan-500" />,
+    component: AgentsManagerApp,
     authRequired: true,
   },
   {

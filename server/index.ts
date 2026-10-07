@@ -33,6 +33,7 @@ import { v1Router } from "./routes/v1.ts";
 import { contentTestRouter } from "./routes/contentTest.ts";
 import { partnersRouter } from "./routes/partners.ts";
 import { projectsRouter } from "./routes/projects.ts";
+import { agentsRouter } from "./routes/agents.ts";
 import { resumeInterruptedCrawls } from "./lib/oxylowCrawler.ts";
 import {
   getActiveDefenderBannedIps,
@@ -100,7 +101,8 @@ app.use("*", async (c, next) => {
     c.req.path.startsWith("/api/webmaster") ||
     c.req.path.startsWith("/api/chat") ||
     c.req.path.startsWith("/api/projects") ||
-    c.req.path.startsWith("/api/chess")
+    c.req.path.startsWith("/api/chess") ||
+    c.req.path.startsWith("/api/agents")
   ) {
     return next();
   }
@@ -1263,6 +1265,7 @@ app.route("/api/projects", projectsRouter);
 app.route("/api/chess", chessRouter);
 app.route("/api/models", modelsRouter);
 app.route("/api/partners", partnersRouter);
+app.route("/api/agents", agentsRouter);
 app.route("/v1", v1Router);
 app.route("/api/v1", v1Router);
 app.route("/api/contenttest", contentTestRouter);

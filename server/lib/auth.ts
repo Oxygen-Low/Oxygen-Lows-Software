@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DATA_DIR, getUserById } from "./dataStore.ts";
 
-function getSecretKey(): string {
+export function getSecretKey(): string {
   if (process.env.AUTH_SECRET) {
     return process.env.AUTH_SECRET;
   }
