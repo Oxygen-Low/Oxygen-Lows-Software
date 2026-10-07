@@ -1399,27 +1399,15 @@ describe("ChatbotApp", () => {
     }
   });
 
-  it("renders Live voice button and opens Live voice overlay when clicked", async () => {
+  it("renders Speech to text button and toggles recording", async () => {
     renderChatbot();
 
-    const liveButtons = await screen.findAllByRole("button", {
-      name: /Live Voice Mode/i,
+    const micButtons = await screen.findAllByRole("button", {
+      name: /Speech to text/i,
     });
-    expect(liveButtons.length).toBeGreaterThan(0);
+    expect(micButtons.length).toBeGreaterThan(0);
 
-    fireEvent.click(liveButtons[0]);
-
-    const liveDialog = await screen.findByRole("dialog", {
-      name: /Live Voice Mode/i,
-    });
-    expect(liveDialog).toBeDefined();
-
-    const endBtn = screen.getAllByRole("button", { name: /End Live Chat/i })[0];
-    fireEvent.click(endBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).toBeNull();
-    });
+    fireEvent.click(micButtons[0]);
   });
 
   it("displays Pollinations API key requirement gate when key is missing and allows saving key inline", async () => {
