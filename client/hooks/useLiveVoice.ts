@@ -566,7 +566,12 @@ export function useLiveVoice({
       wsRef.current = ws;
 
       ws.onopen = () => {
-        if (voiceStateRef.current !== "muted") {
+        if (
+          voiceStateRef.current !== "muted" &&
+          !isSpeakingRef.current &&
+          voiceStateRef.current !== "speaking" &&
+          voiceStateRef.current !== "thinking"
+        ) {
           setVoiceState("listening");
         }
         setErrorMessage(null);
