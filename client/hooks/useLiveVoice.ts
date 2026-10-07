@@ -17,7 +17,10 @@ export interface VoiceOption {
 
 export interface UseLiveVoiceOptions {
   languageCode?: string; // e.g. "en", "es", "ja", "ko", "ru", "zh-CN"
-  onSendSpeech: (transcript: string) => void;
+  apiKey?: string | null;
+  systemPrompt?: string;
+  onSendSpeech?: (transcript: string) => void;
+  onAssistantResponse?: (userText: string, assistantText: string) => void;
   onInterrupt?: () => void;
   autoStart?: boolean;
 }
@@ -47,7 +50,72 @@ const LANGUAGE_LOCALE_MAP: Record<string, string> = {
 };
 
 /**
- * Splits text into speakable sentence chunks for low-latency voice streaming.
+ * Converts Float32Array audio buffer [-1.0, 1.0] to 16-bit linear PCM ArrayBuffer.
+ */
+function float32ToPcm16(float32: Float32Array): ArrayBuffer {
+  const int16 = new Int16Array(float32.length);
+  for (let i = 0; i < float32.length; i++) {
+    const s = Math.max(-1, Math.min(1, float32[i]));
+    int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return int16.buffer;
+}
+
+/**
+ * Resamples Float32 audio samples from source sample rate to 24000 Hz.
+ */
+function resampleTo24k(input: Float32Array, inputSampleRate: number): Float32Array {
+  if (inputSampleRate === 24000) return input;
+  const ratio = inputSampleRate / 24000;
+  const newLength = Math.round(input.length / ratio);
+  const result = new Float32Array(newLength);
+  for (let i = 0; i < newLength; i++) {
+    const originPos = i * ratio;
+    const leftIdx = Math.floor(originPos);
+    const rightIdx = Math.min(leftIdx + 1, input.length - 1);
+    const weight = originPos - leftIdx;
+    result[i] = input[leftIdx] * (1 - weight) + input[rightIdx] * weight;
+  }
+  return result;
+}
+
+/**
+ * Converts an ArrayBuffer to a Base64 string safely.
+ */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return typeof btoa !== "undefined" ? btoa(binary) : "";
+}
+
+/**
+ * Converts a Base64 PCM16 string to a Float32Array [-1.0, 1.0] for Web Audio API playback.
+ */
+function base64ToFloat32(base64: string): Float32Array {
+  if (typeof atob === "undefined") return new Float32Array(0);
+  try {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const int16 = new Int16Array(bytes.buffer);
+    const float32 = new Float32Array(int16.length);
+    for (let i = 0; i < int16.length; i++) {
+      float32[i] = int16[i] / (int16[i] < 0 ? 0x8000 : 0x7fff);
+    }
+    return float32;
+  } catch {
+    return new Float32Array(0);
+  }
+}
+
+/**
+ * Splits text into clean speakable sentence chunks for low-latency neural TTS.
  */
 function splitTextIntoSentences(text: string): string[] {
   const clean = text
@@ -81,7 +149,10 @@ function splitTextIntoSentences(text: string): string[] {
 
 export function useLiveVoice({
   languageCode = "en",
+  apiKey: propApiKey,
+  systemPrompt,
   onSendSpeech,
+  onAssistantResponse,
   onInterrupt,
   autoStart = false,
 }: UseLiveVoiceOptions) {
@@ -107,20 +178,20 @@ export function useLiveVoice({
     return saved ? parseFloat(saved) : 1.0;
   });
 
-  // Support is active on any browser with mediaDevices or AudioContext (no longer strictly requires SpeechRecognition or speechSynthesis)
   const isSupported =
     typeof window !== "undefined" &&
     (!!(navigator?.mediaDevices && navigator.mediaDevices.getUserMedia) ||
       !!(window.AudioContext || (window as any).webkitAudioContext));
 
-  const recognitionRef = useRef<any>(null);
-  const isRecognitionRunningRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordedAudioChunksRef = useRef<Blob[]>([]);
-  const isRecordingPhraseRef = useRef(false);
+  const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const isRecognitionRunningRef = useRef(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const activeSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const nextPlayTimeRef = useRef(0);
   const animFrameRef = useRef<number | null>(null);
   const silenceTimerRef = useRef<any>(null);
   const currentAudioElementRef = useRef<HTMLAudioElement | null>(null);
@@ -132,11 +203,12 @@ export function useLiveVoice({
   const isPushToTalkActiveRef = useRef(isPushToTalkActive);
   const voiceStateRef = useRef(voiceState);
   const interimTranscriptRef = useRef(interimTranscript);
-  const hasSpokenSinceListeningRef = useRef(false);
   const isSessionActiveRef = useRef(false);
+  const currentAssistantTextRef = useRef("");
+  const currentUserTranscriptRef = useRef("");
   const targetLocale = LANGUAGE_LOCALE_MAP[languageCode] || "en-US";
 
-  // Keep refs up to date
+  // Keep state refs synchronized
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
@@ -157,7 +229,7 @@ export function useLiveVoice({
     interimTranscriptRef.current = interimTranscript;
   }, [interimTranscript]);
 
-  // Load voices: prioritize OpenAI Realtime neural voices, optionally augment with system voices
+  // Load voices
   useEffect(() => {
     const voicesList: VoiceOption[] = [...OPENAI_REALTIME_VOICES];
 
@@ -188,10 +260,20 @@ export function useLiveVoice({
     });
   }, [targetLocale]);
 
-  // Save preferences
+  // Preference setters
   const updateSelectedVoiceUri = useCallback((uri: string) => {
     setSelectedVoiceUri(uri);
     localStorage.setItem("oxygen_live_voice_uri", uri);
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(
+        JSON.stringify({
+          type: "session.update",
+          session: {
+            voice: uri,
+          },
+        }),
+      );
+    }
   }, []);
 
   const updateSpeechRate = useCallback((rate: number) => {
@@ -204,223 +286,29 @@ export function useLiveVoice({
     localStorage.setItem("oxygen_live_voice_pitch", pitch.toString());
   }, []);
 
-  // Send collected speech
-  const handleFinalSpeechSend = useCallback(
-    (textToSend: string) => {
-      const trimmed = textToSend.trim();
-      if (!trimmed) return;
-
-      if (silenceTimerRef.current) {
-        clearTimeout(silenceTimerRef.current);
-        silenceTimerRef.current = null;
-      }
-
-      hasSpokenSinceListeningRef.current = false;
-      isRecordingPhraseRef.current = false;
-      recordedAudioChunksRef.current = [];
-      setFinalTranscript(trimmed);
-      setInterimTranscript("");
-      setVoiceState("thinking");
-      onSendSpeech(trimmed);
-    },
-    [onSendSpeech],
-  );
-
-  // Submit recorded phrase with fallback to Whisper transcription
-  const submitRecordedPhrase = useCallback(async () => {
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = null;
-    }
-
-    const textToSubmit = interimTranscriptRef.current.trim();
-    if (textToSubmit) {
-      handleFinalSpeechSend(textToSubmit);
-      return;
-    }
-
-    // If SpeechRecognition didn't produce text, transcribe recorded audio blob
-    if (recordedAudioChunksRef.current.length > 0) {
-      const blob = new Blob(recordedAudioChunksRef.current, {
-        type: mediaRecorderRef.current?.mimeType || "audio/webm",
-      });
-      recordedAudioChunksRef.current = [];
-      isRecordingPhraseRef.current = false;
-
-      if (blob.size > 1500) {
-        setVoiceState("thinking");
-        try {
-          const formData = new FormData();
-          formData.append("file", blob, "speech.webm");
-          const apiKey = localStorage.getItem("pollinations_api_key") || "";
-          if (apiKey) formData.append("apiKey", apiKey);
-
-          const res = await fetch("/api/ai/transcribe", {
-            method: "POST",
-            body: formData,
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            const transcript = data.text?.trim();
-            if (transcript) {
-              handleFinalSpeechSend(transcript);
-              return;
-            }
-          }
-        } catch (e) {
-          console.warn("[useLiveVoice] Transcription error:", e);
-        }
-      }
-    }
-
-    hasSpokenSinceListeningRef.current = false;
-    isRecordingPhraseRef.current = false;
-    if (isSessionActiveRef.current && !isMutedRef.current && !isSpeakingRef.current) {
-      setVoiceState("listening");
-    }
-  }, [handleFinalSpeechSend]);
-
-  // Audio Level Analyser via Web Audio API
-  const initAudioAnalyser = useCallback(async () => {
-    try {
-      if (audioContextRef.current && audioContextRef.current.state !== "closed") return;
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-
-      if (!navigator?.mediaDevices?.getUserMedia) return;
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      micStreamRef.current = stream;
-
-      // Start MediaRecorder for audio recording
-      if (typeof MediaRecorder !== "undefined") {
-        try {
-          const mimeType = MediaRecorder.isTypeSupported?.("audio/webm;codecs=opus")
-            ? "audio/webm;codecs=opus"
-            : MediaRecorder.isTypeSupported?.("audio/webm")
-            ? "audio/webm"
-            : "";
-          const options = mimeType ? { mimeType } : undefined;
-          const recorder = new MediaRecorder(stream, options);
-          mediaRecorderRef.current = recorder;
-          recorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) {
-              recordedAudioChunksRef.current.push(e.data);
-            }
-          };
-          recorder.start(250);
-        } catch {
-          // Ignore
-        }
-      }
-
-      const audioCtx = new AudioCtx();
-      audioContextRef.current = audioCtx;
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 256;
-      analyserRef.current = analyser;
-
-      const source = audioCtx.createMediaStreamSource(stream);
-      source.connect(analyser);
-
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-
-      const updateLevel = () => {
-        if (!analyserRef.current || !isSessionActiveRef.current) return;
-        analyserRef.current.getByteFrequencyData(dataArray);
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          sum += dataArray[i];
-        }
-        const avg = sum / bufferLength;
-        const normalized = Math.min(1, Math.max(0, avg / 80));
-
-        // If speaking via neural voice, animate voice amplitude
-        if (isSpeakingRef.current) {
-          const simulated = 0.4 + Math.sin(Date.now() / 150) * 0.3 + Math.random() * 0.2;
-          setAudioLevel(simulated);
-        } else if (isMutedRef.current) {
-          setAudioLevel(0);
-        } else {
-          setAudioLevel(normalized);
-
-          // Voice Activity Detection (VAD)
-          if (normalized > 0.08 && !isSpeakingRef.current && voiceStateRef.current !== "thinking") {
-            hasSpokenSinceListeningRef.current = true;
-            if (!isRecordingPhraseRef.current) {
-              isRecordingPhraseRef.current = true;
-              recordedAudioChunksRef.current = [];
-            }
-            if (voiceStateRef.current !== "listening") {
-              setVoiceState("listening");
-            }
-
-            if (isHandsFreeRef.current) {
-              if (silenceTimerRef.current) {
-                clearTimeout(silenceTimerRef.current);
-                silenceTimerRef.current = null;
-              }
-            }
-          } else if (
-            normalized <= 0.05 &&
-            isHandsFreeRef.current &&
-            hasSpokenSinceListeningRef.current &&
-            !isSpeakingRef.current &&
-            voiceStateRef.current === "listening"
-          ) {
-            if (!silenceTimerRef.current) {
-              silenceTimerRef.current = setTimeout(() => {
-                submitRecordedPhrase();
-              }, 1400);
-            }
-          }
-        }
-
-        animFrameRef.current = requestAnimationFrame(updateLevel);
-      };
-
-      updateLevel();
-    } catch {
-      // Audio level analyser fallback
-    }
-  }, [submitRecordedPhrase]);
-
-  const cleanupAudioAnalyser = useCallback(() => {
-    if (animFrameRef.current) {
-      cancelAnimationFrame(animFrameRef.current);
-      animFrameRef.current = null;
-    }
-    if (mediaRecorderRef.current) {
-      try {
-        if (mediaRecorderRef.current.state !== "inactive") {
-          mediaRecorderRef.current.stop();
-        }
-      } catch {
-        // Ignore
-      }
-      mediaRecorderRef.current = null;
-    }
-    recordedAudioChunksRef.current = [];
-    isRecordingPhraseRef.current = false;
-
-    if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach((t) => t.stop());
-      micStreamRef.current = null;
-    }
-    if (audioContextRef.current && audioContextRef.current.state !== "closed") {
-      audioContextRef.current.close().catch(() => {});
-      audioContextRef.current = null;
-    }
-    setAudioLevel(0);
-  }, []);
-
-  // Stop / cancel audio playback
+  // Stop / clear active audio output
   const stopSpeaking = useCallback(() => {
     speechSessionIdRef.current++;
     isSpeakingRef.current = false;
     activeUtteranceRef.current = null;
 
+    // Stop queued PCM buffer sources
+    if (activeSourcesRef.current.length > 0) {
+      for (const source of activeSourcesRef.current) {
+        try {
+          source.stop();
+          source.disconnect();
+        } catch {
+          // Ignore
+        }
+      }
+      activeSourcesRef.current = [];
+    }
+    if (audioContextRef.current) {
+      nextPlayTimeRef.current = audioContextRef.current.currentTime;
+    }
+
+    // Stop HTML Audio element
     if (currentAudioElementRef.current) {
       try {
         currentAudioElementRef.current.pause();
@@ -431,6 +319,7 @@ export function useLiveVoice({
       }
     }
 
+    // Stop SpeechSynthesis
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
         window.speechSynthesis.cancel?.();
@@ -440,7 +329,74 @@ export function useLiveVoice({
     }
   }, []);
 
-  // Neural Text-To-Speech with OpenAI Realtime voice model
+  // Real-time PCM audio playback queue from Realtime WebSocket delta
+  const queuePcmAudioChunk = useCallback((base64Delta: string) => {
+    if (!audioContextRef.current || audioContextRef.current.state === "closed") return;
+    const ctx = audioContextRef.current;
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+
+    const float32Samples = base64ToFloat32(base64Delta);
+    if (float32Samples.length === 0) return;
+
+    try {
+      const audioBuffer = ctx.createBuffer(1, float32Samples.length, 24000);
+      audioBuffer.getChannelData(0).set(float32Samples);
+
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(ctx.destination);
+
+      const startTime = Math.max(ctx.currentTime, nextPlayTimeRef.current);
+      source.start(startTime);
+      nextPlayTimeRef.current = startTime + audioBuffer.duration;
+
+      activeSourcesRef.current.push(source);
+      isSpeakingRef.current = true;
+      setVoiceState("speaking");
+
+      source.onended = () => {
+        const index = activeSourcesRef.current.indexOf(source);
+        if (index >= 0) {
+          activeSourcesRef.current.splice(index, 1);
+        }
+        if (activeSourcesRef.current.length === 0 && !isSpeakingRef.current) {
+          if (isSessionActiveRef.current && !isMutedRef.current) {
+            setVoiceState("listening");
+          } else if (isMutedRef.current) {
+            setVoiceState("muted");
+          }
+        }
+      };
+    } catch {
+      // Ignore
+    }
+  }, []);
+
+  // Send speech transcript to parent
+  const handleFinalSpeechSend = useCallback(
+    (textToSend: string) => {
+      const trimmed = textToSend.trim();
+      if (!trimmed) return;
+
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+
+      setFinalTranscript(trimmed);
+      setInterimTranscript("");
+      setVoiceState("thinking");
+
+      if (onSendSpeech) {
+        onSendSpeech(trimmed);
+      }
+    },
+    [onSendSpeech],
+  );
+
+  // Fallback neural TTS using Pollinations audio endpoint
   const speakText = useCallback(
     (text: string, onDone?: () => void) => {
       stopSpeaking();
@@ -492,13 +448,12 @@ export function useLiveVoice({
         const chunkText = chunks[chunkIndex];
         chunkIndex++;
 
-        // 1. Primary path: Play neural audio from OpenAI Realtime voice endpoint
         let playedAudio = false;
         if (typeof window !== "undefined" && typeof Audio !== "undefined") {
           try {
-            const apiKey = localStorage.getItem("pollinations_api_key") || "";
+            const effectiveKey = propApiKey || localStorage.getItem("pollinations_api_key") || "";
             const audioUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(chunkText)}?voice=${encodeURIComponent(voice)}`;
-            
+
             const audio = new Audio();
             currentAudioElementRef.current = audio;
             audio.playbackRate = speechRate;
@@ -508,10 +463,9 @@ export function useLiveVoice({
               audio.onerror = (e) => reject(e);
             });
 
-            // If an API key is present, fetch the blob with Authorization header
-            if (apiKey && typeof fetch !== "undefined") {
+            if (effectiveKey && typeof fetch !== "undefined") {
               const res = await fetch(audioUrl, {
-                headers: { Authorization: `Bearer ${apiKey}` },
+                headers: { Authorization: `Bearer ${effectiveKey}` },
               });
               if (!res.ok) throw new Error(`Audio fetch returned ${res.status}`);
               const blob = await res.blob();
@@ -537,7 +491,6 @@ export function useLiveVoice({
           }
         }
 
-        // 2. Fallback path if audio playback is unavailable (e.g., unit test mocks or offline)
         if (!playedAudio && typeof window !== "undefined" && "speechSynthesis" in window) {
           try {
             const utteranceClass = (window as any).SpeechSynthesisUtterance;
@@ -565,29 +518,28 @@ export function useLiveVoice({
           }
         }
 
-        // If neither Audio nor SpeechSynthesis succeeded, move to next chunk
         speakNextChunk();
       };
 
-      setTimeout(() => {
-        if (speechSessionIdRef.current === currentSessionId) {
-          speakNextChunk();
-        }
-      }, 20);
+      speakNextChunk();
     },
-    [selectedVoiceUri, speechRate, speechPitch, targetLocale, stopSpeaking],
+    [selectedVoiceUri, speechRate, speechPitch, targetLocale, propApiKey, stopSpeaking],
   );
 
-  // Stop everything / Interruption
+  // Interruption / Cancel
   const interrupt = useCallback(() => {
     stopSpeaking();
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
     }
-    hasSpokenSinceListeningRef.current = false;
-    isRecordingPhraseRef.current = false;
-    recordedAudioChunksRef.current = [];
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      try {
+        wsRef.current.send(JSON.stringify({ type: "response.cancel" }));
+      } catch {
+        // Ignore
+      }
+    }
     setInterimTranscript("");
     if (isSessionActiveRef.current && !isMutedRef.current) {
       setVoiceState("listening");
@@ -595,7 +547,279 @@ export function useLiveVoice({
     onInterrupt?.();
   }, [stopSpeaking, onInterrupt]);
 
-  // Optional Browser Speech Recognition for progressive live captions
+  // Connect to Realtime WebSocket endpoint
+  const connectRealtimeWebSocket = useCallback(() => {
+    const effectiveKey = propApiKey || localStorage.getItem("pollinations_api_key") || "";
+    const wsUrl = `wss://gen.pollinations.ai/v1/realtime?model=openai/gpt-realtime-2.1-mini${
+      effectiveKey ? `&key=${encodeURIComponent(effectiveKey)}` : ""
+    }`;
+
+    try {
+      if (wsRef.current) {
+        try {
+          wsRef.current.close();
+        } catch {}
+        wsRef.current = null;
+      }
+
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        if (voiceStateRef.current !== "muted") {
+          setVoiceState("listening");
+        }
+        setErrorMessage(null);
+
+        // Configure Realtime session for gpt-realtime-2.1-mini
+        const instructions =
+          systemPrompt ||
+          "You are a helpful, conversational live voice assistant. Keep answers natural, concise, and easy to listen to. Do not produce markdown formatting, tables, or long code blocks unless explicitly requested.";
+
+        ws.send(
+          JSON.stringify({
+            type: "session.update",
+            session: {
+              modalities: ["text", "audio"],
+              instructions: instructions,
+              voice: selectedVoiceUri || "alloy",
+              input_audio_format: "pcm16",
+              output_audio_format: "pcm16",
+              input_audio_transcription: {
+                model: "whisper-1",
+              },
+              turn_detection: isHandsFreeRef.current
+                ? {
+                    type: "server_vad",
+                    threshold: 0.5,
+                    prefix_padding_ms: 300,
+                    silence_duration_ms: 600,
+                  }
+                : null,
+            },
+          }),
+        );
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+
+          switch (msg.type) {
+            case "session.created":
+            case "session.updated":
+              break;
+
+            case "input_audio_buffer.speech_started":
+              stopSpeaking();
+              if (!isMutedRef.current) {
+                setVoiceState("listening");
+              }
+              break;
+
+            case "input_audio_buffer.speech_stopped":
+              setVoiceState("thinking");
+              break;
+
+            case "conversation.item.input_audio_transcription.completed":
+              if (msg.transcript) {
+                currentUserTranscriptRef.current = msg.transcript;
+                setFinalTranscript(msg.transcript);
+                setInterimTranscript("");
+              }
+              break;
+
+            case "response.audio_transcript.delta":
+              if (msg.delta) {
+                currentAssistantTextRef.current += msg.delta;
+                setLastAssistantText(currentAssistantTextRef.current);
+                setVoiceState("speaking");
+              }
+              break;
+
+            case "response.audio.delta":
+              if (msg.delta) {
+                queuePcmAudioChunk(msg.delta);
+              }
+              break;
+
+            case "response.created":
+              currentAssistantTextRef.current = "";
+              setVoiceState("thinking");
+              break;
+
+            case "response.done": {
+              isSpeakingRef.current = false;
+              const userTxt = currentUserTranscriptRef.current;
+              const assistantTxt = currentAssistantTextRef.current;
+              if (assistantTxt) {
+                onAssistantResponse?.(userTxt, assistantTxt);
+                if (userTxt && onSendSpeech) {
+                  onSendSpeech(userTxt);
+                }
+              }
+              currentUserTranscriptRef.current = "";
+              setTimeout(() => {
+                if (
+                  isSessionActiveRef.current &&
+                  !isMutedRef.current &&
+                  activeSourcesRef.current.length === 0
+                ) {
+                  setVoiceState("listening");
+                }
+              }, 400);
+              break;
+            }
+
+            case "error":
+              if (msg.error?.message?.includes("401") || msg.error?.code === "unauthorized") {
+                setErrorMessage(
+                  "Pollinations API key required for openai/gpt-realtime-2.1-mini. Please add your key in Settings.",
+                );
+              } else {
+                setErrorMessage(msg.error?.message || "Realtime connection error.");
+              }
+              setVoiceState("error");
+              break;
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      };
+
+      ws.onerror = () => {
+        if (!effectiveKey) {
+          setErrorMessage(
+            "Pollinations API key required for openai/gpt-realtime-2.1-mini. Please add your key in Settings.",
+          );
+        }
+      };
+
+      ws.onclose = () => {
+        // Closed
+      };
+    } catch (e: any) {
+      setErrorMessage(e?.message || "Failed to initialize WebSocket session.");
+    }
+  }, [
+    propApiKey,
+    systemPrompt,
+    selectedVoiceUri,
+    stopSpeaking,
+    queuePcmAudioChunk,
+    onAssistantResponse,
+    onSendSpeech,
+  ]);
+
+  // Audio Analyser & Microphone PCM capture
+  const initAudioAnalyser = useCallback(async () => {
+    try {
+      if (audioContextRef.current && audioContextRef.current.state !== "closed") return;
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+
+      if (!navigator?.mediaDevices?.getUserMedia) return;
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      micStreamRef.current = stream;
+
+      const audioCtx = new AudioCtx();
+      audioContextRef.current = audioCtx;
+
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyserRef.current = analyser;
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      // ScriptProcessorNode for real-time PCM audio streaming
+      const bufferSize = 2048;
+      const scriptProcessor = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+      scriptProcessorRef.current = scriptProcessor;
+
+      scriptProcessor.onaudioprocess = (e) => {
+        if (!isSessionActiveRef.current || isMutedRef.current) return;
+        if (!isHandsFreeRef.current && !isPushToTalkActiveRef.current) return;
+
+        const inputData = e.inputBuffer.getChannelData(0);
+        const resampled = resampleTo24k(inputData, audioCtx.sampleRate);
+        const pcm16Buffer = float32ToPcm16(resampled);
+        const base64Audio = arrayBufferToBase64(pcm16Buffer);
+
+        if (base64Audio && wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(
+            JSON.stringify({
+              type: "input_audio_buffer.append",
+              audio: base64Audio,
+            }),
+          );
+        }
+      };
+
+      source.connect(scriptProcessor);
+      scriptProcessor.connect(audioCtx.destination);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const updateLevel = () => {
+        if (!analyserRef.current || !isSessionActiveRef.current) return;
+        analyserRef.current.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const avg = sum / bufferLength;
+        const normalized = Math.min(1, Math.max(0, avg / 80));
+
+        if (isSpeakingRef.current) {
+          const simulated = 0.4 + Math.sin(Date.now() / 150) * 0.3 + Math.random() * 0.2;
+          setAudioLevel(simulated);
+        } else if (isMutedRef.current) {
+          setAudioLevel(0);
+        } else {
+          setAudioLevel(normalized);
+        }
+
+        animFrameRef.current = requestAnimationFrame(updateLevel);
+      };
+
+      updateLevel();
+    } catch {
+      // Audio capture fallback
+    }
+  }, []);
+
+  const cleanupAudioAnalyser = useCallback(() => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    if (scriptProcessorRef.current) {
+      try {
+        scriptProcessorRef.current.disconnect();
+      } catch {}
+      scriptProcessorRef.current = null;
+    }
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach((t) => t.stop());
+      micStreamRef.current = null;
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== "closed") {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    setAudioLevel(0);
+  }, []);
+
+  // Optional Browser Speech Recognition for live captions
   const initSpeechRecognition = useCallback(() => {
     if (typeof window === "undefined") return null;
 
@@ -603,10 +827,7 @@ export function useLiveVoice({
       (window as any).SpeechRecognition ||
       (window as any).webkitSpeechRecognition;
 
-    if (!SpeechRecognitionClass) {
-      // Speech recognition is optional now, speech input and VAD work independently!
-      return null;
-    }
+    if (!SpeechRecognitionClass) return null;
 
     const recognition = new SpeechRecognitionClass();
     recognition.continuous = true;
@@ -642,18 +863,19 @@ export function useLiveVoice({
 
       const combinedText = (currentFinal + " " + interim).trim();
       if (combinedText) {
-        hasSpokenSinceListeningRef.current = true;
         setInterimTranscript(combinedText);
         setVoiceState("listening");
 
-        if (silenceTimerRef.current) {
-          clearTimeout(silenceTimerRef.current);
-        }
-
-        if (isHandsFreeRef.current) {
-          silenceTimerRef.current = setTimeout(() => {
-            submitRecordedPhrase();
-          }, 1400);
+        // If Realtime WebSocket is not connected or active, trigger fallback speech send
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current);
+          }
+          if (isHandsFreeRef.current) {
+            silenceTimerRef.current = setTimeout(() => {
+              handleFinalSpeechSend(combinedText);
+            }, 1400);
+          }
         }
       }
     };
@@ -666,9 +888,6 @@ export function useLiveVoice({
         setVoiceState("error");
         return;
       }
-      if (isSessionActiveRef.current && !isMutedRef.current && !isSpeakingRef.current) {
-        setVoiceState("listening");
-      }
     };
 
     recognition.onend = () => {
@@ -676,16 +895,14 @@ export function useLiveVoice({
       if (isSessionActiveRef.current && !isMutedRef.current) {
         try {
           recognition.start();
-        } catch {
-          // Ignore
-        }
+        } catch {}
       } else if (!isSessionActiveRef.current) {
         setVoiceState("idle");
       }
     };
 
     return recognition;
-  }, [targetLocale, submitRecordedPhrase]);
+  }, [targetLocale, handleFinalSpeechSend]);
 
   // Start Live Session
   const startSession = useCallback(async () => {
@@ -693,16 +910,16 @@ export function useLiveVoice({
     setErrorMessage(null);
     setInterimTranscript("");
     setFinalTranscript("");
+    setLastAssistantText("");
     setIsMuted(false);
-    hasSpokenSinceListeningRef.current = false;
-    isRecordingPhraseRef.current = false;
-    recordedAudioChunksRef.current = [];
 
     try {
       await initAudioAnalyser();
-    } catch {
-      // Audio level analyser is optional
-    }
+    } catch {}
+
+    try {
+      connectRealtimeWebSocket();
+    } catch {}
 
     try {
       if (recognitionRef.current) {
@@ -713,16 +930,15 @@ export function useLiveVoice({
         recognitionRef.current = rec;
         rec.start();
       } else {
-        // Recognition not in browser, but audio recording/VAD session is active!
         setVoiceState("listening");
       }
     } catch (e: any) {
       setErrorMessage(e?.message || "Failed to start audio session.");
       setVoiceState("error");
     }
-  }, [initAudioAnalyser, initSpeechRecognition]);
+  }, [initAudioAnalyser, connectRealtimeWebSocket, initSpeechRecognition]);
 
-  // Stop / End Live Session
+  // End Live Session
   const endSession = useCallback(() => {
     isSessionActiveRef.current = false;
     stopSpeaking();
@@ -730,21 +946,22 @@ export function useLiveVoice({
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
     }
+    if (wsRef.current) {
+      try {
+        wsRef.current.close();
+      } catch {}
+      wsRef.current = null;
+    }
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
-      } catch {
-        // Ignore
-      }
+      } catch {}
       recognitionRef.current = null;
     }
     cleanupAudioAnalyser();
     setVoiceState("idle");
     setInterimTranscript("");
     setFinalTranscript("");
-    hasSpokenSinceListeningRef.current = false;
-    isRecordingPhraseRef.current = false;
-    recordedAudioChunksRef.current = [];
   }, [stopSpeaking, cleanupAudioAnalyser]);
 
   // Toggle Mute
@@ -770,31 +987,59 @@ export function useLiveVoice({
 
   // Toggle Hands-Free / Push-to-Talk
   const toggleHandsFree = useCallback(() => {
-    setIsHandsFree((prev) => !prev);
+    setIsHandsFree((prev) => {
+      const next = !prev;
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "session.update",
+            session: {
+              turn_detection: next
+                ? {
+                    type: "server_vad",
+                    threshold: 0.5,
+                    prefix_padding_ms: 300,
+                    silence_duration_ms: 600,
+                  }
+                : null,
+            },
+          }),
+        );
+      }
+      return next;
+    });
   }, []);
 
   // Push-to-talk press / release handlers
   const handlePushToTalkStart = useCallback(() => {
     if (isHandsFree) return;
     setIsPushToTalkActive(true);
-    isRecordingPhraseRef.current = true;
-    recordedAudioChunksRef.current = [];
     setVoiceState("listening");
   }, [isHandsFree]);
 
   const handlePushToTalkEnd = useCallback(() => {
     if (isHandsFree) return;
     setIsPushToTalkActive(false);
-    submitRecordedPhrase();
-  }, [isHandsFree, submitRecordedPhrase]);
 
-  // Notify that the AI has started thinking / generating
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      try {
+        wsRef.current.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
+        wsRef.current.send(JSON.stringify({ type: "response.create" }));
+      } catch {}
+      setVoiceState("thinking");
+    } else {
+      const textToSubmit = interimTranscriptRef.current.trim();
+      if (textToSubmit) {
+        handleFinalSpeechSend(textToSubmit);
+      }
+    }
+  }, [isHandsFree, handleFinalSpeechSend]);
+
   const setThinking = useCallback(() => {
     stopSpeaking();
     setVoiceState("thinking");
   }, [stopSpeaking]);
 
-  // Auto-start if requested
   useEffect(() => {
     if (autoStart && isSupported) {
       startSession();

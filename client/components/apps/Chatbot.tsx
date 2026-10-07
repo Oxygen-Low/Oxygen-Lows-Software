@@ -941,6 +941,7 @@ export function ChatbotApp() {
 
   const liveVoice = useLiveVoice({
     languageCode,
+    apiKey: pollinationsApiKey,
     onSendSpeech: (transcript) => {
       handleSendMessageRef.current(transcript);
     },
@@ -1532,7 +1533,7 @@ export function ChatbotApp() {
           err?.statusCode === 402 ||
           err?.message?.includes("402");
 
-        if (is401 || is404 || isRateLimit || is402) {
+        if ((is401 || is404 || isRateLimit || is402) && !isLiveOpenRef.current) {
           const fallbackReason: "rate_limit" | "not_found" | "auth_required" = is401
             ? "auth_required"
             : is404
