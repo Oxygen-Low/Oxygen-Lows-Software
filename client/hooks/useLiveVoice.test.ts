@@ -372,4 +372,40 @@ describe("useLiveVoice hook", () => {
     expect(result.current.voiceState).toBe("speaking");
     expect(onSendSpeech).not.toHaveBeenCalled();
   });
+
+  it("handles push-to-talk release and transcribes audio when SpeechRecognition is unavailable", async () => {
+    delete (window as any).SpeechRecognition;
+    delete (window as any).webkitSpeechRecognition;
+
+    const onSendSpeech = vi.fn();
+    const { result } = renderHook(() =>
+      useLiveVoice({
+        languageCode: "en",
+        onSendSpeech,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.startSession();
+    });
+
+    act(() => {
+      result.current.toggleHandsFree();
+    });
+    expect(result.current.isHandsFree).toBe(false);
+
+    act(() => {
+      result.current.handlePushToTalkStart();
+    });
+    expect(result.current.isPushToTalkActive).toBe(true);
+    expect(result.current.voiceState).toBe("listening");
+
+    // Push to talk release triggers submitRecordedPhrase
+    await act(async () => {
+      result.current.handlePushToTalkEnd();
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    expect(result.current.isPushToTalkActive).toBe(false);
+  });
 });

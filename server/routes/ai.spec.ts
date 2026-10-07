@@ -547,6 +547,40 @@ describe("aiRouter Horde proxy continuation", () => {
     const data = await res.json();
     expect(data.choices[0].message.content).toBe("Fallback success");
   });
+
+  describe("POST /transcribe", () => {
+    it("should return 400 if audio data is missing", async () => {
+      const res = await aiRouter.request("/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toBe("Audio data is required");
+    });
+
+    it("should forward base64 audio and return transcribed text", async () => {
+      globalThis.fetch = vi.fn().mockImplementation(async (url, init) => {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ text: "Hello world transcript" }),
+        };
+      });
+
+      const fakeAudioB64 = Buffer.from("fake-audio-bytes").toString("base64");
+      const res = await aiRouter.request("/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio: fakeAudioB64 }),
+      });
+
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.text).toBe("Hello world transcript");
+    });
+  });
 });
 
 

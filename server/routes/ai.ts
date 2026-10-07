@@ -244,6 +244,88 @@ aiRouter.get("/horde-status", apiLimiter, async (c) => {
   }
 });
 
+aiRouter.post("/transcribe", apiLimiter, async (c) => {
+  const authHeader = c.req.header("authorization");
+  const token = extractBearerToken(authHeader);
+  let user = null;
+  if (token && token !== "undefined" && token !== "null") {
+    user = await resolveUserFromToken(token);
+  }
+
+  let fileBuffer: Buffer | null = null;
+  let clientApiKey = "";
+  let clientProvider = "pollinations";
+
+  const contentType = c.req.header("content-type") || "";
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await c.req.formData().catch(() => null);
+    if (!formData) return c.json({ error: "Invalid form data" }, 400);
+    const file = formData.get("file");
+    clientApiKey = (formData.get("apiKey") as string) || "";
+    clientProvider = (formData.get("provider") as string) || "pollinations";
+    if (file && typeof (file as any).arrayBuffer === "function") {
+      const ab = await (file as any).arrayBuffer();
+      fileBuffer = Buffer.from(ab);
+    }
+  } else {
+    const body = await c.req.json().catch(() => ({}));
+    if (body.audio) {
+      fileBuffer = Buffer.from(body.audio, "base64");
+    }
+    clientApiKey = body.apiKey || "";
+    clientProvider = body.provider || "pollinations";
+  }
+
+  if (!fileBuffer || fileBuffer.length === 0) {
+    return c.json({ error: "Audio data is required" }, 400);
+  }
+
+  let effectiveApiKey = clientApiKey;
+  if (!effectiveApiKey && user?.id) {
+    effectiveApiKey =
+      (await getUserApiKey(user.id, clientProvider)) ||
+      (await getUserApiKey(user.id, "openai")) ||
+      (await getUserApiKey(user.id, "pollinations")) ||
+      "";
+  }
+  if (!effectiveApiKey) {
+    effectiveApiKey = process.env.OPENAI_API_KEY || process.env.POLLINATIONS_API_KEY || "";
+  }
+
+  try {
+    const upstreamForm = new FormData();
+    const blob = new Blob([fileBuffer], { type: "audio/webm" });
+    upstreamForm.append("file", blob, "audio.webm");
+    upstreamForm.append("model", "whisper-large-v3");
+
+    const headers: Record<string, string> = {};
+    if (effectiveApiKey) {
+      headers["Authorization"] = `Bearer ${effectiveApiKey}`;
+    }
+
+    const endpoint =
+      effectiveApiKey && effectiveApiKey.startsWith("sk-") && !effectiveApiKey.startsWith("pk_")
+        ? "https://api.openai.com/v1/audio/transcriptions"
+        : "https://gen.pollinations.ai/v1/audio/transcriptions";
+
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: upstreamForm,
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      return c.json({ error: `Transcription upstream error: ${err}` }, 502);
+    }
+
+    const json = await res.json();
+    return c.json({ text: json.text || json.transcript || "" });
+  } catch (err: any) {
+    return c.json({ error: err?.message || "Transcription failed" }, 500);
+  }
+});
+
 aiRouter.post("/proxy", apiLimiter, async (c) => {
   const { provider, model, messages, prompt, systemPrompt, stream, apiKey, baseUrl, tools } =
     await c.req.json();

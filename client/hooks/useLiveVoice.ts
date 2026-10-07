@@ -118,6 +118,9 @@ export function useLiveVoice({
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedAudioChunksRef = useRef<Blob[]>([]);
+  const isRecordingPhraseRef = useRef(false);
   const animFrameRef = useRef<number | null>(null);
   const silenceTimerRef = useRef<any>(null);
   const currentAudioElementRef = useRef<HTMLAudioElement | null>(null);
@@ -213,6 +216,8 @@ export function useLiveVoice({
       }
 
       hasSpokenSinceListeningRef.current = false;
+      isRecordingPhraseRef.current = false;
+      recordedAudioChunksRef.current = [];
       setFinalTranscript(trimmed);
       setInterimTranscript("");
       setVoiceState("thinking");
@@ -220,6 +225,61 @@ export function useLiveVoice({
     },
     [onSendSpeech],
   );
+
+  // Submit recorded phrase with fallback to Whisper transcription
+  const submitRecordedPhrase = useCallback(async () => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+
+    const textToSubmit = interimTranscriptRef.current.trim();
+    if (textToSubmit) {
+      handleFinalSpeechSend(textToSubmit);
+      return;
+    }
+
+    // If SpeechRecognition didn't produce text, transcribe recorded audio blob
+    if (recordedAudioChunksRef.current.length > 0) {
+      const blob = new Blob(recordedAudioChunksRef.current, {
+        type: mediaRecorderRef.current?.mimeType || "audio/webm",
+      });
+      recordedAudioChunksRef.current = [];
+      isRecordingPhraseRef.current = false;
+
+      if (blob.size > 1500) {
+        setVoiceState("thinking");
+        try {
+          const formData = new FormData();
+          formData.append("file", blob, "speech.webm");
+          const apiKey = localStorage.getItem("pollinations_api_key") || "";
+          if (apiKey) formData.append("apiKey", apiKey);
+
+          const res = await fetch("/api/ai/transcribe", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            const transcript = data.text?.trim();
+            if (transcript) {
+              handleFinalSpeechSend(transcript);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn("[useLiveVoice] Transcription error:", e);
+        }
+      }
+    }
+
+    hasSpokenSinceListeningRef.current = false;
+    isRecordingPhraseRef.current = false;
+    if (isSessionActiveRef.current && !isMutedRef.current && !isSpeakingRef.current) {
+      setVoiceState("listening");
+    }
+  }, [handleFinalSpeechSend]);
 
   // Audio Level Analyser via Web Audio API
   const initAudioAnalyser = useCallback(async () => {
@@ -231,6 +291,29 @@ export function useLiveVoice({
       if (!navigator?.mediaDevices?.getUserMedia) return;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
+
+      // Start MediaRecorder for audio recording
+      if (typeof MediaRecorder !== "undefined") {
+        try {
+          const mimeType = MediaRecorder.isTypeSupported?.("audio/webm;codecs=opus")
+            ? "audio/webm;codecs=opus"
+            : MediaRecorder.isTypeSupported?.("audio/webm")
+            ? "audio/webm"
+            : "";
+          const options = mimeType ? { mimeType } : undefined;
+          const recorder = new MediaRecorder(stream, options);
+          mediaRecorderRef.current = recorder;
+          recorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) {
+              recordedAudioChunksRef.current.push(e.data);
+            }
+          };
+          recorder.start(250);
+        } catch {
+          // Ignore
+        }
+      }
+
       const audioCtx = new AudioCtx();
       audioContextRef.current = audioCtx;
       const analyser = audioCtx.createAnalyser();
@@ -265,6 +348,10 @@ export function useLiveVoice({
           // Voice Activity Detection (VAD)
           if (normalized > 0.08 && !isSpeakingRef.current && voiceStateRef.current !== "thinking") {
             hasSpokenSinceListeningRef.current = true;
+            if (!isRecordingPhraseRef.current) {
+              isRecordingPhraseRef.current = true;
+              recordedAudioChunksRef.current = [];
+            }
             if (voiceStateRef.current !== "listening") {
               setVoiceState("listening");
             }
@@ -284,10 +371,7 @@ export function useLiveVoice({
           ) {
             if (!silenceTimerRef.current) {
               silenceTimerRef.current = setTimeout(() => {
-                const textToSubmit = interimTranscriptRef.current.trim();
-                if (textToSubmit) {
-                  handleFinalSpeechSend(textToSubmit);
-                }
+                submitRecordedPhrase();
               }, 1400);
             }
           }
@@ -300,13 +384,26 @@ export function useLiveVoice({
     } catch {
       // Audio level analyser fallback
     }
-  }, [handleFinalSpeechSend]);
+  }, [submitRecordedPhrase]);
 
   const cleanupAudioAnalyser = useCallback(() => {
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
     }
+    if (mediaRecorderRef.current) {
+      try {
+        if (mediaRecorderRef.current.state !== "inactive") {
+          mediaRecorderRef.current.stop();
+        }
+      } catch {
+        // Ignore
+      }
+      mediaRecorderRef.current = null;
+    }
+    recordedAudioChunksRef.current = [];
+    isRecordingPhraseRef.current = false;
+
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach((t) => t.stop());
       micStreamRef.current = null;
@@ -412,7 +509,7 @@ export function useLiveVoice({
             });
 
             // If an API key is present, fetch the blob with Authorization header
-            if (apiKey) {
+            if (apiKey && typeof fetch !== "undefined") {
               const res = await fetch(audioUrl, {
                 headers: { Authorization: `Bearer ${apiKey}` },
               });
@@ -424,7 +521,10 @@ export function useLiveVoice({
             }
 
             if (speechSessionIdRef.current !== currentSessionId) return;
-            await audio.play();
+            const playPromise = audio.play?.();
+            if (playPromise && typeof playPromise.then === "function") {
+              await playPromise;
+            }
             playedAudio = true;
             await audioPromise;
 
@@ -486,6 +586,8 @@ export function useLiveVoice({
       silenceTimerRef.current = null;
     }
     hasSpokenSinceListeningRef.current = false;
+    isRecordingPhraseRef.current = false;
+    recordedAudioChunksRef.current = [];
     setInterimTranscript("");
     if (isSessionActiveRef.current && !isMutedRef.current) {
       setVoiceState("listening");
@@ -550,10 +652,7 @@ export function useLiveVoice({
 
         if (isHandsFreeRef.current) {
           silenceTimerRef.current = setTimeout(() => {
-            const textToSubmit = interimTranscriptRef.current.trim();
-            if (textToSubmit) {
-              handleFinalSpeechSend(textToSubmit);
-            }
+            submitRecordedPhrase();
           }, 1400);
         }
       }
@@ -586,7 +685,7 @@ export function useLiveVoice({
     };
 
     return recognition;
-  }, [targetLocale, handleFinalSpeechSend]);
+  }, [targetLocale, submitRecordedPhrase]);
 
   // Start Live Session
   const startSession = useCallback(async () => {
@@ -596,6 +695,8 @@ export function useLiveVoice({
     setFinalTranscript("");
     setIsMuted(false);
     hasSpokenSinceListeningRef.current = false;
+    isRecordingPhraseRef.current = false;
+    recordedAudioChunksRef.current = [];
 
     try {
       await initAudioAnalyser();
@@ -642,6 +743,8 @@ export function useLiveVoice({
     setInterimTranscript("");
     setFinalTranscript("");
     hasSpokenSinceListeningRef.current = false;
+    isRecordingPhraseRef.current = false;
+    recordedAudioChunksRef.current = [];
   }, [stopSpeaking, cleanupAudioAnalyser]);
 
   // Toggle Mute
@@ -674,19 +777,16 @@ export function useLiveVoice({
   const handlePushToTalkStart = useCallback(() => {
     if (isHandsFree) return;
     setIsPushToTalkActive(true);
+    isRecordingPhraseRef.current = true;
+    recordedAudioChunksRef.current = [];
     setVoiceState("listening");
   }, [isHandsFree]);
 
   const handlePushToTalkEnd = useCallback(() => {
     if (isHandsFree) return;
     setIsPushToTalkActive(false);
-    const textToSubmit = interimTranscriptRef.current.trim();
-    if (textToSubmit) {
-      handleFinalSpeechSend(textToSubmit);
-    } else {
-      setVoiceState(isSpeakingRef.current ? "speaking" : "idle");
-    }
-  }, [isHandsFree, handleFinalSpeechSend]);
+    submitRecordedPhrase();
+  }, [isHandsFree, submitRecordedPhrase]);
 
   // Notify that the AI has started thinking / generating
   const setThinking = useCallback(() => {
