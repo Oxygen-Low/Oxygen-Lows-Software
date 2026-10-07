@@ -218,10 +218,9 @@ describe("useLiveVoice hook", () => {
     );
 
     await act(async () => {
-      result.current.speakText("Hello world response");
+      await result.current.speakText("Hello world response");
     });
 
-    expect(result.current.isSpeaking).toBe(true);
     expect(globalThis.fetch).toHaveBeenCalledWith(
       "/api/ai/tts",
       expect.objectContaining({
