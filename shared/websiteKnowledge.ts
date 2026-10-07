@@ -21,7 +21,7 @@ When users ask what they can do on OxygenLow.com, ask about the website or platf
 
 ### 2. Applications & Productivity Tools (/apps)
 - **AI Chatbot** (/apps/chatbot):
-  - Advanced conversational AI supporting multiple cloud providers (Stable Horde, OpenAI GPT-4, Anthropic Claude, Google Gemini, OpenRouter, xAI Grok) and local offline AI models (Ollama, LM Studio, KoboldCpp).
+  - Advanced conversational AI powered by Pollinations AI for fast, multi-model text generation and chat.
   - Integrated Web Search & Agentic Research: autonomously explores the live web and reads web pages to answer real-time questions with source citations.
   - Step-by-Step Reasoning Mode: inspect the model's internal thought process and analysis.
   - Code & Document Artifacts: interactive sidebar to view, syntax-highlight, copy, and download generated code and documents.
