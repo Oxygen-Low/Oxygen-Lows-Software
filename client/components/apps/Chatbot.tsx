@@ -1050,7 +1050,8 @@ export function ChatbotApp() {
   }, []);
 
   const [userSelectedModel, setUserSelectedModel] = useState<string | null>(null);
-  const selectedModel = userSelectedModel || chatbotDefaultModel || "openai";
+  const selectedModel =
+    userSelectedModel || chatbotDefaultModel || "inclusionai/ling-3.1-flash";
   const setSelectedModel = useCallback((modelId: string) => {
     setUserSelectedModel(modelId);
   }, []);
@@ -1065,8 +1066,12 @@ export function ChatbotApp() {
     [models],
   );
 
-  const builtinModels = useMemo(() => {
-    return models.filter((m) => !m.isCustom);
+  const standardModels = useMemo(() => {
+    return models.filter((m) => !m.isCustom && !m.isCommunity);
+  }, [models]);
+
+  const communityModels = useMemo(() => {
+    return models.filter((m) => !m.isCustom && m.isCommunity);
   }, [models]);
 
   const customModels = useMemo(() => {
@@ -1464,7 +1469,7 @@ export function ChatbotApp() {
           t(
             "apps.defaultModelFallbackWarning",
             { model: fallbackModelId },
-            `The main default model (Pollinations Ling 3.1 Flash) is currently unavailable (rate limited). Falling back to AI Horde (${fallbackModelId}). Quality may be decreased.`,
+            `The main default model (Ling 3.1 Flash) is currently unavailable (rate limited). Falling back to AI Horde (${fallbackModelId}). Quality may be decreased.`,
           ),
         );
       }
@@ -1835,7 +1840,7 @@ export function ChatbotApp() {
 
       const finalResearchProvider = "pollinations";
       const finalResearchModel =
-        selectedModel || researchAgentDefaultModel || "openai";
+        selectedModel || researchAgentDefaultModel || "inclusionai/ling-3.1-flash";
       const finalApiKey = pollinationsApiKey || undefined;
 
       const agentRes = await fetch("/api/ai/agent-search", {
@@ -3691,16 +3696,23 @@ export function ChatbotApp() {
                         : "opacity-0 scale-95 pointer-events-none",
                     )}
                   >
-                    <div className="max-h-[300px] overflow-y-auto no-scrollbar pb-2">
-                      {builtinModels.length > 0 && (
+                    <div className="max-h-[360px] overflow-y-auto no-scrollbar pb-2">
+                      {standardModels.length > 0 && (
                         <>
                           <div className="px-3 pt-3 pb-1">
                             <p className="text-[10px] uppercase tracking-wider text-slate-400 font-display font-medium">
-                              Pollinations Models
+                              {t("account.standardModels", undefined, "Standard Models")}
+                            </p>
+                            <p className="text-[10px] text-cyan-400/90 mt-0.5 leading-snug">
+                              {t(
+                                "account.questPollenNotice",
+                                undefined,
+                                "All models in this section use quest pollen, not paid pollen.",
+                              )}
                             </p>
                           </div>
                           <div className="px-2">
-                            {builtinModels.map((m) => (
+                            {standardModels.map((m) => (
                               <button
                                 key={`${m.provider}-${m.model_id}`}
                                 onClick={() => {
@@ -3715,19 +3727,59 @@ export function ChatbotApp() {
                                 )}
                               >
                                 <div className="text-sm text-white font-medium">
-                                  {
-                                    formatModelLabel(
-                                      m.provider,
-                                      m.model_id,
-                                    ).split(" - ")[0]
-                                  }
+                                  {m.name || m.model_id}
                                 </div>
                                 <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
                                   <span>
-                                    {formatModelLabel(
-                                      m.provider,
-                                      m.model_id,
-                                    ).split(" - ")[1] || m.model_id}
+                                    {m.model_id}
+                                    {m.rate ? ` • ${m.rate}` : ""}
+                                  </span>
+                                </div>
+                                {selectedModel === m.model_id && (
+                                  <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {communityModels.length > 0 && (
+                        <>
+                          <div className="px-3 pt-3 pb-1">
+                            <p className="text-[10px] uppercase tracking-wider text-amber-400 font-display font-medium">
+                              {t("account.communityModels", undefined, "Community Models")}
+                            </p>
+                            <p className="text-[10px] text-amber-400/80 mt-0.5 leading-snug">
+                              {t(
+                                "account.communityDisclaimer",
+                                undefined,
+                                "These community models may store data or be unreliable.",
+                              )}
+                            </p>
+                          </div>
+                          <div className="px-2">
+                            {communityModels.map((m) => (
+                              <button
+                                key={`${m.provider}-${m.model_id}`}
+                                onClick={() => {
+                                  setSelectedModel(m.model_id);
+                                  setModelDropdownOpen(false);
+                                }}
+                                className={cn(
+                                  "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
+                                  selectedModel === m.model_id
+                                    ? "bg-white/5"
+                                    : "",
+                                )}
+                              >
+                                <div className="text-sm text-white font-medium">
+                                  {m.name || m.model_id}
+                                </div>
+                                <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
+                                  <span>
+                                    {m.model_id}
+                                    {m.rate ? ` • ${m.rate}` : ""}
                                   </span>
                                 </div>
                                 {selectedModel === m.model_id && (
@@ -3743,7 +3795,7 @@ export function ChatbotApp() {
                         <>
                           <div className="px-3 pb-1 pt-3 flex justify-between items-center">
                             <p className="text-[10px] uppercase tracking-wider text-slate-400 font-display font-medium">
-                              Custom Models
+                              {t("account.customModels", undefined, "Custom Models")}
                             </p>
                           </div>
                           <div className="px-2">
@@ -3762,18 +3814,10 @@ export function ChatbotApp() {
                                 )}
                               >
                                 <div className="text-sm text-white font-medium">
-                                  {
-                                    formatModelLabel(
-                                      m.provider,
-                                      m.model_id,
-                                    ).split(" - ")[0]
-                                  }
+                                  {m.name || m.model_id}
                                 </div>
                                 <div className="text-[11px] text-slate-400 truncate w-full pr-4">
-                                  {formatModelLabel(
-                                    m.provider,
-                                    m.model_id,
-                                  ).split(" - ")[1] || m.model_id}
+                                  {m.model_id}
                                 </div>
                                 {selectedModel === m.model_id && (
                                   <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />

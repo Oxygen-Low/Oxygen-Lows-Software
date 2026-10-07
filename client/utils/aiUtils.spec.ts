@@ -5,21 +5,30 @@ describe("formatModelLabel", () => {
   it("should handle pollinations provider", () => {
     expect(
       formatModelLabel("pollinations", "inclusionai/ling-3.1-flash"),
-    ).toBe("Ling 3.1 Flash (Pollinations)");
-    expect(formatModelLabel("pollinations", "openai/gpt-4o-mini")).toBe(
-      "GPT-4o Mini (Pollinations)",
+    ).toBe("Free");
+    expect(formatModelLabel("pollinations", "amazon/nova-micro-v1")).toBe(
+      "Cheap",
     );
-    expect(formatModelLabel("pollinations", "openai")).toBe(
-      "GPT-4o Mini (Pollinations)",
+    expect(formatModelLabel("pollinations", "openai/gpt-6-luna")).toBe(
+      "Fast",
     );
-    expect(formatModelLabel("pollinations", "mistral")).toBe(
-      "Mistral Nemo (Pollinations)",
+    expect(formatModelLabel("pollinations", "openai/gpt-5.6-terra")).toBe(
+      "Balanced",
     );
-    expect(formatModelLabel("pollinations", "deepseek")).toBe(
-      "DeepSeek V3 (Pollinations)",
+    expect(formatModelLabel("pollinations", "openai/gpt-6.1-sol")).toBe(
+      "Smart",
     );
+    expect(formatModelLabel("pollinations", "openai/gpt-6-astra")).toBe(
+      "Smartest",
+    );
+    expect(
+      formatModelLabel("pollinations", "community/MarcosFRG/deepseek-v4-flash-0731"),
+    ).toBe("Deepseek v4 Flash");
+    expect(
+      formatModelLabel("pollinations", "community/vendouple/gemini-3.8-flash"),
+    ).toBe("Gemini 3.8 Flash");
     expect(formatModelLabel("pollinations", "unknown-model")).toBe(
-      "Pollinations - unknown-model",
+      "unknown-model",
     );
   });
 

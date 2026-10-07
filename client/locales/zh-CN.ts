@@ -246,6 +246,11 @@ export const zhCN = {
     registeredModels: "活跃与自定义模型",
     registeredModelsDesc:
       "所有可用的 Pollinations 模型，包括官方预设和自定义注册模型。",
+    standardModels: "标准模型",
+    questPollenNotice: "此部分中的所有模型均使用任务花粉，而非付费花粉。",
+    communityModels: "社区模型",
+    communityDisclaimer: "这些社区模型可能会存储数据或不稳定。",
+    customModels: "自定义模型",
     configured: "已连接",
     notConfigured: "需要 API 密钥",
     deleteModelConfirmTitle: "ç§»é™¤è‡ªå®šä¹‰æ¨¡åž‹",

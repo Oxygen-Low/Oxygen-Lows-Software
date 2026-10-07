@@ -254,6 +254,13 @@ export const ja = {
     registeredModels: "アクティブ＆カスタムモデル",
     registeredModelsDesc:
       "公式プリセットおよびカスタム登録モデルを含む、利用可能なすべてのPollinationsモデル。",
+    standardModels: "標準モデル",
+    questPollenNotice:
+      "このセクションのすべてのモデルは、有料の花粉ではなくクエスト花粉を使用します。",
+    communityModels: "コミュニティモデル",
+    communityDisclaimer:
+      "これらのコミュニティモデルはデータを保存したり、信頼性が低い場合があります。",
+    customModels: "カスタムモデル",
     configured: "接続済み",
     notConfigured: "APIキーが必要です",
     deleteModelConfirmTitle: "ã‚«ã‚¹ã‚¿ãƒ ãƒ¢ãƒ‡ãƒ«ã®å‰Šé™¤",

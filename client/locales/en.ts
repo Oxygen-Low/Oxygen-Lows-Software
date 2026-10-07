@@ -252,6 +252,13 @@ export const en = {
     registeredModels: "Active & Custom Models",
     registeredModelsDesc:
       "All available Pollinations models, including official presets and custom registered models.",
+    standardModels: "Standard Models",
+    questPollenNotice:
+      "All models in this section use quest pollen, not paid pollen.",
+    communityModels: "Community Models",
+    communityDisclaimer:
+      "These community models may store data or be unreliable.",
+    customModels: "Custom Models",
     configured: "Connected",
     notConfigured: "API Key Required",
     deleteModelConfirmTitle: "Remove Custom Model",

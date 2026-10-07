@@ -257,6 +257,13 @@ export const ru = {
     registeredModels: "Активные и пользовательские модели",
     registeredModelsDesc:
       "Все доступные модели Pollinations, включая официальные предустановки и пользовательские модели.",
+    standardModels: "Стандартные модели",
+    questPollenNotice:
+      "Все модели в этом разделе используют пыльцу за задания, а не платную пыльцу.",
+    communityModels: "Модели сообщества",
+    communityDisclaimer:
+      "Эти модели сообщества могут сохранять данные или быть ненадежными.",
+    customModels: "Пользовательские модели",
     configured: "Подключено",
     notConfigured: "Требуется ключ API",
     deleteModelConfirmTitle: "Ð£Ð´Ð°Ð»Ð¸Ñ‚ÑŒ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»ÑŒÑÐºÑƒÑŽ Ð¼Ð¾Ð´ÐµÐ»ÑŒ",

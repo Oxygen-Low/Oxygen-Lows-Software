@@ -251,6 +251,13 @@ export const ko = {
     registeredModels: "활성 및 사용자 지정 모델",
     registeredModelsDesc:
       "공식 프리셋 및 사용자 지정 등록 모델을 포함한 모든 사용 가능한 Pollinations 모델입니다.",
+    standardModels: "기본 모델",
+    questPollenNotice:
+      "이 섹션의 모든 모델은 유료 꽃가루가 아닌 퀘스트 꽃가루를 사용합니다.",
+    communityModels: "커뮤니티 모델",
+    communityDisclaimer:
+      "이 커뮤니티 모델은 데이터를 저장하거나 불안정할 수 있습니다.",
+    customModels: "커스텀 모델",
     configured: "연결됨",
     notConfigured: "API 키 필요",
     deleteModelConfirmTitle: "ì»¤ìŠ¤í…€ ëª¨ë¸ ì œê±°",

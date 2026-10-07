@@ -243,12 +243,23 @@ export default function Account() {
     setPollinationsKeyInput(pollinationsApiKey || "");
   }, [pollinationsApiKey]);
 
+  const standardModels = useMemo(
+    () => models.filter((m) => !m.isCustom && !m.isCommunity),
+    [models],
+  );
+  const communityModels = useMemo(
+    () => models.filter((m) => !m.isCustom && m.isCommunity),
+    [models],
+  );
+  const customModelsList = useMemo(
+    () => models.filter((m) => m.isCustom),
+    [models],
+  );
+
   // Add Model Dialog State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedPreset, setSelectedPreset] = useState<string>("openai");
-  const [customModelId, setCustomModelId] = useState<string>("openai");
-  const [customModelName, setCustomModelName] =
-    useState<string>("GPT-4o Mini (Pollinations)");
+  const [customModelId, setCustomModelId] = useState<string>("");
+  const [customModelName, setCustomModelName] = useState<string>("");
   const [addError, setAddError] = useState<string | null>(null);
   const [isSubmittingModel, setIsSubmittingModel] = useState(false);
 
@@ -536,30 +547,9 @@ export default function Account() {
   };
 
   // Add Model Handlers for Pollinations
-  const handlePresetSelectChange = (newPreset: string) => {
-    setSelectedPreset(newPreset);
-    setAddError(null);
-    if (newPreset === "custom") {
-      setCustomModelId("");
-      setCustomModelName("");
-    } else {
-      const presets = POPULAR_PRESETS["pollinations"] || [];
-      const match = presets.find((p) => p.model_id === newPreset);
-      if (match) {
-        setCustomModelId(match.model_id);
-        setCustomModelName(match.name);
-      } else {
-        setCustomModelId(newPreset);
-        setCustomModelName(newPreset);
-      }
-    }
-  };
-
   const handleOpenAddModelModal = () => {
-    const presets = POPULAR_PRESETS["pollinations"] || [];
-    setSelectedPreset(presets[0]?.model_id || "custom");
-    setCustomModelId(presets[0]?.model_id || "");
-    setCustomModelName(presets[0]?.name || "");
+    setCustomModelId("");
+    setCustomModelName("");
     setAddError(null);
     setIsAddModalOpen(true);
   };
@@ -1101,7 +1091,7 @@ export default function Account() {
                 <div>
                   <CardTitle className="text-white text-xl flex items-center gap-2.5">
                     <Cpu className="w-5 h-5 text-cyan-400" />
-                    {t("account.models", undefined, "AI Models (Pollinations)")}
+                    {t("account.models", undefined, "AI Models")}
                   </CardTitle>
                   <CardDescription className="mt-1">
                     {t(
@@ -1565,7 +1555,7 @@ export default function Account() {
             {/* 4. Active & Custom Registered Models */}
             <Card className="bg-slate-900/50 border-slate-800">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <CardTitle className="text-white text-lg">
                       {t(
@@ -1582,60 +1572,168 @@ export default function Account() {
                       )}
                     </CardDescription>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => refreshModels()}
-                    className="text-slate-400 hover:text-white h-8 px-2 gap-1.5 text-xs"
-                    title={t("common.refresh", undefined, "Refresh")}
-                  >
-                    <RefreshCw
-                      className={`w-3.5 h-3.5 ${modelsLoading ? "animate-spin" : ""}`}
-                    />
-                    {t("common.refresh", undefined, "Refresh")}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => refreshModels()}
+                      className="text-slate-400 hover:text-white h-8 px-2 gap-1.5 text-xs"
+                      title={t("common.refresh", undefined, "Refresh")}
+                    >
+                      <RefreshCw
+                        className={`w-3.5 h-3.5 ${modelsLoading ? "animate-spin" : ""}`}
+                      />
+                      {t("common.refresh", undefined, "Refresh")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleOpenAddModelModal}
+                      className="bg-cyan-600 hover:bg-cyan-500 text-white h-8 px-2.5 gap-1.5 text-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      {t("account.addModel", undefined, "Add Model")}
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
 
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {models.map((m) => (
-                    <div
-                      key={m.model_id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition"
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-medium text-white truncate">
+              <CardContent className="space-y-6">
+                {/* 4a. Standard Models (Quest Pollen) */}
+                <div className="space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                      {t("account.standardModels", undefined, "Standard Models")}
+                    </h4>
+                    <span className="text-[11px] text-cyan-400 font-medium">
+                      {t(
+                        "account.questPollenNotice",
+                        undefined,
+                        "All models in this section use quest pollen, not paid pollen.",
+                      )}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    {standardModels.map((m) => (
+                      <div
+                        key={m.model_id}
+                        className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition space-y-1"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-white truncate">
                             {m.name || m.model_id}
                           </p>
-                          {m.isCustom && (
+                          {m.rate && (
                             <Badge
                               variant="outline"
-                              className="text-[9px] px-1.5 py-0 border-cyan-800/60 bg-cyan-950/30 text-cyan-300"
+                              className="text-[9px] px-1.5 py-0 border-cyan-800/60 bg-cyan-950/40 text-cyan-300 shrink-0 font-normal"
                             >
-                              {t("account.customBadge", undefined, "Custom")}
+                              {m.rate}
                             </Badge>
                           )}
                         </div>
-                        <p className="text-[10px] text-slate-400 truncate mt-0.5 font-mono">
+                        <p className="text-[10px] text-slate-400 truncate font-mono">
                           {m.model_id}
                         </p>
                       </div>
+                    ))}
+                  </div>
+                </div>
 
-                      {m.isCustom && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setModelToDelete(m)}
-                          className="text-slate-500 hover:text-red-400 p-1.5 h-7 w-7 rounded-md shrink-0"
-                          title={t("common.delete", undefined, "Delete")}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                {/* 4b. Community Models */}
+                <div className="space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-amber-300">
+                      {t("account.communityModels", undefined, "Community Models")}
+                    </h4>
+                    <span className="text-[11px] text-amber-400/90 font-medium">
+                      {t(
+                        "account.communityDisclaimer",
+                        undefined,
+                        "These community models may store data or be unreliable.",
                       )}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    {communityModels.map((m) => (
+                      <div
+                        key={m.model_id}
+                        className="p-3 rounded-lg bg-slate-950 border border-amber-950/40 hover:border-amber-900/60 transition space-y-1"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-white truncate">
+                            {m.name || m.model_id}
+                          </p>
+                          {m.rate && (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] px-1.5 py-0 border-amber-800/60 bg-amber-950/40 text-amber-300 shrink-0 font-normal"
+                            >
+                              {m.rate}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400 truncate font-mono">
+                          {m.model_id}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4c. Custom Registered Models */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                      {t("account.customModels", undefined, "Custom Models")}
+                    </h4>
+                  </div>
+                  {customModelsList.length === 0 ? (
+                    <div className="p-4 rounded-lg bg-slate-950/60 border border-dashed border-slate-800 text-center">
+                      <p className="text-xs text-slate-500">
+                        {t(
+                          "account.noModelsAvailable",
+                          undefined,
+                          "No custom models registered.",
+                        )}
+                      </p>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      {customModelsList.map((m) => (
+                        <div
+                          key={m.model_id}
+                          className="flex items-center justify-between p-3 rounded-lg bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition"
+                        >
+                          <div className="min-w-0 pr-2">
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-medium text-white truncate">
+                                {m.name || m.model_id}
+                              </p>
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] px-1.5 py-0 border-cyan-800/60 bg-cyan-950/30 text-cyan-300"
+                              >
+                                {t("account.customBadge", undefined, "Custom")}
+                              </Badge>
+                            </div>
+                            <p className="text-[10px] text-slate-400 truncate mt-0.5 font-mono">
+                              {m.model_id}
+                            </p>
+                          </div>
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setModelToDelete(m)}
+                            className="text-slate-500 hover:text-red-400 p-1.5 h-7 w-7 rounded-md shrink-0"
+                            title={t("common.delete", undefined, "Delete")}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -1652,68 +1750,19 @@ export default function Account() {
               {t(
                 "account.addCustomModelTitle",
                 undefined,
-                "Configure Pollinations Model",
+                "Register AI Model",
               )}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-400">
               {t(
                 "account.addCustomModelDesc",
                 undefined,
-                "Add a preset model or specify any custom or private model hosted via Pollinations.",
+                "Register a custom or community model hosted on Pollinations AI.",
               )}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {/* Model Preset Selection */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-300">
-                {t("account.modelPreset", undefined, "Model Preset")}
-              </Label>
-              <Select
-                value={selectedPreset}
-                onValueChange={handlePresetSelectChange}
-              >
-                <SelectTrigger
-                  id="add-model-preset-select"
-                  className="bg-slate-950 border-slate-800 text-white text-xs h-9"
-                >
-                  <SelectValue
-                    placeholder={t(
-                      "account.selectPreset",
-                      undefined,
-                      "Select a preset",
-                    )}
-                  />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[220px]">
-                  {POPULAR_PRESETS["pollinations"]?.map((preset) => (
-                    <SelectItem
-                      key={preset.model_id}
-                      value={preset.model_id}
-                      className="text-xs focus:bg-slate-800 py-1.5"
-                    >
-                      <span className="font-medium">{preset.name}</span>
-                      <span className="ml-2 text-[10px] text-slate-400 font-mono">
-                        ({preset.model_id})
-                      </span>
-                    </SelectItem>
-                  ))}
-                  <SelectItem
-                    value="custom"
-                    className="text-xs focus:bg-slate-800 py-1.5 font-semibold text-cyan-400"
-                  >
-                    +{" "}
-                    {t(
-                      "account.customModelPreset",
-                      undefined,
-                      "Custom Model ID / Path...",
-                    )}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Model ID Text Input */}
             <div className="space-y-1.5">
               <Label
@@ -1730,7 +1779,7 @@ export default function Account() {
                   setCustomModelId(e.target.value);
                   setAddError(null);
                 }}
-                placeholder="e.g. openai, deepseek, mistral, or custom path"
+                placeholder="e.g. openai/gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1"
                 className="bg-slate-950 border-slate-800 text-xs h-9 text-white font-mono"
               />
             </div>

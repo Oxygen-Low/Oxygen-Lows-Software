@@ -13,7 +13,10 @@ export interface Model {
   provider: string;
   model_id: string;
   name?: string;
+  rate?: string;
+  category?: "standard" | "community" | "custom";
   isCustom?: boolean;
+  isCommunity?: boolean;
   isLocal?: boolean;
   isShared?: boolean;
 }
@@ -49,43 +52,61 @@ export const SUPPORTED_PROVIDERS: ProviderInfo[] = [
 export const BUILTIN_MODELS: Model[] = [
   {
     provider: "pollinations",
-    model_id: "openai",
-    name: "GPT-4o Mini (Pollinations)",
-  },
-  {
-    provider: "pollinations",
     model_id: "inclusionai/ling-3.1-flash",
-    name: "Ling 3.1 Flash (Pollinations)",
+    name: "Free",
+    rate: "infinite requests/$1",
+    category: "standard",
   },
   {
     provider: "pollinations",
-    model_id: "mistral",
-    name: "Mistral Nemo (Pollinations)",
+    model_id: "amazon/nova-micro-v1",
+    name: "Cheap",
+    rate: "around 10.2k requests/$1",
+    category: "standard",
   },
   {
     provider: "pollinations",
-    model_id: "deepseek",
-    name: "DeepSeek V3 (Pollinations)",
+    model_id: "openai/gpt-6-luna",
+    name: "Fast",
+    rate: "around 3k requests/$1",
+    category: "standard",
   },
   {
     provider: "pollinations",
-    model_id: "deepseek-r1",
-    name: "DeepSeek R1 (Pollinations)",
+    model_id: "openai/gpt-5.6-terra",
+    name: "Balanced",
+    rate: "around 55 requests/$1",
+    category: "standard",
   },
   {
     provider: "pollinations",
-    model_id: "qwen",
-    name: "Qwen 2.5 72B (Pollinations)",
+    model_id: "openai/gpt-6.1-sol",
+    name: "Smart",
+    rate: "around 85 requests/$1",
+    category: "standard",
   },
   {
     provider: "pollinations",
-    model_id: "claude-hybrid",
-    name: "Claude 3.5 Sonnet Hybrid (Pollinations)",
+    model_id: "openai/gpt-6-astra",
+    name: "Smartest",
+    rate: "around 20 requests/$1",
+    category: "standard",
   },
   {
     provider: "pollinations",
-    model_id: "karma",
-    name: "Karma Free (Pollinations)",
+    model_id: "community/MarcosFRG/deepseek-v4-flash-0731",
+    name: "Deepseek v4 Flash",
+    rate: "infinite requests/$1",
+    category: "community",
+    isCommunity: true,
+  },
+  {
+    provider: "pollinations",
+    model_id: "community/vendouple/gemini-3.8-flash",
+    name: "Gemini 3.8 Flash",
+    rate: "infinite requests/$1",
+    category: "community",
+    isCommunity: true,
   },
 ];
 
@@ -94,23 +115,26 @@ export const POPULAR_PRESETS: Record<
   Array<{ model_id: string; name: string }>
 > = {
   pollinations: [
-    { model_id: "openai", name: "GPT-4o Mini (Pollinations)" },
+    { model_id: "inclusionai/ling-3.1-flash", name: "Free" },
+    { model_id: "amazon/nova-micro-v1", name: "Cheap" },
+    { model_id: "openai/gpt-6-luna", name: "Fast" },
+    { model_id: "openai/gpt-5.6-terra", name: "Balanced" },
+    { model_id: "openai/gpt-6.1-sol", name: "Smart" },
+    { model_id: "openai/gpt-6-astra", name: "Smartest" },
     {
-      model_id: "inclusionai/ling-3.1-flash",
-      name: "Ling 3.1 Flash (Pollinations)",
+      model_id: "community/MarcosFRG/deepseek-v4-flash-0731",
+      name: "Deepseek v4 Flash",
     },
-    { model_id: "mistral", name: "Mistral Nemo (Pollinations)" },
-    { model_id: "deepseek", name: "DeepSeek V3 (Pollinations)" },
-    { model_id: "deepseek-r1", name: "DeepSeek R1 (Pollinations)" },
-    { model_id: "qwen", name: "Qwen 2.5 72B (Pollinations)" },
-    { model_id: "claude-hybrid", name: "Claude 3.5 Sonnet Hybrid (Pollinations)" },
-    { model_id: "karma", name: "Karma Free (Pollinations)" },
+    {
+      model_id: "community/vendouple/gemini-3.8-flash",
+      name: "Gemini 3.8 Flash",
+    },
   ],
 };
 
-const DEFAULT_CHATBOT_MODEL = "openai";
+const DEFAULT_CHATBOT_MODEL = "inclusionai/ling-3.1-flash";
 const DEFAULT_RESEARCH_MODEL = "inclusionai/ling-3.1-flash";
-const DEFAULT_SUMMARIZER_MODEL = "openai";
+const DEFAULT_SUMMARIZER_MODEL = "inclusionai/ling-3.1-flash";
 
 const LOCAL_STORAGE_KEY_POLLINATIONS = "pollinations_api_key";
 const LOCAL_STORAGE_CUSTOM_MODELS = "pollinations_custom_models";

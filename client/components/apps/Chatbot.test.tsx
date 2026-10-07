@@ -1013,20 +1013,23 @@ describe("ChatbotApp", () => {
     );
     fireEvent.click(modelDropdownButton);
 
-    // Verify "Pollinations Models" header is visible
-    await screen.findByText("Pollinations Models");
-    await screen.findByText("Ling 3.1 Flash (Pollinations)");
-    await screen.findByText("DeepSeek V3 (Pollinations)");
+    // Verify "Standard Models" and "Community Models" headers are visible
+    await screen.findByText("Standard Models");
+    await screen.findByText("All models in this section use quest pollen, not paid pollen.");
+    await screen.findByText("Community Models");
+    await screen.findByText("These community models may store data or be unreliable.");
+    expect((await screen.findAllByText("Free")).length).toBeGreaterThan(0);
+    await screen.findByText("Deepseek v4 Flash");
 
-    // Select DeepSeek V3 model
-    const deepseekOption = screen.getByText("DeepSeek V3 (Pollinations)");
-    fireEvent.click(deepseekOption);
+    // Select Smart model
+    const smartOption = screen.getByText("Smart");
+    fireEvent.click(smartOption);
 
     // Verify the selected model is updated on the dropdown button
     await waitFor(() => {
       expect(
         screen.getByTestId("chatbot-model-dropdown-btn").textContent,
-      ).toContain("DeepSeek V3");
+      ).toContain("Smart");
     });
   });
 

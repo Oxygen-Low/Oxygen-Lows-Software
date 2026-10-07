@@ -682,13 +682,20 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
       } catch {}
       return c.json({
         models: [
-          { id: "openai", name: "OpenAI GPT-4o Mini (Pollinations)" },
-          { id: "mistral", name: "Mistral Nemo (Pollinations)" },
-          { id: "deepseek", name: "DeepSeek V3 (Pollinations)" },
-          { id: "deepseek-r1", name: "DeepSeek R1 (Pollinations)" },
-          { id: "qwen", name: "Qwen 2.5 72B (Pollinations)" },
-          { id: "claude-hybrid", name: "Claude 3.5 Sonnet (Hybrid)" },
-          { id: "karma", name: "Karma (Pollinations)" },
+          { id: "inclusionai/ling-3.1-flash", name: "Free" },
+          { id: "amazon/nova-micro-v1", name: "Cheap" },
+          { id: "openai/gpt-6-luna", name: "Fast" },
+          { id: "openai/gpt-5.6-terra", name: "Balanced" },
+          { id: "openai/gpt-6.1-sol", name: "Smart" },
+          { id: "openai/gpt-6-astra", name: "Smartest" },
+          {
+            id: "community/MarcosFRG/deepseek-v4-flash-0731",
+            name: "Deepseek v4 Flash",
+          },
+          {
+            id: "community/vendouple/gemini-3.8-flash",
+            name: "Gemini 3.8 Flash",
+          },
         ],
       });
     }

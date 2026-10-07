@@ -260,6 +260,13 @@ export const es = {
     registeredModels: "Modelos activos y personalizados",
     registeredModelsDesc:
       "Todos los modelos de Pollinations disponibles, incluidos ajustes preestablecidos oficiales y modelos registrados personalizados.",
+    standardModels: "Modelos Estándar",
+    questPollenNotice:
+      "Todos los modelos de esta sección usan polen de misiones, no polen de pago.",
+    communityModels: "Modelos de la Comunidad",
+    communityDisclaimer:
+      "Estos modelos de la comunidad pueden almacenar datos o ser poco confiables.",
+    customModels: "Modelos Personalizados",
     configured: "Conectado",
     notConfigured: "Clave API Requerida",
     deleteModelConfirmTitle: "Eliminar modelo personalizado",
