@@ -1298,6 +1298,7 @@ describe("ChatbotApp", () => {
       last_model_id: "inclusionai/ling-3.1-flash",
     };
     mockUserModels = [];
+    mockChats = [];
     const originalFetch = global.fetch;
     const toastWarnSpy = vi.spyOn(toast, "warning");
     let hordeFastCalled = false;

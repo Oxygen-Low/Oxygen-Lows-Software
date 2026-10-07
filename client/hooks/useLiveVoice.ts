@@ -100,6 +100,7 @@ export function useLiveVoice({
   const activeUtteranceRef = useRef<any>(null);
   const speechSessionIdRef = useRef(0);
   const recognitionRef = useRef<any>(null);
+  const isMountedRef = useRef(true);
 
   const targetLocale = LANGUAGE_LOCALE_MAP[languageCode] || "en-US";
 
@@ -200,7 +201,7 @@ export function useLiveVoice({
             await audioPromise;
 
             URL.revokeObjectURL(blobUrl);
-            if (speechSessionIdRef.current === currentSessionId) {
+            if (speechSessionIdRef.current === currentSessionId && isMountedRef.current) {
               setIsSpeaking(false);
               setVoiceState("idle");
               currentAudioElementRef.current = null;
@@ -231,7 +232,7 @@ export function useLiveVoice({
             playedAudio = true;
             await audioPromise;
 
-            if (speechSessionIdRef.current === currentSessionId) {
+            if (speechSessionIdRef.current === currentSessionId && isMountedRef.current) {
               setIsSpeaking(false);
               setVoiceState("idle");
               currentAudioElementRef.current = null;
@@ -255,16 +256,20 @@ export function useLiveVoice({
 
             utterance.onend = () => {
               if (speechSessionIdRef.current !== currentSessionId) return;
-              setIsSpeaking(false);
-              setVoiceState("idle");
+              if (isMountedRef.current) {
+                setIsSpeaking(false);
+                setVoiceState("idle");
+              }
               activeUtteranceRef.current = null;
               onDone?.();
             };
 
             utterance.onerror = () => {
               if (speechSessionIdRef.current !== currentSessionId) return;
-              setIsSpeaking(false);
-              setVoiceState("idle");
+              if (isMountedRef.current) {
+                setIsSpeaking(false);
+                setVoiceState("idle");
+              }
               activeUtteranceRef.current = null;
               onDone?.();
             };
@@ -276,7 +281,7 @@ export function useLiveVoice({
         } catch {}
       }
 
-      if (speechSessionIdRef.current === currentSessionId) {
+      if (speechSessionIdRef.current === currentSessionId && isMountedRef.current) {
         setIsSpeaking(false);
         setVoiceState("idle");
         onDone?.();
@@ -600,11 +605,13 @@ export function useLiveVoice({
 
   // Cleanup on unmount
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
       stopSpeaking();
       cancelRecording();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [stopSpeaking, cancelRecording]);
 
   return {
     isSupported,

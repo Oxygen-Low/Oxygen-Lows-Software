@@ -371,6 +371,7 @@ export const ja = {
     chatbotStopRecording: "録音停止（音声入力）",
     chatbotStopSpeaking: "読み上げ停止",
     chatbotTranscribing: "文字起こし中...",
+    chatbotReadAloud: "読み上げ",
     chatbotLiveListening: "聞いています...",
     chatbotLiveThinking: "考えています...",
     chatbotLiveSpeaking: "話しています...",

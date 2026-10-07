@@ -311,6 +311,8 @@ const ChatMessage = React.memo(
     onNavigate?: (index: number) => void;
     onRegenerate?: () => void;
     setActiveArtifact: (art: Artifact) => void;
+    onSpeak?: (text: string, messageId?: string) => void;
+    isSpeakingThisMessage?: boolean;
   }) => {
     const { t } = useTranslation();
     const artifacts = m.role === "assistant" ? parseArtifacts(m.content) : [];
@@ -360,9 +362,35 @@ const ChatMessage = React.memo(
 
     if (m.role === "user") {
       return (
-        <div className="flex gap-4 justify-end w-full animate-[fade-in_0.3s_ease-out] mb-4">
+        <div className="flex gap-4 justify-end w-full animate-[fade-in_0.3s_ease-out] mb-4 group/user-msg">
           <div className="flex flex-col gap-2 max-w-[80%] items-end">
-            <p className="text-slate-400 text-xs font-display mr-1">User</p>
+            <div className="flex items-center gap-1.5 mr-1">
+              {onSpeak && displayContent && (
+                <button
+                  type="button"
+                  onClick={() => onSpeak(displayContent, m.id)}
+                  className={cn(
+                    "p-1 rounded hover:bg-white/10 transition-colors opacity-0 group-hover/user-msg:opacity-100 focus:opacity-100",
+                    isSpeakingThisMessage
+                      ? "opacity-100 text-primary animate-pulse"
+                      : "text-slate-400 hover:text-white",
+                  )}
+                  title={
+                    isSpeakingThisMessage
+                      ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
+                      : t("apps.chatbotReadAloud", undefined, "Read aloud")
+                  }
+                  aria-label={
+                    isSpeakingThisMessage
+                      ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
+                      : t("apps.chatbotReadAloud", undefined, "Read aloud")
+                  }
+                >
+                  <Mic className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <p className="text-slate-400 text-xs font-display">User</p>
+            </div>
             <div className="glass-panel px-5 py-4 rounded-xl rounded-tr-sm text-[15px] leading-[1.6]">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -411,9 +439,35 @@ const ChatMessage = React.memo(
           </div>
         </div>
         <div className="flex flex-col gap-2 max-w-[85%] w-full">
-          <p className="text-white text-sm font-display font-medium ml-1">
-            Chatbot
-          </p>
+          <div className="flex items-center justify-between w-full pr-1">
+            <p className="text-white text-sm font-display font-medium ml-1">
+              Chatbot
+            </p>
+            {onSpeak && displayContent && !m.is_image_gen && (
+              <button
+                type="button"
+                onClick={() => onSpeak(displayContent, m.id)}
+                className={cn(
+                  "p-1.5 rounded hover:bg-white/10 transition-colors",
+                  isSpeakingThisMessage
+                    ? "text-primary bg-primary/10 animate-pulse"
+                    : "text-slate-400 hover:text-white",
+                )}
+                title={
+                  isSpeakingThisMessage
+                    ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
+                    : t("apps.chatbotReadAloud", undefined, "Read aloud")
+                }
+                aria-label={
+                  isSpeakingThisMessage
+                    ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
+                    : t("apps.chatbotReadAloud", undefined, "Read aloud")
+                }
+              >
+                <Mic className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
           <div className="w-full">
             {m.usedFallback && (
               <div className="w-full max-w-full rounded-lg border border-amber-500/30 bg-amber-500/10 mb-3 px-4 py-2 flex items-center gap-2 text-xs font-mono text-amber-300">
@@ -947,6 +1001,24 @@ export function ChatbotApp() {
       handleStopRef.current();
     },
   });
+
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+
+  const handleSpeakMessage = useCallback(
+    (text: string, messageId?: string) => {
+      if (!text || !text.trim()) return;
+      if (liveVoice.isSpeaking && speakingMessageId === messageId) {
+        liveVoice.stopSpeaking();
+        setSpeakingMessageId(null);
+      } else {
+        setSpeakingMessageId(messageId || null);
+        liveVoice.speakText(text, () => {
+          setSpeakingMessageId(null);
+        });
+      }
+    },
+    [liveVoice, speakingMessageId],
+  );
 
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [isWebSearchEnabled, setIsWebSearchEnabled] = useState(false);
@@ -1531,7 +1603,7 @@ export function ChatbotApp() {
           err?.statusCode === 402 ||
           err?.message?.includes("402");
 
-        if ((is401 || is404 || isRateLimit || is402) && !isLiveOpenRef.current) {
+        if (is401 || is404 || isRateLimit || is402) {
           const fallbackReason: "rate_limit" | "not_found" | "auth_required" = is401
             ? "auth_required"
             : is404
@@ -2781,6 +2853,7 @@ export function ChatbotApp() {
     }
     liveVoice.stopSpeaking();
     liveVoice.cancelRecording();
+    setSpeakingMessageId(null);
     isVoiceInputRef.current = false;
   };
 
@@ -3290,6 +3363,10 @@ export function ChatbotApp() {
                   }}
                   onRegenerate={handleRegenerate}
                   setActiveArtifact={setActiveArtifact}
+                  onSpeak={handleSpeakMessage}
+                  isSpeakingThisMessage={
+                    liveVoice.isSpeaking && speakingMessageId === m.id
+                  }
                 />
               );
             })}

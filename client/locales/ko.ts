@@ -366,6 +366,7 @@ export const ko = {
     chatbotStopRecording: "녹음 중지 (음성 텍스트 변환)",
     chatbotStopSpeaking: "음성 중지",
     chatbotTranscribing: "텍스트 변환 중...",
+    chatbotReadAloud: "소리내어 읽기",
     chatbotLiveListening: "듣는 중...",
     chatbotLiveThinking: "생각하는 중...",
     chatbotLiveSpeaking: "말하는 중...",

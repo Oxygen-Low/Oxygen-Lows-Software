@@ -367,6 +367,7 @@ export const en = {
     chatbotStopRecording: "Stop recording (Speech to text)",
     chatbotStopSpeaking: "Stop speaking",
     chatbotTranscribing: "Transcribing...",
+    chatbotReadAloud: "Read aloud",
     chatbotLiveListening: "Listening...",
     chatbotLiveThinking: "Thinking...",
     chatbotLiveSpeaking: "Speaking...",

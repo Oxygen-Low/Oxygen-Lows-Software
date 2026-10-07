@@ -379,6 +379,7 @@ export const es = {
     chatbotStopRecording: "Detener grabación (Voz a texto)",
     chatbotStopSpeaking: "Detener voz",
     chatbotTranscribing: "Transcribiendo...",
+    chatbotReadAloud: "Leer en voz alta",
     chatbotLiveListening: "Escuchando...",
     chatbotLiveThinking: "Pensando...",
     chatbotLiveSpeaking: "Hablando...",

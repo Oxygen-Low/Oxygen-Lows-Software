@@ -374,6 +374,7 @@ export const ru = {
     chatbotStopRecording: "Остановить запись (Речь в текст)",
     chatbotStopSpeaking: "Остановить речь",
     chatbotTranscribing: "Транскрибация...",
+    chatbotReadAloud: "Читать вслух",
     chatbotLiveListening: "Слушаю...",
     chatbotLiveThinking: "Думаю...",
     chatbotLiveSpeaking: "Говорю...",

@@ -350,6 +350,7 @@ export const zhCN = {
     chatbotStopRecording: "停止录音（语音转文字）",
     chatbotStopSpeaking: "停止朗读",
     chatbotTranscribing: "正在转录...",
+    chatbotReadAloud: "朗读",
     chatbotLiveListening: "正在倾听...",
     chatbotLiveThinking: "正在思考...",
     chatbotLiveSpeaking: "正在讲话...",
