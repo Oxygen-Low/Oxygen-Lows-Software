@@ -214,22 +214,20 @@ export const en = {
     pollenWalletLabel: "Current Pollen Balance",
     managePollen: "Manage Pollen / Top Up",
     pollinationsApiKeyLabel: "Pollinations API Key",
+    apiKeyPlaceholder: "pk_... or sk_... from enter.pollinations.ai/keys",
+    showApiKey: "Show key",
+    hideApiKey: "Hide key",
     apiKeyHint: "Get or manage your API keys on the Pollinations Dashboard.",
     apiKeySaved: "Pollinations API key saved successfully",
     apiKeyRemoved: "Pollinations API key removed",
     clearKey: "Clear",
     keyRequired: "API Key Required",
     activeModelsCount: "Active Models",
-    detectedLocalModels: "Local Models Running",
-    noLocalModelsDetected:
-      "No local models detected. Launch Ollama (11434), LM Studio (1234), or KoboldCPP (5001) to auto-detect.",
-    localStatusRunning: "Local Running",
-    localStatusOffline: "Local Offline",
     addModel: "Add Model",
     registerModel: "Register Model",
     addCustomModelTitle: "Register AI Model",
     addCustomModelDesc:
-      "Add a model from a configured provider or enter a custom model identifier.",
+      "Register a custom or community model hosted on Pollinations AI.",
     provider: "Provider",
     selectProvider: "Select a provider",
     modelPreset: "Model Preset",
@@ -251,13 +249,10 @@ export const en = {
     researchSummarizerDefaultTitle: "Search Summarizer Default",
     researchSummarizerDefaultDesc:
       "Model used to synthesize research findings into comprehensive final answers.",
-    registeredModels: "Active & Registered Models",
+    registeredModels: "Active & Custom Models",
     registeredModelsDesc:
-      "All available models grouped by provider, including detected local endpoints and custom registrations.",
-    localModelsGroup: "Local Models (Ollama / LM Studio / KoboldCPP)",
-    cloudModelsGroup: "Cloud Providers",
-    builtInModelsGroup: "Built-in Cloud Services (AI Horde)",
-    configured: "Configured",
+      "All available Pollinations models, including official presets and custom registered models.",
+    configured: "Connected",
     notConfigured: "API Key Required",
     deleteModelConfirmTitle: "Remove Custom Model",
     deleteModelConfirmDesc:
@@ -404,6 +399,8 @@ export const en = {
       "Pollinations requires an API key (HTTP 401). Falling back to AI Horde backup ({model}). You can add a key from enter.pollinations.ai in Models settings.",
     pollinations401FallbackNotice:
       "Generated via AI Horde ({model}) fallback due to Pollinations API key requirement (401).",
+    pollinationsGateRequired:
+      "A Pollinations API key is required. Please configure it in Account settings.",
     agentSearchTitle: "Agent Search",
     agentSearchDesc:
       "AI-powered agentic search that researches the web and synthesizes answers.",

@@ -524,6 +524,12 @@ export default function Account() {
           "Pollinations API key removed",
         ),
       });
+    } catch (err: any) {
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: err?.message,
+        variant: "destructive",
+      });
     } finally {
       setIsSavingKey(false);
     }
@@ -1256,14 +1262,28 @@ export default function Account() {
                         type={showApiKey ? "text" : "password"}
                         value={pollinationsKeyInput}
                         onChange={(e) => setPollinationsKeyInput(e.target.value)}
-                        placeholder="pk_... or sk_... from enter.pollinations.ai/keys"
+                        placeholder={t(
+                          "account.apiKeyPlaceholder",
+                          undefined,
+                          "pk_... or sk_... from enter.pollinations.ai/keys",
+                        )}
                         className="bg-slate-950 border-slate-800 text-xs text-white font-mono pr-9 h-9"
                       />
                       <button
                         type="button"
                         onClick={() => setShowApiKey((prev) => !prev)}
                         className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                        title={showApiKey ? "Hide key" : "Show key"}
+                        title={
+                          showApiKey
+                            ? t("account.hideApiKey", undefined, "Hide key")
+                            : t("account.showApiKey", undefined, "Show key")
+                        }
+                        aria-label={
+                          showApiKey
+                            ? t("account.hideApiKey", undefined, "Hide key")
+                            : t("account.showApiKey", undefined, "Show key")
+                        }
+                        aria-pressed={showApiKey}
                       >
                         {showApiKey ? (
                           <EyeOff className="w-4 h-4" />

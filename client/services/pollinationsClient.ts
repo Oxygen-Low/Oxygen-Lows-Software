@@ -41,6 +41,102 @@ export interface PollinationsStreamOptions {
 
 export const POLLINATIONS_TEXT_API_URL = "https://gen.pollinations.ai/v1/chat/completions";
 
+export interface SseDeltaTranslator {
+  translate: (parsed: any) => string;
+  flush: () => string;
+}
+
+/**
+ * Creates an SSE delta translator that normalizes Anthropic and OpenAI-compatible streaming
+ * tool-call events and text deltas into unified stream text with <tool_call> markup.
+ */
+export function createSseDeltaTranslator(): SseDeltaTranslator {
+  const openAnthropicToolBlocks = new Map<number, { hasArgs: boolean }>();
+
+  return {
+    translate(parsed: any): string {
+      let delta = "";
+
+      if (
+        parsed?.type === "content_block_start" &&
+        parsed.content_block?.type === "tool_use"
+      ) {
+        const idx = parsed.index ?? openAnthropicToolBlocks.size;
+        openAnthropicToolBlocks.set(idx, { hasArgs: false });
+        const nameStr = JSON.stringify(parsed.content_block.name || "");
+        delta += `<tool_call>\n{"name": ${nameStr}, "args": `;
+      } else if (
+        parsed?.type === "content_block_delta" &&
+        parsed.delta?.type === "input_json_delta"
+      ) {
+        const idx = parsed.index ?? openAnthropicToolBlocks.size - 1;
+        if (openAnthropicToolBlocks.has(idx)) {
+          openAnthropicToolBlocks.get(idx)!.hasArgs = true;
+        }
+        delta += parsed.delta.partial_json || "";
+      } else if (
+        parsed?.type === "content_block_delta" &&
+        parsed.delta?.type === "text_delta"
+      ) {
+        delta += parsed.delta.text || "";
+      } else if (parsed?.type === "content_block_stop") {
+        const idx = parsed.index ?? openAnthropicToolBlocks.size - 1;
+        if (openAnthropicToolBlocks.has(idx)) {
+          const block = openAnthropicToolBlocks.get(idx)!;
+          if (!block.hasArgs) {
+            delta += "{}";
+          }
+          delta += `\n}</tool_call>`;
+          openAnthropicToolBlocks.delete(idx);
+        }
+      } else if (
+        parsed?.type === "message_stop" ||
+        parsed?.type === "message_delta"
+      ) {
+        if (openAnthropicToolBlocks.size > 0) {
+          for (const [, block] of openAnthropicToolBlocks.entries()) {
+            if (!block.hasArgs) delta += "{}";
+            delta += `\n}</tool_call>`;
+          }
+          openAnthropicToolBlocks.clear();
+        }
+      } else {
+        delta =
+          parsed?.choices?.[0]?.delta?.content ||
+          parsed?.choices?.[0]?.text ||
+          parsed?.response ||
+          parsed?.delta?.text ||
+          "";
+        const tc = parsed?.choices?.[0]?.delta?.tool_calls?.[0];
+        if (tc) {
+          if (tc.function?.name) {
+            const nameStr = JSON.stringify(tc.function.name);
+            delta += `<tool_call>\n{"name": ${nameStr}, "args": `;
+          }
+          if (tc.function?.arguments) delta += tc.function.arguments;
+        }
+        if (parsed?.choices?.[0]?.finish_reason === "tool_calls") {
+          delta += `\n}</tool_call>`;
+        }
+      }
+
+      return delta;
+    },
+
+    flush(): string {
+      let unclosedDelta = "";
+      if (openAnthropicToolBlocks.size > 0) {
+        for (const [, block] of openAnthropicToolBlocks.entries()) {
+          if (!block.hasArgs) unclosedDelta += "{}";
+          unclosedDelta += `\n}</tool_call>`;
+        }
+        openAnthropicToolBlocks.clear();
+      }
+      return unclosedDelta;
+    },
+  };
+}
+
 /**
  * Sends a streaming chat completion request directly to Pollinations AI from the browser client.
  * Throws PollinationsRateLimitError if the server returns HTTP 429.
@@ -111,8 +207,7 @@ export async function streamPollinationsClient({
   const decoder = new TextDecoder();
   let fullContent = "";
   let streamBuffer = "";
-
-  const openAnthropicToolBlocks = new Map<number, { hasArgs: boolean }>();
+  const translator = createSseDeltaTranslator();
 
   while (true) {
     const { done, value } = await reader.read();
@@ -131,66 +226,7 @@ export async function streamPollinationsClient({
       try {
         const parsed = JSON.parse(dataStr);
         if (parsed.queue_info) onQueueInfo?.(parsed.queue_info);
-        let delta = "";
-
-        if (
-          parsed.type === "content_block_start" &&
-          parsed.content_block?.type === "tool_use"
-        ) {
-          const idx = parsed.index ?? openAnthropicToolBlocks.size;
-          openAnthropicToolBlocks.set(idx, { hasArgs: false });
-          delta += `<tool_call>\n{"name": "${parsed.content_block.name}", "args": `;
-        } else if (
-          parsed.type === "content_block_delta" &&
-          parsed.delta?.type === "input_json_delta"
-        ) {
-          const idx = parsed.index ?? openAnthropicToolBlocks.size - 1;
-          if (openAnthropicToolBlocks.has(idx)) {
-            openAnthropicToolBlocks.get(idx)!.hasArgs = true;
-          }
-          delta += parsed.delta.partial_json || "";
-        } else if (
-          parsed.type === "content_block_delta" &&
-          parsed.delta?.type === "text_delta"
-        ) {
-          delta += parsed.delta.text || "";
-        } else if (parsed.type === "content_block_stop") {
-          const idx = parsed.index ?? openAnthropicToolBlocks.size - 1;
-          if (openAnthropicToolBlocks.has(idx)) {
-            const block = openAnthropicToolBlocks.get(idx)!;
-            if (!block.hasArgs) {
-              delta += "{}";
-            }
-            delta += `\n}</tool_call>`;
-            openAnthropicToolBlocks.delete(idx);
-          }
-        } else if (
-          parsed.type === "message_stop" ||
-          parsed.type === "message_delta"
-        ) {
-          if (openAnthropicToolBlocks.size > 0) {
-            for (const [, block] of openAnthropicToolBlocks.entries()) {
-              if (!block.hasArgs) delta += "{}";
-              delta += `\n}</tool_call>`;
-            }
-            openAnthropicToolBlocks.clear();
-          }
-        } else {
-          delta =
-            parsed?.choices?.[0]?.delta?.content ||
-            parsed?.choices?.[0]?.text ||
-            parsed?.response ||
-            "";
-          const tc = parsed?.choices?.[0]?.delta?.tool_calls?.[0];
-          if (tc) {
-            if (tc.function?.name)
-              delta += `<tool_call>\n{"name": "${tc.function.name}", "args": `;
-            if (tc.function?.arguments) delta += tc.function.arguments;
-          }
-          if (parsed?.choices?.[0]?.finish_reason === "tool_calls") {
-            delta += `\n}</tool_call>`;
-          }
-        }
+        const delta = translator.translate(parsed);
 
         if (delta) {
           fullContent += delta;
@@ -202,17 +238,10 @@ export async function streamPollinationsClient({
     }
   }
 
-  if (openAnthropicToolBlocks.size > 0) {
-    let unclosedDelta = "";
-    for (const [, block] of openAnthropicToolBlocks.entries()) {
-      if (!block.hasArgs) unclosedDelta += "{}";
-      unclosedDelta += `\n}</tool_call>`;
-    }
-    openAnthropicToolBlocks.clear();
-    if (unclosedDelta) {
-      fullContent += unclosedDelta;
-      onChunk(unclosedDelta);
-    }
+  const flushed = translator.flush();
+  if (flushed) {
+    fullContent += flushed;
+    onChunk(flushed);
   }
 
   return fullContent;

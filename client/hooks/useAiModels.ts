@@ -141,14 +141,42 @@ export function useAiModels() {
   const loadIdRef = useRef<number>(0);
 
   // Feature Defaults
-  const [chatbotDefaultModel, setChatbotDefaultModelState] =
-    useState<string>(DEFAULT_CHATBOT_MODEL);
+  const [chatbotDefaultModel, setChatbotDefaultModelState] = useState<string>(
+    () => {
+      try {
+        const stored = localStorage.getItem(LOCAL_STORAGE_DEFAULTS);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.chatbot) return parsed.chatbot;
+        }
+      } catch {}
+      return DEFAULT_CHATBOT_MODEL;
+    },
+  );
   const [researchAgentDefaultModel, setResearchAgentDefaultModelState] =
-    useState<string>(DEFAULT_RESEARCH_MODEL);
+    useState<string>(() => {
+      try {
+        const stored = localStorage.getItem(LOCAL_STORAGE_DEFAULTS);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.researchAgent) return parsed.researchAgent;
+        }
+      } catch {}
+      return DEFAULT_RESEARCH_MODEL;
+    });
   const [
     researchSummarizerDefaultModel,
     setResearchSummarizerDefaultModelState,
-  ] = useState<string>(DEFAULT_SUMMARIZER_MODEL);
+  ] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem(LOCAL_STORAGE_DEFAULTS);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.researchSummarizer) return parsed.researchSummarizer;
+      }
+    } catch {}
+    return DEFAULT_SUMMARIZER_MODEL;
+  });
 
   // Load Custom Models from storage
   const loadCustomModels = useCallback(() => {
@@ -300,6 +328,7 @@ export function useAiModels() {
           localStorage.setItem("oxygen_api_keys", JSON.stringify(parsed));
         } else {
           localStorage.removeItem(LOCAL_STORAGE_KEY_POLLINATIONS);
+          localStorage.removeItem("oxygen_pollinations_api_key");
           const legacy = localStorage.getItem("oxygen_api_keys");
           if (legacy) {
             const parsed = JSON.parse(legacy);
@@ -312,28 +341,33 @@ export function useAiModels() {
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token;
         if (token && typeof window !== "undefined" && window.location?.origin && window.location.origin !== "null") {
-          try {
-            if (trimmed) {
-              const url = new URL("/api/ai/keys", window.location.origin).toString();
-              await fetch(url, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ provider: "pollinations", key: trimmed }),
-              });
-            } else {
-              const url = new URL("/api/ai/keys/pollinations", window.location.origin).toString();
-              await fetch(url, {
-                method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
-              });
+          if (trimmed) {
+            const url = new URL("/api/ai/keys", window.location.origin).toString();
+            const res = await fetch(url, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ provider: "pollinations", key: trimmed }),
+            });
+            if (!res.ok) {
+              throw new Error(`Failed to save API key to server (${res.status})`);
             }
-          } catch {}
+          } else {
+            const url = new URL("/api/ai/keys/pollinations", window.location.origin).toString();
+            const res = await fetch(url, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) {
+              throw new Error(`Failed to remove API key from server (${res.status})`);
+            }
+          }
         }
       } catch (e) {
         console.error("Failed to save pollinations API key:", e);
+        throw e;
       }
 
       await refreshPollenBalance(trimmed);

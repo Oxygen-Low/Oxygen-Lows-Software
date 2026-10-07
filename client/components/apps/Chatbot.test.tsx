@@ -1245,7 +1245,7 @@ describe("ChatbotApp", () => {
     try {
       (global as any).fetch = vi.fn((url: any) => {
         const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/api/ai/proxy")) {
+        if (urlStr.includes("pollinations.ai") || urlStr.includes("/api/ai/proxy")) {
           return Promise.resolve({
             ok: false,
             status: 400,
@@ -1255,7 +1255,7 @@ describe("ChatbotApp", () => {
                   ? "application/json"
                   : null,
             },
-            json: () => Promise.resolve({ error: "Provider not configured" }),
+            json: () => Promise.resolve({ error: { message: "Provider not configured" } }),
           } as unknown as Response);
         }
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
@@ -1277,8 +1277,7 @@ describe("ChatbotApp", () => {
       fireEvent.click(sendButton);
 
       await waitFor(() => {
-        expect(toastSpy).toHaveBeenCalled();
-        expect(String(toastSpy.mock.calls[0]?.[0] || "")).toContain("Pollinations");
+        expect(toastSpy).toHaveBeenCalledWith("Provider not configured");
       });
     } finally {
       global.fetch = originalFetch;

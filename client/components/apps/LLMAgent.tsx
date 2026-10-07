@@ -1508,12 +1508,11 @@ export function LLMAgentApp() {
     researchAgentDefaultModel,
   } = useAiModels();
 
-  const [selectedModel, setSelectedModel] = useState<string>(
-    () => researchAgentDefaultModel || "openai",
-  );
+  const [userSelectedModel, setUserSelectedModel] = useState<string | null>(null);
+  const selectedModel = userSelectedModel || researchAgentDefaultModel || "openai";
   const selectedProvider: string = "pollinations";
   const setSelection = (m: string, _p?: string) => {
-    setSelectedModel(m);
+    setUserSelectedModel(m);
   };
 
   // Agent state
@@ -1933,7 +1932,12 @@ export function LLMAgentApp() {
         finishReason,
       };
     },
-    [selectedModel, selectedProvider, session?.access_token],
+    [
+      selectedModel,
+      selectedProvider,
+      session?.access_token,
+      pollinationsApiKey,
+    ],
   );
 
   // ─── Create Tool Log Entry ───────────────────────────────────────────

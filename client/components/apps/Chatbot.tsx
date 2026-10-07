@@ -46,6 +46,7 @@ import {
 import {
   streamPollinationsClient,
   fetchPollinationsClient,
+  createSseDeltaTranslator,
   PollinationsRateLimitError,
   PollinationsNotFoundError,
   PollinationsAuthError,
@@ -1048,16 +1049,12 @@ export function ChatbotApp() {
     }, 300);
   }, []);
 
-  const [selectedModel, setSelectedModel] = useState<string>(
-    () => chatbotDefaultModel || "openai",
-  );
+  const [userSelectedModel, setUserSelectedModel] = useState<string | null>(null);
+  const selectedModel = userSelectedModel || chatbotDefaultModel || "openai";
+  const setSelectedModel = useCallback((modelId: string) => {
+    setUserSelectedModel(modelId);
+  }, []);
   const selectedProvider = "pollinations";
-
-  useEffect(() => {
-    if (chatbotDefaultModel && !selectedModel) {
-      setSelectedModel(chatbotDefaultModel);
-    }
-  }, [chatbotDefaultModel, selectedModel]);
 
   const formatModelLabel = useCallback(
     (_provider: string, modelId: string) => {
@@ -1364,7 +1361,7 @@ export function ChatbotApp() {
       }
 
       let streamBuffer = "";
-      const openAnthropicToolBlocks = new Map<number, { hasArgs: boolean }>();
+      const translator = createSseDeltaTranslator();
 
       if (reader) {
         while (true) {
@@ -1386,60 +1383,7 @@ export function ChatbotApp() {
               if (data.queue_info) setQueueStatus(data.queue_info);
 
               let delta = "";
-              if (
-                streamProvider === "anthropic" ||
-                (data.type &&
-                  (data.type.startsWith("content_block_") ||
-                    data.type.startsWith("message_")))
-              ) {
-                if (
-                  data.type === "content_block_start" &&
-                  data.content_block?.type === "tool_use"
-                ) {
-                  const idx = data.index ?? openAnthropicToolBlocks.size;
-                  openAnthropicToolBlocks.set(idx, { hasArgs: false });
-                  delta += `<tool_call>\n{"name": "${data.content_block.name}", "args": `;
-                } else if (
-                  data.type === "content_block_delta" &&
-                  data.delta?.type === "input_json_delta"
-                ) {
-                  const idx = data.index ?? openAnthropicToolBlocks.size - 1;
-                  if (openAnthropicToolBlocks.has(idx)) {
-                    openAnthropicToolBlocks.get(idx)!.hasArgs = true;
-                  }
-                  delta += data.delta.partial_json || "";
-                } else if (
-                  data.type === "content_block_delta" &&
-                  data.delta?.type === "text_delta"
-                ) {
-                  delta += data.delta.text || "";
-                } else if (data.type === "content_block_stop") {
-                  const idx = data.index ?? openAnthropicToolBlocks.size - 1;
-                  if (openAnthropicToolBlocks.has(idx)) {
-                    const block = openAnthropicToolBlocks.get(idx)!;
-                    if (!block.hasArgs) {
-                      delta += "{}";
-                    }
-                    delta += `\n}</tool_call>`;
-                    openAnthropicToolBlocks.delete(idx);
-                  }
-                } else if (
-                  data.type === "message_stop" ||
-                  data.type === "message_delta"
-                ) {
-                  if (openAnthropicToolBlocks.size > 0) {
-                    for (const [, block] of openAnthropicToolBlocks.entries()) {
-                      if (!block.hasArgs) delta += "{}";
-                      delta += `\n}</tool_call>`;
-                    }
-                    openAnthropicToolBlocks.clear();
-                  }
-                } else {
-                  delta = data.delta?.text || "";
-                }
-              } else if (streamProvider === "ollama") {
-                delta = data.message?.content || data.response || "";
-              } else if (streamProvider === "google") {
+              if (streamProvider === "google") {
                 delta =
                   data.delta?.content ||
                   data.message?.content?.text ||
@@ -1448,24 +1392,12 @@ export function ChatbotApp() {
                 const fc =
                   data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
                 if (fc) {
-                  delta += `<tool_call>\n{"name": "${fc.name}", "args": ${JSON.stringify(fc.args)}}\n</tool_call>`;
+                  delta += `<tool_call>\n{"name": ${JSON.stringify(fc.name)}, "args": ${JSON.stringify(fc.args)}}\n</tool_call>`;
                 }
+              } else if (streamProvider === "ollama") {
+                delta = data.message?.content || data.response || "";
               } else {
-                delta =
-                  data.choices?.[0]?.delta?.content ||
-                  data.response ||
-                  data.message?.content ||
-                  data.content ||
-                  "";
-                const tc = data.choices?.[0]?.delta?.tool_calls?.[0];
-                if (tc) {
-                  if (tc.function?.name)
-                    delta += `<tool_call>\n{"name": "${tc.function.name}", "args": `;
-                  if (tc.function?.arguments) delta += tc.function.arguments;
-                }
-                if (data.choices?.[0]?.finish_reason === "tool_calls") {
-                  delta += `\n}</tool_call>`;
-                }
+                delta = translator.translate(data);
               }
 
               if (delta) {
@@ -1485,17 +1417,10 @@ export function ChatbotApp() {
           }
         }
 
-        if (openAnthropicToolBlocks.size > 0) {
-          let unclosedDelta = "";
-          for (const [, block] of openAnthropicToolBlocks.entries()) {
-            if (!block.hasArgs) unclosedDelta += "{}";
-            unclosedDelta += `\n}</tool_call>`;
-          }
-          openAnthropicToolBlocks.clear();
-          if (unclosedDelta) {
-            fullContent += unclosedDelta;
-            streamCallback(fullContent);
-          }
+        const flushed = translator.flush();
+        if (flushed) {
+          fullContent += flushed;
+          streamCallback(fullContent);
         }
       }
       return fullContent;

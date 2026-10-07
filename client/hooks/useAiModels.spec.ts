@@ -43,13 +43,22 @@ const wrapper = ({ children }: { children: React.ReactNode }) =>
   React.createElement(ThemeProvider, null, children);
 
 describe("useAiModels Hook (Pollinations Exclusive)", () => {
+  const originalFetch = global.fetch;
+
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ok: true }),
+      text: () => Promise.resolve(""),
+    } as unknown as Response);
   });
 
   afterEach(() => {
     localStorage.clear();
+    global.fetch = originalFetch;
   });
 
   it("loads only Pollinations in supported providers and contains built-in models", async () => {
