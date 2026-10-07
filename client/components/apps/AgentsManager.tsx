@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
+import { getLocalSession } from "@/lib/localSession";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,8 +60,13 @@ interface BotActivity {
 
 export function AgentsManagerApp() {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { session, loading } = useAuth();
+  const user = session?.user;
   const [activeTab, setActiveTab] = useState("verify");
+
+  const getUserToken = () => {
+    return session?.access_token || getLocalSession()?.access_token || localStorage.getItem("token") || "";
+  };
 
   // Verification Form State
   const [verificationCode, setVerificationCode] = useState("");
@@ -83,9 +89,13 @@ export function AgentsManagerApp() {
   const [isLoadingActivity, setIsLoadingActivity] = useState(false);
 
   const fetchBots = async () => {
+    const token = getUserToken();
+    if (!token) {
+      setBots([]);
+      return;
+    }
     setIsLoadingBots(true);
     try {
-      const token = localStorage.getItem("token") || "";
       const res = await fetch("/api/agents/user/bots", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -95,6 +105,8 @@ export function AgentsManagerApp() {
         if (data.bots?.length > 0 && !selectedBotId) {
           setSelectedBotId(data.bots[0].id);
         }
+      } else if (res.status === 401) {
+        setBots([]);
       }
     } catch (err) {
       console.error("Failed to load bots", err);
@@ -104,9 +116,10 @@ export function AgentsManagerApp() {
   };
 
   const fetchBotActivity = async (botId: string) => {
+    const token = getUserToken();
+    if (!token) return;
     setIsLoadingActivity(true);
     try {
-      const token = localStorage.getItem("token") || "";
       const res = await fetch(`/api/agents/user/bots/${botId}/activity`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -122,8 +135,11 @@ export function AgentsManagerApp() {
   };
 
   useEffect(() => {
-    fetchBots();
-  }, []);
+    const token = getUserToken();
+    if (token) {
+      fetchBots();
+    }
+  }, [session]);
 
   useEffect(() => {
     if (selectedBotId) {
@@ -145,9 +161,14 @@ export function AgentsManagerApp() {
       return;
     }
 
+    const token = getUserToken();
+    if (!token) {
+      toast.error("Please sign in to your user account first");
+      return;
+    }
+
     setIsVerifying(true);
     try {
-      const token = localStorage.getItem("token") || "";
       const res = await fetch("/api/agents/user/verify", {
         method: "POST",
         headers: {
@@ -185,8 +206,9 @@ export function AgentsManagerApp() {
   };
 
   const handleToggleWebDefender = async (bot: BotAccount) => {
+    const token = getUserToken();
+    if (!token) return;
     try {
-      const token = localStorage.getItem("token") || "";
       const res = await fetch(`/api/agents/user/bots/${bot.id}`, {
         method: "PATCH",
         headers: {
@@ -207,8 +229,9 @@ export function AgentsManagerApp() {
   };
 
   const handleUpdateQuota = async (botId: string, quotaMb: number) => {
+    const token = getUserToken();
+    if (!token) return;
     try {
-      const token = localStorage.getItem("token") || "";
       const res = await fetch(`/api/agents/user/bots/${botId}`, {
         method: "PATCH",
         headers: {
@@ -232,8 +255,9 @@ export function AgentsManagerApp() {
     if (!confirm(t("agents.confirmDelete") || "Are you sure you want to delete this bot?")) {
       return;
     }
+    const token = getUserToken();
+    if (!token) return;
     try {
-      const token = localStorage.getItem("token") || "";
       const res = await fetch(`/api/agents/user/bots/${botId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
