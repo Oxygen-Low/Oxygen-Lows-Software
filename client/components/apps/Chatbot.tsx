@@ -304,6 +304,8 @@ const ChatMessage = React.memo(
     onNavigate,
     onRegenerate,
     setActiveArtifact,
+    onSpeak,
+    isSpeakingThisMessage = false,
   }: {
     message: Message;
     siblings?: Message[];
