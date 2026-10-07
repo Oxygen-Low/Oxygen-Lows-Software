@@ -118,7 +118,9 @@ export function useLiveVoice({
   // Stop active audio playback
   const stopSpeaking = useCallback(() => {
     speechSessionIdRef.current++;
-    setIsSpeaking(false);
+    if (isMountedRef.current && typeof window !== "undefined") {
+      setIsSpeaking(false);
+    }
     activeUtteranceRef.current = null;
 
     if (currentAudioElementRef.current) {
@@ -135,7 +137,9 @@ export function useLiveVoice({
       } catch {}
     }
 
-    setVoiceState((prev) => (prev === "speaking" ? "idle" : prev));
+    if (isMountedRef.current && typeof window !== "undefined") {
+      setVoiceState((prev) => (prev === "speaking" ? "idle" : prev));
+    }
   }, []);
 
   // Text-to-Speech using openai/tts-1
@@ -201,7 +205,11 @@ export function useLiveVoice({
             await audioPromise;
 
             URL.revokeObjectURL(blobUrl);
-            if (speechSessionIdRef.current === currentSessionId && isMountedRef.current) {
+            if (
+              speechSessionIdRef.current === currentSessionId &&
+              isMountedRef.current &&
+              typeof window !== "undefined"
+            ) {
               setIsSpeaking(false);
               setVoiceState("idle");
               currentAudioElementRef.current = null;
@@ -232,7 +240,11 @@ export function useLiveVoice({
             playedAudio = true;
             await audioPromise;
 
-            if (speechSessionIdRef.current === currentSessionId && isMountedRef.current) {
+            if (
+              speechSessionIdRef.current === currentSessionId &&
+              isMountedRef.current &&
+              typeof window !== "undefined"
+            ) {
               setIsSpeaking(false);
               setVoiceState("idle");
               currentAudioElementRef.current = null;
@@ -256,7 +268,7 @@ export function useLiveVoice({
 
             utterance.onend = () => {
               if (speechSessionIdRef.current !== currentSessionId) return;
-              if (isMountedRef.current) {
+              if (isMountedRef.current && typeof window !== "undefined") {
                 setIsSpeaking(false);
                 setVoiceState("idle");
               }
@@ -266,7 +278,7 @@ export function useLiveVoice({
 
             utterance.onerror = () => {
               if (speechSessionIdRef.current !== currentSessionId) return;
-              if (isMountedRef.current) {
+              if (isMountedRef.current && typeof window !== "undefined") {
                 setIsSpeaking(false);
                 setVoiceState("idle");
               }
@@ -281,7 +293,11 @@ export function useLiveVoice({
         } catch {}
       }
 
-      if (speechSessionIdRef.current === currentSessionId && isMountedRef.current) {
+      if (
+        speechSessionIdRef.current === currentSessionId &&
+        isMountedRef.current &&
+        typeof window !== "undefined"
+      ) {
         setIsSpeaking(false);
         setVoiceState("idle");
         onDone?.();
