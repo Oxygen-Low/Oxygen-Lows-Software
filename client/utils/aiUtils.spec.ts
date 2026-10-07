@@ -22,9 +22,6 @@ describe("formatModelLabel", () => {
       "Smartest",
     );
     expect(
-      formatModelLabel("pollinations", "openai/gpt-realtime-2.1-mini"),
-    ).toBe("Realtime");
-    expect(
       formatModelLabel("pollinations", "community/MarcosFRG/deepseek-v4-flash-0731"),
     ).toBe("Deepseek v4 Flash");
     expect(

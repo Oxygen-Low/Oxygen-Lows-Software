@@ -67,7 +67,6 @@ import remarkGfm from "remark-gfm";
 import { CodeHighlighter } from "@/components/ui/CodeHighlighter";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
 import { ArtifactSidebar } from "./ArtifactSidebar";
-import { LiveVoiceOverlay } from "./Chatbot/LiveVoiceOverlay";
 import { EncryptionRequiredPrompt } from "@/components/EncryptionRequiredPrompt";
 import {
   isCategoryLocked,
@@ -930,20 +929,19 @@ export function ChatbotApp() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { t, languageCode } = useTranslation();
-  const [isLiveOpen, setIsLiveOpen] = useState(false);
-  const isLiveOpenRef = useRef(false);
-  useEffect(() => {
-    isLiveOpenRef.current = isLiveOpen;
-  }, [isLiveOpen]);
+  const isVoiceInputRef = useRef(false);
 
-  const handleSendMessageRef = useRef<(textOverride?: string) => Promise<void>>(async () => {});
+  const handleSendMessageRef = useRef<(textOverride?: string, fromVoice?: boolean) => Promise<void>>(async () => {});
   const handleStopRef = useRef<() => void>(() => {});
 
   const liveVoice = useLiveVoice({
     languageCode,
     apiKey: pollinationsApiKey,
     onSendSpeech: (transcript) => {
-      handleSendMessageRef.current(transcript);
+      if (transcript && transcript.trim()) {
+        isVoiceInputRef.current = true;
+        handleSendMessageRef.current(transcript, true);
+      }
     },
     onInterrupt: () => {
       handleStopRef.current();
@@ -1751,9 +1749,6 @@ export function ChatbotApp() {
         if (uni.backstory) injected += `Lore/History: ${uni.backstory}\n`;
       }
     }
-    if (isLiveOpenRef.current) {
-      injected += `\n[VOICE MODE GUIDELINE - openai/gpt-realtime-2.1-mini]\nYou are interacting via Live Voice chat powered by openai/gpt-realtime-2.1-mini. Keep your response concise, conversational, natural, and friendly so it is easy to listen to when spoken aloud by neural voice. Avoid large blocks of code, markdown tables, or excessive formatting unless specifically requested.\n`;
-    }
     return injected;
   };
 
@@ -1769,8 +1764,8 @@ export function ChatbotApp() {
   }> => {
     let finalContent = "";
     let reasoningContent = "";
-    const effectiveProvider = isLiveOpenRef.current ? "pollinations" : selectedProvider;
-    const effectiveModel = isLiveOpenRef.current ? "openai/gpt-realtime-2.1-mini" : selectedModel;
+    const effectiveProvider = selectedProvider;
+    const effectiveModel = selectedModel;
 
     const injectedSystemPrompt = getInjectedSystemPrompt();
     const getApiMessages = (baseMessages: Message[]): Message[] => {
@@ -2154,7 +2149,10 @@ export function ChatbotApp() {
   }
   };
 
-  const handleSendMessage = async (textOverride?: string) => {
+  const handleSendMessage = async (textOverride?: string, fromVoice: boolean = false) => {
+    if (fromVoice) {
+      isVoiceInputRef.current = true;
+    }
     const rawInput = typeof textOverride === "string" ? textOverride : input;
     if (!rawInput.trim() || isTyping) return;
 
@@ -2429,7 +2427,8 @@ export function ChatbotApp() {
             .eq("id", activeChatId);
         }
 
-        if (isLiveOpenRef.current) {
+        if (fromVoice || isVoiceInputRef.current) {
+          isVoiceInputRef.current = false;
           liveVoice.speakText("I have generated the image for you.");
         }
 
@@ -2567,7 +2566,8 @@ export function ChatbotApp() {
           if (chatUpdateError) throw chatUpdateError;
         }
 
-        if (isLiveOpenRef.current) {
+        if (fromVoice || isVoiceInputRef.current) {
+          isVoiceInputRef.current = false;
           if (finalContent && finalContent.trim()) {
             liveVoice.speakText(finalContent);
           } else {
@@ -2578,7 +2578,8 @@ export function ChatbotApp() {
     } catch (e: any) {
       toast.error(e.message);
       if (input === "") setInput(originalInput);
-      if (isLiveOpenRef.current) {
+      if (fromVoice || isVoiceInputRef.current) {
+        isVoiceInputRef.current = false;
         liveVoice.speakText(
           `Sorry, an error occurred: ${e?.message || "Failed to generate response"}`,
         );
@@ -2779,6 +2780,8 @@ export function ChatbotApp() {
       abortController.abort();
     }
     liveVoice.stopSpeaking();
+    liveVoice.cancelRecording();
+    isVoiceInputRef.current = false;
   };
 
   useEffect(() => {
@@ -3784,15 +3787,57 @@ export function ChatbotApp() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsLiveOpen(true);
-                    liveVoice.startSession();
+                  onClick={async () => {
+                    if (liveVoice.isSpeaking) {
+                      liveVoice.stopSpeaking();
+                      return;
+                    }
+                    if (liveVoice.isRecording) {
+                      await liveVoice.stopRecording();
+                    } else if (!liveVoice.isTranscribing) {
+                      await liveVoice.startRecording();
+                    }
                   }}
-                  className="w-10 h-10 rounded-full bg-transparent hover:bg-white/5 flex items-center justify-center text-white/70 hover:text-white transition-colors duration-200 mr-1 flex-shrink-0"
-                  title={t("apps.chatbotLiveMode", undefined, "Live Voice Mode")}
-                  aria-label={t("apps.chatbotLiveMode", undefined, "Live Voice Mode")}
+                  disabled={liveVoice.isTranscribing}
+                  className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 mr-1 flex-shrink-0 relative",
+                    liveVoice.isRecording
+                      ? "bg-red-500/20 text-red-400 hover:bg-red-500/30 animate-pulse ring-2 ring-red-500/50"
+                      : liveVoice.isSpeaking
+                      ? "bg-primary/20 text-primary hover:bg-primary/30 animate-pulse"
+                      : liveVoice.isTranscribing
+                      ? "bg-white/5 text-primary"
+                      : "bg-transparent hover:bg-white/5 text-white/70 hover:text-white",
+                  )}
+                  title={
+                    liveVoice.isRecording
+                      ? t("apps.chatbotStopRecording", undefined, "Stop recording (Speech to text)")
+                      : liveVoice.isSpeaking
+                      ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
+                      : liveVoice.isTranscribing
+                      ? t("apps.chatbotTranscribing", undefined, "Transcribing...")
+                      : t("apps.chatbotSpeechToText", undefined, "Speech to text")
+                  }
+                  aria-label={
+                    liveVoice.isRecording
+                      ? t("apps.chatbotStopRecording", undefined, "Stop recording (Speech to text)")
+                      : liveVoice.isSpeaking
+                      ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
+                      : liveVoice.isTranscribing
+                      ? t("apps.chatbotTranscribing", undefined, "Transcribing...")
+                      : t("apps.chatbotSpeechToText", undefined, "Speech to text")
+                  }
                 >
-                  <Mic className="w-5 h-5" />
+                  {liveVoice.isTranscribing ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : liveVoice.isRecording ? (
+                    <span className="relative flex h-3.5 w-3.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500"></span>
+                    </span>
+                  ) : (
+                    <Mic className="w-5 h-5" />
+                  )}
                 </button>
 
                 {isTyping ? (
@@ -3825,35 +3870,6 @@ export function ChatbotApp() {
           onClose={() => setActiveArtifact(null)}
         />
       )}
-
-      <LiveVoiceOverlay
-        isOpen={isLiveOpen}
-        onClose={() => {
-          setIsLiveOpen(false);
-          liveVoice.endSession();
-        }}
-        voiceState={liveVoice.voiceState}
-        audioLevel={liveVoice.audioLevel}
-        interimTranscript={liveVoice.interimTranscript}
-        finalTranscript={liveVoice.finalTranscript}
-        lastAssistantText={liveVoice.lastAssistantText}
-        isMuted={liveVoice.isMuted}
-        isHandsFree={liveVoice.isHandsFree}
-        isPushToTalkActive={liveVoice.isPushToTalkActive}
-        errorMessage={liveVoice.errorMessage}
-        availableVoices={liveVoice.availableVoices}
-        selectedVoiceUri={liveVoice.selectedVoiceUri}
-        speechRate={liveVoice.speechRate}
-        speechPitch={liveVoice.speechPitch}
-        onToggleMute={liveVoice.toggleMute}
-        onToggleHandsFree={liveVoice.toggleHandsFree}
-        onPushToTalkStart={liveVoice.handlePushToTalkStart}
-        onPushToTalkEnd={liveVoice.handlePushToTalkEnd}
-        onInterrupt={liveVoice.interrupt}
-        onSelectVoice={liveVoice.updateSelectedVoiceUri}
-        onChangeRate={liveVoice.updateSpeechRate}
-        onChangePitch={liveVoice.updateSpeechPitch}
-      />
     </div>
   );
 }

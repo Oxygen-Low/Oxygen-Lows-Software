@@ -255,6 +255,7 @@ aiRouter.post("/transcribe", apiLimiter, async (c) => {
   let fileBuffer: Buffer | null = null;
   let clientApiKey = "";
   let clientProvider = "pollinations";
+  let requestedModel = "openai/whisper-large-v3";
 
   const contentType = c.req.header("content-type") || "";
   if (contentType.includes("multipart/form-data")) {
@@ -263,6 +264,8 @@ aiRouter.post("/transcribe", apiLimiter, async (c) => {
     const file = formData.get("file");
     clientApiKey = (formData.get("apiKey") as string) || "";
     clientProvider = (formData.get("provider") as string) || "pollinations";
+    const m = (formData.get("model") as string);
+    if (m) requestedModel = m;
     if (file && typeof (file as any).arrayBuffer === "function") {
       const ab = await (file as any).arrayBuffer();
       fileBuffer = Buffer.from(ab);
@@ -274,6 +277,7 @@ aiRouter.post("/transcribe", apiLimiter, async (c) => {
     }
     clientApiKey = body.apiKey || "";
     clientProvider = body.provider || "pollinations";
+    if (body.model) requestedModel = body.model;
   }
 
   if (!fileBuffer || fileBuffer.length === 0) {
@@ -293,20 +297,25 @@ aiRouter.post("/transcribe", apiLimiter, async (c) => {
   }
 
   try {
+    const isOpenAiDirect =
+      effectiveApiKey && effectiveApiKey.startsWith("sk-") && !effectiveApiKey.startsWith("pk_");
+
     const upstreamForm = new FormData();
     const blob = new Blob([new Uint8Array(fileBuffer)], { type: "audio/webm" });
     upstreamForm.append("file", blob, "audio.webm");
-    upstreamForm.append("model", "whisper-large-v3");
+    upstreamForm.append(
+      "model",
+      isOpenAiDirect ? "whisper-1" : (requestedModel || "openai/whisper-large-v3"),
+    );
 
     const headers: Record<string, string> = {};
     if (effectiveApiKey) {
       headers["Authorization"] = `Bearer ${effectiveApiKey}`;
     }
 
-    const endpoint =
-      effectiveApiKey && effectiveApiKey.startsWith("sk-") && !effectiveApiKey.startsWith("pk_")
-        ? "https://api.openai.com/v1/audio/transcriptions"
-        : "https://gen.pollinations.ai/v1/audio/transcriptions";
+    const endpoint = isOpenAiDirect
+      ? "https://api.openai.com/v1/audio/transcriptions"
+      : "https://gen.pollinations.ai/v1/audio/transcriptions";
 
     const res = await fetch(endpoint, {
       method: "POST",
@@ -323,6 +332,86 @@ aiRouter.post("/transcribe", apiLimiter, async (c) => {
     return c.json({ text: json.text || json.transcript || "" });
   } catch (err: any) {
     return c.json({ error: err?.message || "Transcription failed" }, 500);
+  }
+});
+
+aiRouter.post("/tts", apiLimiter, async (c) => {
+  const authHeader = c.req.header("authorization");
+  const token = extractBearerToken(authHeader);
+  let user = null;
+  if (token && token !== "undefined" && token !== "null") {
+    user = await resolveUserFromToken(token);
+  }
+
+  const { input, text, voice = "alloy", model = "openai/tts-1", apiKey, provider = "pollinations" } =
+    await c.req.json().catch(() => ({}));
+  const inputText = input || text;
+  if (!inputText || typeof inputText !== "string" || !inputText.trim()) {
+    return c.json({ error: "Text is required for TTS" }, 400);
+  }
+
+  let effectiveApiKey = apiKey || "";
+  if (!effectiveApiKey && user?.id) {
+    effectiveApiKey =
+      (await getUserApiKey(user.id, provider)) ||
+      (await getUserApiKey(user.id, "openai")) ||
+      (await getUserApiKey(user.id, "pollinations")) ||
+      "";
+  }
+  if (!effectiveApiKey) {
+    effectiveApiKey = process.env.OPENAI_API_KEY || process.env.POLLINATIONS_API_KEY || "";
+  }
+
+  const isOpenAiDirect =
+    effectiveApiKey && effectiveApiKey.startsWith("sk-") && !effectiveApiKey.startsWith("pk_");
+  const targetUrl = isOpenAiDirect
+    ? "https://api.openai.com/v1/audio/speech"
+    : "https://gen.pollinations.ai/v1/audio/speech";
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (effectiveApiKey) {
+    headers["Authorization"] = `Bearer ${effectiveApiKey}`;
+  }
+
+  const upstreamModel = isOpenAiDirect ? "tts-1" : (model || "openai/tts-1");
+
+  try {
+    const res = await fetch(targetUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: upstreamModel,
+        input: inputText.slice(0, 4096),
+        voice: voice || "alloy",
+      }),
+    });
+
+    if (!res.ok) {
+      // Fallback to GET audio endpoint on Pollinations if /v1/audio/speech returns error
+      if (!isOpenAiDirect) {
+        const fallbackUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(
+          inputText.slice(0, 500),
+        )}?voice=${encodeURIComponent(voice || "alloy")}`;
+        const fallbackRes = await fetch(fallbackUrl, {
+          headers: effectiveApiKey ? { Authorization: `Bearer ${effectiveApiKey}` } : {},
+        });
+        if (fallbackRes.ok) {
+          const contentType = fallbackRes.headers.get("content-type") || "audio/mpeg";
+          c.header("Content-Type", contentType);
+          return c.body(fallbackRes.body as any);
+        }
+      }
+      const err = await res.text();
+      return c.json({ error: `TTS upstream error: ${err}` }, 502);
+    }
+
+    const contentType = res.headers.get("content-type") || "audio/mpeg";
+    c.header("Content-Type", contentType);
+    return c.body(res.body as any);
+  } catch (err: any) {
+    return c.json({ error: err?.message || "TTS generation failed" }, 500);
   }
 });
 
@@ -770,7 +859,6 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
           { id: "openai/gpt-5.6-terra", name: "Balanced" },
           { id: "openai/gpt-6.1-sol", name: "Smart" },
           { id: "openai/gpt-6-astra", name: "Smartest" },
-          { id: "openai/gpt-realtime-2.1-mini", name: "Realtime" },
           {
             id: "community/MarcosFRG/deepseek-v4-flash-0731",
             name: "Deepseek v4 Flash",
