@@ -174,15 +174,16 @@ aiRouter.post("/keys", apiLimiter, async (c) => {
   if (!user) return c.json({ error: "Unauthorized" }, 401);
 
   const body = await c.req.json().catch(() => ({}));
-  const { provider, apiKey } = body;
+  const provider = body.provider;
+  const rawKey = body.apiKey || body.key;
   if (!provider || typeof provider !== "string") {
     return c.json({ error: "Provider is required" }, 400);
   }
-  if (!apiKey || typeof apiKey !== "string" || !apiKey.trim()) {
+  if (!rawKey || typeof rawKey !== "string" || !rawKey.trim()) {
     return c.json({ error: "API key is required" }, 400);
   }
 
-  const result = await setUserApiKey(user.id, provider, apiKey);
+  const result = await setUserApiKey(user.id, provider, rawKey.trim());
   return c.json({ success: true, provider: result.provider, prefix: result.prefix });
 });
 
