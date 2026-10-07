@@ -349,10 +349,17 @@ export function useAiModels() {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
               },
-              body: JSON.stringify({ provider: "pollinations", key: trimmed }),
+              body: JSON.stringify({ provider: "pollinations", apiKey: trimmed, key: trimmed }),
             });
             if (!res.ok) {
-              throw new Error(`Failed to save API key to server (${res.status})`);
+              let errorMsg = `Failed to save API key to server (${res.status})`;
+              try {
+                const errData = await res.json();
+                if (errData?.error) {
+                  errorMsg = typeof errData.error === "string" ? errData.error : JSON.stringify(errData.error);
+                }
+              } catch {}
+              throw new Error(errorMsg);
             }
           } else {
             const url = new URL("/api/ai/keys/pollinations", window.location.origin).toString();
@@ -361,7 +368,14 @@ export function useAiModels() {
               headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) {
-              throw new Error(`Failed to remove API key from server (${res.status})`);
+              let errorMsg = `Failed to remove API key from server (${res.status})`;
+              try {
+                const errData = await res.json();
+                if (errData?.error) {
+                  errorMsg = typeof errData.error === "string" ? errData.error : JSON.stringify(errData.error);
+                }
+              } catch {}
+              throw new Error(errorMsg);
             }
           }
         }
