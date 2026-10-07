@@ -156,11 +156,6 @@ const ChatApp = lazy(() =>
     default: m.ChatApp,
   })),
 );
-const ModelsApp = lazy(() =>
-  import("@/components/apps/Models").then((m) => ({
-    default: m.ModelsApp,
-  })),
-);
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -518,18 +513,6 @@ const APPS: AppMetadata[] = [
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
     component: WebmasterApp,
     authRequired: true,
-  },
-  {
-    id: "models",
-    nameKey: "apps.modelsTitle",
-    defaultName: "Models",
-    descKey: "apps.modelsDesc",
-    defaultDesc:
-      "Add AI providers, connect local models, and manage encrypted API keys.",
-    categories: ["All", "LLM/AI", "Utility"],
-    availability: "web-and-desktop",
-    icon: <Cpu className="w-8 h-8 text-cyan-500" />,
-    component: ModelsApp,
   },
 ];
 

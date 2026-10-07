@@ -289,9 +289,7 @@ export function useLiveVoice({
     activeUtteranceRef.current = null;
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
-        if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-          window.speechSynthesis.cancel();
-        }
+        window.speechSynthesis.cancel();
       } catch {
         // Ignore
       }

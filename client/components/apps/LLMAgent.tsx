@@ -1502,13 +1502,18 @@ export function LLMAgentApp() {
   // Models
   const {
     models,
-    selectedModel,
-    selectedProvider,
-    setSelection,
     isLoading: modelsLoading,
     refreshModels,
-    getDecryptedApiKey,
-  } = useAiModels("Fast", "horde");
+    pollinationsApiKey,
+    researchAgentDefaultModel,
+  } = useAiModels();
+
+  const [userSelectedModel, setUserSelectedModel] = useState<string | null>(null);
+  const selectedModel = userSelectedModel || researchAgentDefaultModel || "openai";
+  const selectedProvider: string = "pollinations";
+  const setSelection = (m: string, _p?: string) => {
+    setUserSelectedModel(m);
+  };
 
   // Agent state
   const [sessions, setSessions] = useState<AgentSession[]>([]);
@@ -1679,7 +1684,7 @@ export function LLMAgentApp() {
           model: selectedModel,
           messages: apiMessages,
           stream: true,
-          apiKey: getDecryptedApiKey(selectedProvider) || undefined,
+          apiKey: pollinationsApiKey || undefined,
           ...(supportsNativeTools ? { tools: AGENT_TOOLS } : {}),
         }),
       };
@@ -1927,7 +1932,12 @@ export function LLMAgentApp() {
         finishReason,
       };
     },
-    [selectedModel, selectedProvider, session?.access_token],
+    [
+      selectedModel,
+      selectedProvider,
+      session?.access_token,
+      pollinationsApiKey,
+    ],
   );
 
   // ─── Create Tool Log Entry ───────────────────────────────────────────

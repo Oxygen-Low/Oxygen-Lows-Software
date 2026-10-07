@@ -33,7 +33,11 @@ import {
   AlertTriangle,
   Radio,
   Mic,
+  Eye,
+  EyeOff,
+  ExternalLink,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   fetchImageModels,
   generateImage,
@@ -42,6 +46,7 @@ import {
 import {
   streamPollinationsClient,
   fetchPollinationsClient,
+  createSseDeltaTranslator,
   PollinationsRateLimitError,
   PollinationsNotFoundError,
   PollinationsAuthError,
@@ -798,22 +803,16 @@ export function ChatbotApp() {
   const { session } = useAuth();
   const {
     models,
-    selectedModel,
-    selectedProvider,
-    setSelection,
-    hordeStatus,
     refreshModels,
+    pollinationsApiKey,
+    setPollinationsApiKey,
     chatbotDefaultModel,
-    chatbotDefaultProvider,
+    setChatbotDefault,
     researchAgentDefaultModel,
-    researchAgentDefaultProvider,
-    researchSummarizerDefaultModel,
-    researchSummarizerDefaultProvider,
-    getDecryptedApiKey,
-    isProviderConfigured,
-    encryptedKeys,
-    isMasterKeyActive,
   } = useAiModels();
+  const [gateKeyInput, setGateKeyInput] = useState("");
+  const [showGateKey, setShowGateKey] = useState(false);
+  const [isSavingGateKey, setIsSavingGateKey] = useState(false);
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [allMessages, setAllMessages] = useState<Message[]>([]);
@@ -823,6 +822,12 @@ export function ChatbotApp() {
   const [encryptionLocked, setEncryptionLocked] = useState(() =>
     isCategoryLocked("chatbot"),
   );
+
+  useEffect(() => {
+    if (pollinationsApiKey) {
+      setGateKeyInput(pollinationsApiKey);
+    }
+  }, [pollinationsApiKey]);
 
   useEffect(() => {
     setEncryptionLocked(isCategoryLocked("chatbot"));
@@ -1044,83 +1049,29 @@ export function ChatbotApp() {
     }, 300);
   }, []);
 
-  /**
-   * ⚡ Bolt Performance Optimization:
-   * Replaced multiple separate O(N) Array.filter() calls with a single O(N) pass.
-   * Memoized the result to prevent recalculation on every render.
-   */
-  const {
-    hordeModels,
-    localModels,
-    customModels,
-    otherModels,
-  } = useMemo(() => {
-    const horde: Model[] = [];
-    const local: Model[] = [];
-    const custom: Model[] = [];
-    const other: Model[] = [];
-    let hasOpenRouter = false;
+  const [userSelectedModel, setUserSelectedModel] = useState<string | null>(null);
+  const selectedModel = userSelectedModel || chatbotDefaultModel || "openai";
+  const setSelectedModel = useCallback((modelId: string) => {
+    setUserSelectedModel(modelId);
+  }, []);
+  const selectedProvider = "pollinations";
 
-    for (const m of models) {
-      if (m.provider === "horde") {
-        horde.push(m);
-      } else if (m.provider.startsWith("local-")) {
-        local.push(m);
-      } else if (m.isCustom || m.provider === "custom") {
-        custom.push(m);
-        if (m.provider === "openrouter") {
-          hasOpenRouter = true;
-        }
-      } else if (m.provider === "openrouter") {
-        hasOpenRouter = true;
-        if (!(
-          m.provider === "openrouter" && m.model_id === "openrouter/free"
-        )) {
-          other.push(m);
-        }
-      } else if (m.provider !== "cloudflare") {
-        other.push(m);
-      }
-    }
+  const formatModelLabel = useCallback(
+    (_provider: string, modelId: string) => {
+      const found = models.find((m) => m.model_id === modelId);
+      if (found?.name) return `${found.name} - ${modelId}`;
+      return modelId;
+    },
+    [models],
+  );
 
-    const finalCustom = session?.user?.id ? [...custom] : [];
-    const openRouterAvailable = isProviderConfigured("openrouter");
-    if (
-      session?.user?.id &&
-      openRouterAvailable &&
-      !finalCustom.some(
-        (m) => m.provider === "openrouter" && m.model_id === "openrouter/free",
-      )
-    ) {
-      finalCustom.push({
-        provider: "openrouter",
-        model_id: "openrouter/free",
-        name: "Auto Select - Free Model",
-        isCustom: true,
-      });
-    }
+  const builtinModels = useMemo(() => {
+    return models.filter((m) => !m.isCustom);
+  }, [models]);
 
-    return {
-      hordeModels: horde,
-      localModels: local,
-      customModels: finalCustom,
-      otherModels: session?.user?.id ? other : [],
-    };
-  }, [models, session?.user?.id, isProviderConfigured]);
-  const hasHordeModels = hordeModels.length > 0;
-  const hasLocalModels = localModels.length > 0;
-  const hasCustomModels = !session?.user?.id ? false : customModels.length > 0;
-
-  useEffect(() => {
-    if (
-      !session?.user?.id &&
-      selectedProvider !== "horde" &&
-      !selectedProvider.startsWith("local-") &&
-      hordeModels.length > 0
-    ) {
-      setSelection(hordeModels[0].model_id, "horde");
-    }
-  }, [session?.user?.id, selectedProvider, hordeModels, setSelection]);
+  const customModels = useMemo(() => {
+    return models.filter((m) => m.isCustom);
+  }, [models]);
 
   // Click outside listener for dropdowns
   const optionsDropdownRef = useRef<HTMLDivElement>(null);
@@ -1303,7 +1254,7 @@ export function ChatbotApp() {
               content: `Generate a short 3-5 word title for a chat that starts with this message: "${firstMsg}". Output ONLY the title, no quotes or prefix.`,
             },
           ],
-          apiKey: getDecryptedApiKey("pollinations") || undefined,
+          apiKey: pollinationsApiKey || undefined,
         });
         if (directTitle) {
           title = directTitle.trim().replace(/^["']|["']$/g, "");
@@ -1392,7 +1343,7 @@ export function ChatbotApp() {
     streamCallback: (content: string, reasoning?: string) => void,
     onFallback?: (modelUsed?: string) => void,
   ): Promise<string> => {
-    const apiKey = getDecryptedApiKey(provider);
+    const apiKey = pollinationsApiKey;
 
     const streamResponseData = async (
       response: Response,
@@ -1410,7 +1361,7 @@ export function ChatbotApp() {
       }
 
       let streamBuffer = "";
-      const openAnthropicToolBlocks = new Map<number, { hasArgs: boolean }>();
+      const translator = createSseDeltaTranslator();
 
       if (reader) {
         while (true) {
@@ -1432,78 +1383,7 @@ export function ChatbotApp() {
               if (data.queue_info) setQueueStatus(data.queue_info);
 
               let delta = "";
-              if (streamProvider === "anthropic") {
-                if (
-                  data.type === "content_block_start" &&
-                  data.content_block?.type === "tool_use"
-                ) {
-                  const idx = data.index ?? openAnthropicToolBlocks.size;
-                  openAnthropicToolBlocks.set(idx, { hasArgs: false });
-                  delta += `<tool_call>\n{"name": "${data.content_block.name}", "args": `;
-                } else if (
-                  data.type === "content_block_delta" &&
-                  data.delta?.type === "input_json_delta"
-                ) {
-                  const idx = data.index ?? openAnthropicToolBlocks.size - 1;
-                  if (openAnthropicToolBlocks.has(idx)) {
-                    openAnthropicToolBlocks.get(idx)!.hasArgs = true;
-                  }
-                  delta += data.delta.partial_json || "";
-                } else if (
-                  data.type === "content_block_delta" &&
-                  data.delta?.type === "text_delta"
-                ) {
-                  delta += data.delta.text || "";
-                } else if (data.type === "content_block_stop") {
-                  const idx = data.index ?? openAnthropicToolBlocks.size - 1;
-                  if (openAnthropicToolBlocks.has(idx)) {
-                    const block = openAnthropicToolBlocks.get(idx)!;
-                    if (!block.hasArgs) {
-                      delta += "{}";
-                    }
-                    delta += `\n}</tool_call>`;
-                    openAnthropicToolBlocks.delete(idx);
-                  }
-                } else if (
-                  data.type === "message_stop" ||
-                  data.type === "message_delta"
-                ) {
-                  if (openAnthropicToolBlocks.size > 0) {
-                    for (const [, block] of openAnthropicToolBlocks.entries()) {
-                      if (!block.hasArgs) delta += "{}";
-                      delta += `\n}</tool_call>`;
-                    }
-                    openAnthropicToolBlocks.clear();
-                  }
-                } else {
-                  delta = data.delta?.text || "";
-                }
-              } else if (
-                [
-                  "openai",
-                  "openrouter",
-                  "grok",
-                  "custom",
-                  "lmstudio",
-                  "koboldcpp",
-                  "kobold",
-                  "horde",
-                ].includes(streamProvider) ||
-                streamProvider.startsWith("local-")
-              ) {
-                delta = data.choices?.[0]?.delta?.content || data.response || "";
-                const tc = data.choices?.[0]?.delta?.tool_calls?.[0];
-                if (tc) {
-                  if (tc.function?.name)
-                    delta += `<tool_call>\n{"name": "${tc.function.name}", "args": `;
-                  if (tc.function?.arguments) delta += tc.function.arguments;
-                }
-                if (data.choices?.[0]?.finish_reason === "tool_calls") {
-                  delta += `\n}</tool_call>`;
-                }
-              } else if (streamProvider === "ollama") {
-                delta = data.message?.content || data.response || "";
-              } else if (streamProvider === "google") {
+              if (streamProvider === "google") {
                 delta =
                   data.delta?.content ||
                   data.message?.content?.text ||
@@ -1512,8 +1392,12 @@ export function ChatbotApp() {
                 const fc =
                   data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
                 if (fc) {
-                  delta += `<tool_call>\n{"name": "${fc.name}", "args": ${JSON.stringify(fc.args)}}\n</tool_call>`;
+                  delta += `<tool_call>\n{"name": ${JSON.stringify(fc.name)}, "args": ${JSON.stringify(fc.args)}}\n</tool_call>`;
                 }
+              } else if (streamProvider === "ollama") {
+                delta = data.message?.content || data.response || "";
+              } else {
+                delta = translator.translate(data);
               }
 
               if (delta) {
@@ -1533,17 +1417,10 @@ export function ChatbotApp() {
           }
         }
 
-        if (openAnthropicToolBlocks.size > 0) {
-          let unclosedDelta = "";
-          for (const [, block] of openAnthropicToolBlocks.entries()) {
-            if (!block.hasArgs) unclosedDelta += "{}";
-            unclosedDelta += `\n}</tool_call>`;
-          }
-          openAnthropicToolBlocks.clear();
-          if (unclosedDelta) {
-            fullContent += unclosedDelta;
-            streamCallback(fullContent);
-          }
+        const flushed = translator.flush();
+        if (flushed) {
+          fullContent += flushed;
+          streamCallback(fullContent);
         }
       }
       return fullContent;
@@ -1629,6 +1506,7 @@ export function ChatbotApp() {
             directContent += delta;
             streamCallback(directContent);
           },
+          onQueueInfo: (q) => setQueueStatus(q),
         });
         return directContent;
       } catch (err: any) {
@@ -1732,26 +1610,6 @@ export function ChatbotApp() {
 
     if (!response.ok) {
       const errText = await parseAiProxyError(response);
-      if (errText.includes("Provider not configured")) {
-        const cleanProv = provider.toLowerCase().trim();
-        const hasEncrypted = Boolean(encryptedKeys[cleanProv]);
-        if (hasEncrypted && !isMasterKeyActive) {
-          throw new Error(
-            t(
-              "apps.chatbotMasterKeyLocked",
-              undefined,
-              "Your Master Key is locked. Please unlock it in Account or Models settings to use configured API keys.",
-            ),
-          );
-        }
-        throw new Error(
-          t(
-            "apps.chatbotProviderNotConfigured",
-            { provider },
-            `Provider "${provider}" is not configured with an API key. Please add an API key in Models or Account settings.`,
-          ),
-        );
-      }
       throw new Error(errText);
     }
 
@@ -1970,40 +1828,15 @@ export function ChatbotApp() {
         }
       } catch {}
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      const token = session?.access_token || (await supabase.auth.getSession()).data?.session?.access_token;
       if (!token) {
         throw new Error("Please sign in to use Web Search.");
       }
 
-      const searchTargetProvider =
-        selectedProvider || researchAgentDefaultProvider || "horde";
-      const agentApiKey = getDecryptedApiKey(searchTargetProvider);
-
-      const isSearchProviderKeyless =
-        searchTargetProvider === "horde" ||
-        searchTargetProvider === "pollinations" ||
-        searchTargetProvider.startsWith("local-");
-
-      const finalResearchProvider =
-        agentApiKey || isSearchProviderKeyless
-          ? searchTargetProvider
-          : researchAgentDefaultProvider &&
-              (isProviderConfigured(researchAgentDefaultProvider) ||
-                researchAgentDefaultProvider === "horde" ||
-                researchAgentDefaultProvider === "pollinations")
-            ? researchAgentDefaultProvider
-            : "horde";
-
+      const finalResearchProvider = "pollinations";
       const finalResearchModel =
-        (finalResearchProvider === searchTargetProvider
-          ? selectedModel || researchAgentDefaultModel
-          : researchAgentDefaultModel) || "Fast";
-
-      const finalApiKey =
-        finalResearchProvider === searchTargetProvider
-          ? agentApiKey || undefined
-          : getDecryptedApiKey(finalResearchProvider) || undefined;
+        selectedModel || researchAgentDefaultModel || "openai";
+      const finalApiKey = pollinationsApiKey || undefined;
 
       const agentRes = await fetch("/api/ai/agent-search", {
         method: "POST",
@@ -2027,29 +1860,6 @@ export function ChatbotApp() {
 
       if (!agentRes.ok) {
         const errText = await parseAiProxyError(agentRes);
-        if (
-          errText.includes("Provider not configured") ||
-          errText.includes("is not configured")
-        ) {
-          const cleanProv = (finalResearchProvider || "").toLowerCase().trim();
-          const hasEncrypted = Boolean(encryptedKeys[cleanProv]);
-          if (hasEncrypted && !isMasterKeyActive) {
-            throw new Error(
-              t(
-                "apps.chatbotMasterKeyLocked",
-                undefined,
-                "Your Master Key is locked. Please unlock it in Account or Models settings to use configured API keys.",
-              ),
-            );
-          }
-          throw new Error(
-            t(
-              "apps.chatbotProviderNotConfigured",
-              { provider: finalResearchProvider },
-              `Provider "${finalResearchProvider}" is not configured with an API key. Please add an API key in Models or Account settings.`,
-            ),
-          );
-        }
         throw new Error(errText);
       }
 
@@ -2434,14 +2244,8 @@ export function ChatbotApp() {
 
     try {
       // 1. Title generation on first message
-      let titlePromise = null;
       if (isFirstMessage) {
-        titlePromise = generateChatTitle(activeChatId, originalInput);
-        // If the user's primary selection is also horde, we should await the title generation
-        // to prevent queuing conflicts with AI Horde's rate limiting.
-        if (selectedProvider === "horde") {
-          await titlePromise;
-        }
+        generateChatTitle(activeChatId, originalInput);
       }
 
       // 2. Save User Message
@@ -2586,10 +2390,13 @@ export function ChatbotApp() {
 
         setAllMessages((prev) =>
           prev.map((m) =>
-            m.id === "temp-streaming"
+            m.id === "temp-user"
+              ? { ...m, id: userMsgData.id }
+              : m.id === "temp-streaming"
               ? {
                   ...m,
                   id: assistantMsgData.id,
+                  parent_id: userMsgData.id,
                   content: originalInput,
                   is_image_gen: true,
                   image_url: imgResult.url,
@@ -2601,8 +2408,10 @@ export function ChatbotApp() {
 
         activeChildrenRef.current = {
           ...activeChildrenRef.current,
+          [lastMessageId || "root"]: userMsgData.id,
           [userMsgData.id]: assistantMsgData.id,
         };
+        delete activeChildrenRef.current["temp-user"];
         setActiveChildren(activeChildrenRef.current);
 
         if (!isGuest) {
@@ -2717,10 +2526,13 @@ export function ChatbotApp() {
         // Update active state
         setAllMessages((prev) =>
           prev.map((m) =>
-            m.id === "temp-streaming"
+            m.id === "temp-user"
+              ? { ...m, id: userMsgData.id }
+              : m.id === "temp-streaming"
               ? {
                   ...m,
                   id: assistantMsgData.id,
+                  parent_id: userMsgData.id,
                   content: finalContent,
                   reasoning: reasoningContent || undefined,
                   is_web_search: isWebSearch || false,
@@ -2733,8 +2545,10 @@ export function ChatbotApp() {
         );
         activeChildrenRef.current = {
           ...activeChildrenRef.current,
+          [lastMessageId || "root"]: userMsgData.id,
           [userMsgData.id]: assistantMsgData.id,
         };
+        delete activeChildrenRef.current["temp-user"];
         setActiveChildren(activeChildrenRef.current);
 
         if (!isGuest) {
@@ -3018,6 +2832,144 @@ export function ChatbotApp() {
           onUnlocked={() => setEncryptionLocked(false)}
           categoryLabel="Chatbot Chats"
         />
+      </div>
+    );
+  }
+
+  if (!pollinationsApiKey || !pollinationsApiKey.trim()) {
+    return (
+      <div className="relative min-h-[calc(100vh-61px)] sm:min-h-[calc(100vh-73px)] w-full flex items-center justify-center p-4 bg-slate-950 text-white overflow-hidden">
+        <InteractiveBackground />
+        <div className="relative z-10 w-full max-w-lg p-6 sm:p-8 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-xl space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 shadow-lg shadow-cyan-500/10">
+              <Bot className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white font-display">
+                {t(
+                  "chatbot.pollinationsRequiredTitle",
+                  undefined,
+                  "Pollinations AI Setup Required",
+                )}
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {t(
+                  "chatbot.pollinationsRequiredSubtitle",
+                  undefined,
+                  "Connect your API key to access Chatbot",
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-cyan-950/40 border border-cyan-800/50 space-y-2 text-slate-200">
+            <div className="flex items-center gap-2 text-cyan-300 font-semibold text-sm">
+              <Sparkles className="w-4 h-4" />
+              <span>
+                {t(
+                  "chatbot.freeTierInfoTitle",
+                  undefined,
+                  "100% Free & Community Models",
+                )}
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {t(
+                "chatbot.freeTierInfoText",
+                undefined,
+                "Most models on Pollinations are completely free to use! Pollinations provides official free models, community models, and support for your own custom or private models.",
+              )}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-xs font-medium text-slate-300">
+              {t(
+                "chatbot.enterApiKeyLabel",
+                undefined,
+                "Enter Pollinations API Key",
+              )}
+            </label>
+            <div className="relative">
+              <Input
+                type={showGateKey ? "text" : "password"}
+                value={gateKeyInput}
+                onChange={(e) => setGateKeyInput(e.target.value)}
+                placeholder="pk_... or sk_... from enter.pollinations.ai"
+                className="bg-slate-950 border-slate-800 text-xs text-white font-mono pr-10 h-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowGateKey((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                title={showGateKey ? "Hide key" : "Show key"}
+              >
+                {showGateKey ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <Button
+                onClick={async () => {
+                  if (!gateKeyInput.trim()) return;
+                  setIsSavingGateKey(true);
+                  try {
+                    await setPollinationsApiKey(gateKeyInput.trim());
+                    toast.success(
+                      t(
+                        "chatbot.keySavedSuccess",
+                        undefined,
+                        "Pollinations key connected!",
+                      ),
+                    );
+                  } catch {
+                    toast.error(
+                      t("common.error", undefined, "Failed to save key"),
+                    );
+                  } finally {
+                    setIsSavingGateKey(false);
+                  }
+                }}
+                disabled={!gateKeyInput.trim() || isSavingGateKey}
+                className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs h-10 font-semibold gap-2"
+              >
+                {isSavingGateKey ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                {t("chatbot.saveAndStart", undefined, "Save & Start Chatting")}
+              </Button>
+
+              <Link
+                to="/account"
+                className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors text-center"
+              >
+                {t("chatbot.openAccountSettings", undefined, "Account Settings")}
+              </Link>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+            <span>
+              {t("chatbot.needKeyText", undefined, "Need an API key?")}
+            </span>
+            <a
+              href="https://enter.pollinations.ai/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-400 hover:underline inline-flex items-center gap-1"
+            >
+              enter.pollinations.ai/keys
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        </div>
       </div>
     );
   }
@@ -3709,6 +3661,7 @@ export function ChatbotApp() {
                     ref={modelDropdownRef}
                   >
                     <button
+                    data-testid="chatbot-model-dropdown-btn"
                     onClick={() => {
                       if (!modelDropdownOpen) {
                         refreshModels?.();
@@ -3739,30 +3692,24 @@ export function ChatbotApp() {
                     )}
                   >
                     <div className="max-h-[300px] overflow-y-auto no-scrollbar pb-2">
-                      {hasHordeModels && (
+                      {builtinModels.length > 0 && (
                         <>
                           <div className="px-3 pt-3 pb-1">
                             <p className="text-[10px] uppercase tracking-wider text-slate-400 font-display font-medium">
-                              Default Models
+                              Pollinations Models
                             </p>
                           </div>
-                          <div className="px-3 pb-1">
-                            <p className="text-[11px] text-slate-400 font-display font-medium">
-                              AI Horde
-                            </p>
-                          </div>
-                          <div className="px-2 pl-3 border-l border-white/5 ml-3">
-                            {hordeModels.map((m) => (
+                          <div className="px-2">
+                            {builtinModels.map((m) => (
                               <button
                                 key={`${m.provider}-${m.model_id}`}
                                 onClick={() => {
-                                  setSelection(m.model_id, m.provider);
+                                  setSelectedModel(m.model_id);
                                   setModelDropdownOpen(false);
                                 }}
                                 className={cn(
                                   "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
-                                  selectedModel === m.model_id &&
-                                    selectedProvider === m.provider
+                                  selectedModel === m.model_id
                                     ? "bg-white/5"
                                     : "",
                                 )}
@@ -3780,85 +3727,36 @@ export function ChatbotApp() {
                                     {formatModelLabel(
                                       m.provider,
                                       m.model_id,
-                                    ).split(" - ")[1] || ""}
+                                    ).split(" - ")[1] || m.model_id}
                                   </span>
-                                  {hordeStatus?.[m.model_id]?.eta > 0 && (
-                                    <span className="text-cyan-500/70 ml-2 whitespace-nowrap">
-                                      ETA:{" "}
-                                      {formatHordeEta(
-                                        hordeStatus[m.model_id].eta,
-                                      )}
-                                    </span>
-                                  )}
                                 </div>
-                                {selectedModel === m.model_id &&
-                                  selectedProvider === m.provider && (
-                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
-                                  )}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
-
-                      {hasLocalModels && (
-                        <>
-                          <div className="px-3 pb-1 pt-3">
-                            <p className="text-[11px] text-slate-400 font-display font-medium">
-                              Local Running Apps
-                            </p>
-                          </div>
-                          <div className="px-2 pl-3 border-l border-white/5 ml-3">
-                            {localModels.map((m) => (
-                              <button
-                                key={`${m.provider}-${m.model_id}`}
-                                onClick={() => {
-                                  setSelection(m.model_id, m.provider);
-                                  setModelDropdownOpen(false);
-                                }}
-                                className={cn(
-                                  "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
-                                  selectedModel === m.model_id &&
-                                    selectedProvider === m.provider
-                                    ? "bg-white/5"
-                                    : "",
+                                {selectedModel === m.model_id && (
+                                  <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
                                 )}
-                              >
-                                <div className="text-sm text-white font-medium">
-                                  {m.model_id}
-                                </div>
-                                <div className="text-[11px] text-slate-400 truncate w-full capitalize">
-                                  {m.provider.replace("local-", "")}
-                                </div>
-                                {selectedModel === m.model_id &&
-                                  selectedProvider === m.provider && (
-                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
-                                  )}
                               </button>
                             ))}
                           </div>
                         </>
                       )}
 
-                      {hasCustomModels && (
+                      {customModels.length > 0 && (
                         <>
                           <div className="px-3 pb-1 pt-3 flex justify-between items-center">
-                            <p className="text-[11px] text-slate-400 font-display font-medium">
-                              Custom
+                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-display font-medium">
+                              Custom Models
                             </p>
                           </div>
-                          <div className="px-2 pl-3 border-l border-white/5 ml-3">
+                          <div className="px-2">
                             {customModels.map((m) => (
                               <button
                                 key={`${m.provider}-${m.model_id}`}
                                 onClick={() => {
-                                  setSelection(m.model_id, m.provider);
+                                  setSelectedModel(m.model_id);
                                   setModelDropdownOpen(false);
                                 }}
                                 className={cn(
                                   "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
-                                  selectedModel === m.model_id &&
-                                    selectedProvider === m.provider
+                                  selectedModel === m.model_id
                                     ? "bg-white/5"
                                     : "",
                                 )}
@@ -3875,48 +3773,11 @@ export function ChatbotApp() {
                                   {formatModelLabel(
                                     m.provider,
                                     m.model_id,
-                                  ).split(" - ")[1] || ""}
+                                  ).split(" - ")[1] || m.model_id}
                                 </div>
-                                {selectedModel === m.model_id &&
-                                  selectedProvider === m.provider && (
-                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
-                                  )}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
-
-                      {otherModels.length > 0 && (
-                        <>
-                          <div className="px-3 pt-3 pb-1">
-                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-display font-medium">
-                              Other Models
-                            </p>
-                          </div>
-                          <div className="px-2">
-                            {otherModels.map((m) => (
-                              <button
-                                key={`${m.provider}-${m.model_id}`}
-                                onClick={() => {
-                                  setSelection(m.model_id, m.provider);
-                                  setModelDropdownOpen(false);
-                                }}
-                                className={cn(
-                                  "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
-                                  selectedModel === m.model_id &&
-                                    selectedProvider === m.provider
-                                    ? "bg-white/5"
-                                    : "",
+                                {selectedModel === m.model_id && (
+                                  <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
                                 )}
-                              >
-                                <div className="text-sm text-white font-medium truncate pr-4">
-                                  {formatModelLabel(m.provider, m.model_id)}
-                                </div>
-                                {selectedModel === m.model_id &&
-                                  selectedProvider === m.provider && (
-                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
-                                  )}
                               </button>
                             ))}
                           </div>

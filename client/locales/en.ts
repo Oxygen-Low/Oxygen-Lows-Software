@@ -68,6 +68,8 @@ export const en = {
     closeMenu: "Close menu",
     openSidebar: "Open sidebar",
     closeSidebar: "Close sidebar",
+    pollenWallet: "Pollinations",
+    pollenWalletTooltip: "Pollinations Wallet - Click to view/manage Pollen",
   },
   auth: {
     title: "Oxygen Low's Software",
@@ -202,18 +204,30 @@ export const en = {
     grantedOn: "Authorized on",
     models: "Models",
     modelsSubtitle:
-      "Configure AI models, detect running local instances, register custom endpoints, and set feature defaults.",
+      "Configure custom models, connect your Pollinations AI account, monitor your Pollen wallet, and set feature defaults.",
+    pollinationsAccountTitle: "Pollinations Account & API Key",
+    pollinationsAccountDesc:
+      "Connect your Pollinations API key to unlock the Chatbot and query models.",
+    freeTierNoticeTitle: "Free Tier & Community Model Support",
+    freeTierNoticeText:
+      "Most models on Pollinations are 100% free to use, with community model support and an official free model tier. You can also connect private models and external providers via Pollinations without maintaining separate credentials.",
+    pollenWalletLabel: "Current Pollen Balance",
+    managePollen: "Manage Pollen / Top Up",
+    pollinationsApiKeyLabel: "Pollinations API Key",
+    apiKeyPlaceholder: "pk_... or sk_... from enter.pollinations.ai/keys",
+    showApiKey: "Show key",
+    hideApiKey: "Hide key",
+    apiKeyHint: "Get or manage your API keys on the Pollinations Dashboard.",
+    apiKeySaved: "Pollinations API key saved successfully",
+    apiKeyRemoved: "Pollinations API key removed",
+    clearKey: "Clear",
+    keyRequired: "API Key Required",
     activeModelsCount: "Active Models",
-    detectedLocalModels: "Local Models Running",
-    noLocalModelsDetected:
-      "No local models detected. Launch Ollama (11434), LM Studio (1234), or KoboldCPP (5001) to auto-detect.",
-    localStatusRunning: "Local Running",
-    localStatusOffline: "Local Offline",
     addModel: "Add Model",
     registerModel: "Register Model",
     addCustomModelTitle: "Register AI Model",
     addCustomModelDesc:
-      "Add a model from a configured provider or enter a custom model identifier.",
+      "Register a custom or community model hosted on Pollinations AI.",
     provider: "Provider",
     selectProvider: "Select a provider",
     modelPreset: "Model Preset",
@@ -235,13 +249,10 @@ export const en = {
     researchSummarizerDefaultTitle: "Search Summarizer Default",
     researchSummarizerDefaultDesc:
       "Model used to synthesize research findings into comprehensive final answers.",
-    registeredModels: "Active & Registered Models",
+    registeredModels: "Active & Custom Models",
     registeredModelsDesc:
-      "All available models grouped by provider, including detected local endpoints and custom registrations.",
-    localModelsGroup: "Local Models (Ollama / LM Studio / KoboldCPP)",
-    cloudModelsGroup: "Cloud Providers",
-    builtInModelsGroup: "Built-in Cloud Services (AI Horde)",
-    configured: "Configured",
+      "All available Pollinations models, including official presets and custom registered models.",
+    configured: "Connected",
     notConfigured: "API Key Required",
     deleteModelConfirmTitle: "Remove Custom Model",
     deleteModelConfirmDesc:
@@ -388,6 +399,8 @@ export const en = {
       "Pollinations requires an API key (HTTP 401). Falling back to AI Horde backup ({model}). You can add a key from enter.pollinations.ai in Models settings.",
     pollinations401FallbackNotice:
       "Generated via AI Horde ({model}) fallback due to Pollinations API key requirement (401).",
+    pollinationsGateRequired:
+      "A Pollinations API key is required. Please configure it in Account settings.",
     agentSearchTitle: "Agent Search",
     agentSearchDesc:
       "AI-powered agentic search that researches the web and synthesizes answers.",
@@ -3041,6 +3054,18 @@ export const en = {
     setupQuestion1: "Welcome to your new workspace! Let's get things set up.\n\n1. Does this project or business already exist, and does it have an official website or domain?",
     setupQuestion2: "Great! I've recorded that.\n\n2. What is your name, or what would you like me to call you?",
     setupFinished: "Workspace setup complete! All tools and agents are now unlocked.",
+  },
+  chatbot: {
+    pollinationsRequiredTitle: "Pollinations AI Setup Required",
+    pollinationsRequiredSubtitle: "Connect your API key to access Chatbot",
+    freeTierInfoTitle: "100% Free & Community Models",
+    freeTierInfoText:
+      "Most models on Pollinations are completely free to use! Pollinations provides official free models, community models, and support for your own custom or private models.",
+    enterApiKeyLabel: "Enter Pollinations API Key",
+    saveAndStart: "Save & Start Chatting",
+    openAccountSettings: "Account Settings",
+    needKeyText: "Need an API key?",
+    keySavedSuccess: "Pollinations key connected!",
   },
 } as const;
 

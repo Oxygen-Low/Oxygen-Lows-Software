@@ -24,19 +24,17 @@ vi.mock("@/contexts/LanguageContext", () => ({
 const { modelState } = vi.hoisted(() => ({
   modelState: {
     models: [
-      { provider: "horde", model_id: "same", name: "Free" },
-      { provider: "openrouter", model_id: "same", name: "Custom" },
+      { provider: "pollinations", model_id: "openai", name: "GPT-5o Mini" },
+      { provider: "pollinations", model_id: "deepseek", name: "DeepSeek V3" },
     ],
-    selectedModel: "same",
-    selectedProvider: "horde",
-    getDecryptedApiKey: vi.fn(),
-    encryptedKeys: {} as Record<string, string>,
-    isMasterKeyActive: false,
+    selectedModel: "openai",
+    selectedProvider: "pollinations",
+    pollinationsApiKey: "test-key",
   },
 }));
 vi.mock("@/hooks/useAiModels", () => ({
   useAiModels: () => modelState,
-  BUILTIN_MODELS: [{ provider: "horde", model_id: "Fast" }],
+  BUILTIN_MODELS: [{ provider: "pollinations", model_id: "openai" }],
 }));
 vi.mock("@/services/characterReviewer", () => ({ reviewCharacter: vi.fn() }));
 const result: CharacterReview = {
@@ -63,18 +61,16 @@ const start = () =>
 
 beforeEach(() => {
   vi.resetAllMocks();
-  modelState.encryptedKeys = {};
-  modelState.getDecryptedApiKey.mockReturnValue(null);
+  modelState.pollinationsApiKey = "test-key";
   vi.mocked(reviewCharacter).mockResolvedValue(result);
 });
 afterEach(cleanup);
 
 describe("AiReviewDialog", () => {
-  it("uses the selected provider even when model IDs match and renders readable feedback", async () => {
-    modelState.getDecryptedApiKey.mockReturnValue("test-key");
+  it("uses the selected model and renders readable feedback", async () => {
     renderDialog();
     fireEvent.change(screen.getByLabelText("AI Model"), {
-      target: { value: JSON.stringify(["openrouter", "same"]) },
+      target: { value: "deepseek" },
     });
     start();
     await screen.findByText(result.summary);
@@ -94,21 +90,13 @@ describe("AiReviewDialog", () => {
     expect(character.backstory).toBe("Saved story");
   });
 
-  it.each([false, true])(
-    "blocks missing or locked provider credentials (locked: %s)",
-    (locked) => {
-      if (locked) modelState.encryptedKeys = { openrouter: "encrypted" };
-      renderDialog();
-      fireEvent.change(screen.getByLabelText("AI Model"), {
-        target: { value: JSON.stringify(["openrouter", "same"]) },
-      });
-      start();
-      expect(screen.getByRole("alert").textContent).toMatch(
-        locked ? /Master Key.*locked/ : /not configured/,
-      );
-      expect(reviewCharacter).not.toHaveBeenCalled();
-    },
-  );
+  it("blocks review when Pollinations API key is missing", () => {
+    modelState.pollinationsApiKey = "";
+    renderDialog();
+    start();
+    expect(screen.getByRole("alert").textContent).toMatch(/Pollinations API key is required/);
+    expect(reviewCharacter).not.toHaveBeenCalled();
+  });
 
   it("shows errors and allows a successful retry", async () => {
     vi.mocked(reviewCharacter).mockRejectedValueOnce(new Error("Bad response"));

@@ -68,6 +68,8 @@ export const es = {
     closeMenu: "Cerrar menÃº",
     openSidebar: "Abrir barra lateral",
     closeSidebar: "Cerrar barra lateral",
+    pollenWallet: "Pollinations",
+    pollenWalletTooltip: "Billetera Pollinations: haz clic para ver y gestionar Pollen",
   },
   auth: {
     title: "Oxygen Low's Software",
@@ -210,18 +212,30 @@ export const es = {
     grantedOn: "Autorizado el",
     models: "Modelos",
     modelsSubtitle:
-      "Configura modelos de IA, detecta instancias locales en ejecuciÃ³n, registra puntos de conexiÃ³n personalizados y define modelos predeterminados.",
+      "Configura modelos personalizados, conecta tu cuenta de Pollinations AI, monitorea tu billetera de Pollen y define valores predeterminados.",
+    pollinationsAccountTitle: "Cuenta y Clave API de Pollinations",
+    pollinationsAccountDesc:
+      "Conecta tu clave API de Pollinations para desbloquear el Chatbot y consultar modelos.",
+    freeTierNoticeTitle: "Nivel Gratuito y Soporte de Modelos de la Comunidad",
+    freeTierNoticeText:
+      "La mayoría de los modelos en Pollinations son 100% gratuitos, con soporte para modelos comunitarios y un nivel oficial gratuito. También puedes conectar modelos privados y proveedores externos a través de Pollinations sin gestionar múltiples credenciales.",
+    pollenWalletLabel: "Saldo Actual de Pollen",
+    managePollen: "Gestionar Pollen / Recargar",
+    pollinationsApiKeyLabel: "Clave API de Pollinations",
+    apiKeyPlaceholder: "pk_... o sk_... desde enter.pollinations.ai/keys",
+    showApiKey: "Mostrar clave",
+    hideApiKey: "Ocultar clave",
+    apiKeyHint: "Obtén o administra tus claves API en el panel de Pollinations.",
+    apiKeySaved: "Clave API de Pollinations guardada exitosamente",
+    apiKeyRemoved: "Clave API de Pollinations eliminada",
+    clearKey: "Borrar",
+    keyRequired: "Clave API Requerida",
     activeModelsCount: "Modelos activos",
-    detectedLocalModels: "Modelos locales en ejecuciÃ³n",
-    noLocalModelsDetected:
-      "No se detectaron modelos locales. Inicia Ollama (11434), LM Studio (1234) o KoboldCPP (5001) para autodetecciÃ³n.",
-    localStatusRunning: "Local activo",
-    localStatusOffline: "Local inactivo",
-    addModel: "AÃ±adir modelo",
+    addModel: "Añadir modelo",
     registerModel: "Registrar modelo",
     addCustomModelTitle: "Registrar modelo de IA",
     addCustomModelDesc:
-      "AÃ±ade un modelo desde un proveedor configurado o introduce un identificador de modelo personalizado.",
+      "Registre un modelo personalizado o comunitario alojado en Pollinations AI.",
     provider: "Proveedor",
     selectProvider: "Selecciona un proveedor",
     modelPreset: "Ajuste predeterminado",
@@ -231,27 +245,23 @@ export const es = {
     modelIdPlaceholder: "ej. gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
     modelName: "Nombre a mostrar (opcional)",
     modelNamePlaceholder: "ej. GPT-4o (Omni)",
-    featureDefaults: "Modelos predeterminados por funciÃ³n",
+    featureDefaults: "Modelos predeterminados por función",
     featureDefaultsDesc:
-      "Configura modelos de IA predeterminados para Chatbot, Agente de InvestigaciÃ³n y Resumidor de BÃºsqueda.",
+      "Configura modelos de IA predeterminados para Chatbot, Agente de Investigación y Resumidor de Búsqueda.",
     chatbotDefaultTitle: "Predeterminado de Chatbot",
     chatbotDefaultDesc:
       "Modelo predeterminado utilizado al iniciar y crear conversaciones en Chatbot.",
-    researchAgentDefaultTitle: "Predeterminado de Agente de InvestigaciÃ³n",
+    researchAgentDefaultTitle: "Predeterminado de Agente de Investigación",
     researchAgentDefaultDesc:
-      "Modelo para exploraciÃ³n profunda de bÃºsqueda web y bucle de recolecciÃ³n de hechos.",
-    researchSummarizerDefaultTitle: "Predeterminado de Resumidor de BÃºsqueda",
+      "Modelo para exploración profunda de búsqueda web y bucle de recolección de hechos.",
+    researchSummarizerDefaultTitle: "Predeterminado de Resumidor de Búsqueda",
     researchSummarizerDefaultDesc:
-      "Modelo utilizado para sintetizar hallazgos de investigaciÃ³n en respuestas finales completas.",
-    registeredModels: "Modelos activos y registrados",
+      "Modelo utilizado para sintetizar hallazgos de investigación en respuestas finales completas.",
+    registeredModels: "Modelos activos y personalizados",
     registeredModelsDesc:
-      "Todos los modelos disponibles agrupados por proveedor, incluidos puntos locales detectados y registros personalizados.",
-    localModelsGroup: "Modelos locales (Ollama / LM Studio / KoboldCPP)",
-    cloudModelsGroup: "Proveedores en la nube",
-    builtInModelsGroup:
-      "Servicios integrados en la nube (AI Horde)",
-    configured: "Configurado",
-    notConfigured: "Clave de API requerida",
+      "Todos los modelos de Pollinations disponibles, incluidos ajustes preestablecidos oficiales y modelos registrados personalizados.",
+    configured: "Conectado",
+    notConfigured: "Clave API Requerida",
     deleteModelConfirmTitle: "Eliminar modelo personalizado",
     deleteModelConfirmDesc:
       "Â¿EstÃ¡s seguro de que deseas eliminar este modelo personalizado? Puedes volver a registrarlo en cualquier momento.",
@@ -401,6 +411,8 @@ export const es = {
       "Pollinations requiere una clave API (HTTP 401). Cambiando a la copia de seguridad de AI Horde ({model}). Puedes añadir una clave de enter.pollinations.ai en Modelos.",
     pollinations401FallbackNotice:
       "Generado a través del respaldo AI Horde ({model}) debido al requisito de clave API de Pollinations (401).",
+    pollinationsGateRequired:
+      "Se requiere una clave de API de Pollinations. Configúrela en la configuración de la Cuenta.",
     agentSearchTitle: "BÃºsqueda Agente",
     agentSearchDesc:
       "BÃºsqueda agÃ©ntica impulsada por IA que investiga la web y sintetiza respuestas.",
@@ -3024,5 +3036,17 @@ export const es = {
     setupQuestion1: "¡Bienvenido a tu nuevo espacio de trabajo! Vamos a configurarlo.\n\n1. ¿Este proyecto o negocio ya existe y tiene un sitio web o dominio oficial?",
     setupQuestion2: "¡Excelente! Lo he registrado.\n\n2. ¿Cuál es tu nombre o cómo te gustaría que te llame?",
     setupFinished: "¡Configuración del espacio completada! Todas las herramientas y agentes ya están desbloqueados.",
+  },
+  chatbot: {
+    pollinationsRequiredTitle: "Configuración de Pollinations AI Requerida",
+    pollinationsRequiredSubtitle: "Conecta tu clave API para acceder al Chatbot",
+    freeTierInfoTitle: "Modelos 100% Gratuitos y Comunitarios",
+    freeTierInfoText:
+      "¡La mayoría de los modelos en Pollinations son completamente gratuitos! Pollinations ofrece modelos gratuitos oficiales, modelos comunitarios y soporte para tus propios modelos personalizados o privados.",
+    enterApiKeyLabel: "Introduce la Clave API de Pollinations",
+    saveAndStart: "Guardar y Comenzar a Chatear",
+    openAccountSettings: "Configuración de la Cuenta",
+    needKeyText: "¿Necesitas una clave API?",
+    keySavedSuccess: "¡Clave de Pollinations conectada!",
   },
 } as const;

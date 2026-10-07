@@ -13,65 +13,49 @@ import { useAuth } from "@/hooks/useAuth";
 import { MemoryRouter } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 
-let mockDbUserModels: any[] = [];
-let mockRpcCalls: Array<{ name: string; params: any }> = [];
 let mockInsertCalls: any[] = [];
 let mockDeleteCalls: any[] = [];
 
-// Full mock of db & supabase
+// Full mock of db
 vi.mock("@/lib/db", () => {
   const mockClient = {
     auth: {
       updateUser: vi.fn().mockResolvedValue({ data: {}, error: null }),
       getUser: vi
         .fn()
-        .mockResolvedValue({ data: { user: { id: "user-stress-1" } } }),
+        .mockResolvedValue({ data: { user: { id: "u", identities: [] } } }),
       getSession: vi.fn().mockResolvedValue({
-        data: {
-          session: { user: { id: "user-stress-1" } },
-          access_token: "mock-token",
-        },
+        data: { session: { user: { id: "u" }, access_token: "t" } },
         error: null,
       }),
       onAuthStateChange: vi
         .fn()
         .mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
     },
-    from: vi.fn((table: string) => {
+    from: vi.fn((table) => {
       const builder: any = {
         select: vi.fn(() => builder),
         eq: vi.fn(() => builder),
-        order: vi.fn(() => {
-          if (table === "user_models") {
-            return Promise.resolve({
-              data: [...mockDbUserModels],
-              error: null,
-            });
-          }
-          return builder;
-        }),
+        order: vi.fn(() => builder),
         single: vi.fn(() => {
-          if (table === "user_preferences") {
+          if (table === "user_preferences")
             return Promise.resolve({
               data: {
                 theme: "default",
                 use_gradient: true,
-                chatbot_default_model: "gpt-4o",
-                chatbot_default_provider: "openai",
-                research_agent_default_model:
-                  "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
-                research_agent_default_provider: "horde",
-                research_summarizer_default_model:
-                  "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
-                research_summarizer_default_provider: "horde",
+                chatbot_default_model: "openai",
+                chatbot_default_provider: "pollinations",
+                research_agent_default_model: "deepseek",
+                research_agent_default_provider: "pollinations",
+                research_summarizer_default_model: "mistral",
+                research_summarizer_default_provider: "pollinations",
               },
               error: null,
             });
-          }
           if (table === "profiles") {
             return Promise.resolve({
               data: {
-                user_id: "user-stress-1",
+                user_id: "u",
                 username: "stress_tester",
                 display_name: "Stress Tester",
               },
@@ -82,59 +66,43 @@ vi.mock("@/lib/db", () => {
         }),
         insert: vi.fn((item) => {
           mockInsertCalls.push(item);
-          const newItem = { id: `m-${Date.now()}`, ...item };
-          mockDbUserModels.push(newItem);
-          return Promise.resolve({ data: [newItem], error: null });
+          return Promise.resolve({ data: [{ id: "m-new" }], error: null });
         }),
         upsert: vi.fn(() => Promise.resolve({ data: null, error: null })),
-        delete: vi.fn(() => {
-          return {
-            eq: vi.fn((field1: string, val1: string) => {
-              return {
-                eq: vi.fn((field2: string, val2: string) => {
-                  mockDeleteCalls.push({ [field1]: val1, [field2]: val2 });
-                  mockDbUserModels = mockDbUserModels.filter(
-                    (m) => !(m[field1] === val1 && m[field2] === val2),
-                  );
-                  return Promise.resolve({ data: null, error: null });
-                }),
-              };
-            }),
-          };
-        }),
+        delete: vi.fn(() => builder),
       };
-
       return builder;
     }),
-    rpc: vi.fn((name: string, params: any) => {
-      mockRpcCalls.push({ name, params });
-      return Promise.resolve({ data: null, error: null });
+    rpc: vi.fn((name) => {
+      if (name === "upsert_user_preferences")
+        return Promise.resolve({ data: null, error: null });
+      return Promise.resolve({ data: [], error: null });
     }),
     storage: {
       from: vi.fn().mockReturnThis(),
       getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: "" } }),
       upload: vi.fn().mockResolvedValue({ data: { path: "" } }),
       remove: vi.fn().mockResolvedValue({}),
-      createSignedUrl: vi
-        .fn()
-        .mockResolvedValue({ data: { signedUrl: "" }, error: null }),
     },
   };
 
   return {
-    getAuthenticatedClient: vi.fn(() => mockClient),
+    getAuthenticatedClient: vi.fn(() => ({
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn(() => Promise.resolve({ data: {}, error: null })),
+          })),
+        })),
+      })),
+      rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
+    })),
     db: mockClient,
     supabase: mockClient,
   };
 });
 
-vi.mock("@/hooks/useAuth", () => ({
-  useAuth: vi.fn(() => ({
-    session: { user: { id: "user-stress-1" }, access_token: "mock-token" },
-    loading: false,
-  })),
-}));
-
+vi.mock("@/hooks/useAuth", () => ({ useAuth: vi.fn() }));
 vi.mock("@/components/Layout", () => ({
   __esModule: true,
   default: ({ children }: any) => <div data-testid="layout">{children}</div>,
@@ -144,10 +112,8 @@ vi.mock("@/components/Layout", () => ({
 vi.mock("@/components/ui/tabs", () => ({
   Tabs: ({ children }: any) => <div>{children}</div>,
   TabsList: ({ children }: any) => <div>{children}</div>,
-  TabsTrigger: ({ children, value, ...props }: any) => (
-    <button data-value={value} {...props}>
-      {children}
-    </button>
+  TabsTrigger: ({ children, value }: any) => (
+    <button data-value={value}>{children}</button>
   ),
   TabsContent: ({ children, value, ...props }: any) => (
     <div data-testid={`tab-${value}`} {...props}>
@@ -175,42 +141,18 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    mockDbUserModels = [];
-    mockRpcCalls = [];
     mockInsertCalls = [];
     mockDeleteCalls = [];
+    (useAuth as any).mockReturnValue({
+      session: { user: { id: "u", email: "e@e.com" }, access_token: "t" },
+    });
 
     global.fetch = vi.fn().mockImplementation((url) => {
       const urlStr = String(url);
-      if (urlStr.includes(":11434/api/tags")) {
+      if (urlStr.includes("enter.pollinations.ai/pollen")) {
         return Promise.resolve({
           ok: true,
-          json: () =>
-            Promise.resolve({ models: [{ name: "llama3.2:latest" }] }),
-        });
-      }
-      if (urlStr.includes(":1234/v1/models")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ data: [{ id: "lm-qwen-local" }] }),
-        });
-      }
-      if (urlStr.includes(":5001/api/v1/model")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ result: "kobold-llama" }),
-        });
-      }
-      if (urlStr.includes("/api/ai/local-providers")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([]),
-        });
-      }
-      if (urlStr.includes("/api/ai/horde-status")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({}),
+          json: () => Promise.resolve({ balance: 250, pollen: 250 }),
         });
       }
       return Promise.resolve({ ok: false, status: 404 });
@@ -222,39 +164,22 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
     localStorage.clear();
   });
 
-  describe("1. Rendering, Tab Layout & Provider Badges", () => {
-    it("renders Models tab triggers, counts, and all 3 feature default pickers", async () => {
+  describe("1. Rendering, Tab Layout & Free Models Banner", () => {
+    it("renders Models tab triggers, Pollinations card, and all 3 feature default pickers", async () => {
       renderAccount();
 
-      // Verify trigger and content
-      expect(screen.getByTestId("models-tab-trigger")).toBeDefined();
       expect(screen.getByTestId("models-tab-content")).toBeDefined();
-
-      // Verify header section
       expect(screen.getAllByText("Models").length).toBeGreaterThan(0);
       expect(screen.getByText("Feature Default Models")).toBeDefined();
 
-      // Verify 3 Default Model Cards
       expect(screen.getByTestId("chatbot-default-card")).toBeDefined();
       expect(screen.getByTestId("research-agent-default-card")).toBeDefined();
       expect(
         screen.getByTestId("research-summarizer-default-card"),
       ).toBeDefined();
 
-      // Verify Group Headers
-      expect(screen.getByText("Active & Registered Models")).toBeDefined();
-      expect(screen.getAllByText(/Local Models/i).length).toBeGreaterThan(0);
-      expect(screen.getByText("Cloud Providers")).toBeDefined();
-      expect(screen.getByText(/Built-in Cloud Services/i)).toBeDefined();
-    });
-
-    it("displays 'API Key Required' for unconfigured cloud providers", async () => {
-      renderAccount();
-
-      await waitFor(() => {
-        const notConfiguredBadges = screen.getAllByText("API Key Required");
-        expect(notConfiguredBadges.length).toBeGreaterThanOrEqual(5);
-      });
+      expect(screen.getByText(/Pollinations Account & API Key/i)).toBeDefined();
+      expect(screen.getByText(/Free Tier & Community Model/i)).toBeDefined();
     });
   });
 
@@ -268,10 +193,7 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
 
       await waitFor(() => {
         expect(screen.getByText("Register AI Model")).toBeDefined();
-        expect(document.getElementById("custom-model-id-input")).toBeDefined();
-        expect(
-          document.getElementById("custom-model-name-input"),
-        ).toBeDefined();
+        expect(screen.getByLabelText(/Model ID/i)).toBeDefined();
         expect(screen.getByTestId("submit-add-model-btn")).toBeDefined();
       });
     });
@@ -285,9 +207,7 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
         expect(screen.getByText("Register AI Model")).toBeDefined();
       });
 
-      const idInput = document.getElementById(
-        "custom-model-id-input",
-      ) as HTMLInputElement;
+      const idInput = screen.getByLabelText(/Model ID/i) as HTMLInputElement;
       expect(idInput).toBeDefined();
 
       // Empty input
@@ -301,24 +221,10 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
       fireEvent.change(idInput, { target: { value: "   " } });
       expect(submitBtn.disabled).toBe(true);
     });
-
-    it("displays warning note when unconfigured cloud provider is selected", async () => {
-      renderAccount();
-
-      fireEvent.click(screen.getByTestId("add-model-btn"));
-
-      await waitFor(() => {
-        expect(screen.getByText("Register AI Model")).toBeDefined();
-      });
-
-      expect(
-        screen.getByText(/Add a model from a configured provider/i),
-      ).toBeDefined();
-    });
   });
 
   describe("3. Custom Model Addition, UI Reactivity & Deletion", () => {
-    it("successfully submits new custom model and persists to DB", async () => {
+    it("successfully submits new custom model and persists to storage", async () => {
       renderAccount();
 
       fireEvent.click(screen.getByTestId("add-model-btn"));
@@ -327,44 +233,38 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
         expect(screen.getByText("Register AI Model")).toBeDefined();
       });
 
-      const idInput = document.getElementById(
-        "custom-model-id-input",
-      ) as HTMLInputElement;
-      const nameInput = document.getElementById(
-        "custom-model-name-input",
-      ) as HTMLInputElement;
+      const idInput = screen.getByLabelText(/Model ID/i) as HTMLInputElement;
+      const nameInput = screen.getByPlaceholderText("e.g. My Custom Model") as HTMLInputElement;
 
-      fireEvent.change(idInput, { target: { value: "gpt-4o-custom-2026" } });
-      fireEvent.change(nameInput, { target: { value: "Custom 4o Pro" } });
+      fireEvent.change(idInput, { target: { value: "my-private-model" } });
+      fireEvent.change(nameInput, { target: { value: "My Private LLM" } });
 
       const submitBtn = screen.getByTestId("submit-add-model-btn");
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
-        expect(mockInsertCalls.length).toBe(1);
-        expect(mockInsertCalls[0]).toEqual({
-          user_id: "user-stress-1",
-          provider: "openai",
-          model_id: "gpt-4o-custom-2026",
-          name: "Custom 4o Pro",
-        });
+        const stored = localStorage.getItem("pollinations_custom_models");
+        expect(stored).toContain("my-private-model");
       });
     });
 
     it("renders delete confirmation dialog when removing custom models", async () => {
-      mockDbUserModels = [
-        {
-          id: "m-to-delete",
-          provider: "openai",
-          model_id: "gpt-obsolete",
-          name: "Obsolete Model",
-        },
-      ];
+      localStorage.setItem(
+        "pollinations_custom_models",
+        JSON.stringify([
+          {
+            id: "custom-deprecated",
+            provider: "pollinations",
+            model_id: "custom-deprecated",
+            name: "Deprecated Custom Model",
+          },
+        ]),
+      );
 
       renderAccount();
 
       await waitFor(() => {
-        expect(screen.getByText("Obsolete Model")).toBeDefined();
+        expect(screen.getByText("Deprecated Custom Model")).toBeDefined();
       });
 
       const deleteButtons = screen.getAllByTitle("Delete");
@@ -378,18 +278,14 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
             /Are you sure you want to remove this custom model/i,
           ),
         ).toBeDefined();
-        expect(screen.getByText("openai : gpt-obsolete")).toBeDefined();
       });
 
       const confirmDeleteBtn = screen.getByTestId("confirm-delete-model-btn");
       fireEvent.click(confirmDeleteBtn);
 
       await waitFor(() => {
-        expect(mockDeleteCalls.length).toBe(1);
-        expect(mockDeleteCalls[0]).toEqual({
-          provider: "openai",
-          model_id: "gpt-obsolete",
-        });
+        const stored = localStorage.getItem("pollinations_custom_models");
+        expect(stored || "[]").not.toContain("custom-deprecated");
       });
     });
   });
@@ -407,94 +303,6 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
           screen.getByTestId("research-summarizer-default-select"),
         ).toBeDefined();
       });
-    });
-  });
-
-  describe("5. Local Model Detection Simulation (Online, Offline & Malformed)", () => {
-    it("displays 'Local Offline' and help banner when local ports are unreachable", async () => {
-      global.fetch = vi.fn().mockImplementation((url) => {
-        const urlStr = String(url);
-        if (
-          urlStr.includes("11434") ||
-          urlStr.includes("1234") ||
-          urlStr.includes("5001")
-        ) {
-          return Promise.reject(new Error("ECONNREFUSED"));
-        }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-      });
-
-      renderAccount();
-
-      await waitFor(() => {
-        expect(screen.getAllByText(/Local Offline/i).length).toBeGreaterThan(0);
-        expect(
-          screen.getByText(/No local models detected\. Launch Ollama/i),
-        ).toBeDefined();
-      });
-    });
-
-    it("handles malformed JSON responses from local ports gracefully without crash", async () => {
-      global.fetch = vi.fn().mockImplementation((url) => {
-        const urlStr = String(url);
-        if (urlStr.includes(":11434/api/tags")) {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ corrupted: "not-an-array" }),
-          });
-        }
-        if (urlStr.includes(":1234/v1/models")) {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ data: "invalid-data" }),
-          });
-        }
-        if (urlStr.includes(":5001/api/v1/model")) {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ result: 99999 }),
-          });
-        }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-      });
-
-      renderAccount();
-
-      await waitFor(() => {
-        expect(screen.getByTestId("models-tab-content")).toBeDefined();
-      });
-    });
-
-    it("displays discovered model when local Ollama models are discovered without count badge", async () => {
-      global.fetch = vi.fn().mockImplementation((url) => {
-        const urlStr = String(url);
-        if (urlStr.includes(":11434/api/tags")) {
-          return Promise.resolve({
-            ok: true,
-            json: () =>
-              Promise.resolve({ models: [{ name: "deepseek-r1:14b" }] }),
-          });
-        }
-        if (urlStr.includes(":11434/v1/models")) {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ data: [] }),
-          });
-        }
-        if (urlStr.includes("1234") || urlStr.includes("5001")) {
-          return Promise.reject(new Error("Offline"));
-        }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-      });
-
-      renderAccount();
-
-      await waitFor(() => {
-        expect(screen.getAllByText(/deepseek-r1:14b/i).length).toBeGreaterThan(
-          0,
-        );
-      });
-      expect(screen.queryByText(/\d+\s+detected/i)).toBeNull();
     });
   });
 });

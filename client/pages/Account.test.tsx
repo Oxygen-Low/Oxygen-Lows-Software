@@ -286,7 +286,7 @@ describe("Account Component", () => {
     expect(
       screen.getByTestId("research-summarizer-default-card"),
     ).toBeDefined();
-    expect(screen.getByText("Active & Registered Models")).toBeDefined();
+    expect(screen.getByText("Active & Custom Models")).toBeDefined();
   });
 
   it("opens Add Model dialog when clicking Add Model button", async () => {
