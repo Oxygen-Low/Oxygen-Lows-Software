@@ -233,7 +233,10 @@ export function Models() {
 
   const handleOpenKeyModal = (provider: ProviderInfo) => {
     setSelectedProviderCard(provider);
-    const existing = decryptedKeys[provider.id.toLowerCase()] || "";
+    const existing =
+      getDecryptedApiKey(provider.id) ||
+      decryptedKeys[provider.id.toLowerCase()] ||
+      "";
     setKeyInputValue(existing);
     setShowKeyPassword(false);
     setKeySaveError(null);

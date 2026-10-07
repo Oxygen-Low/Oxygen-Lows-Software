@@ -325,6 +325,21 @@ export async function callModel(
   signal?: AbortSignal,
   apiKey?: string,
 ): Promise<string> {
+  let effectiveApiKey = apiKey;
+  if (!effectiveApiKey && typeof window !== "undefined") {
+    try {
+      const rawLocal =
+        localStorage.getItem("oxygen_api_keys") ||
+        localStorage.getItem("oxygen_encrypted_api_keys");
+      if (rawLocal) {
+        const parsed = JSON.parse(rawLocal);
+        if (parsed && typeof parsed[model.provider?.toLowerCase()] === "string") {
+          effectiveApiKey = parsed[model.provider.toLowerCase()].trim();
+        }
+      }
+    } catch {}
+  }
+
   if (model.provider === "pollinations") {
     try {
       return await fetchPollinationsClient({
@@ -334,7 +349,7 @@ export async function callModel(
           content: m.content || "",
         })),
         signal,
-        apiKey,
+        apiKey: effectiveApiKey,
       });
     } catch (err: any) {
       if (

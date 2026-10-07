@@ -855,15 +855,16 @@ export const useAiModels = (
             };
           }
           if (data.prefix) prefix = data.prefix;
-        } else {
-          // Guest mode fallback
-          try {
-            const rawLocal = localStorage.getItem("oxygen_api_keys");
-            const existing = rawLocal ? JSON.parse(rawLocal) : {};
-            existing[cleanProvider] = cleanKey;
-            localStorage.setItem("oxygen_api_keys", JSON.stringify(existing));
-          } catch {}
         }
+
+        // Always save to localStorage as well so that browser-direct providers (Pollinations, etc.)
+        // and client-side helpers can immediately access the key across reloads/sessions.
+        try {
+          const rawLocal = localStorage.getItem("oxygen_api_keys");
+          const existing = rawLocal ? JSON.parse(rawLocal) : {};
+          existing[cleanProvider] = cleanKey;
+          localStorage.setItem("oxygen_api_keys", JSON.stringify(existing));
+        } catch {}
 
         setKeyPrefixes((prev) => ({ ...prev, [cleanProvider]: prefix }));
         setDecryptedKeys((prev) => ({ ...prev, [cleanProvider]: cleanKey }));
@@ -938,7 +939,23 @@ export const useAiModels = (
   const getDecryptedApiKey = useCallback(
     (provider: string): string | null => {
       const clean = provider.toLowerCase().trim();
-      return decryptedKeys[clean] || null;
+      if (decryptedKeys[clean]) return decryptedKeys[clean];
+      try {
+        const rawLocal =
+          localStorage.getItem("oxygen_api_keys") ||
+          localStorage.getItem("oxygen_encrypted_api_keys");
+        if (rawLocal) {
+          const parsed = JSON.parse(rawLocal);
+          if (
+            parsed &&
+            typeof parsed[clean] === "string" &&
+            parsed[clean].trim()
+          ) {
+            return parsed[clean].trim();
+          }
+        }
+      } catch {}
+      return null;
     },
     [decryptedKeys],
   );
@@ -953,7 +970,7 @@ export const useAiModels = (
     }> => {
       try {
         const cleanProvider = provider.toLowerCase().trim();
-        const key = explicitKey || decryptedKeys[cleanProvider];
+        const key = explicitKey || getDecryptedApiKey(cleanProvider);
 
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token;
