@@ -103,9 +103,8 @@ describe("useLiveVoice hook", () => {
     });
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     vi.clearAllMocks();
-    await new Promise((r) => setTimeout(r, 60));
   });
 
   it("identifies browser support correctly", () => {
