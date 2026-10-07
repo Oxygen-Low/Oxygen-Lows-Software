@@ -131,6 +131,7 @@ describe("useLiveVoice hook", () => {
     mockWebSocketInstance = null;
 
     (globalThis as any).WebSocket = MockWebSocket;
+    (globalThis as any).Audio = MockAudio;
     (window as any).SpeechRecognition = MockSpeechRecognition;
     (window as any).webkitSpeechRecognition = MockSpeechRecognition;
     (window as any).Audio = MockAudio;
