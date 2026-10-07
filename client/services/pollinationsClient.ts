@@ -36,6 +36,7 @@ export interface PollinationsStreamOptions {
   signal?: AbortSignal;
   apiKey?: string | null;
   onChunk: (delta: string) => void;
+  onQueueInfo?: (info: any) => void;
 }
 
 export const POLLINATIONS_TEXT_API_URL = "https://gen.pollinations.ai/v1/chat/completions";
@@ -52,6 +53,7 @@ export async function streamPollinationsClient({
   signal,
   apiKey,
   onChunk,
+  onQueueInfo,
 }: PollinationsStreamOptions): Promise<string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -110,6 +112,8 @@ export async function streamPollinationsClient({
   let fullContent = "";
   let streamBuffer = "";
 
+  const openAnthropicToolBlocks = new Map<number, { hasArgs: boolean }>();
+
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -126,10 +130,68 @@ export async function streamPollinationsClient({
 
       try {
         const parsed = JSON.parse(dataStr);
-        const delta =
-          parsed?.choices?.[0]?.delta?.content ||
-          parsed?.choices?.[0]?.text ||
-          "";
+        if (parsed.queue_info) onQueueInfo?.(parsed.queue_info);
+        let delta = "";
+
+        if (
+          parsed.type === "content_block_start" &&
+          parsed.content_block?.type === "tool_use"
+        ) {
+          const idx = parsed.index ?? openAnthropicToolBlocks.size;
+          openAnthropicToolBlocks.set(idx, { hasArgs: false });
+          delta += `<tool_call>\n{"name": "${parsed.content_block.name}", "args": `;
+        } else if (
+          parsed.type === "content_block_delta" &&
+          parsed.delta?.type === "input_json_delta"
+        ) {
+          const idx = parsed.index ?? openAnthropicToolBlocks.size - 1;
+          if (openAnthropicToolBlocks.has(idx)) {
+            openAnthropicToolBlocks.get(idx)!.hasArgs = true;
+          }
+          delta += parsed.delta.partial_json || "";
+        } else if (
+          parsed.type === "content_block_delta" &&
+          parsed.delta?.type === "text_delta"
+        ) {
+          delta += parsed.delta.text || "";
+        } else if (parsed.type === "content_block_stop") {
+          const idx = parsed.index ?? openAnthropicToolBlocks.size - 1;
+          if (openAnthropicToolBlocks.has(idx)) {
+            const block = openAnthropicToolBlocks.get(idx)!;
+            if (!block.hasArgs) {
+              delta += "{}";
+            }
+            delta += `\n}</tool_call>`;
+            openAnthropicToolBlocks.delete(idx);
+          }
+        } else if (
+          parsed.type === "message_stop" ||
+          parsed.type === "message_delta"
+        ) {
+          if (openAnthropicToolBlocks.size > 0) {
+            for (const [, block] of openAnthropicToolBlocks.entries()) {
+              if (!block.hasArgs) delta += "{}";
+              delta += `\n}</tool_call>`;
+            }
+            openAnthropicToolBlocks.clear();
+          }
+        } else {
+          delta =
+            parsed?.choices?.[0]?.delta?.content ||
+            parsed?.choices?.[0]?.text ||
+            parsed?.response ||
+            "";
+          const tc = parsed?.choices?.[0]?.delta?.tool_calls?.[0];
+          if (tc) {
+            if (tc.function?.name)
+              delta += `<tool_call>\n{"name": "${tc.function.name}", "args": `;
+            if (tc.function?.arguments) delta += tc.function.arguments;
+          }
+          if (parsed?.choices?.[0]?.finish_reason === "tool_calls") {
+            delta += `\n}</tool_call>`;
+          }
+        }
+
         if (delta) {
           fullContent += delta;
           onChunk(delta);
@@ -137,6 +199,19 @@ export async function streamPollinationsClient({
       } catch {
         // ignore parse error on partial chunks
       }
+    }
+  }
+
+  if (openAnthropicToolBlocks.size > 0) {
+    let unclosedDelta = "";
+    for (const [, block] of openAnthropicToolBlocks.entries()) {
+      if (!block.hasArgs) unclosedDelta += "{}";
+      unclosedDelta += `\n}</tool_call>`;
+    }
+    openAnthropicToolBlocks.clear();
+    if (unclosedDelta) {
+      fullContent += unclosedDelta;
+      onChunk(unclosedDelta);
     }
   }
 
@@ -209,6 +284,53 @@ export async function fetchPollinationsClient({
   const text =
     data?.choices?.[0]?.message?.content ||
     data?.choices?.[0]?.text ||
-    "";
+    data?.content?.[0]?.text ||
+    (typeof data === "string" ? data : "");
   return text;
 }
+
+export interface PollinationsBalanceResult {
+  pollen: number;
+  raw?: any;
+}
+
+/**
+ * Fetches the user's Pollen wallet balance from Pollinations AI.
+ * If no key is provided or the endpoint returns an error/empty, returns 0.
+ */
+export async function fetchPollinationsBalance(
+  apiKey?: string | null,
+): Promise<number> {
+  if (!apiKey || !apiKey.trim()) {
+    return 0;
+  }
+
+  try {
+    const response = await fetch("https://gen.pollinations.ai/account/balance", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey.trim()}`,
+      },
+    });
+
+    if (!response || !response.ok || typeof response.json !== "function") {
+      return 0;
+    }
+
+    const data = await response.json();
+    if (typeof data?.pollen === "number") {
+      return data.pollen;
+    }
+    if (typeof data?.balance === "number") {
+      return data.pollen || data.balance;
+    }
+    if (typeof data?.credits === "number") {
+      return data.credits;
+    }
+    return 0;
+  } catch (err) {
+    console.warn("Failed to fetch Pollinations balance:", err);
+    return 0;
+  }
+}
+

@@ -68,6 +68,8 @@ export const ru = {
     closeMenu: "Ð—Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ Ð¼ÐµÐ½ÑŽ",
     openSidebar: "ÐžÑ‚ÐºÑ€Ñ‹Ñ‚ÑŒ Ð±Ð¾ÐºÐ¾Ð²ÑƒÑŽ Ð¿Ð°Ð½ÐµÐ»ÑŒ",
     closeSidebar: "Ð—Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ Ð±Ð¾ÐºÐ¾Ð²ÑƒÑŽ Ð¿Ð°Ð½ÐµÐ»ÑŒ",
+    pollenWallet: "Pollinations",
+    pollenWalletTooltip: "Кошелек Pollinations - нажмите для просмотра и управления Pollen",
   },
   auth: {
     title: "Oxygen Low's Software",
@@ -162,6 +164,18 @@ export const ru = {
     successToast: "ÐÐºÐºÐ°ÑƒÐ½Ñ‚ ÑƒÑÐ¿ÐµÑˆÐ½Ð¾ Ð¿ÐµÑ€ÐµÐ½ÐµÑÐµÐ½ Ð² Ð»Ð¾ÐºÐ°Ð»ÑŒÐ½Ð¾Ðµ Ñ…Ñ€Ð°Ð½Ð¸Ð»Ð¸Ñ‰Ðµ ÑÐ°Ð¹Ñ‚Ð°!",
   },
   account: {
+    pollinationsAccountTitle: "Аккаунт и API ключ Pollinations",
+    pollinationsAccountDesc: "Подключите ваш API ключ Pollinations, чтобы разблокировать Chatbot и использовать модели.",
+    freeTierNoticeTitle: "Бесплатный тариф и поддержка моделей сообщества",
+    freeTierNoticeText: "Большинство моделей в Pollinations на 100% бесплатны, с поддержкой моделей сообщества и официальным бесплатным тарифом. Вы также можете подключать частные модели и внешних провайдеров через Pollinations.",
+    pollenWalletLabel: "Текущий баланс Pollen",
+    managePollen: "Управление Pollen / Пополнить",
+    pollinationsApiKeyLabel: "API ключ Pollinations",
+    apiKeyHint: "Получайте и управляйте ключами API на панели управления Pollinations.",
+    apiKeySaved: "API ключ Pollinations успешно сохранен",
+    apiKeyRemoved: "API ключ Pollinations удален",
+    clearKey: "Очистить",
+    keyRequired: "Требуется API ключ",
     title: "Ð’Ð°Ñˆ Ð°ÐºÐºÐ°ÑƒÐ½Ñ‚",
     profile: "ÐŸÑ€Ð¾Ñ„Ð¸Ð»ÑŒ",
     profileSettings: "ÐÐ°ÑÑ‚Ñ€Ð¾Ð¹ÐºÐ¸ Ð¿Ñ€Ð¾Ñ„Ð¸Ð»Ñ",
@@ -3015,4 +3029,15 @@ notificationsTitle: "Ð£Ð²ÐµÐ´Ð¾Ð¼Ð»ÐµÐ½Ð¸Ñ",
       "setupFinished": "Настройка рабочей области завершена! Все инструменты и агенты разблокированы."
   },
 
+  chatbot: {
+    pollinationsRequiredTitle: "Требуется настройка Pollinations AI",
+    pollinationsRequiredSubtitle: "Подключите API ключ для доступа к Chatbot",
+    freeTierInfoTitle: "100% Бесплатные модели и модели сообщества",
+    freeTierInfoText: "Большинство моделей на Pollinations абсолютно бесплатны! Pollinations предоставляет официальные бесплатные модели, модели сообщества и поддержку ваших собственных моделей.",
+    enterApiKeyLabel: "Введите API ключ Pollinations",
+    saveAndStart: "Сохранить и начать чат",
+    openAccountSettings: "Настройки аккаунта",
+    needKeyText: "Нужен API ключ?",
+    keySavedSuccess: "Ключ Pollinations успешно подключен!",
+  },
 } as const;

@@ -68,6 +68,8 @@ export const ko = {
     closeMenu: "ë©”ë‰´ ë‹«ê¸°",
     openSidebar: "ì‚¬ì´ë“œë°” ì—´ê¸°",
     closeSidebar: "ì‚¬ì´ë“œë°” ë‹«ê¸°",
+    pollenWallet: "Pollinations",
+    pollenWalletTooltip: "Pollinations 지갑 - Pollen 확인 및 관리",
   },
   auth: {
     title: "Oxygen Low's Software",
@@ -157,6 +159,18 @@ export const ko = {
     successToast: "ì›¹ì‚¬ì´íŠ¸ ë¡œì»¬ ìŠ¤í† ë¦¬ì§€ë¡œ ê³„ì •ì´ ì„±ê³µì ìœ¼ë¡œ ì´ì „ë˜ì—ˆìŠµë‹ˆë‹¤!",
   },
   account: {
+    pollinationsAccountTitle: "Pollinations 계정 및 API 키",
+    pollinationsAccountDesc: "Chatbot 잠금을 해제하고 모델을 사용하려면 Pollinations API 키를 연결하세요.",
+    freeTierNoticeTitle: "무료 티어 및 커뮤니티 모델 지원",
+    freeTierNoticeText: "Pollinations의 대부분의 모델은 100% 무료로 사용할 수 있으며, 커뮤니티 모델과 공식 무료 모델을 지원합니다. 또한 별도 자격 증명 없이 Pollinations를 통해 비공개 모델 및 외부 제공업체를 연결할 수도 있습니다.",
+    pollenWalletLabel: "현재 Pollen 잔액",
+    managePollen: "Pollen 관리 / 충전",
+    pollinationsApiKeyLabel: "Pollinations API 키",
+    apiKeyHint: "Pollinations 대시보드에서 API 키를 발급 및 관리하세요.",
+    apiKeySaved: "Pollinations API 키가 성공적으로 저장되었습니다",
+    apiKeyRemoved: "Pollinations API 키가 삭제되었습니다",
+    clearKey: "초기화",
+    keyRequired: "API 키 필요",
     title: "ë‚´ ê³„ì •",
     profile: "í”„ë¡œí•„",
     profileSettings: "í”„ë¡œí•„ ì„¤ì •",
@@ -2986,4 +3000,15 @@ notificationsTitle: "ì•Œë¦¼",
       "setupFinished": "워크스페이스 설정이 완료되었습니다! 모든 도구와 에이전트가 활성화되었습니다."
   },
 
+  chatbot: {
+    pollinationsRequiredTitle: "Pollinations AI 설정 필요",
+    pollinationsRequiredSubtitle: "Chatbot에 액세스하려면 API 키를 연결하세요",
+    freeTierInfoTitle: "100% 무료 및 커뮤니티 모델",
+    freeTierInfoText: "Pollinations의 대부분의 모델은 완전 무료로 사용할 수 있습니다! 공식 무료 모델, 커뮤니티 모델 및 맞춤형/비공개 모델 지원이 포함됩니다.",
+    enterApiKeyLabel: "Pollinations API 키 입력",
+    saveAndStart: "저장 및 대화 시작",
+    openAccountSettings: "계정 설정",
+    needKeyText: "API 키가 필요하신가요?",
+    keySavedSuccess: "Pollinations 키가 연결되었습니다!",
+  },
 } as const;

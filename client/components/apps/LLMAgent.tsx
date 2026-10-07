@@ -1502,13 +1502,19 @@ export function LLMAgentApp() {
   // Models
   const {
     models,
-    selectedModel,
-    selectedProvider,
-    setSelection,
     isLoading: modelsLoading,
     refreshModels,
-    getDecryptedApiKey,
-  } = useAiModels("Fast", "horde");
+    pollinationsApiKey,
+    researchAgentDefaultModel,
+  } = useAiModels();
+
+  const [selectedModel, setSelectedModel] = useState<string>(
+    () => researchAgentDefaultModel || "openai",
+  );
+  const selectedProvider: string = "pollinations";
+  const setSelection = (m: string, _p?: string) => {
+    setSelectedModel(m);
+  };
 
   // Agent state
   const [sessions, setSessions] = useState<AgentSession[]>([]);
@@ -1679,7 +1685,7 @@ export function LLMAgentApp() {
           model: selectedModel,
           messages: apiMessages,
           stream: true,
-          apiKey: getDecryptedApiKey(selectedProvider) || undefined,
+          apiKey: pollinationsApiKey || undefined,
           ...(supportsNativeTools ? { tools: AGENT_TOOLS } : {}),
         }),
       };

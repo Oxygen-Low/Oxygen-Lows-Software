@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import React from "react";
 import Auth from "./Auth";
 import Security from "./Security";
@@ -41,6 +41,10 @@ describe("Quick Sign In Client Flows", () => {
     vi.clearAllMocks();
     mockSession = null;
     (global as any).fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it("should render Quick Sign In tab on Auth page and generate a code", async () => {

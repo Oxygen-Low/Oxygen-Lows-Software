@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { MemoryRouter } from "react-router-dom";
 import {
   render,
   screen,
@@ -11,6 +12,15 @@ import {
 import { ChatbotApp } from "./Chatbot";
 import { setLocalSession } from "@/lib/localSession";
 import { toast } from "sonner";
+
+const renderChatbot = () =>
+  render(
+    <MemoryRouter>
+      <ThemeProvider>
+        <ChatbotApp />
+      </ThemeProvider>
+    </MemoryRouter>,
+  );
 
 // Mock i18next
 
@@ -220,6 +230,12 @@ vi.mock("@/lib/db", () => {
 // Mock fetch for streaming
 global.fetch = vi.fn((url, options: any) => {
   const urlStr = String(url || "");
+  if (urlStr.includes("pollen") || urlStr.includes("balance")) {
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ pollen: 10 }),
+    });
+  }
   if (urlStr === "/api/ai/proxy" || urlStr.includes("pollinations.ai")) {
     if (options?.body && options.body.includes('"stream":false')) {
       return Promise.resolve({
@@ -237,7 +253,6 @@ global.fetch = vi.fn((url, options: any) => {
             'data: {"choices":[{"delta":{"content":"Hello from AI"}}]}\n',
           ),
         );
-        await new Promise((resolve) => setTimeout(resolve, 100));
         controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
         controller.close();
       },
@@ -257,7 +272,6 @@ global.fetch = vi.fn((url, options: any) => {
             'data: {"type":"delta","content":"Web search response content"}\n',
           ),
         );
-        await new Promise((resolve) => setTimeout(resolve, 50));
         controller.enqueue(new TextEncoder().encode("data: [DONE]\n"));
         controller.close();
       },
@@ -275,6 +289,8 @@ global.fetch = vi.fn((url, options: any) => {
 describe("ChatbotApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    localStorage.setItem("oxygen_pollinations_api_key", "pk_test_12345");
     setLocalSession({
       access_token: "test-token",
       token_type: "bearer",
@@ -302,21 +318,13 @@ describe("ChatbotApp", () => {
   });
 
   it("renders the chatbot app", async () => {
-    render(
-      <ThemeProvider>
-        <ChatbotApp />
-      </ThemeProvider>,
-    );
+    renderChatbot();
     await screen.findByText("Existing Chat");
     expect(screen.queryByText("How can I help you?")).not.toBeNull();
   });
 
   it("creates a new chat and sends a message", async () => {
-    render(
-      <ThemeProvider>
-        <ChatbotApp />
-      </ThemeProvider>,
-    );
+    renderChatbot();
 
     // Create a new chat instead of relying on the mocked initial list
     const newChatButton = await screen.findByRole("button", {
@@ -351,7 +359,8 @@ describe("ChatbotApp", () => {
     const originalFetch = global.fetch;
     try {
       global.fetch = vi.fn((url, options: any) => {
-        if (url === "/api/ai/proxy") {
+        const urlStr = String(url || "");
+        if (urlStr === "/api/ai/proxy" || urlStr.includes("pollinations.ai")) {
           if (options?.body && options.body.includes('"stream":false')) {
             return Promise.resolve({
               ok: true,
@@ -368,7 +377,7 @@ describe("ChatbotApp", () => {
                   'data: {"choices":[{"delta":{}}],"queue_info":{"position":2,"eta":75,"workers":5,"totalInQueue":12}}\n',
                 ),
               );
-              await new Promise((resolve) => setTimeout(resolve, 2000));
+              await new Promise((resolve) => setTimeout(resolve, 50));
               controller.enqueue(
                 new TextEncoder().encode(
                   'data: {"choices":[{"delta":{"content":"Hi from queue"}}]}\n',
@@ -387,11 +396,7 @@ describe("ChatbotApp", () => {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       }) as any;
 
-      render(
-        <ThemeProvider>
-          <ChatbotApp />
-        </ThemeProvider>,
-      );
+      renderChatbot();
 
       const newChatButton = await screen.findByRole("button", {
         name: "New Chat",
@@ -432,7 +437,8 @@ describe("ChatbotApp", () => {
     const originalFetch = global.fetch;
     try {
       global.fetch = vi.fn((url, options: any) => {
-        if (url === "/api/ai/proxy") {
+        const urlStr = String(url || "");
+        if (urlStr === "/api/ai/proxy" || urlStr.includes("pollinations.ai")) {
           if (options?.body && options.body.includes('"stream":false')) {
             return Promise.resolve({
               ok: true,
@@ -469,11 +475,7 @@ describe("ChatbotApp", () => {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       }) as any;
 
-      render(
-        <ThemeProvider>
-          <ChatbotApp />
-        </ThemeProvider>,
-      );
+      renderChatbot();
 
       const newChatButton = await screen.findByRole("button", {
         name: "New Chat",
@@ -513,7 +515,8 @@ describe("ChatbotApp", () => {
     const originalFetch = global.fetch;
     try {
       global.fetch = vi.fn((url, options: any) => {
-        if (url === "/api/ai/proxy") {
+        const urlStr = String(url || "");
+        if (urlStr === "/api/ai/proxy" || urlStr.includes("pollinations.ai")) {
           if (options?.body && options.body.includes('"stream":false')) {
             return Promise.resolve({
               ok: true,
@@ -552,11 +555,7 @@ describe("ChatbotApp", () => {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       }) as any;
 
-      render(
-        <ThemeProvider>
-          <ChatbotApp />
-        </ThemeProvider>,
-      );
+      renderChatbot();
 
       const newChatButton = await screen.findByRole("button", {
         name: "New Chat",
@@ -596,7 +595,8 @@ describe("ChatbotApp", () => {
     const originalFetch = global.fetch;
     try {
       global.fetch = vi.fn((url, options: any) => {
-        if (url === "/api/ai/proxy") {
+        const urlStr = String(url || "");
+        if (urlStr === "/api/ai/proxy" || urlStr.includes("pollinations.ai")) {
           if (options?.body && options.body.includes('"stream":false')) {
             return Promise.resolve({
               ok: true,
@@ -631,11 +631,7 @@ describe("ChatbotApp", () => {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       }) as any;
 
-      render(
-        <ThemeProvider>
-          <ChatbotApp />
-        </ThemeProvider>,
-      );
+      renderChatbot();
 
       const newChatButton = await screen.findByRole("button", {
         name: "New Chat",
@@ -655,11 +651,7 @@ describe("ChatbotApp", () => {
   }, 30000);
 
   it("renders reasoning toggle in options dropdown and reasoning process in chat message", async () => {
-    render(
-      <ThemeProvider>
-        <ChatbotApp />
-      </ThemeProvider>,
-    );
+    renderChatbot();
 
     const newChatButton = await screen.findByRole("button", {
       name: "New Chat",
@@ -675,11 +667,7 @@ describe("ChatbotApp", () => {
   });
 
   it("displays Searched The Web and does not count as reasoning when only web search is enabled", async () => {
-    render(
-      <ThemeProvider>
-        <ChatbotApp />
-      </ThemeProvider>,
-    );
+    renderChatbot();
 
     const newChatButton = await screen.findByRole("button", {
       name: "New Chat",
@@ -832,11 +820,7 @@ describe("ChatbotApp", () => {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       }) as any;
 
-      render(
-        <ThemeProvider>
-          <ChatbotApp />
-        </ThemeProvider>,
-      );
+      renderChatbot();
 
       const newChatButton = await screen.findByRole("button", {
         name: "New Chat",
@@ -971,11 +955,7 @@ describe("ChatbotApp", () => {
         });
       }) as any;
 
-      render(
-        <ThemeProvider>
-          <ChatbotApp />
-        </ThemeProvider>,
-      );
+      renderChatbot();
 
       const newChatButton = await screen.findByRole("button", {
         name: "New Chat",
@@ -1024,70 +1004,30 @@ describe("ChatbotApp", () => {
     }
   }, 30000);
 
-  it("renders local running models in the model dropdown and allows selecting them", async () => {
-    const originalFetch = global.fetch;
-    try {
-      global.fetch = vi.fn((url: any) => {
-        const urlStr = typeof url === "string" ? url : url.toString();
-        if (urlStr.includes("/api/ai/local-providers")) {
-          return Promise.resolve({
-            ok: true,
-            json: () =>
-              Promise.resolve([
-                { provider: "horde", model_id: "Fast" },
-                { provider: "local-ollama", model_id: "llama3:latest" },
-                { provider: "local-lmstudio", model_id: "deepseek-r1-7b" },
-              ]),
-          });
-        }
-        if (urlStr.includes("127.0.0.1:11434/api/tags")) {
-          return Promise.resolve({
-            ok: true,
-            json: () =>
-              Promise.resolve({
-                models: [{ name: "llama3:latest" }],
-              }),
-          });
-        }
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([]),
-        });
-      }) as any;
+  it("renders Pollinations models in the model dropdown and allows selecting them", async () => {
+    renderChatbot();
 
-      render(
-        <ThemeProvider>
-          <ChatbotApp />
-        </ThemeProvider>,
-      );
+    // Open model dropdown
+    const modelDropdownButton = await screen.findByTestId(
+      "chatbot-model-dropdown-btn",
+    );
+    fireEvent.click(modelDropdownButton);
 
-      const newChatButton = await screen.findByRole("button", {
-        name: "New Chat",
-      });
-      fireEvent.click(newChatButton);
+    // Verify "Pollinations Models" header is visible
+    await screen.findByText("Pollinations Models");
+    await screen.findByText("Ling 3.1 Flash (Pollinations)");
+    await screen.findByText("DeepSeek V3 (Pollinations)");
 
-      // Open model dropdown
-      const modelDropdownButton = await screen.findByRole("button", {
-        name: /Fast/i,
-      });
-      fireEvent.click(modelDropdownButton);
+    // Select DeepSeek V3 model
+    const deepseekOption = screen.getByText("DeepSeek V3 (Pollinations)");
+    fireEvent.click(deepseekOption);
 
-      // Verify "Local Running Apps" header is visible
-      await screen.findByText("Local Running Apps");
-      await screen.findByText("llama3:latest");
-      await screen.findByText("deepseek-r1-7b");
-
-      // Select local model
-      const ollamaOption = screen.getByText("llama3:latest");
-      fireEvent.click(ollamaOption);
-
-      // Verify the selected model is now Ollama/llama3:latest without reverting to Horde
-      await waitFor(() => {
-        expect(screen.getByText("Ollama/llama3:latest")).toBeDefined();
-      });
-    } finally {
-      global.fetch = originalFetch;
-    }
+    // Verify the selected model is updated on the dropdown button
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("chatbot-model-dropdown-btn").textContent,
+      ).toContain("DeepSeek V3");
+    });
   });
 
   it("injects character stats into system instructions when character with stats is selected", async () => {
@@ -1160,11 +1100,7 @@ describe("ChatbotApp", () => {
     mockCharacters = [mockCharWithStats];
 
     try {
-      render(
-        <ThemeProvider>
-          <ChatbotApp />
-        </ThemeProvider>,
-      );
+      renderChatbot();
 
       const newChatButton = await screen.findByRole("button", {
         name: "New Chat",
@@ -1259,11 +1195,7 @@ describe("ChatbotApp", () => {
     }) as any;
 
     try {
-      render(
-        <ThemeProvider>
-          <ChatbotApp />
-        </ThemeProvider>,
-      );
+      renderChatbot();
 
       const newChatButton = await screen.findByRole("button", {
         name: "New Chat",
@@ -1329,11 +1261,7 @@ describe("ChatbotApp", () => {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       });
 
-      render(
-        <ThemeProvider>
-          <ChatbotApp />
-        </ThemeProvider>,
-      );
+      renderChatbot();
 
       const newChatButton = await screen.findByRole("button", {
         name: "New Chat",
@@ -1349,9 +1277,8 @@ describe("ChatbotApp", () => {
       fireEvent.click(sendButton);
 
       await waitFor(() => {
-        expect(toastSpy).toHaveBeenCalledWith(
-          expect.stringContaining("is not configured with an API key"),
-        );
+        expect(toastSpy).toHaveBeenCalled();
+        expect(String(toastSpy.mock.calls[0]?.[0] || "")).toContain("Pollinations");
       });
     } finally {
       global.fetch = originalFetch;
@@ -1428,11 +1355,7 @@ describe("ChatbotApp", () => {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
       }) as any;
 
-      render(
-        <ThemeProvider>
-          <ChatbotApp />
-        </ThemeProvider>,
-      );
+      renderChatbot();
 
       const newChatButton = await screen.findByRole("button", {
         name: "New Chat",
@@ -1475,11 +1398,7 @@ describe("ChatbotApp", () => {
   });
 
   it("renders Live voice button and opens Live voice overlay when clicked", async () => {
-    render(
-      <ThemeProvider>
-        <ChatbotApp />
-      </ThemeProvider>,
-    );
+    renderChatbot();
 
     const liveButtons = await screen.findAllByRole("button", {
       name: /Live Voice Mode/i,
@@ -1498,6 +1417,31 @@ describe("ChatbotApp", () => {
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
+    });
+  });
+
+  it("displays Pollinations API key requirement gate when key is missing and allows saving key inline", async () => {
+    localStorage.removeItem("oxygen_pollinations_api_key");
+    localStorage.removeItem("pollinations_api_key");
+    localStorage.removeItem("oxygen_api_keys");
+    renderChatbot();
+
+    await screen.findByText("Pollinations AI Setup Required");
+    await screen.findByText("100% Free & Community Models");
+
+    const input = screen.getByPlaceholderText(/from enter.pollinations.ai/i);
+    fireEvent.change(input, { target: { value: "pk_new_key_123" } });
+
+    const saveButton = screen.getByRole("button", {
+      name: "Save & Start Chatting",
+    });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(
+        localStorage.getItem("pollinations_api_key") ||
+          localStorage.getItem("oxygen_pollinations_api_key"),
+      ).toBe("pk_new_key_123");
     });
   });
 });

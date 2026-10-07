@@ -43,20 +43,11 @@ export function AiReviewDialog({
       : (character as any).is_race
         ? "race"
         : "character");
-  const {
-    models,
-    selectedModel,
-    selectedProvider,
-    getDecryptedApiKey,
-    encryptedKeys,
-    isMasterKeyActive,
-  } = useAiModels();
+  const { models, pollinationsApiKey } = useAiModels();
   const availableModels = models.length ? models : BUILTIN_MODELS;
-  const [selection, setSelection] = useState(() =>
-    modelKey({ provider: selectedProvider, model_id: selectedModel }),
-  );
+  const [selectedModelId, setSelectedModelId] = useState(() => availableModels[0]?.model_id || "openai");
   const chosenModel =
-    availableModels.find((model) => modelKey(model) === selection) ||
+    availableModels.find((model) => model.model_id === selectedModelId) ||
     availableModels[0];
   const [result, setResult] = useState<CharacterReview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -84,20 +75,11 @@ export function AiReviewDialog({
     if (request.current) return;
     setError(null);
     setResult(null);
-    const provider = chosenModel.provider.toLowerCase().trim();
-    const apiKey = getDecryptedApiKey(provider) || undefined;
-    const keyless =
-      provider === "horde" ||
-      provider === "pollinations" ||
-      provider.startsWith("local-") ||
-      chosenModel.isLocal;
-    if (!keyless && !apiKey) {
+    const apiKey = pollinationsApiKey || undefined;
+
+    if (!apiKey) {
       setError(
-        encryptedKeys[provider] && !isMasterKeyActive
-          ? t("apps.chatbotMasterKeyLocked")
-          : t("apps.chatbotProviderNotConfigured", {
-              provider: chosenModel.provider,
-            }),
+        t("apps.pollinationsGateRequired", undefined, "A Pollinations API key is required. Please configure it in Account settings."),
       );
       return;
     }
@@ -190,17 +172,17 @@ export function AiReviewDialog({
           </label>
           <select
             id="review-model"
-            value={modelKey(chosenModel)}
+            value={chosenModel.model_id}
             disabled={isReviewing}
             onChange={(event) => {
-              setSelection(event.target.value);
+              setSelectedModelId(event.target.value);
               setResult(null);
               setError(null);
             }}
             className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm disabled:opacity-50"
           >
             {availableModels.map((model) => (
-              <option key={modelKey(model)} value={modelKey(model)}>
+              <option key={model.model_id} value={model.model_id}>
                 {model.name || model.model_id} ({model.provider})
               </option>
             ))}

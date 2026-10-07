@@ -9,6 +9,7 @@ import {
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { useAiModels } from "@/hooks/useAiModels";
 import {
   LogOut,
   Package,
@@ -29,6 +30,7 @@ import {
   MessageSquare,
   Handshake,
   FolderTree,
+  Sparkles,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { TopbarMusicPlayer } from "./TopbarMusicPlayer";
@@ -160,6 +162,7 @@ const MOBILE_MENU_BUTTON_CLASSES =
 export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
   const { session, signOut } = useAuth();
   const { unreadCount } = useNotifications();
+  const { pollenBalance, pollinationsApiKey } = useAiModels();
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -445,6 +448,39 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
 
           {/* Navigation Links */}
           <nav className="p-3 sm:p-4 space-y-1 sm:space-y-2 flex-1 overflow-y-auto pt-2">
+            {/* Pollinations Pollen Wallet Button (Above Apps) */}
+            <div className="pb-1.5 mb-1 border-b border-border/40">
+              <a
+                href="https://enter.pollinations.ai/pollen"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="sidebar-pollen-wallet"
+                className="group flex items-center justify-between px-3.5 py-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 hover:border-amber-500/40 transition-all duration-200"
+                title={t(
+                  "nav.pollenWalletTooltip",
+                  undefined,
+                  "Pollinations Wallet - Click to view/manage Pollen",
+                )}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-6 h-6 rounded-md bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[10px] text-amber-300/70 font-semibold uppercase tracking-wider">
+                      {t("nav.pollenWallet", undefined, "Pollinations")}
+                    </span>
+                    <span className="text-xs font-bold text-amber-200 truncate">
+                      {pollinationsApiKey && pollenBalance > 0
+                        ? `${Number(pollenBalance.toFixed(2))} Pollen`
+                        : "0 Pollen"}
+                    </span>
+                  </div>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-amber-300/60 group-hover:text-amber-200 shrink-0" />
+              </a>
+            </div>
+
             {navItems.map((item) => {
               const Icon = item.icon;
 

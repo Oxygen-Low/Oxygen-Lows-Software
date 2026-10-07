@@ -68,6 +68,8 @@ export const ja = {
     closeMenu: "ãƒ¡ãƒ‹ãƒ¥ãƒ¼ã‚’é–‰ã˜ã‚‹",
     openSidebar: "ã‚µã‚¤ãƒ‰ãƒãƒ¼ã‚’é–‹ã",
     closeSidebar: "ã‚µã‚¤ãƒ‰ãƒãƒ¼ã‚’é–‰ã˜ã‚‹",
+    pollenWallet: "Pollinations",
+    pollenWalletTooltip: "Pollinationsウォレット - クリックしてPollenを表示・管理",
   },
   auth: {
     title: "Oxygen Low's Software",
@@ -159,6 +161,18 @@ export const ja = {
       "ãƒ­ãƒ¼ã‚«ãƒ«ã‚¦ã‚§ãƒ–ã‚µã‚¤ãƒˆã‚¹ãƒˆãƒ¬ãƒ¼ã‚¸ã¸ã®ã‚¢ã‚«ã‚¦ãƒ³ãƒˆç§»è¡ŒãŒå®Œäº†ã—ã¾ã—ãŸï¼",
   },
   account: {
+    pollinationsAccountTitle: "PollinationsアカウントとAPIキー",
+    pollinationsAccountDesc: "Pollinations APIキーを接続してChatbotのロックを解除し、モデルを利用します。",
+    freeTierNoticeTitle: "無料プラン＆コミュニティモデルのサポート",
+    freeTierNoticeText: "Pollinationsのほとんどのモデルは100%無料で使用でき、コミュニティモデルや公式無料モデルをサポートしています。また、個別のアカウントを用意することなく独自のプライベートモデルや外部プロバイダーも連携できます。",
+    pollenWalletLabel: "現在のPollen残高",
+    managePollen: "Pollenの管理 / チャージ",
+    pollinationsApiKeyLabel: "Pollinations APIキー",
+    apiKeyHint: "PollinationsダッシュボードでAPIキーを取得・管理できます。",
+    apiKeySaved: "Pollinations APIキーが正常に保存されました",
+    apiKeyRemoved: "Pollinations APIキーが削除されました",
+    clearKey: "クリア",
+    keyRequired: "APIキーが必要です",
     title: "ã‚ãªãŸã®ã‚¢ã‚«ã‚¦ãƒ³ãƒˆ",
     profile: "ãƒ—ãƒ­ãƒ•ã‚£ãƒ¼ãƒ«",
     profileSettings: "ãƒ—ãƒ­ãƒ•ã‚£ãƒ¼ãƒ«è¨­å®š",
@@ -3009,4 +3023,15 @@ notificationsTitle: "é€šçŸ¥",
       "setupFinished": "ワークスペースのセットアップが完了しました！すべてのツールとエージェントが利用可能です。"
   },
 
+  chatbot: {
+    pollinationsRequiredTitle: "Pollinations AIの設定が必要です",
+    pollinationsRequiredSubtitle: "APIキーを接続してChatbotにアクセスしてください",
+    freeTierInfoTitle: "100%無料＆コミュニティモデル",
+    freeTierInfoText: "Pollinationsのほとんどのモデルは完全無料で使用できます！公式無料モデル、コミュニティモデル、カスタムやプライベートモデルが利用可能です。",
+    enterApiKeyLabel: "Pollinations APIキーを入力",
+    saveAndStart: "保存してチャットを開始",
+    openAccountSettings: "アカウント設定",
+    needKeyText: "APIキーが必要ですか？",
+    keySavedSuccess: "Pollinationsキーが接続されました！",
+  },
 } as const;

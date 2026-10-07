@@ -103,8 +103,9 @@ describe("useLiveVoice hook", () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.clearAllMocks();
+    await new Promise((r) => setTimeout(r, 60));
   });
 
   it("identifies browser support correctly", () => {
@@ -178,8 +179,9 @@ describe("useLiveVoice hook", () => {
       await result.current.startSession();
     });
 
-    act(() => {
+    await act(async () => {
       result.current.speakText("Hello from Oxygen Low's Software!");
+      await new Promise((r) => setTimeout(r, 50));
     });
 
     expect(result.current.voiceState).toBe("speaking");
@@ -250,8 +252,9 @@ describe("useLiveVoice hook", () => {
       await result.current.startSession();
     });
 
-    act(() => {
+    await act(async () => {
       result.current.speakText("Long response is being spoken...");
+      await new Promise((r) => setTimeout(r, 50));
     });
     expect(result.current.voiceState).toBe("speaking");
 
@@ -295,8 +298,9 @@ describe("useLiveVoice hook", () => {
       await result.current.startSession();
     });
 
-    act(() => {
+    await act(async () => {
       result.current.speakText("First sentence. Second sentence! Third sentence?");
+      await new Promise((r) => setTimeout(r, 50));
     });
 
     expect(result.current.voiceState).toBe("speaking");

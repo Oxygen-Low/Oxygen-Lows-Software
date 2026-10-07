@@ -68,6 +68,8 @@ export const es = {
     closeMenu: "Cerrar menÃº",
     openSidebar: "Abrir barra lateral",
     closeSidebar: "Cerrar barra lateral",
+    pollenWallet: "Pollinations",
+    pollenWalletTooltip: "Billetera Pollinations: haz clic para ver y gestionar Pollen",
   },
   auth: {
     title: "Oxygen Low's Software",
@@ -210,7 +212,21 @@ export const es = {
     grantedOn: "Autorizado el",
     models: "Modelos",
     modelsSubtitle:
-      "Configura modelos de IA, detecta instancias locales en ejecuciÃ³n, registra puntos de conexiÃ³n personalizados y define modelos predeterminados.",
+      "Configura modelos personalizados, conecta tu cuenta de Pollinations AI, monitorea tu billetera de Pollen y define valores predeterminados.",
+    pollinationsAccountTitle: "Cuenta y Clave API de Pollinations",
+    pollinationsAccountDesc:
+      "Conecta tu clave API de Pollinations para desbloquear el Chatbot y consultar modelos.",
+    freeTierNoticeTitle: "Nivel Gratuito y Soporte de Modelos de la Comunidad",
+    freeTierNoticeText:
+      "La mayoría de los modelos en Pollinations son 100% gratuitos, con soporte para modelos comunitarios y un nivel oficial gratuito. También puedes conectar modelos privados y proveedores externos a través de Pollinations sin gestionar múltiples credenciales.",
+    pollenWalletLabel: "Saldo Actual de Pollen",
+    managePollen: "Gestionar Pollen / Recargar",
+    pollinationsApiKeyLabel: "Clave API de Pollinations",
+    apiKeyHint: "Obtén o administra tus claves API en el panel de Pollinations.",
+    apiKeySaved: "Clave API de Pollinations guardada exitosamente",
+    apiKeyRemoved: "Clave API de Pollinations eliminada",
+    clearKey: "Borrar",
+    keyRequired: "Clave API Requerida",
     activeModelsCount: "Modelos activos",
     detectedLocalModels: "Modelos locales en ejecuciÃ³n",
     noLocalModelsDetected:
@@ -3024,5 +3040,17 @@ export const es = {
     setupQuestion1: "¡Bienvenido a tu nuevo espacio de trabajo! Vamos a configurarlo.\n\n1. ¿Este proyecto o negocio ya existe y tiene un sitio web o dominio oficial?",
     setupQuestion2: "¡Excelente! Lo he registrado.\n\n2. ¿Cuál es tu nombre o cómo te gustaría que te llame?",
     setupFinished: "¡Configuración del espacio completada! Todas las herramientas y agentes ya están desbloqueados.",
+  },
+  chatbot: {
+    pollinationsRequiredTitle: "Configuración de Pollinations AI Requerida",
+    pollinationsRequiredSubtitle: "Conecta tu clave API para acceder al Chatbot",
+    freeTierInfoTitle: "Modelos 100% Gratuitos y Comunitarios",
+    freeTierInfoText:
+      "¡La mayoría de los modelos en Pollinations son completamente gratuitos! Pollinations ofrece modelos gratuitos oficiales, modelos comunitarios y soporte para tus propios modelos personalizados o privados.",
+    enterApiKeyLabel: "Introduce la Clave API de Pollinations",
+    saveAndStart: "Guardar y Comenzar a Chatear",
+    openAccountSettings: "Configuración de la Cuenta",
+    needKeyText: "¿Necesitas una clave API?",
+    keySavedSuccess: "¡Clave de Pollinations conectada!",
   },
 } as const;

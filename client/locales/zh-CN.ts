@@ -67,6 +67,8 @@ export const zhCN = {
     closeMenu: "å…³é—­èœå•",
     openSidebar: "æ‰“å¼€ä¾§è¾¹æ ",
     closeSidebar: "å…³é—­ä¾§è¾¹æ ",
+    pollenWallet: "Pollinations",
+    pollenWalletTooltip: "Pollinations 钱包 - 点击查看与管理 Pollen",
   },
   auth: {
     title: "Oxygen Low's Software",
@@ -154,6 +156,18 @@ export const zhCN = {
     successToast: "è´¦æˆ·å·²æˆåŠŸè¿ç§»è‡³ç½‘ç«™æœ¬åœ°å­˜å‚¨ï¼",
   },
   account: {
+    pollinationsAccountTitle: "Pollinations 账户与 API 密钥",
+    pollinationsAccountDesc: "连接您的 Pollinations API 密钥以解锁 Chatbot 并调用模型。",
+    freeTierNoticeTitle: "免费层与社区模型支持",
+    freeTierNoticeText: "Pollinations 上的大多数模型都是 100% 免费的，支持社区模型和官方免费模型层。您还可以通过 Pollinations 连接私有模型和外部提供商，无需维护多套凭据。",
+    pollenWalletLabel: "当前 Pollen 余额",
+    managePollen: "管理 Pollen / 充值",
+    pollinationsApiKeyLabel: "Pollinations API 密钥",
+    apiKeyHint: "在 Pollinations 控制面板中获取或管理您的 API 密钥。",
+    apiKeySaved: "Pollinations API 密钥保存成功",
+    apiKeyRemoved: "Pollinations API 密钥已移除",
+    clearKey: "清除",
+    keyRequired: "需要 API 密钥",
     title: "æ‚¨çš„è´¦æˆ·",
     profile: "ä¸ªäººèµ„æ–™",
     profileSettings: "ä¸ªäººèµ„æ–™è®¾ç½®",
@@ -2912,4 +2926,15 @@ notificationsTitle: "é€šçŸ¥",
       "setupFinished": "工作区初始化完成！所有工具和智能体已全部解锁。"
   },
 
+  chatbot: {
+    pollinationsRequiredTitle: "需要配置 Pollinations AI",
+    pollinationsRequiredSubtitle: "连接您的 API 密钥以访问 Chatbot",
+    freeTierInfoTitle: "100% 免费与社区模型",
+    freeTierInfoText: "Pollinations 上的大多数模型完全免费！Pollinations 提供官方免费模型、社区模型以及对您自定义或私有模型的支持。",
+    enterApiKeyLabel: "输入 Pollinations API 密钥",
+    saveAndStart: "保存并开始聊天",
+    openAccountSettings: "账户设置",
+    needKeyText: "需要 API 密钥？",
+    keySavedSuccess: "Pollinations 密钥已连接！",
+  },
 } as const;
