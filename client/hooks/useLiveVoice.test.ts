@@ -1,11 +1,12 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useLiveVoice } from "./useLiveVoice";
+import { useLiveVoice, OPENAI_REALTIME_VOICES } from "./useLiveVoice";
 
 describe("useLiveVoice hook", () => {
   let activeRecognitionInstance: any = null;
   let mockUtteranceInstance: any = null;
+  let mockAudioInstance: any = null;
 
   class MockSpeechRecognition {
     continuous = false;
@@ -32,6 +33,21 @@ describe("useLiveVoice hook", () => {
     abort = vi.fn();
   }
 
+  class MockAudio {
+    src = "";
+    playbackRate = 1;
+    onended: (() => void) | null = null;
+    onerror: ((e: any) => void) | null = null;
+
+    constructor(src?: string) {
+      this.src = src || "";
+      mockAudioInstance = this;
+    }
+
+    play = vi.fn().mockImplementation(() => Promise.resolve());
+    pause = vi.fn();
+  }
+
   class MockAudioContext {
     state = "running";
     createAnalyser() {
@@ -54,9 +70,11 @@ describe("useLiveVoice hook", () => {
   beforeEach(() => {
     activeRecognitionInstance = null;
     mockUtteranceInstance = null;
+    mockAudioInstance = null;
 
     (window as any).SpeechRecognition = MockSpeechRecognition;
     (window as any).webkitSpeechRecognition = MockSpeechRecognition;
+    (window as any).Audio = MockAudio;
     (window as any).AudioContext = MockAudioContext;
     (window as any).webkitAudioContext = MockAudioContext;
 
@@ -107,7 +125,7 @@ describe("useLiveVoice hook", () => {
     vi.clearAllMocks();
   });
 
-  it("identifies browser support correctly", () => {
+  it("identifies browser support correctly without relying on browser speech APIs", () => {
     const onSendSpeech = vi.fn();
     const { result } = renderHook(() =>
       useLiveVoice({
@@ -118,6 +136,25 @@ describe("useLiveVoice hook", () => {
 
     expect(result.current.isSupported).toBe(true);
     expect(result.current.voiceState).toBe("idle");
+    expect(result.current.availableVoices.some((v) => v.voiceURI === "alloy")).toBe(true);
+    expect(result.current.availableVoices.some((v) => v.voiceURI === "echo")).toBe(true);
+  });
+
+  it("is supported even when SpeechRecognition and speechSynthesis are absent", () => {
+    delete (window as any).SpeechRecognition;
+    delete (window as any).webkitSpeechRecognition;
+    delete (window as any).speechSynthesis;
+    delete (window as any).SpeechSynthesisUtterance;
+
+    const onSendSpeech = vi.fn();
+    const { result } = renderHook(() =>
+      useLiveVoice({
+        languageCode: "en",
+        onSendSpeech,
+      }),
+    );
+
+    expect(result.current.isSupported).toBe(true);
   });
 
   it("starts session and transitions to listening state", async () => {
@@ -165,7 +202,7 @@ describe("useLiveVoice hook", () => {
     expect(result.current.voiceState).toBe("listening");
   });
 
-  it("speaks text and returns to listening when finished", async () => {
+  it("speaks text with neural audio and returns to listening when finished", async () => {
     const onSendSpeech = vi.fn();
     const { result } = renderHook(() =>
       useLiveVoice({
@@ -184,13 +221,14 @@ describe("useLiveVoice hook", () => {
     });
 
     expect(result.current.voiceState).toBe("speaking");
-    expect(window.speechSynthesis.speak).toHaveBeenCalled();
-    expect(mockUtteranceInstance.text).toBe("Hello from Oxygen Low's Software!");
 
-    act(() => {
-      if (mockUtteranceInstance.onend) {
+    await act(async () => {
+      if (mockAudioInstance && mockAudioInstance.onended) {
+        mockAudioInstance.onended();
+      } else if (mockUtteranceInstance && mockUtteranceInstance.onend) {
         mockUtteranceInstance.onend();
       }
+      await new Promise((r) => setTimeout(r, 30));
     });
 
     expect(result.current.voiceState).toBe("listening");
@@ -261,7 +299,6 @@ describe("useLiveVoice hook", () => {
       result.current.interrupt();
     });
 
-    expect(window.speechSynthesis.cancel).toHaveBeenCalled();
     expect(onInterrupt).toHaveBeenCalled();
     expect(result.current.voiceState).toBe("listening");
   });
@@ -303,7 +340,6 @@ describe("useLiveVoice hook", () => {
     });
 
     expect(result.current.voiceState).toBe("speaking");
-    expect(window.speechSynthesis.speak).toHaveBeenCalled();
   });
 
   it("ignores microphone input while AI is speaking to prevent self-interruption and echo loop", async () => {

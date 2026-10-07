@@ -94,6 +94,13 @@ export const BUILTIN_MODELS: Model[] = [
   },
   {
     provider: "pollinations",
+    model_id: "openai/gpt-realtime-2.1-mini",
+    name: "Realtime",
+    rate: "around 100 requests/$1",
+    category: "standard",
+  },
+  {
+    provider: "pollinations",
     model_id: "community/MarcosFRG/deepseek-v4-flash-0731",
     name: "Deepseek v4 Flash",
     rate: "infinite requests/$1",
@@ -121,6 +128,7 @@ export const POPULAR_PRESETS: Record<
     { model_id: "openai/gpt-5.6-terra", name: "Balanced" },
     { model_id: "openai/gpt-6.1-sol", name: "Smart" },
     { model_id: "openai/gpt-6-astra", name: "Smartest" },
+    { model_id: "openai/gpt-realtime-2.1-mini", name: "Realtime" },
     {
       model_id: "community/MarcosFRG/deepseek-v4-flash-0731",
       name: "Deepseek v4 Flash",

@@ -688,6 +688,7 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
           { id: "openai/gpt-5.6-terra", name: "Balanced" },
           { id: "openai/gpt-6.1-sol", name: "Smart" },
           { id: "openai/gpt-6-astra", name: "Smartest" },
+          { id: "openai/gpt-realtime-2.1-mini", name: "Realtime" },
           {
             id: "community/MarcosFRG/deepseek-v4-flash-0731",
             name: "Deepseek v4 Flash",

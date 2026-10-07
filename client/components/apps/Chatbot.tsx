@@ -1751,7 +1751,7 @@ export function ChatbotApp() {
       }
     }
     if (isLiveOpenRef.current) {
-      injected += `\n[VOICE MODE GUIDELINE]\nYou are interacting via Live Voice chat. Keep your response concise, conversational, natural, and friendly so it is easy to listen to when spoken aloud by text-to-speech. Avoid large blocks of code, markdown tables, or excessive formatting unless specifically requested.\n`;
+      injected += `\n[VOICE MODE GUIDELINE - openai/gpt-realtime-2.1-mini]\nYou are interacting via Live Voice chat powered by openai/gpt-realtime-2.1-mini. Keep your response concise, conversational, natural, and friendly so it is easy to listen to when spoken aloud by neural voice. Avoid large blocks of code, markdown tables, or excessive formatting unless specifically requested.\n`;
     }
     return injected;
   };
@@ -1768,6 +1768,8 @@ export function ChatbotApp() {
   }> => {
     let finalContent = "";
     let reasoningContent = "";
+    const effectiveProvider = isLiveOpenRef.current ? "pollinations" : selectedProvider;
+    const effectiveModel = isLiveOpenRef.current ? "openai/gpt-realtime-2.1-mini" : selectedModel;
 
     const injectedSystemPrompt = getInjectedSystemPrompt();
     const getApiMessages = (baseMessages: Message[]): Message[] => {
@@ -1804,8 +1806,8 @@ export function ChatbotApp() {
 
       let searchPlanningText = "";
       const planOutput = await callAiStream(
-        selectedProvider,
-        selectedModel,
+        effectiveProvider,
+        effectiveModel,
         getApiMessages(searchPlanMessages),
         signal,
         (content) => {
@@ -1936,8 +1938,8 @@ export function ChatbotApp() {
       ];
 
       reasoningContent = await callAiStream(
-        selectedProvider,
-        selectedModel,
+        effectiveProvider,
+        effectiveModel,
         getApiMessages(reasoningMessages),
         signal,
         (content) => {
@@ -1964,8 +1966,8 @@ export function ChatbotApp() {
       ];
 
       finalContent = await callAiStream(
-        selectedProvider,
-        selectedModel,
+        effectiveProvider,
+        effectiveModel,
         getApiMessages(finalMessages),
         signal,
         (content) => {
@@ -2001,8 +2003,8 @@ export function ChatbotApp() {
       ];
 
       finalContent = await callAiStream(
-        selectedProvider,
-        selectedModel,
+        effectiveProvider,
+        effectiveModel,
         getApiMessages(synthesisMessages),
         signal,
         (content) => {
@@ -2051,8 +2053,8 @@ export function ChatbotApp() {
     ];
 
     reasoningContent = await callAiStream(
-      selectedProvider,
-      selectedModel,
+      effectiveProvider,
+      effectiveModel,
       getApiMessages(reasoningMessages),
       signal,
       (content) => {
@@ -2078,8 +2080,8 @@ export function ChatbotApp() {
       } as Message,
     ];
     finalContent = await callAiStream(
-      selectedProvider,
-      selectedModel,
+      effectiveProvider,
+      effectiveModel,
       getApiMessages(finalMessages),
       signal,
       (content) => {
@@ -2118,8 +2120,8 @@ export function ChatbotApp() {
 
     // Direct completion
     finalContent = await callAiStream(
-      selectedProvider,
-      selectedModel,
+      effectiveProvider,
+      effectiveModel,
       getApiMessages(baseChatMessages),
       signal,
       (content) => {

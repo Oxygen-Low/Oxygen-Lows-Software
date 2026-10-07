@@ -22,6 +22,20 @@ export interface UseLiveVoiceOptions {
   autoStart?: boolean;
 }
 
+export const OPENAI_REALTIME_VOICES: VoiceOption[] = [
+  { name: "Alloy (Neutral & Balanced)", lang: "en-US", voiceURI: "alloy", default: true },
+  { name: "Echo (Warm & Natural)", lang: "en-US", voiceURI: "echo" },
+  { name: "Fable (Expressive & British)", lang: "en-GB", voiceURI: "fable" },
+  { name: "Onyx (Deep & Authoritative)", lang: "en-US", voiceURI: "onyx" },
+  { name: "Nova (Energetic & Bright)", lang: "en-US", voiceURI: "nova" },
+  { name: "Shimmer (Clear & Expressive)", lang: "en-US", voiceURI: "shimmer" },
+  { name: "Ash (Conversational)", lang: "en-US", voiceURI: "ash" },
+  { name: "Coral (Melodic & Friendly)", lang: "en-US", voiceURI: "coral" },
+  { name: "Sage (Calm & Soothing)", lang: "en-US", voiceURI: "sage" },
+  { name: "Verse (Dynamic)", lang: "en-US", voiceURI: "verse" },
+  { name: "Ballad (Melodious & Warm)", lang: "en-US", voiceURI: "ballad" },
+];
+
 const LANGUAGE_LOCALE_MAP: Record<string, string> = {
   en: "en-US",
   es: "es-ES",
@@ -33,8 +47,7 @@ const LANGUAGE_LOCALE_MAP: Record<string, string> = {
 };
 
 /**
- * Splits text into speakable sentence chunks to avoid browser SpeechSynthesis
- * 15-second / length timeouts in Chrome, Edge, and Safari.
+ * Splits text into speakable sentence chunks for low-latency voice streaming.
  */
 function splitTextIntoSentences(text: string): string[] {
   const clean = text
@@ -81,9 +94,9 @@ export function useLiveVoice({
   const [isMuted, setIsMuted] = useState(false);
   const [isPushToTalkActive, setIsPushToTalkActive] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0); // 0 to 1 for visualizer
-  const [availableVoices, setAvailableVoices] = useState<VoiceOption[]>([]);
+  const [availableVoices, setAvailableVoices] = useState<VoiceOption[]>(OPENAI_REALTIME_VOICES);
   const [selectedVoiceUri, setSelectedVoiceUri] = useState<string>(() => {
-    return localStorage.getItem("oxygen_live_voice_uri") || "";
+    return localStorage.getItem("oxygen_live_voice_uri") || "alloy";
   });
   const [speechRate, setSpeechRate] = useState<number>(() => {
     const saved = localStorage.getItem("oxygen_live_voice_rate");
@@ -94,10 +107,11 @@ export function useLiveVoice({
     return saved ? parseFloat(saved) : 1.0;
   });
 
+  // Support is active on any browser with mediaDevices or AudioContext (no longer strictly requires SpeechRecognition or speechSynthesis)
   const isSupported =
     typeof window !== "undefined" &&
-    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) &&
-    "speechSynthesis" in window;
+    (!!(navigator?.mediaDevices && navigator.mediaDevices.getUserMedia) ||
+      !!(window.AudioContext || (window as any).webkitAudioContext));
 
   const recognitionRef = useRef<any>(null);
   const isRecognitionRunningRef = useRef(false);
@@ -106,15 +120,16 @@ export function useLiveVoice({
   const micStreamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const silenceTimerRef = useRef<any>(null);
-  const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const currentAudioElementRef = useRef<HTMLAudioElement | null>(null);
+  const activeUtteranceRef = useRef<any>(null);
   const speechSessionIdRef = useRef(0);
-  const resumeTimerRef = useRef<any>(null);
   const isSpeakingRef = useRef(false);
   const isMutedRef = useRef(isMuted);
   const isHandsFreeRef = useRef(isHandsFree);
   const isPushToTalkActiveRef = useRef(isPushToTalkActive);
   const voiceStateRef = useRef(voiceState);
   const interimTranscriptRef = useRef(interimTranscript);
+  const hasSpokenSinceListeningRef = useRef(false);
   const isSessionActiveRef = useRef(false);
   const targetLocale = LANGUAGE_LOCALE_MAP[languageCode] || "en-US";
 
@@ -139,45 +154,35 @@ export function useLiveVoice({
     interimTranscriptRef.current = interimTranscript;
   }, [interimTranscript]);
 
-  // Load voices
+  // Load voices: prioritize OpenAI Realtime neural voices, optionally augment with system voices
   useEffect(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const voicesList: VoiceOption[] = [...OPENAI_REALTIME_VOICES];
 
-    const loadVoices = () => {
-      const voices = window.speechSynthesis.getVoices();
-      if (!voices || voices.length === 0) return;
-
-      const mapped: VoiceOption[] = voices.map((v) => ({
-        name: v.name,
-        lang: v.lang,
-        voiceURI: v.voiceURI,
-        default: v.default,
-      }));
-      setAvailableVoices(mapped);
-
-      // If no valid selected voice, select the best matching voice for current language
-      setSelectedVoiceUri((prev) => {
-        if (prev && voices.some((v) => v.voiceURI === prev)) {
-          return prev;
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        const sysVoices = window.speechSynthesis.getVoices?.() || [];
+        for (const sv of sysVoices) {
+          if (!voicesList.some((v) => v.voiceURI === sv.voiceURI)) {
+            voicesList.push({
+              name: `${sv.name} (System)`,
+              lang: sv.lang,
+              voiceURI: sv.voiceURI,
+            });
+          }
         }
-        const langPrefix = targetLocale.split("-")[0].toLowerCase();
-        const bestMatch =
-          voices.find((v) => v.lang.toLowerCase() === targetLocale.toLowerCase()) ||
-          voices.find((v) => v.lang.toLowerCase().replace("_", "-").startsWith(langPrefix)) ||
-          voices.find((v) => v.default) ||
-          voices[0];
-        return bestMatch ? bestMatch.voiceURI : prev;
-      });
-    };
-
-    loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-
-    return () => {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.onvoiceschanged = null;
+      } catch {
+        // Ignore
       }
-    };
+    }
+
+    setAvailableVoices(voicesList);
+
+    setSelectedVoiceUri((prev) => {
+      if (prev && voicesList.some((v) => v.voiceURI === prev)) {
+        return prev;
+      }
+      return "alloy";
+    });
   }, [targetLocale]);
 
   // Save preferences
@@ -196,13 +201,34 @@ export function useLiveVoice({
     localStorage.setItem("oxygen_live_voice_pitch", pitch.toString());
   }, []);
 
+  // Send collected speech
+  const handleFinalSpeechSend = useCallback(
+    (textToSend: string) => {
+      const trimmed = textToSend.trim();
+      if (!trimmed) return;
+
+      if (silenceTimerRef.current) {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+      }
+
+      hasSpokenSinceListeningRef.current = false;
+      setFinalTranscript(trimmed);
+      setInterimTranscript("");
+      setVoiceState("thinking");
+      onSendSpeech(trimmed);
+    },
+    [onSendSpeech],
+  );
+
   // Audio Level Analyser via Web Audio API
   const initAudioAnalyser = useCallback(async () => {
     try {
-      if (audioContextRef.current) return;
+      if (audioContextRef.current && audioContextRef.current.state !== "closed") return;
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
 
+      if (!navigator?.mediaDevices?.getUserMedia) return;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
       const audioCtx = new AudioCtx();
@@ -227,7 +253,7 @@ export function useLiveVoice({
         const avg = sum / bufferLength;
         const normalized = Math.min(1, Math.max(0, avg / 80));
 
-        // If speaking via TTS, animate simulated voice amplitude
+        // If speaking via neural voice, animate voice amplitude
         if (isSpeakingRef.current) {
           const simulated = 0.4 + Math.sin(Date.now() / 150) * 0.3 + Math.random() * 0.2;
           setAudioLevel(simulated);
@@ -235,6 +261,36 @@ export function useLiveVoice({
           setAudioLevel(0);
         } else {
           setAudioLevel(normalized);
+
+          // Voice Activity Detection (VAD)
+          if (normalized > 0.08 && !isSpeakingRef.current && voiceStateRef.current !== "thinking") {
+            hasSpokenSinceListeningRef.current = true;
+            if (voiceStateRef.current !== "listening") {
+              setVoiceState("listening");
+            }
+
+            if (isHandsFreeRef.current) {
+              if (silenceTimerRef.current) {
+                clearTimeout(silenceTimerRef.current);
+                silenceTimerRef.current = null;
+              }
+            }
+          } else if (
+            normalized <= 0.05 &&
+            isHandsFreeRef.current &&
+            hasSpokenSinceListeningRef.current &&
+            !isSpeakingRef.current &&
+            voiceStateRef.current === "listening"
+          ) {
+            if (!silenceTimerRef.current) {
+              silenceTimerRef.current = setTimeout(() => {
+                const textToSubmit = interimTranscriptRef.current.trim();
+                if (textToSubmit) {
+                  handleFinalSpeechSend(textToSubmit);
+                }
+              }, 1400);
+            }
+          }
         }
 
         animFrameRef.current = requestAnimationFrame(updateLevel);
@@ -242,9 +298,9 @@ export function useLiveVoice({
 
       updateLevel();
     } catch {
-      // Audio level analyser is non-critical fallback
+      // Audio level analyser fallback
     }
-  }, []);
+  }, [handleFinalSpeechSend]);
 
   const cleanupAudioAnalyser = useCallback(() => {
     if (animFrameRef.current) {
@@ -262,58 +318,36 @@ export function useLiveVoice({
     setAudioLevel(0);
   }, []);
 
-  const clearResumeTimer = useCallback(() => {
-    if (resumeTimerRef.current) {
-      clearInterval(resumeTimerRef.current);
-      resumeTimerRef.current = null;
-    }
-  }, []);
-
-  const startResumeTimer = useCallback(() => {
-    clearResumeTimer();
-    resumeTimerRef.current = setInterval(() => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        if (window.speechSynthesis.speaking) {
-          window.speechSynthesis.pause();
-          window.speechSynthesis.resume();
-        }
-      }
-    }, 8000);
-  }, [clearResumeTimer]);
-
-  // Text-To-Speech (TTS)
+  // Stop / cancel audio playback
   const stopSpeaking = useCallback(() => {
     speechSessionIdRef.current++;
-    clearResumeTimer();
     isSpeakingRef.current = false;
     activeUtteranceRef.current = null;
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+
+    if (currentAudioElementRef.current) {
       try {
-        window.speechSynthesis.cancel();
+        currentAudioElementRef.current.pause();
+        currentAudioElementRef.current.src = "";
+        currentAudioElementRef.current = null;
       } catch {
         // Ignore
       }
     }
-  }, [clearResumeTimer]);
 
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel?.();
+      } catch {
+        // Ignore
+      }
+    }
+  }, []);
+
+  // Neural Text-To-Speech with OpenAI Realtime voice model
   const speakText = useCallback(
     (text: string, onDone?: () => void) => {
-      if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-        onDone?.();
-        return;
-      }
-
+      stopSpeaking();
       const currentSessionId = ++speechSessionIdRef.current;
-      clearResumeTimer();
-
-      // Only cancel previous speech if active
-      if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-        try {
-          window.speechSynthesis.cancel();
-        } catch {
-          // Ignore
-        }
-      }
 
       const chunks = splitTextIntoSentences(text);
       if (chunks.length === 0) {
@@ -331,27 +365,16 @@ export function useLiveVoice({
       isSpeakingRef.current = true;
       setVoiceState("speaking");
 
-      const voices = window.speechSynthesis.getVoices() || [];
-      let selectedVoice: SpeechSynthesisVoice | undefined = undefined;
-      if (selectedVoiceUri) {
-        selectedVoice = voices.find((v) => v.voiceURI === selectedVoiceUri);
-      }
-      if (!selectedVoice) {
-        const langPrefix = targetLocale.split("-")[0].toLowerCase();
-        selectedVoice =
-          voices.find((v) => v.lang.toLowerCase() === targetLocale.toLowerCase()) ||
-          voices.find((v) => v.lang.toLowerCase().replace("_", "-").startsWith(langPrefix)) ||
-          voices.find((v) => v.default) ||
-          voices[0];
-      }
-
+      const voice = selectedVoiceUri || "alloy";
       let chunkIndex = 0;
 
       const finishSpeaking = () => {
         if (speechSessionIdRef.current !== currentSessionId) return;
-        clearResumeTimer();
         isSpeakingRef.current = false;
         activeUtteranceRef.current = null;
+        if (currentAudioElementRef.current) {
+          currentAudioElementRef.current = null;
+        }
         if (isSessionActiveRef.current && !isMutedRef.current) {
           setVoiceState("listening");
         } else if (isMutedRef.current) {
@@ -362,7 +385,7 @@ export function useLiveVoice({
         onDone?.();
       };
 
-      const speakNextChunk = () => {
+      const speakNextChunk = async () => {
         if (speechSessionIdRef.current !== currentSessionId) return;
         if (chunkIndex >= chunks.length) {
           finishSpeaking();
@@ -372,76 +395,87 @@ export function useLiveVoice({
         const chunkText = chunks[chunkIndex];
         chunkIndex++;
 
-        const utterance = new SpeechSynthesisUtterance(chunkText);
-        utterance.rate = speechRate;
-        utterance.pitch = speechPitch;
-        utterance.lang = selectedVoice?.lang || targetLocale;
-        if (selectedVoice) {
-          utterance.voice = selectedVoice;
-        }
+        // 1. Primary path: Play neural audio from OpenAI Realtime voice endpoint
+        let playedAudio = false;
+        if (typeof window !== "undefined" && typeof Audio !== "undefined") {
+          try {
+            const apiKey = localStorage.getItem("pollinations_api_key") || "";
+            const audioUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(chunkText)}?voice=${encodeURIComponent(voice)}`;
+            
+            const audio = new Audio();
+            currentAudioElementRef.current = audio;
+            audio.playbackRate = speechRate;
 
-        utterance.onend = () => {
-          if (speechSessionIdRef.current !== currentSessionId) return;
-          speakNextChunk();
-        };
+            const audioPromise = new Promise<void>((resolve, reject) => {
+              audio.onended = () => resolve();
+              audio.onerror = (e) => reject(e);
+            });
 
-        utterance.onerror = (event: any) => {
-          if (speechSessionIdRef.current !== currentSessionId) return;
-          if (event.error === "canceled" || event.error === "interrupted") {
+            // If an API key is present, fetch the blob with Authorization header
+            if (apiKey) {
+              const res = await fetch(audioUrl, {
+                headers: { Authorization: `Bearer ${apiKey}` },
+              });
+              if (!res.ok) throw new Error(`Audio fetch returned ${res.status}`);
+              const blob = await res.blob();
+              audio.src = URL.createObjectURL(blob);
+            } else {
+              audio.src = audioUrl;
+            }
+
+            if (speechSessionIdRef.current !== currentSessionId) return;
+            await audio.play();
+            playedAudio = true;
+            await audioPromise;
+
+            if (speechSessionIdRef.current === currentSessionId) {
+              speakNextChunk();
+            }
             return;
+          } catch {
+            playedAudio = false;
           }
-          speakNextChunk();
-        };
-
-        activeUtteranceRef.current = utterance;
-
-        try {
-          if (window.speechSynthesis.paused) {
-            window.speechSynthesis.resume();
-          }
-          window.speechSynthesis.speak(utterance);
-          window.speechSynthesis.resume();
-        } catch (err) {
-          console.error("[useLiveVoice] Speech synthesis speak error:", err);
-          speakNextChunk();
         }
+
+        // 2. Fallback path if audio playback is unavailable (e.g., unit test mocks or offline)
+        if (!playedAudio && typeof window !== "undefined" && "speechSynthesis" in window) {
+          try {
+            const utteranceClass = (window as any).SpeechSynthesisUtterance;
+            if (utteranceClass) {
+              const utterance = new utteranceClass(chunkText);
+              utterance.rate = speechRate;
+              utterance.pitch = speechPitch;
+              utterance.lang = targetLocale;
+
+              utterance.onend = () => {
+                if (speechSessionIdRef.current !== currentSessionId) return;
+                speakNextChunk();
+              };
+              utterance.onerror = () => {
+                if (speechSessionIdRef.current !== currentSessionId) return;
+                speakNextChunk();
+              };
+
+              activeUtteranceRef.current = utterance;
+              window.speechSynthesis.speak?.(utterance);
+              return;
+            }
+          } catch {
+            // Ignore
+          }
+        }
+
+        // If neither Audio nor SpeechSynthesis succeeded, move to next chunk
+        speakNextChunk();
       };
 
-      startResumeTimer();
-      // Allow speech cancellation IPC to settle in Chromium before queueing the first utterance
       setTimeout(() => {
         if (speechSessionIdRef.current === currentSessionId) {
           speakNextChunk();
         }
-      }, 30);
+      }, 20);
     },
-    [
-      speechRate,
-      speechPitch,
-      targetLocale,
-      selectedVoiceUri,
-      startResumeTimer,
-      clearResumeTimer,
-    ],
-  );
-
-  // Send collected speech
-  const handleFinalSpeechSend = useCallback(
-    (textToSend: string) => {
-      const trimmed = textToSend.trim();
-      if (!trimmed) return;
-
-      if (silenceTimerRef.current) {
-        clearTimeout(silenceTimerRef.current);
-        silenceTimerRef.current = null;
-      }
-
-      setFinalTranscript(trimmed);
-      setInterimTranscript("");
-      setVoiceState("thinking");
-      onSendSpeech(trimmed);
-    },
-    [onSendSpeech],
+    [selectedVoiceUri, speechRate, speechPitch, targetLocale, stopSpeaking],
   );
 
   // Stop everything / Interruption
@@ -451,6 +485,7 @@ export function useLiveVoice({
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
     }
+    hasSpokenSinceListeningRef.current = false;
     setInterimTranscript("");
     if (isSessionActiveRef.current && !isMutedRef.current) {
       setVoiceState("listening");
@@ -458,7 +493,7 @@ export function useLiveVoice({
     onInterrupt?.();
   }, [stopSpeaking, onInterrupt]);
 
-  // Speech Recognition setup
+  // Optional Browser Speech Recognition for progressive live captions
   const initSpeechRecognition = useCallback(() => {
     if (typeof window === "undefined") return null;
 
@@ -467,8 +502,7 @@ export function useLiveVoice({
       (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognitionClass) {
-      setErrorMessage("Speech recognition not supported in this browser.");
-      setVoiceState("error");
+      // Speech recognition is optional now, speech input and VAD work independently!
       return null;
     }
 
@@ -490,8 +524,6 @@ export function useLiveVoice({
     recognition.onresult = (event: any) => {
       if (isMutedRef.current) return;
       if (!isHandsFreeRef.current && !isPushToTalkActiveRef.current) return;
-      // Do not process speech input while the assistant is speaking out loud
-      // to avoid acoustic echo loops where the AI transcribes its own voice.
       if (isSpeakingRef.current) return;
 
       let interim = "";
@@ -508,15 +540,14 @@ export function useLiveVoice({
 
       const combinedText = (currentFinal + " " + interim).trim();
       if (combinedText) {
+        hasSpokenSinceListeningRef.current = true;
         setInterimTranscript(combinedText);
         setVoiceState("listening");
 
-        // Clear existing silence timer
         if (silenceTimerRef.current) {
           clearTimeout(silenceTimerRef.current);
         }
 
-        // In hands-free mode, trigger send after 1.4 seconds of silence
         if (isHandsFreeRef.current) {
           silenceTimerRef.current = setTimeout(() => {
             const textToSubmit = interimTranscriptRef.current.trim();
@@ -529,17 +560,13 @@ export function useLiveVoice({
     };
 
     recognition.onerror = (event: any) => {
-      if (event.error === "no-speech") {
-        // Ignorable transient event in continuous mode
-        return;
-      }
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      if (event?.error === "no-speech") return;
+      if (event?.error === "not-allowed" || event?.error === "service-not-allowed") {
         isRecognitionRunningRef.current = false;
         setErrorMessage("Microphone access denied. Please grant microphone permissions.");
         setVoiceState("error");
         return;
       }
-      // For other transient errors, attempt to stay in listening if active
       if (isSessionActiveRef.current && !isMutedRef.current && !isSpeakingRef.current) {
         setVoiceState("listening");
       }
@@ -547,7 +574,6 @@ export function useLiveVoice({
 
     recognition.onend = () => {
       isRecognitionRunningRef.current = false;
-      // If recognition ended but session is still active and not muted, automatically restart
       if (isSessionActiveRef.current && !isMutedRef.current) {
         try {
           recognition.start();
@@ -569,15 +595,7 @@ export function useLiveVoice({
     setInterimTranscript("");
     setFinalTranscript("");
     setIsMuted(false);
-
-    // Warm up speech synthesis on user gesture
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      try {
-        window.speechSynthesis.resume();
-      } catch {
-        // Ignore
-      }
-    }
+    hasSpokenSinceListeningRef.current = false;
 
     try {
       await initAudioAnalyser();
@@ -593,9 +611,12 @@ export function useLiveVoice({
       if (rec) {
         recognitionRef.current = rec;
         rec.start();
+      } else {
+        // Recognition not in browser, but audio recording/VAD session is active!
+        setVoiceState("listening");
       }
     } catch (e: any) {
-      setErrorMessage(e?.message || "Failed to start speech recognition.");
+      setErrorMessage(e?.message || "Failed to start audio session.");
       setVoiceState("error");
     }
   }, [initAudioAnalyser, initSpeechRecognition]);
@@ -620,6 +641,7 @@ export function useLiveVoice({
     setVoiceState("idle");
     setInterimTranscript("");
     setFinalTranscript("");
+    hasSpokenSinceListeningRef.current = false;
   }, [stopSpeaking, cleanupAudioAnalyser]);
 
   // Toggle Mute
