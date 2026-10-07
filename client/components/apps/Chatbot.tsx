@@ -3181,59 +3181,6 @@ export function ChatbotApp() {
           respondingClass,
         )}
       >
-        <header className="h-[60px] sm:h-[72px] shrink-0 flex items-center justify-between px-3 sm:px-6 bg-black/50 backdrop-blur-xl absolute top-0 w-full z-20 border-b border-white/5">
-          <div className="flex items-center gap-2 min-w-0">
-            <a
-              href="/apps"
-              aria-label="Back to apps"
-              title="Back to apps"
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0 flex items-center justify-center"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </a>
-            <h2
-              className={cn(
-                "font-display font-medium text-sm sm:text-base md:text-lg text-white/90 truncate transition-opacity duration-300",
-                !currentChatId ? "opacity-0" : "opacity-100",
-              )}
-            >
-              {chats.find((c) => c.id === currentChatId)?.title ||
-                "New Conversation"}
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => {
-                setIsLiveOpen(true);
-                liveVoice.startSession();
-              }}
-              aria-label={t("apps.chatbotLiveMode", undefined, "Live Voice Mode")}
-              title={t("apps.chatbotLiveMode", undefined, "Live Voice Mode")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-primary/20 via-purple-500/20 to-accent/20 hover:from-primary/30 hover:to-accent/30 text-white text-xs font-medium border border-primary/30 transition-all shadow-sm"
-            >
-              <Radio className="w-3.5 h-3.5 text-primary animate-pulse" />
-              <span>{t("apps.chatbotLiveMode", undefined, "Live")}</span>
-            </button>
-            <button
-              onClick={handleNewChatClick}
-              aria-label="New chat"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">New Chat</span>
-            </button>
-            <button
-              onClick={() => setSidebarOpen((prev) => !prev)}
-              aria-label="Chat sessions"
-              title="Chat sessions"
-              className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <MessageSquare className="w-5 h-5" />
-            </button>
-          </div>
-        </header>
-
         {/* Subtle edge hint when sidebar is closed */}
         <div
           role="button"
@@ -3255,7 +3202,7 @@ export function ChatbotApp() {
         {/* Chat Scrolling Area */}
         <div
           className={cn(
-            "flex-1 overflow-y-auto pt-[88px] pb-[160px] px-6 w-full max-w-[848px] mx-auto scroll-smooth absolute inset-0 z-10 transition-all duration-500",
+            "flex-1 overflow-y-auto pt-6 pb-[160px] px-6 w-full max-w-[848px] mx-auto scroll-smooth absolute inset-0 z-10 transition-all duration-500",
             !currentChatId && messages.length === 0
               ? "opacity-0 pointer-events-none translate-y-5"
               : "opacity-100 pointer-events-auto translate-y-0",
