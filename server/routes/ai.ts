@@ -294,7 +294,7 @@ aiRouter.post("/transcribe", apiLimiter, async (c) => {
 
   try {
     const upstreamForm = new FormData();
-    const blob = new Blob([fileBuffer], { type: "audio/webm" });
+    const blob = new Blob([new Uint8Array(fileBuffer)], { type: "audio/webm" });
     upstreamForm.append("file", blob, "audio.webm");
     upstreamForm.append("model", "whisper-large-v3");
 
