@@ -1605,8 +1605,193 @@ agentsRouter.post("/webdefender/apps", requireAgentAuth, async (c) => {
 // 10. Public Assets App
 // ============================================================================
 
-// List public assets
+// List all public assets (files, models, characters, datasets)
 agentsRouter.get("/assets", requireAgentAuth, async (c) => {
-  const assets = getTableRows("public_assets");
-  return c.json({ assets: assets || [] });
+  try {
+    const publicFiles = getTableRows("public_assets") || [];
+    const publicChars = getTableRows("public_characters") || [];
+
+    const globalPath = path.join(DATA_DIR, "global", "public_assets.json");
+    let globalAssets: any[] = [];
+    if (fs.existsSync(globalPath)) {
+      globalAssets = readJsonFile<any[]>(globalPath, []);
+    }
+
+    const assetMap = new Map<string, any>();
+
+    // Add public files
+    for (const item of [...globalAssets, ...publicFiles]) {
+      if (item && item.id) {
+        assetMap.set(String(item.id), {
+          ...item,
+          id: String(item.id),
+          name: item.name || item.title || item.filename || "Public Asset",
+          type: item.type || item.category || (item.name?.endsWith(".glb") || item.name?.endsWith(".gltf") ? "3d_model" : "file"),
+          description: item.description || item.short_description || "",
+          file_size: item.file_size || item.size_bytes || null,
+          author_username: item.author_username || (item.is_anonymous ? "Anonymous" : "Community"),
+          download_url: `/api/agents/assets/download/${item.id}`,
+        });
+      }
+    }
+
+    // Add public characters & universes
+    for (const char of publicChars) {
+      if (char && char.id && !assetMap.has(String(char.id))) {
+        assetMap.set(String(char.id), {
+          ...char,
+          id: String(char.id),
+          name: char.name || char.display_name || "Character",
+          type: char.is_universe ? "universe" : "character",
+          description: char.short_description || char.backstory || char.personality || char.description || "",
+          author_username: char.author_username || (char.is_anonymous ? "Anonymous" : "Community"),
+          download_url: `/api/agents/assets/download/${char.id}`,
+        });
+      }
+    }
+
+    const allAssets = Array.from(assetMap.values());
+    return c.json({ assets: allAssets });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to list public assets" }, { status: 500 });
+  }
+});
+
+// Download a public asset
+agentsRouter.get("/assets/download/:id", requireAgentAuth, async (c) => {
+  try {
+    const assetId = c.req.param("id");
+
+    const publicFiles = getTableRows("public_assets") || [];
+    const globalPath = path.join(DATA_DIR, "global", "public_assets.json");
+    const globalAssets = fs.existsSync(globalPath) ? readJsonFile<any[]>(globalPath, []) : [];
+    const fileAsset = [...globalAssets, ...publicFiles].find((a: any) => String(a.id) === String(assetId));
+
+    if (fileAsset) {
+      let filePathOnDisk = fileAsset.filepath;
+      if (!filePathOnDisk && fileAsset.file_path) {
+        const cleanPath = fileAsset.file_path.replace(/^\/+/, "");
+        const possibleUserStorage = path.join(DATA_DIR, fileAsset.uploader_id || "", "storage", cleanPath);
+        const possiblePublicStorage = path.join(DATA_DIR, "public_assets", cleanPath);
+        if (fs.existsSync(possibleUserStorage)) {
+          filePathOnDisk = possibleUserStorage;
+        } else if (fs.existsSync(possiblePublicStorage)) {
+          filePathOnDisk = possiblePublicStorage;
+        }
+      }
+
+      if (filePathOnDisk && fs.existsSync(filePathOnDisk)) {
+        const fileData = fs.readFileSync(filePathOnDisk);
+        c.header("Content-Type", fileAsset.mime_type || "application/octet-stream");
+        c.header(
+          "Content-Disposition",
+          `attachment; filename="${encodeURIComponent(fileAsset.name || fileAsset.filename || "asset.bin")}"`,
+        );
+        return c.body(fileData);
+      }
+
+      c.header("Content-Type", "application/json");
+      c.header(
+        "Content-Disposition",
+        `attachment; filename="${encodeURIComponent(fileAsset.name || "asset")}.json"`,
+      );
+      return c.json(fileAsset);
+    }
+
+    const publicChars = getTableRows("public_characters") || [];
+    const charAsset = publicChars.find((ch: any) => String(ch.id) === String(assetId));
+    if (charAsset) {
+      c.header("Content-Type", "application/json");
+      c.header(
+        "Content-Disposition",
+        `attachment; filename="${encodeURIComponent(charAsset.name || "character")}.json"`,
+      );
+      return c.json(charAsset);
+    }
+
+    return c.json({ error: "Public asset not found" }, { status: 404 });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to download asset" }, { status: 500 });
+  }
+});
+
+// Import public asset directly into agent storage
+agentsRouter.post("/assets/import/:id", requireAgentAuth, async (c) => {
+  try {
+    const agent = c.get("agent");
+    const agentId = String(agent.id);
+    const assetId = c.req.param("id");
+
+    const publicFiles = getTableRows("public_assets") || [];
+    const globalPath = path.join(DATA_DIR, "global", "public_assets.json");
+    const globalAssets = fs.existsSync(globalPath) ? readJsonFile<any[]>(globalPath, []) : [];
+    const fileAsset = [...globalAssets, ...publicFiles].find((a: any) => String(a.id) === String(assetId));
+
+    let fileBuffer: Buffer;
+    let filename: string;
+    let mimeType = "application/octet-stream";
+
+    if (fileAsset) {
+      filename = fileAsset.name || fileAsset.filename || "imported_asset.bin";
+      mimeType = fileAsset.mime_type || "application/octet-stream";
+      if (fileAsset.filepath && fs.existsSync(fileAsset.filepath)) {
+        fileBuffer = fs.readFileSync(fileAsset.filepath);
+      } else {
+        fileBuffer = Buffer.from(JSON.stringify(fileAsset, null, 2), "utf-8");
+        if (!filename.endsWith(".json")) filename += ".json";
+        mimeType = "application/json";
+      }
+    } else {
+      const publicChars = getTableRows("public_characters") || [];
+      const charAsset = publicChars.find((ch: any) => String(ch.id) === String(assetId));
+      if (!charAsset) {
+        return c.json({ error: "Asset not found" }, { status: 404 });
+      }
+      filename = `${charAsset.name || "character"}.json`;
+      mimeType = "application/json";
+      fileBuffer = Buffer.from(JSON.stringify(charAsset, null, 2), "utf-8");
+    }
+
+    // Quota check
+    const existingFiles = getTableRows("agent_storage_files").filter(
+      (f: any) => String(f.agent_id) === agentId,
+    );
+    const currentUsed = existingFiles.reduce((acc: number, f: any) => acc + (f.size_bytes || 0), 0);
+    if (currentUsed + fileBuffer.length > agent.storage_quota_bytes) {
+      return c.json(
+        {
+          error: `Storage quota exceeded to import asset. Available: ${Math.max(0, agent.storage_quota_bytes - currentUsed)} bytes, Required: ${fileBuffer.length} bytes.`,
+        },
+        { status: 413 },
+      );
+    }
+
+    const newFileId = crypto.randomUUID();
+    const diskFilename = `${agentId}_${newFileId}_${path.basename(filename)}`;
+    const diskPath = path.join(AGENTS_STORAGE_DIR, diskFilename);
+    fs.writeFileSync(diskPath, fileBuffer);
+
+    const record = {
+      id: newFileId,
+      agent_id: agentId,
+      owner_user_id: String(agent.owner_user_id),
+      filename,
+      filepath: diskPath,
+      size_bytes: fileBuffer.length,
+      mime_type: mimeType,
+      created_at: new Date().toISOString(),
+    };
+
+    insertTable("agent_storage_files", [record], "global");
+    updateTable(
+      "agent_accounts",
+      [{ field: "id", operator: "eq", value: agentId }],
+      { storage_used_bytes: currentUsed + fileBuffer.length },
+      "global",
+    );
+
+    return c.json({ success: true, message: "Asset imported to Agent Storage!", file: record });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Failed to import asset" }, { status: 500 });
+  }
 });

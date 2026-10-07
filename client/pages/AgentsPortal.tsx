@@ -778,7 +778,12 @@ export default function AgentsPortal() {
         )}
         {activeApp === "storage" && <AgentStorageApp token={agentToken} agent={agentProfile} onUpdate={() => verifyAgentSession(agentToken)} />}
         {activeApp === "webdefender" && <AgentWebDefenderApp token={agentToken} agent={agentProfile} />}
-        {activeApp === "assets" && <AgentAssetsApp token={agentToken} />}
+        {activeApp === "assets" && (
+          <AgentAssetsApp
+            token={agentToken}
+            onUpdate={() => verifyAgentSession(agentToken)}
+          />
+        )}
       </main>
     </div>
   );
@@ -2151,10 +2156,21 @@ function AgentWebDefenderApp({ token, agent }: { token: string; agent: AgentProf
 // ============================================================================
 // App 7: Public Assets
 // ============================================================================
-function AgentAssetsApp({ token }: { token: string }) {
+function AgentAssetsApp({
+  token,
+  onUpdate,
+}: {
+  token: string;
+  onUpdate?: () => void;
+}) {
   const [assets, setAssets] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | "file" | "character" | "universe">("all");
+  const [importingId, setImportingId] = useState<string | null>(null);
 
   const fetchAssets = async () => {
+    setIsLoading(true);
     try {
       const res = await fetch("/api/agents/assets", {
         headers: { Authorization: `Bearer ${token}` },
@@ -2163,46 +2179,233 @@ function AgentAssetsApp({ token }: { token: string }) {
         const data = await res.json();
         setAssets(data.assets || []);
       }
-    } catch (_) {}
+    } catch (_) {
+      toast.error("Failed to load public assets");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchAssets();
   }, []);
 
+  const handleImportToStorage = async (assetId: string) => {
+    setImportingId(assetId);
+    try {
+      const res = await fetch(`/api/agents/assets/import/${assetId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to import asset");
+      toast.success(data.message || "Asset saved to your Agent Storage!");
+      onUpdate?.();
+    } catch (err: any) {
+      toast.error(err.message || "Import failed");
+    } finally {
+      setImportingId(null);
+    }
+  };
+
+  const filteredAssets = assets.filter((asset) => {
+    const matchesSearch =
+      !searchQuery.trim() ||
+      asset.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.author_username?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesCategory =
+      categoryFilter === "all" ||
+      (categoryFilter === "file" && (asset.type === "file" || asset.type === "3d_model" || asset.type === "audio" || !asset.type)) ||
+      (categoryFilter === "character" && asset.type === "character") ||
+      (categoryFilter === "universe" && asset.type === "universe");
+
+    return matchesSearch && matchesCategory;
+  });
+
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Layers className="w-4 h-4 text-cyan-500" />
-            Public Assets Catalog
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Explore and download public community models, characters, and datasets.
-          </CardDescription>
+        <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Layers className="w-5 h-5 text-cyan-500" />
+              Public Assets & Catalog
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Explore and download public community models, characters, 3D assets, and datasets, or import them directly into your Agent Storage.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchAssets}
+              disabled={isLoading}
+              className="gap-1 text-xs"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent>
-          {assets.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic text-center py-8">
-              No public assets currently listed.
-            </p>
+
+        <CardContent className="space-y-4">
+          {/* Filters & Search */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-72">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search public assets, models, tags..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 text-xs h-8"
+              />
+            </div>
+            <div className="flex gap-1.5 bg-secondary/40 p-1 rounded-lg border border-border/40 text-xs w-full sm:w-auto overflow-x-auto">
+              <button
+                onClick={() => setCategoryFilter("all")}
+                className={`px-3 py-1 rounded font-medium transition-colors ${
+                  categoryFilter === "all"
+                    ? "bg-primary text-primary-foreground shadow"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                All ({assets.length})
+              </button>
+              <button
+                onClick={() => setCategoryFilter("file")}
+                className={`px-3 py-1 rounded font-medium transition-colors ${
+                  categoryFilter === "file"
+                    ? "bg-primary text-primary-foreground shadow"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Files & 3D Models
+              </button>
+              <button
+                onClick={() => setCategoryFilter("character")}
+                className={`px-3 py-1 rounded font-medium transition-colors ${
+                  categoryFilter === "character"
+                    ? "bg-primary text-primary-foreground shadow"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Characters
+              </button>
+              <button
+                onClick={() => setCategoryFilter("universe")}
+                className={`px-3 py-1 rounded font-medium transition-colors ${
+                  categoryFilter === "universe"
+                    ? "bg-primary text-primary-foreground shadow"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Universes
+              </button>
+            </div>
+          </div>
+
+          {/* Catalog Grid */}
+          {isLoading && assets.length === 0 ? (
+            <div className="py-12 flex justify-center items-center text-muted-foreground gap-2 text-xs">
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              Loading public catalog...
+            </div>
+          ) : filteredAssets.length === 0 ? (
+            <div className="p-8 text-center rounded-xl border border-dashed border-border/60 bg-secondary/10">
+              <Layers className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="text-sm font-medium text-foreground">No public assets found</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {searchQuery
+                  ? "Try changing your search query or filter."
+                  : "Community public assets and verified submissions will appear here for all agents."}
+              </p>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {assets.map((asset) => (
-                <div key={asset.id} className="p-3 rounded-lg border border-border/50 bg-secondary/20 space-y-2 text-xs">
-                  <span className="font-bold text-foreground block">{asset.name || asset.title}</span>
-                  <p className="text-muted-foreground text-[11px] line-clamp-2">{asset.description}</p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full text-xs h-7"
-                    onClick={() => window.open(`/api/storage/public/${asset.id}`, "_blank")}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+              {filteredAssets.map((asset) => {
+                const isImporting = importingId === asset.id;
+                const typeLabel =
+                  asset.type === "3d_model"
+                    ? "3D Model"
+                    : asset.type === "character"
+                      ? "Character"
+                      : asset.type === "universe"
+                        ? "Universe"
+                        : "File";
+
+                return (
+                  <div
+                    key={asset.id}
+                    className="p-3.5 rounded-xl border border-border/50 bg-secondary/20 hover:border-cyan-500/40 transition-colors flex flex-col justify-between space-y-3 text-xs"
                   >
-                    Download Asset
-                  </Button>
-                </div>
-              ))}
+                    <div className="space-y-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-bold text-foreground text-sm line-clamp-1">
+                          {asset.name || asset.title || "Public Asset"}
+                        </span>
+                        <Badge
+                          variant="secondary"
+                          className={`text-[10px] shrink-0 ${
+                            asset.type === "character"
+                              ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                              : asset.type === "universe"
+                                ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                : "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
+                          }`}
+                        >
+                          {typeLabel}
+                        </Badge>
+                      </div>
+
+                      <p className="text-muted-foreground text-[11px] line-clamp-2 leading-relaxed">
+                        {asset.description || "No description provided."}
+                      </p>
+
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground/80 pt-1 font-mono">
+                        <span>By @{asset.author_username || "Community"}</span>
+                        {asset.file_size && (
+                          <>
+                            <span>·</span>
+                            <span>{(asset.file_size / 1024).toFixed(1)} KB</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/30">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-[11px] h-7 gap-1"
+                        onClick={() =>
+                          window.open(`/api/agents/assets/download/${asset.id}?token=${token}`, "_blank")
+                        }
+                      >
+                        <Download className="w-3 h-3" />
+                        Download
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="text-[11px] h-7 gap-1 bg-cyan-600 hover:bg-cyan-700 text-white"
+                        disabled={isImporting}
+                        onClick={() => handleImportToStorage(asset.id)}
+                      >
+                        {isImporting ? (
+                          <RefreshCw className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Database className="w-3 h-3" />
+                        )}
+                        To Storage
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
