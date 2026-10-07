@@ -2586,7 +2586,7 @@ export function LLMAgentApp() {
 
       {/* ─── Right Sidebar (hover/click-triggered) ─── */}
       <div
-        className="fixed top-0 right-0 h-full w-4 hover:w-[320px] z-50 group/sidebar cursor-pointer"
+        className="fixed top-[61px] sm:top-[73px] right-0 h-[calc(100vh-61px)] sm:h-[calc(100vh-73px)] w-4 hover:w-[320px] z-50 group/sidebar cursor-pointer"
         onMouseEnter={() => setSidebarHovered(true)}
         onMouseLeave={() => setSidebarHovered(false)}
         onClick={() => setSidebarHovered(true)}

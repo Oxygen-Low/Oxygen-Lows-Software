@@ -3081,7 +3081,7 @@ export function ChatbotApp() {
 
       {/* Click / hover trigger zone along right edge */}
       <div
-        className="fixed top-0 right-0 w-[18px] md:w-[18px] h-[100vh] z-[49] cursor-pointer"
+        className="fixed top-[61px] sm:top-[73px] right-0 w-[18px] md:w-[18px] h-[calc(100vh-61px)] sm:h-[calc(100vh-73px)] z-[49] cursor-pointer"
         onMouseEnter={openSidebar}
         onMouseLeave={scheduleSidebarClose}
         onClick={openSidebar}
@@ -3096,7 +3096,7 @@ export function ChatbotApp() {
       {/* Sidebar Backdrop – click to close */}
       <div
         className={cn(
-          "fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 z-[50]",
+          "fixed top-[61px] sm:top-[73px] bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 z-[50]",
           sidebarOpen
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none",
@@ -3107,7 +3107,7 @@ export function ChatbotApp() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 right-0 h-[100vh] w-[280px] transition-transform duration-300 ease-out bg-black/90 md:bg-black/80 backdrop-blur-xl pointer-events-auto flex flex-col p-4 justify-between shadow-2xl z-[51]",
+          "fixed top-[61px] sm:top-[73px] right-0 h-[calc(100vh-61px)] sm:h-[calc(100vh-73px)] w-[280px] transition-transform duration-300 ease-out bg-black/90 md:bg-black/80 backdrop-blur-xl pointer-events-auto flex flex-col p-4 justify-between shadow-2xl z-[51]",
           sidebarOpen ? "translate-x-0" : "translate-x-full",
         )}
         onMouseEnter={openSidebar}
