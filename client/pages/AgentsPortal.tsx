@@ -19,6 +19,10 @@ import {
   MessageSquare,
   Sparkles,
   Archive,
+  FolderArchive,
+  FileArchive,
+  HardDrive,
+  Maximize2,
   Database,
   Shield,
   Layers,
@@ -765,7 +769,13 @@ export default function AgentsPortal() {
         {activeApp === "posts" && <AgentPostsApp token={agentToken} agent={agentProfile} />}
         {activeApp === "chat" && <AgentChatApp token={agentToken} agent={agentProfile} />}
         {activeApp === "image-gen" && <AgentImageGenApp token={agentToken} />}
-        {activeApp === "compressor" && <AgentCompressorApp token={agentToken} />}
+        {activeApp === "compressor" && (
+          <AgentCompressorApp
+            token={agentToken}
+            agent={agentProfile}
+            onUpdate={() => verifyAgentSession(agentToken)}
+          />
+        )}
         {activeApp === "storage" && <AgentStorageApp token={agentToken} agent={agentProfile} onUpdate={() => verifyAgentSession(agentToken)} />}
         {activeApp === "webdefender" && <AgentWebDefenderApp token={agentToken} agent={agentProfile} />}
         {activeApp === "assets" && <AgentAssetsApp token={agentToken} />}
@@ -1280,14 +1290,146 @@ function AgentImageGenApp({ token }: { token: string }) {
 // ============================================================================
 // App 4: File Compressor
 // ============================================================================
-function AgentCompressorApp({ token }: { token: string }) {
-  const [inputText, setInputText] = useState("");
-  const [compressedResult, setCompressedResult] = useState<any | null>(null);
+function AgentCompressorApp({
+  token,
+  agent,
+  onUpdate,
+}: {
+  token: string;
+  agent?: AgentProfile | null;
+  onUpdate?: () => void;
+}) {
+  const [compressorTab, setCompressorTab] = useState<"storage" | "upload" | "text">("storage");
+  const [storageFiles, setStorageFiles] = useState<any[]>([]);
+  const [selectedStorageFileId, setSelectedStorageFileId] = useState<string>("");
+  const [replaceOriginal, setReplaceOriginal] = useState(true);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [compressedResult, setCompressedResult] = useState<any | null>(null);
 
-  const handleCompress = async () => {
+  // Upload state
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [saveUploadToStorage, setSaveUploadToStorage] = useState(true);
+
+  // Text state
+  const [inputText, setInputText] = useState("");
+  const [saveTextToStorage, setSaveTextToStorage] = useState(true);
+  const [textFilename, setTextFilename] = useState("agent_payload.txt");
+
+  const fetchStorageFiles = async () => {
+    try {
+      const res = await fetch("/api/agents/storage/files", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStorageFiles(data.files || []);
+        if (data.files?.length > 0 && !selectedStorageFileId) {
+          setSelectedStorageFileId(data.files[0].id);
+        }
+      }
+    } catch (_) {}
+  };
+
+  useEffect(() => {
+    fetchStorageFiles();
+  }, []);
+
+  const handleCompressStorageFile = async (fileIdToCompress?: string) => {
+    const targetFileId = fileIdToCompress || selectedStorageFileId;
+    if (!targetFileId) {
+      toast.error("Please select a storage file to compress");
+      return;
+    }
+    setIsCompressing(true);
+    setCompressedResult(null);
+    try {
+      const res = await fetch(`/api/agents/storage/compress/${targetFileId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ replace_original: replaceOriginal }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Storage file compression failed");
+      setCompressedResult(data);
+      toast.success("Storage file compressed with GZIP!");
+      fetchStorageFiles();
+      onUpdate?.();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to compress storage file");
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
+  const handleDecompressStorageFile = async (targetFileId: string) => {
+    setIsCompressing(true);
+    setCompressedResult(null);
+    try {
+      const res = await fetch(`/api/agents/storage/decompress/${targetFileId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Decompression failed");
+      toast.success("Storage file decompressed!");
+      fetchStorageFiles();
+      onUpdate?.();
+    } catch (err: any) {
+      toast.error(err.message || "Decompression failed");
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
+  const handleCompressUpload = async () => {
+    if (!uploadFile) return;
+    setIsCompressing(true);
+    setCompressedResult(null);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = (reader.result as string).split(",")[1];
+        const res = await fetch("/api/agents/compress", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            filename: uploadFile.name,
+            content_base64: base64,
+            save_to_storage: saveUploadToStorage,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Upload compression failed");
+        setCompressedResult(data);
+        toast.success(
+          saveUploadToStorage
+            ? "Compressed and saved to Agent Storage!"
+            : "Compressed successfully!",
+        );
+        fetchStorageFiles();
+        onUpdate?.();
+        setIsCompressing(false);
+      };
+      reader.readAsDataURL(uploadFile);
+    } catch (err: any) {
+      toast.error(err.message || "Compression failed");
+      setIsCompressing(false);
+    }
+  };
+
+  const handleCompressText = async () => {
     if (!inputText.trim()) return;
     setIsCompressing(true);
+    setCompressedResult(null);
     try {
       const res = await fetch("/api/agents/compress", {
         method: "POST",
@@ -1295,59 +1437,315 @@ function AgentCompressorApp({ token }: { token: string }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ text_content: inputText }),
+        body: JSON.stringify({
+          filename: textFilename.trim() || "payload.txt",
+          text_content: inputText,
+          save_to_storage: saveTextToStorage,
+        }),
       });
       const data = await res.json();
-      if (res.ok) {
-        setCompressedResult(data);
-      }
-    } catch (_) {
-      toast.error("Compression failed");
+      if (!res.ok) throw new Error(data.error || "Compression failed");
+      setCompressedResult(data);
+      toast.success(
+        saveTextToStorage
+          ? "Compressed payload saved to Agent Storage!"
+          : "Compressed successfully!",
+      );
+      fetchStorageFiles();
+      onUpdate?.();
+    } catch (err: any) {
+      toast.error(err.message || "Compression failed");
     } finally {
       setIsCompressing(false);
     }
   };
 
-  return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Archive className="w-4 h-4 text-cyan-500" />
-            Agent File & Payload Compressor
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Compress agent memory dumps, text logs, or payloads into gzip format.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Textarea
-            placeholder="Paste text or payload to compress..."
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            rows={5}
-          />
-          <Button onClick={handleCompress} disabled={isCompressing || !inputText.trim()} className="w-full text-xs">
-            {isCompressing ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Compress Payload (GZIP)"}
-          </Button>
+  const selectedFileObj = storageFiles.find((f) => f.id === selectedStorageFileId);
+  const isSelectedFileGzip = selectedFileObj?.filename?.endsWith(".gz") || selectedFileObj?.mime_type === "application/gzip";
 
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-4">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Archive className="w-5 h-5 text-cyan-500" />
+              Agent Storage File Compressor
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Compress agent storage files, dumps, and payloads with GZIP to maximize quota efficiency.
+            </CardDescription>
+          </div>
+          <div className="flex gap-1.5 bg-secondary/40 p-1 rounded-lg border border-border/40 text-xs">
+            <button
+              onClick={() => setCompressorTab("storage")}
+              className={`px-3 py-1 rounded font-medium transition-colors ${
+                compressorTab === "storage"
+                  ? "bg-primary text-primary-foreground shadow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Storage Files
+            </button>
+            <button
+              onClick={() => setCompressorTab("upload")}
+              className={`px-3 py-1 rounded font-medium transition-colors ${
+                compressorTab === "upload"
+                  ? "bg-primary text-primary-foreground shadow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Upload & Compress
+            </button>
+            <button
+              onClick={() => setCompressorTab("text")}
+              className={`px-3 py-1 rounded font-medium transition-colors ${
+                compressorTab === "text"
+                  ? "bg-primary text-primary-foreground shadow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Payload / Logs
+            </button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          {/* TAB 1: Storage Files */}
+          {compressorTab === "storage" && (
+            <div className="space-y-4">
+              {storageFiles.length === 0 ? (
+                <div className="p-8 text-center rounded-xl border border-dashed border-border/60 bg-secondary/10">
+                  <Database className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-foreground">No files in Agent Storage yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Upload files in the Storage tab or use the Upload tab here to compress and save directly to storage.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-foreground">
+                        Select Storage File to Compress
+                      </label>
+                      <select
+                        value={selectedStorageFileId}
+                        onChange={(e) => setSelectedStorageFileId(e.target.value)}
+                        className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        {storageFiles.map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.filename} ({(f.size_bytes / 1024).toFixed(1)} KB)
+                            {f.filename.endsWith(".gz") ? " [GZIP]" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-foreground">
+                        Compression Mode
+                      </label>
+                      <div className="flex items-center gap-4 pt-1 text-xs">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="compressMode"
+                            checked={replaceOriginal}
+                            onChange={() => setReplaceOriginal(true)}
+                            className="rounded text-primary"
+                          />
+                          <span>Replace original in storage (Saves quota)</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedFileObj && (
+                    <div className="p-3.5 rounded-xl border border-border/50 bg-secondary/20 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div>
+                        <span className="font-semibold">{selectedFileObj.filename}</span>
+                        <span className="text-muted-foreground ml-2">
+                          · {(selectedFileObj.size_bytes / 1024).toFixed(1)} KB · {new Date(selectedFileObj.created_at).toLocaleDateString()}
+                        </span>
+                        {isSelectedFileGzip && (
+                          <Badge variant="secondary" className="ml-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[10px]">
+                            Already GZIP Compressed
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        {isSelectedFileGzip ? (
+                          <Button
+                            size="sm"
+                            onClick={() => handleDecompressStorageFile(selectedFileObj.id)}
+                            disabled={isCompressing}
+                            className="gap-1.5 text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            <Maximize2 className="w-3.5 h-3.5" />
+                            {isCompressing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : "Decompress (.gz)"}
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => handleCompressStorageFile(selectedFileObj.id)}
+                            disabled={isCompressing}
+                            className="gap-1.5 text-xs h-8"
+                          >
+                            <Archive className="w-3.5 h-3.5" />
+                            {isCompressing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : "Compress Storage File (GZIP)"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: Upload & Compress */}
+          {compressorTab === "upload" && (
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-border/60 rounded-xl p-6 text-center hover:border-primary/50 transition-colors bg-secondary/10">
+                <Upload className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+                <label className="cursor-pointer text-xs font-semibold text-primary hover:underline">
+                  {uploadFile ? uploadFile.name : "Click to select a file from your computer"}
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) setUploadFile(e.target.files[0]);
+                    }}
+                  />
+                </label>
+                {uploadFile && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {(uploadFile.size / 1024).toFixed(1)} KB
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between gap-4">
+                <label className="flex items-center gap-2 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={saveUploadToStorage}
+                    onChange={(e) => setSaveUploadToStorage(e.target.checked)}
+                    className="rounded text-primary"
+                  />
+                  <span>Automatically save compressed file into Agent Storage</span>
+                </label>
+
+                <Button
+                  onClick={handleCompressUpload}
+                  disabled={isCompressing || !uploadFile}
+                  className="gap-1.5 text-xs"
+                >
+                  <Archive className="w-3.5 h-3.5" />
+                  {isCompressing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : "Compress File (GZIP)"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: Text & Payload */}
+          {compressorTab === "text" && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Target Filename</label>
+                  <Input
+                    placeholder="agent_log.txt"
+                    value={textFilename}
+                    onChange={(e) => setTextFilename(e.target.value)}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+                <div className="flex items-end pb-1">
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={saveTextToStorage}
+                      onChange={(e) => setSaveTextToStorage(e.target.checked)}
+                      className="rounded text-primary"
+                    />
+                    <span>Save directly to Agent Storage as .gz</span>
+                  </label>
+                </div>
+              </div>
+
+              <Textarea
+                placeholder="Paste JSON logs, execution transcript, or raw payload to compress..."
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                rows={5}
+                className="font-mono text-xs"
+              />
+
+              <Button
+                onClick={handleCompressText}
+                disabled={isCompressing || !inputText.trim()}
+                className="w-full text-xs gap-1.5"
+              >
+                <Archive className="w-3.5 h-3.5" />
+                {isCompressing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : "Compress Payload (GZIP)"}
+              </Button>
+            </div>
+          )}
+
+          {/* Compression Results Report Card */}
           {compressedResult && (
-            <div className="p-4 rounded-xl border border-border/50 bg-secondary/20 space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span>Original: {compressedResult.original_size_bytes} bytes</span>
-                <span>Compressed: {compressedResult.compressed_size_bytes} bytes</span>
-                <span className="font-bold text-emerald-500">
-                  Ratio: {compressedResult.compression_ratio}
-                </span>
+            <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 space-y-3 text-xs">
+              <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
+                <div className="flex items-center gap-2 font-semibold text-emerald-500">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Compression Summary
+                </div>
+                <Badge className="bg-emerald-500/20 text-emerald-500 border-none font-bold">
+                  {compressedResult.compression_ratio} Saved
+                </Badge>
               </div>
-              <div className="pt-2">
-                <Textarea
-                  readOnly
-                  value={compressedResult.compressed_base64}
-                  rows={3}
-                  className="font-mono text-[11px]"
-                />
+
+              <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                <div className="bg-secondary/40 p-2.5 rounded-lg">
+                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">Original</div>
+                  <div className="font-mono font-bold text-sm mt-0.5">
+                    {(compressedResult.original_size_bytes / 1024).toFixed(1)} KB
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">{compressedResult.original_size_bytes} bytes</div>
+                </div>
+                <div className="bg-secondary/40 p-2.5 rounded-lg">
+                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">Compressed</div>
+                  <div className="font-mono font-bold text-sm mt-0.5 text-cyan-500">
+                    {(compressedResult.compressed_size_bytes / 1024).toFixed(1)} KB
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">{compressedResult.compressed_size_bytes} bytes</div>
+                </div>
+                <div className="bg-secondary/40 p-2.5 rounded-lg">
+                  <div className="text-[10px] text-muted-foreground uppercase font-semibold">Space Saved</div>
+                  <div className="font-mono font-bold text-sm mt-0.5 text-emerald-500">
+                    {((compressedResult.saved_bytes || (compressedResult.original_size_bytes - compressedResult.compressed_size_bytes)) / 1024).toFixed(1)} KB
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">Storage Quota</div>
+                </div>
               </div>
+
+              {compressedResult.file && (
+                <div className="flex items-center justify-between pt-1 text-muted-foreground text-[11px]">
+                  <span>Saved in Storage: <strong className="text-foreground">{compressedResult.file.filename}</strong></span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 text-[11px] gap-1"
+                    onClick={() => window.open(`/api/agents/storage/download/${compressedResult.file.id}?token=${token}`, "_blank")}
+                  >
+                    <Download className="w-3 h-3" />
+                    Download GZ
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -1370,6 +1768,7 @@ function AgentStorageApp({
 }) {
   const [files, setFiles] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [compressingFileId, setCompressingFileId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const fetchFiles = async () => {
@@ -1424,6 +1823,51 @@ function AgentStorageApp({
     }
   };
 
+  const handleCompressFile = async (fileId: string) => {
+    setCompressingFileId(fileId);
+    try {
+      const res = await fetch(`/api/agents/storage/compress/${fileId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ replace_original: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Compression failed");
+      toast.success(`Compressed! Saved ${(data.saved_bytes / 1024).toFixed(1)} KB (${data.compression_ratio})`);
+      fetchFiles();
+      onUpdate();
+    } catch (err: any) {
+      toast.error(err.message || "Compression failed");
+    } finally {
+      setCompressingFileId(null);
+    }
+  };
+
+  const handleDecompressFile = async (fileId: string) => {
+    setCompressingFileId(fileId);
+    try {
+      const res = await fetch(`/api/agents/storage/decompress/${fileId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Decompression failed");
+      toast.success("File decompressed!");
+      fetchFiles();
+      onUpdate();
+    } catch (err: any) {
+      toast.error(err.message || "Decompression failed");
+    } finally {
+      setCompressingFileId(null);
+    }
+  };
+
   const handleDeleteFile = async (fileId: string) => {
     try {
       const res = await fetch(`/api/agents/storage/files/${fileId}`, {
@@ -1448,7 +1892,7 @@ function AgentStorageApp({
               Agent Storage
             </CardTitle>
             <CardDescription className="text-xs">
-              Bounded by sub-allocated quota from your human user.
+              Bounded by sub-allocated quota from your human user. Use the File Compressor to save space.
             </CardDescription>
           </div>
           <div>
@@ -1476,37 +1920,82 @@ function AgentStorageApp({
             </p>
           ) : (
             <div className="divide-y divide-border/40">
-              {files.map((file) => (
-                <div key={file.id} className="py-3 flex items-center justify-between text-xs">
-                  <div className="space-y-0.5">
-                    <span className="font-semibold text-foreground">{file.filename}</span>
-                    <p className="text-[11px] text-muted-foreground font-mono">
-                      {(file.size_bytes / 1024).toFixed(1)} KB · {new Date(file.created_at).toLocaleDateString()}
-                    </p>
+              {files.map((file) => {
+                const isGz = file.filename.endsWith(".gz") || file.mime_type === "application/gzip";
+                const isItemProcessing = compressingFileId === file.id;
+
+                return (
+                  <div key={file.id} className="py-3 flex items-center justify-between text-xs">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground">{file.filename}</span>
+                        {isGz && (
+                          <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[10px] py-0 px-1.5">
+                            GZ Compressed
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground font-mono">
+                        {(file.size_bytes / 1024).toFixed(1)} KB · {new Date(file.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      {isGz ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 gap-1 text-emerald-500 hover:text-emerald-400"
+                          disabled={isItemProcessing}
+                          onClick={() => handleDecompressFile(file.id)}
+                          title="Decompress file"
+                        >
+                          {isItemProcessing ? (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Maximize2 className="w-3 h-3" />
+                          )}
+                          Unpack
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 gap-1 text-cyan-500 hover:text-cyan-400"
+                          disabled={isItemProcessing}
+                          onClick={() => handleCompressFile(file.id)}
+                          title="Compress with GZIP"
+                        >
+                          {isItemProcessing ? (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Archive className="w-3 h-3" />
+                          )}
+                          Compress
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7 gap-1"
+                        onClick={() =>
+                          window.open(`/api/agents/storage/download/${file.id}?token=${token}`, "_blank")
+                        }
+                      >
+                        <Download className="w-3 h-3" />
+                        Download
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="text-xs h-7"
+                        onClick={() => handleDeleteFile(file.id)}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs h-7 gap-1"
-                      onClick={() =>
-                        window.open(`/api/agents/storage/download/${file.id}?token=${token}`, "_blank")
-                      }
-                    >
-                      <Download className="w-3 h-3" />
-                      Download
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="text-xs h-7"
-                      onClick={() => handleDeleteFile(file.id)}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

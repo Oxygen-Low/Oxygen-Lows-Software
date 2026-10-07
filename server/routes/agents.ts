@@ -1065,34 +1065,318 @@ agentsRouter.post("/image-gen", requireAgentAuth, async (c) => {
 
 agentsRouter.post("/compress", requireAgentAuth, async (c) => {
   try {
+    const agent = c.get("agent");
+    const agentId = String(agent.id);
     const body = await c.req.json();
-    const { filename, content_base64, text_content } = body;
+    const { file_id, filename, content_base64, text_content, replace_original = false, save_to_storage = false } = body;
 
     let inputBuffer: Buffer;
-    if (content_base64) {
+    let originalName = filename || "file.bin";
+
+    if (file_id) {
+      const files = getTableRows("agent_storage_files");
+      const fileRecord = files.find(
+        (f: any) => f.id === file_id && String(f.agent_id) === agentId,
+      );
+      if (!fileRecord || !fs.existsSync(fileRecord.filepath)) {
+        return c.json({ error: "Storage file not found" }, { status: 404 });
+      }
+      inputBuffer = fs.readFileSync(fileRecord.filepath);
+      originalName = fileRecord.filename;
+    } else if (content_base64) {
       inputBuffer = Buffer.from(content_base64, "base64");
     } else if (text_content) {
       inputBuffer = Buffer.from(text_content, "utf-8");
     } else {
-      return c.json({ error: "Missing content_base64 or text_content" }, { status: 400 });
+      return c.json({ error: "Missing file_id, content_base64, or text_content" }, { status: 400 });
     }
 
     const compressed = zlib.gzipSync(inputBuffer);
     const compressedBase64 = compressed.toString("base64");
+    const compressedFilename = originalName.endsWith(".gz") ? originalName : `${originalName}.gz`;
+    const savedBytes = Math.max(0, inputBuffer.length - compressed.length);
+
+    let savedStorageFile = null;
+
+    if (file_id && replace_original) {
+      // In-place storage file compression
+      const files = getTableRows("agent_storage_files");
+      const fileRecord = files.find((f: any) => f.id === file_id && String(f.agent_id) === agentId);
+      if (fileRecord) {
+        fs.writeFileSync(fileRecord.filepath, compressed);
+        updateTable(
+          "agent_storage_files",
+          [{ field: "id", operator: "eq", value: file_id }],
+          {
+            filename: compressedFilename,
+            size_bytes: compressed.length,
+            mime_type: "application/gzip",
+          },
+          "global",
+        );
+        savedStorageFile = {
+          ...fileRecord,
+          filename: compressedFilename,
+          size_bytes: compressed.length,
+          mime_type: "application/gzip",
+        };
+      }
+    } else if (save_to_storage) {
+      // Save new compressed file into storage
+      const existingFiles = getTableRows("agent_storage_files").filter(
+        (f: any) => String(f.agent_id) === agentId,
+      );
+      const currentUsed = existingFiles.reduce((acc: number, f: any) => acc + (f.size_bytes || 0), 0);
+
+      if (currentUsed + compressed.length > agent.storage_quota_bytes) {
+        return c.json(
+          {
+            error: `Storage quota exceeded for saving compressed file. Available: ${Math.max(0, agent.storage_quota_bytes - currentUsed)} bytes, Required: ${compressed.length} bytes.`,
+          },
+          { status: 413 },
+        );
+      }
+
+      const newFileId = crypto.randomUUID();
+      const diskFilename = `${agentId}_${newFileId}_${path.basename(compressedFilename)}`;
+      const diskPath = path.join(AGENTS_STORAGE_DIR, diskFilename);
+      fs.writeFileSync(diskPath, compressed);
+
+      const record = {
+        id: newFileId,
+        agent_id: agentId,
+        owner_user_id: String(agent.owner_user_id),
+        filename: compressedFilename,
+        filepath: diskPath,
+        size_bytes: compressed.length,
+        mime_type: "application/gzip",
+        created_at: new Date().toISOString(),
+      };
+
+      insertTable("agent_storage_files", [record], "global");
+      savedStorageFile = record;
+    }
+
+    // Update agent's total used storage quota if modified
+    if (savedStorageFile) {
+      const remainingFiles = getTableRows("agent_storage_files").filter(
+        (f: any) => String(f.agent_id) === agentId,
+      );
+      const totalUsed = remainingFiles.reduce((acc: number, f: any) => acc + (f.size_bytes || 0), 0);
+      updateTable(
+        "agent_accounts",
+        [{ field: "id", operator: "eq", value: agentId }],
+        { storage_used_bytes: totalUsed },
+        "global",
+      );
+    }
 
     return c.json({
       success: true,
       original_size_bytes: inputBuffer.length,
       compressed_size_bytes: compressed.length,
+      saved_bytes: savedBytes,
       compression_ratio: (
         (1 - compressed.length / (inputBuffer.length || 1)) *
         100
       ).toFixed(2) + "%",
       compressed_base64: compressedBase64,
-      suggested_filename: `${filename || "compressed"}.gz`,
+      suggested_filename: compressedFilename,
+      file: savedStorageFile,
     });
   } catch (err: any) {
     return c.json({ error: err.message || "Compression failed" }, { status: 500 });
+  }
+});
+
+// Compress a specific storage file directly
+agentsRouter.post("/storage/compress/:id", requireAgentAuth, async (c) => {
+  try {
+    const agent = c.get("agent");
+    const agentId = String(agent.id);
+    const fileId = c.req.param("id");
+    let body: any = {};
+    try {
+      body = await c.req.json();
+    } catch (_) {}
+    const replaceOriginal = body.replace_original !== false; // default true
+
+    const files = getTableRows("agent_storage_files");
+    const file = files.find((f: any) => f.id === fileId && String(f.agent_id) === agentId);
+
+    if (!file || !fs.existsSync(file.filepath)) {
+      return c.json({ error: "Storage file not found" }, { status: 404 });
+    }
+
+    const uncompressedData = fs.readFileSync(file.filepath);
+    const compressed = zlib.gzipSync(uncompressedData);
+    const originalSize = uncompressedData.length;
+    const compressedSize = compressed.length;
+    const savedBytes = Math.max(0, originalSize - compressedSize);
+    const compressedFilename = file.filename.endsWith(".gz") ? file.filename : `${file.filename}.gz`;
+
+    let resultFile: any;
+
+    if (replaceOriginal) {
+      fs.writeFileSync(file.filepath, compressed);
+      updateTable(
+        "agent_storage_files",
+        [{ field: "id", operator: "eq", value: fileId }],
+        {
+          filename: compressedFilename,
+          size_bytes: compressedSize,
+          mime_type: "application/gzip",
+        },
+        "global",
+      );
+      resultFile = {
+        ...file,
+        filename: compressedFilename,
+        size_bytes: compressedSize,
+        mime_type: "application/gzip",
+      };
+    } else {
+      const existingFiles = getTableRows("agent_storage_files").filter(
+        (f: any) => String(f.agent_id) === agentId,
+      );
+      const currentUsed = existingFiles.reduce((acc: number, f: any) => acc + (f.size_bytes || 0), 0);
+
+      if (currentUsed + compressedSize > agent.storage_quota_bytes) {
+        return c.json(
+          {
+            error: `Storage quota exceeded. Available: ${Math.max(0, agent.storage_quota_bytes - currentUsed)} bytes, Required: ${compressedSize} bytes.`,
+          },
+          { status: 413 },
+        );
+      }
+
+      const newFileId = crypto.randomUUID();
+      const diskFilename = `${agentId}_${newFileId}_${path.basename(compressedFilename)}`;
+      const diskPath = path.join(AGENTS_STORAGE_DIR, diskFilename);
+      fs.writeFileSync(diskPath, compressed);
+
+      const record = {
+        id: newFileId,
+        agent_id: agentId,
+        owner_user_id: String(agent.owner_user_id),
+        filename: compressedFilename,
+        filepath: diskPath,
+        size_bytes: compressedSize,
+        mime_type: "application/gzip",
+        created_at: new Date().toISOString(),
+      };
+
+      insertTable("agent_storage_files", [record], "global");
+      resultFile = record;
+    }
+
+    // Recalculate agent storage used
+    const remainingFiles = getTableRows("agent_storage_files").filter(
+      (f: any) => String(f.agent_id) === agentId,
+    );
+    const totalUsed = remainingFiles.reduce((acc: number, f: any) => acc + (f.size_bytes || 0), 0);
+    updateTable(
+      "agent_accounts",
+      [{ field: "id", operator: "eq", value: agentId }],
+      { storage_used_bytes: totalUsed },
+      "global",
+    );
+
+    return c.json({
+      success: true,
+      file: resultFile,
+      original_size_bytes: originalSize,
+      compressed_size_bytes: compressedSize,
+      saved_bytes: savedBytes,
+      compression_ratio: ((1 - compressedSize / (originalSize || 1)) * 100).toFixed(2) + "%",
+    });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Storage compression failed" }, { status: 500 });
+  }
+});
+
+// Decompress a storage .gz file
+agentsRouter.post("/storage/decompress/:id", requireAgentAuth, async (c) => {
+  try {
+    const agent = c.get("agent");
+    const agentId = String(agent.id);
+    const fileId = c.req.param("id");
+
+    const files = getTableRows("agent_storage_files");
+    const file = files.find((f: any) => f.id === fileId && String(f.agent_id) === agentId);
+
+    if (!file || !fs.existsSync(file.filepath)) {
+      return c.json({ error: "Storage file not found" }, { status: 404 });
+    }
+
+    const compressedData = fs.readFileSync(file.filepath);
+    const decompressed = zlib.gunzipSync(compressedData);
+    const decompressedSize = decompressed.length;
+    const originalSize = compressedData.length;
+
+    // Quota check
+    const existingFiles = getTableRows("agent_storage_files").filter(
+      (f: any) => String(f.agent_id) === agentId,
+    );
+    const currentUsed = existingFiles.reduce((acc: number, f: any) => acc + (f.size_bytes || 0), 0);
+    const diff = decompressedSize - originalSize;
+
+    if (currentUsed + diff > agent.storage_quota_bytes) {
+      return c.json(
+        {
+          error: `Storage quota exceeded for decompressed file. Available: ${Math.max(0, agent.storage_quota_bytes - currentUsed)} bytes, Required extra: ${diff} bytes.`,
+        },
+        { status: 413 },
+      );
+    }
+
+    // Determine uncompressed filename
+    let decompressedFilename = file.filename;
+    if (decompressedFilename.endsWith(".gz")) {
+      decompressedFilename = decompressedFilename.slice(0, -3);
+    } else {
+      decompressedFilename = `${decompressedFilename}.unpacked`;
+    }
+
+    fs.writeFileSync(file.filepath, decompressed);
+    updateTable(
+      "agent_storage_files",
+      [{ field: "id", operator: "eq", value: fileId }],
+      {
+        filename: decompressedFilename,
+        size_bytes: decompressedSize,
+        mime_type: "application/octet-stream",
+      },
+      "global",
+    );
+
+    const updatedFile = {
+      ...file,
+      filename: decompressedFilename,
+      size_bytes: decompressedSize,
+      mime_type: "application/octet-stream",
+    };
+
+    // Recalculate agent storage used
+    const remainingFiles = getTableRows("agent_storage_files").filter(
+      (f: any) => String(f.agent_id) === agentId,
+    );
+    const totalUsed = remainingFiles.reduce((acc: number, f: any) => acc + (f.size_bytes || 0), 0);
+    updateTable(
+      "agent_accounts",
+      [{ field: "id", operator: "eq", value: agentId }],
+      { storage_used_bytes: totalUsed },
+      "global",
+    );
+
+    return c.json({
+      success: true,
+      file: updatedFile,
+      compressed_size_bytes: originalSize,
+      decompressed_size_bytes: decompressedSize,
+    });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Decompression failed" }, { status: 500 });
   }
 });
 

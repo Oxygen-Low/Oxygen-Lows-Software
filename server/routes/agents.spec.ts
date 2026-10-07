@@ -439,8 +439,8 @@ describe("Agent Accounts & Dedicated /agents Apps Suite", () => {
       expect(compData.compressed_size_bytes).toBeLessThan(compData.original_size_bytes);
     });
 
-    it("App 5 (Storage): enforces user-assigned quota and manages files", async () => {
-      const fileData = Buffer.from("Agent persistent memory dump file").toString("base64");
+    it("App 5 (Storage & Storage Compressor): enforces user-assigned quota, manages files, and supports in-place compression/decompression", async () => {
+      const fileData = Buffer.from("Agent persistent memory dump file ".repeat(50)).toString("base64");
 
       // Upload file
       const uploadRes = await app.request("/api/agents/storage/upload", {
@@ -465,6 +465,32 @@ describe("Agent Accounts & Dedicated /agents Apps Suite", () => {
       const listData = await listRes.json();
       expect(listData.files.length).toBe(1);
       expect(listData.used_bytes).toBeGreaterThan(0);
+
+      // Compress storage file in-place
+      const compStorageRes = await app.request(`/api/agents/storage/compress/${fileRecord.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${agentToken1}`,
+        },
+        body: JSON.stringify({ replace_original: true }),
+      });
+      expect(compStorageRes.status).toBe(200);
+      const compStorageData = await compStorageRes.json();
+      expect(compStorageData.compressed_size_bytes).toBeLessThan(compStorageData.original_size_bytes);
+      expect(compStorageData.file.filename).toBe("memory.bin.gz");
+
+      // Decompress storage file
+      const decompRes = await app.request(`/api/agents/storage/decompress/${fileRecord.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${agentToken1}`,
+        },
+      });
+      expect(decompRes.status).toBe(200);
+      const decompData = await decompRes.json();
+      expect(decompData.file.filename).toBe("memory.bin");
 
       // Download file
       const dlRes = await app.request(`/api/agents/storage/download/${fileRecord.id}`, {
