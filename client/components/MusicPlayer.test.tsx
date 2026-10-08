@@ -11,7 +11,6 @@ import {
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { MusicPlayer } from "./MusicPlayer";
-import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
 import { TopbarMusicPlayer } from "./TopbarMusicPlayer";
 import { MusicProvider, useMusicContext } from "@/contexts/MusicContext";
 
@@ -58,7 +57,7 @@ vi.mock("@/hooks/useAuth", () => ({
   }),
 }));
 
-describe("MusicPlayer & SidebarMusicPlayer & TopbarMusicPlayer components", () => {
+describe("MusicPlayer & TopbarMusicPlayer components", () => {
   const defaultContext = {
     currentTrack: { name: "Test Song", fileName: "test.mp3" },
     currentPosition: 15000,
@@ -109,33 +108,6 @@ describe("MusicPlayer & SidebarMusicPlayer & TopbarMusicPlayer components", () =
     });
 
     render(<MusicPlayer />);
-
-    const loopButton = screen.getByTitle("Toggle loop");
-    expect(loopButton).not.toBeNull();
-    expect(loopButton.getAttribute("aria-pressed")).toBe("true");
-
-    fireEvent.click(loopButton);
-    expect(defaultContext.toggleLoop).toHaveBeenCalledWith(false);
-  });
-
-  it("renders loop button and triggers toggleLoop in SidebarMusicPlayer", () => {
-    render(<SidebarMusicPlayer />);
-
-    const loopButton = screen.getByTitle("Toggle loop");
-    expect(loopButton).not.toBeNull();
-    expect(loopButton.getAttribute("aria-pressed")).toBe("false");
-
-    fireEvent.click(loopButton);
-    expect(defaultContext.toggleLoop).toHaveBeenCalledWith(true);
-  });
-
-  it("renders active loop button in SidebarMusicPlayer when loop is true", () => {
-    mockUseMusic.mockReturnValue({
-      ...defaultContext,
-      loop: true,
-    });
-
-    render(<SidebarMusicPlayer />);
 
     const loopButton = screen.getByTitle("Toggle loop");
     expect(loopButton).not.toBeNull();
@@ -211,24 +183,6 @@ describe("MusicPlayer & SidebarMusicPlayer & TopbarMusicPlayer components", () =
     );
 
     expect(screen.getByTitle("No track playing")).not.toBeNull();
-  });
-
-  it("toggles and interacts with the playlist in SidebarMusicPlayer", () => {
-    render(
-      <MemoryRouter>
-        <SidebarMusicPlayer />
-      </MemoryRouter>,
-    );
-
-    const togglePlaylistBtn = screen.getByTitle("Current Playlist");
-    expect(togglePlaylistBtn).not.toBeNull();
-    fireEvent.click(togglePlaylistBtn);
-
-    const trackMatches = screen.getAllByText("Test Song");
-    expect(trackMatches.length).toBeGreaterThanOrEqual(2);
-    // Click the playlist track item
-    fireEvent.click(trackMatches[1]);
-    expect(defaultContext.playTrack).toHaveBeenCalledWith(defaultContext.playlist[0]);
   });
 
   it("provides full playback controls inside the playlist popover and selects a track", () => {

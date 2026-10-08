@@ -34,7 +34,6 @@ import {
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { TopbarMusicPlayer } from "./TopbarMusicPlayer";
-import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
 import { useNotifications } from "@/hooks/useNotifications";
 
 interface LayoutProps {
@@ -551,9 +550,6 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               </a>
             </div>
           </nav>
-
-          {/* Music Player embedded in sidebar for mobile and desktop drawer */}
-          <SidebarMusicPlayer />
         </aside>
       </div>
 
