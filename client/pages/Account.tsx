@@ -23,7 +23,14 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  Heart,
+  ChevronDown,
+  ChevronUp,
+  Unlink,
+  ShieldCheck,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { initiatePollinationsOAuth } from "@/services/pollinationsAuth";
 import { useToast } from "@/hooks/use-toast";
 import { db, supabase } from "@/lib/db";
 import { storage } from "@/lib/storage";
@@ -219,6 +226,8 @@ export default function Account() {
     refreshModels,
     pollinationsApiKey,
     setPollinationsApiKey,
+    isPollinationsSupporter,
+    setIsPollinationsSupporter,
     pollenBalance,
     refreshPollenBalance,
     addCustomModel,
@@ -238,6 +247,9 @@ export default function Account() {
   const [pollinationsKeyInput, setPollinationsKeyInput] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSavingKey, setIsSavingKey] = useState(false);
+  const [isConnectingPollinations, setIsConnectingPollinations] =
+    useState(false);
+  const [showManualKeyAccordion, setShowManualKeyAccordion] = useState(false);
 
   useEffect(() => {
     setPollinationsKeyInput(pollinationsApiKey || "");
@@ -545,6 +557,37 @@ export default function Account() {
       setIsSavingKey(false);
     }
   };
+
+  const handleConnectPollinations = async () => {
+    setIsConnectingPollinations(true);
+    try {
+      const result = await initiatePollinationsOAuth({
+        isSupporter: isPollinationsSupporter,
+      });
+      if (result?.apiKey) {
+        await setPollinationsApiKey(result.apiKey);
+        setIsPollinationsSupporter(result.isSupporter);
+        toast({
+          title: t(
+            "account.authSuccessToast",
+            undefined,
+            "Pollinations connected successfully!",
+          ),
+        });
+      }
+    } catch (err: any) {
+      if (err?.message && !err.message.includes("closed")) {
+        toast({
+          title: t("account.authFailedToast", undefined, "Connection Failed"),
+          description: err.message,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsConnectingPollinations(false);
+    }
+  };
+
 
   // Add Model Handlers for Pollinations
   const handleOpenAddModelModal = () => {
@@ -1114,7 +1157,7 @@ export default function Account() {
               </CardHeader>
             </Card>
 
-            {/* 2. Pollinations Account & API Key Section */}
+            {/* 2. Pollinations Account & 1-Click Connect Section */}
             <Card className="bg-slate-900/50 border-slate-800">
               <CardHeader>
                 <div className="flex items-center justify-between flex-wrap gap-2">
@@ -1132,29 +1175,40 @@ export default function Account() {
                         {t(
                           "account.pollinationsAccountDesc",
                           undefined,
-                          "Connect your Pollinations API key to unlock the Chatbot and query models.",
+                          "Connect your Pollinations account to unlock 100+ AI models and manage your Pollen wallet.",
                         )}
                       </CardDescription>
                     </div>
                   </div>
 
-                  {pollinationsApiKey ? (
-                    <Badge
-                      variant="outline"
-                      className="bg-emerald-950/40 border-emerald-800 text-emerald-300 text-xs px-2.5 py-1"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                      {t("account.configured", undefined, "Connected")}
-                    </Badge>
-                  ) : (
-                    <Badge
-                      variant="outline"
-                      className="bg-amber-950/30 border-amber-800/60 text-amber-300 text-xs px-2.5 py-1"
-                    >
-                      <AlertCircle className="w-3.5 h-3.5 mr-1" />
-                      {t("account.keyRequired", undefined, "API Key Required")}
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {pollinationsApiKey && isPollinationsSupporter && (
+                      <Badge
+                        variant="outline"
+                        className="bg-pink-950/40 border-pink-700 text-pink-300 text-xs px-2.5 py-1 flex items-center gap-1"
+                      >
+                        <Heart className="w-3 h-3 text-pink-400 fill-pink-400" />
+                        {t("account.supporterBadge", undefined, "Supporter (+25%)")}
+                      </Badge>
+                    )}
+                    {pollinationsApiKey ? (
+                      <Badge
+                        variant="outline"
+                        className="bg-emerald-950/40 border-emerald-800 text-emerald-300 text-xs px-2.5 py-1"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                        {t("account.configured", undefined, "Connected")}
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="bg-amber-950/30 border-amber-800/60 text-amber-300 text-xs px-2.5 py-1"
+                      >
+                        <AlertCircle className="w-3.5 h-3.5 mr-1" />
+                        {t("account.keyRequired", undefined, "Not Connected")}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
 
@@ -1180,154 +1234,297 @@ export default function Account() {
                   </p>
                 </div>
 
-                {/* Pollen Wallet Balance Bar */}
+                {/* Optional Supporter Toggle Box */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-amber-400/10 text-amber-300 flex items-center justify-center shrink-0">
-                      <Sparkles className="w-5 h-5" />
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <Heart className="w-5 h-5 fill-pink-400/20" />
                     </div>
-                    <div>
-                      <p className="text-xs text-slate-400">
-                        {t(
-                          "account.pollenWalletLabel",
-                          undefined,
-                          "Current Pollen Balance",
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-slate-200">
+                          {t(
+                            "account.supporterToggleTitle",
+                            undefined,
+                            "Support Oxygen Low's Software (+25% Pollen)",
+                          )}
+                        </p>
+                        {isPollinationsSupporter && (
+                          <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                            {t("account.active", undefined, "Active")}
+                          </span>
                         )}
-                      </p>
-                      <p className="text-base font-bold text-amber-200">
-                        {pollinationsApiKey && pollenBalance > 0
-                          ? `${Number(pollenBalance.toFixed(2))} Pollen`
-                          : "0 Pollen"}
+                      </div>
+                      <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+                        {t(
+                          "account.supporterToggleDesc",
+                          undefined,
+                          "Adds +25% pollen usage on requests. 20% of the total usage goes to the developer, of which more than 50% directly funds the development of Oxygen Low's Software.",
+                        )}
                       </p>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => refreshModels()}
-                      disabled={modelsLoading}
-                      className="border-slate-800 text-slate-300 hover:text-white text-xs h-8"
-                    >
-                      <RefreshCw
-                        className={`w-3.5 h-3.5 mr-1.5 ${modelsLoading ? "animate-spin" : ""}`}
-                      />
-                      {t("common.refresh", undefined, "Refresh")}
-                    </Button>
-                    <a
-                      href="https://enter.pollinations.ai/pollen"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs transition-colors"
-                    >
-                      <span>
-                        {t(
-                          "account.managePollen",
-                          undefined,
-                          "Manage Pollen / Top Up",
-                        )}
-                      </span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <Switch
+                      checked={isPollinationsSupporter}
+                      onCheckedChange={setIsPollinationsSupporter}
+                      aria-label="Supporter mode toggle"
+                    />
                   </div>
                 </div>
 
-                {/* API Key Input & Action Buttons */}
-                <div className="space-y-2 pt-1">
-                  <Label
-                    htmlFor="pollinations-api-key-input"
-                    className="text-xs font-medium text-slate-300"
-                  >
-                    {t(
-                      "account.pollinationsApiKeyLabel",
-                      undefined,
-                      "Pollinations API Key",
-                    )}
-                  </Label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Input
-                        id="pollinations-api-key-input"
-                        type={showApiKey ? "text" : "password"}
-                        value={pollinationsKeyInput}
-                        onChange={(e) => setPollinationsKeyInput(e.target.value)}
-                        placeholder={t(
-                          "account.apiKeyPlaceholder",
-                          undefined,
-                          "pk_... or sk_... from enter.pollinations.ai/keys",
-                        )}
-                        className="bg-slate-950 border-slate-800 text-xs text-white font-mono pr-9 h-9"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowApiKey((prev) => !prev)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                        title={
-                          showApiKey
-                            ? t("account.hideApiKey", undefined, "Hide key")
-                            : t("account.showApiKey", undefined, "Show key")
-                        }
-                        aria-label={
-                          showApiKey
-                            ? t("account.hideApiKey", undefined, "Hide key")
-                            : t("account.showApiKey", undefined, "Show key")
-                        }
-                        aria-pressed={showApiKey}
-                      >
-                        {showApiKey ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-
-                    <Button
-                      onClick={handleSaveApiKey}
-                      disabled={
-                        isSavingKey ||
-                        pollinationsKeyInput.trim() ===
-                          (pollinationsApiKey || "")
-                      }
-                      className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs h-9 px-4 shrink-0"
-                    >
-                      {isSavingKey ? (
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        t("common.save", undefined, "Save Key")
-                      )}
-                    </Button>
-
-                    {pollinationsApiKey && (
+                {/* 1-Click Connect Button or Pollen Balance & Actions */}
+                {!pollinationsApiKey ? (
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-indigo-950/40 border border-cyan-800/40 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-white">
+                          {t(
+                            "account.oneClickConnectTitle",
+                            undefined,
+                            "Fast 1-Click Pollinations Connect",
+                          )}
+                        </h4>
+                        <p className="text-xs text-slate-300">
+                          {t(
+                            "account.oneClickConnectSubtitle",
+                            undefined,
+                            "Authorize Oxygen Low's Software with GitHub or Discord in a few clicks without manually creating API keys.",
+                          )}
+                        </p>
+                      </div>
                       <Button
-                        variant="ghost"
-                        onClick={handleClearApiKey}
-                        disabled={isSavingKey}
-                        className="text-red-400 hover:text-red-300 hover:bg-red-950/20 text-xs h-9 px-3 shrink-0"
+                        onClick={handleConnectPollinations}
+                        disabled={isConnectingPollinations}
+                        className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-semibold px-5 h-9 shrink-0 shadow-lg shadow-cyan-950/50"
                       >
-                        {t("account.clearKey", undefined, "Clear")}
+                        {isConnectingPollinations ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" />
+                            {t(
+                              "account.connectingPollinations",
+                              undefined,
+                              "Connecting...",
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5 mr-2" />
+                            {t(
+                              "account.connectPollinations",
+                              undefined,
+                              "Connect with Pollinations",
+                            )}
+                          </>
+                        )}
                       </Button>
-                    )}
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center text-[11px] text-slate-400 pt-0.5">
-                    <span>
+                ) : (
+                  <>
+                    {/* Pollen Wallet Balance Bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-amber-400/10 text-amber-300 flex items-center justify-center shrink-0">
+                          <Sparkles className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-400">
+                            {t(
+                              "account.pollenWalletLabel",
+                              undefined,
+                              "Current Pollen Balance",
+                            )}
+                          </p>
+                          <p className="text-base font-bold text-amber-200">
+                            {pollinationsApiKey && pollenBalance > 0
+                              ? `${Number(pollenBalance.toFixed(2))} Pollen`
+                              : "0 Pollen"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => refreshModels()}
+                          disabled={modelsLoading}
+                          className="border-slate-800 text-slate-300 hover:text-white text-xs h-8"
+                        >
+                          <RefreshCw
+                            className={`w-3.5 h-3.5 mr-1.5 ${modelsLoading ? "animate-spin" : ""}`}
+                          />
+                          {t("common.refresh", undefined, "Refresh")}
+                        </Button>
+                        <a
+                          href="https://enter.pollinations.ai/pollen"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs transition-colors"
+                        >
+                          <span>
+                            {t(
+                              "account.managePollen",
+                              undefined,
+                              "Manage Pollen / Top Up",
+                            )}
+                          </span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleConnectPollinations}
+                          disabled={isConnectingPollinations}
+                          className="border-slate-800 text-slate-300 hover:text-white text-xs h-8"
+                          title="Reconnect or change between Standard and Supporter app"
+                        >
+                          <RefreshCw
+                            className={`w-3.5 h-3.5 mr-1.5 ${isConnectingPollinations ? "animate-spin" : ""}`}
+                          />
+                          {t(
+                            "account.reconnectPollinations",
+                            undefined,
+                            "Reconnect App",
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleClearApiKey}
+                          disabled={isSavingKey}
+                          className="text-red-400 hover:text-red-300 hover:bg-red-950/20 text-xs h-8"
+                        >
+                          <Unlink className="w-3.5 h-3.5 mr-1" />
+                          {t("account.disconnectPollinations", undefined, "Disconnect")}
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Collapsible Manual API Key Entry */}
+                <div className="pt-2 border-t border-slate-800/60">
+                  <button
+                    type="button"
+                    onClick={() => setShowManualKeyAccordion((prev) => !prev)}
+                    className="flex items-center justify-between w-full text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors py-1.5"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <KeyRound className="w-3.5 h-3.5" />
                       {t(
-                        "account.apiKeyHint",
+                        "account.manualKeyAccordion",
                         undefined,
-                        "Get or manage your API keys on the Pollinations Dashboard.",
+                        "Manual API Key Entry (Advanced)",
                       )}
                     </span>
-                    <a
-                      href="https://enter.pollinations.ai/keys"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-cyan-400 hover:underline inline-flex items-center gap-1"
-                    >
-                      enter.pollinations.ai/keys
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
+                    {showManualKeyAccordion ? (
+                      <ChevronUp className="w-4 h-4 text-slate-400" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                    )}
+                  </button>
+
+                  {showManualKeyAccordion && (
+                    <div className="space-y-2 pt-3">
+                      <Label
+                        htmlFor="pollinations-api-key-input"
+                        className="text-xs font-medium text-slate-300"
+                      >
+                        {t(
+                          "account.pollinationsApiKeyLabel",
+                          undefined,
+                          "Pollinations API Key",
+                        )}
+                      </Label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            id="pollinations-api-key-input"
+                            type={showApiKey ? "text" : "password"}
+                            value={pollinationsKeyInput}
+                            onChange={(e) =>
+                              setPollinationsKeyInput(e.target.value)
+                            }
+                            placeholder={t(
+                              "account.apiKeyPlaceholder",
+                              undefined,
+                              "pk_... or sk_... from enter.pollinations.ai/keys",
+                            )}
+                            className="bg-slate-950 border-slate-800 text-xs text-white font-mono pr-9 h-9"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowApiKey((prev) => !prev)}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                            title={
+                              showApiKey
+                                ? t("account.hideApiKey", undefined, "Hide key")
+                                : t("account.showApiKey", undefined, "Show key")
+                            }
+                            aria-label={
+                              showApiKey
+                                ? t("account.hideApiKey", undefined, "Hide key")
+                                : t("account.showApiKey", undefined, "Show key")
+                            }
+                            aria-pressed={showApiKey}
+                          >
+                            {showApiKey ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+
+                        <Button
+                          onClick={handleSaveApiKey}
+                          disabled={
+                            isSavingKey ||
+                            pollinationsKeyInput.trim() ===
+                              (pollinationsApiKey || "")
+                          }
+                          className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs h-9 px-4 shrink-0"
+                        >
+                          {isSavingKey ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            t("common.save", undefined, "Save Key")
+                          )}
+                        </Button>
+
+                        {pollinationsApiKey && (
+                          <Button
+                            variant="ghost"
+                            onClick={handleClearApiKey}
+                            disabled={isSavingKey}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-950/20 text-xs h-9 px-3 shrink-0"
+                          >
+                            {t("account.clearKey", undefined, "Clear")}
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex justify-between items-center text-[11px] text-slate-400 pt-0.5">
+                        <span>
+                          {t(
+                            "account.apiKeyHint",
+                            undefined,
+                            "Get or manage your API keys on the Pollinations Dashboard.",
+                          )}
+                        </span>
+                        <a
+                          href="https://enter.pollinations.ai/keys"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-cyan-400 hover:underline inline-flex items-center gap-1"
+                        >
+                          enter.pollinations.ai/keys
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

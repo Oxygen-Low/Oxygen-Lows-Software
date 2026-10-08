@@ -125,4 +125,25 @@ describe("useAiModels Hook (Pollinations Exclusive)", () => {
 
     expect(result.current.chatbotDefaultModel).toBe("deepseek-r1");
   });
+
+  it("toggles and persists pollinations supporter mode", async () => {
+    const { result } = renderHook(() => useAiModels(), { wrapper });
+
+    expect(result.current.isPollinationsSupporter).toBe(false);
+
+    act(() => {
+      result.current.setIsPollinationsSupporter(true);
+    });
+
+    expect(result.current.isPollinationsSupporter).toBe(true);
+    expect(localStorage.getItem("oxygen_pollinations_is_supporter")).toBe("true");
+
+    act(() => {
+      result.current.setIsPollinationsSupporter(false);
+    });
+
+    expect(result.current.isPollinationsSupporter).toBe(false);
+    expect(localStorage.getItem("oxygen_pollinations_is_supporter")).toBe("false");
+  });
 });
+

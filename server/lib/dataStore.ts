@@ -353,7 +353,7 @@ export function assertSafeDataPath(filePath: string): string {
   return resolved;
 }
 
-function readJsonFile<T = any>(filePath: string, defaultValue: T): T {
+export function readJsonFile<T = any>(filePath: string, defaultValue: T): T {
   try {
     const safePath = assertSafeDataPath(filePath);
     if (!fs.existsSync(safePath)) {

@@ -36,8 +36,11 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
+  Heart,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Switch } from "@/components/ui/switch";
+import { initiatePollinationsOAuth } from "@/services/pollinationsAuth";
 import {
   fetchImageModels,
   generateImage,
@@ -861,6 +864,8 @@ export function ChatbotApp() {
     refreshModels,
     pollinationsApiKey,
     setPollinationsApiKey,
+    isPollinationsSupporter,
+    setIsPollinationsSupporter,
     chatbotDefaultModel,
     setChatbotDefault,
     researchAgentDefaultModel,
@@ -868,6 +873,7 @@ export function ChatbotApp() {
   const [gateKeyInput, setGateKeyInput] = useState("");
   const [showGateKey, setShowGateKey] = useState(false);
   const [isSavingGateKey, setIsSavingGateKey] = useState(false);
+  const [isConnectingGate, setIsConnectingGate] = useState(false);
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [allMessages, setAllMessages] = useState<Message[]>([]);
@@ -2969,12 +2975,108 @@ export function ChatbotApp() {
             </p>
           </div>
 
+          {/* Supporter Toggle */}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/80 border border-slate-800 gap-3">
+            <div className="flex items-start gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-center shrink-0 mt-0.5">
+                <Heart className="w-4 h-4 fill-pink-400/20" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-200">
+                  {t(
+                    "account.supporterToggleTitle",
+                    undefined,
+                    "Support Oxygen Low's Software (+25% Pollen)",
+                  )}
+                </p>
+                <p className="text-[11px] text-slate-400 leading-tight">
+                  {t(
+                    "account.supporterToggleDescShort",
+                    undefined,
+                    "+25% pollen cost. 20% goes to dev, >50% funds platform development.",
+                  )}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={isPollinationsSupporter}
+              onCheckedChange={setIsPollinationsSupporter}
+              aria-label="Supporter mode toggle"
+            />
+          </div>
+
+          {/* 1-Click Connect Button */}
+          <Button
+            onClick={async () => {
+              setIsConnectingGate(true);
+              try {
+                const result = await initiatePollinationsOAuth({
+                  isSupporter: isPollinationsSupporter,
+                });
+                if (result?.apiKey) {
+                  await setPollinationsApiKey(result.apiKey);
+                  setIsPollinationsSupporter(result.isSupporter);
+                  toast.success(
+                    t(
+                      "account.authSuccessToast",
+                      undefined,
+                      "Pollinations connected successfully!",
+                    ),
+                  );
+                }
+              } catch (err: any) {
+                if (err?.message && !err.message.includes("closed")) {
+                  toast.error(
+                    err?.message ||
+                      t(
+                        "account.authFailedToast",
+                        undefined,
+                        "Failed to connect",
+                      ),
+                  );
+                }
+              } finally {
+                setIsConnectingGate(false);
+              }
+            }}
+            disabled={isConnectingGate}
+            className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-semibold h-10 shadow-lg shadow-cyan-950/50 gap-2"
+          >
+            {isConnectingGate ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {t(
+                  "account.connectingPollinations",
+                  undefined,
+                  "Connecting...",
+                )}
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                {t(
+                  "account.connectPollinations",
+                  undefined,
+                  "Connect with Pollinations (1-Click)",
+                )}
+              </>
+            )}
+          </Button>
+
+          <div className="relative flex py-1 items-center">
+            <div className="flex-grow border-t border-slate-800"></div>
+            <span className="flex-shrink mx-3 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+              {t("common.or", undefined, "Or")}
+            </span>
+            <div className="flex-grow border-t border-slate-800"></div>
+          </div>
+
           <div className="space-y-3">
             <label className="text-xs font-medium text-slate-300">
               {t(
                 "chatbot.enterApiKeyLabel",
                 undefined,
-                "Enter Pollinations API Key",
+                "Enter Pollinations API Key Manually",
               )}
             </label>
             <div className="relative">

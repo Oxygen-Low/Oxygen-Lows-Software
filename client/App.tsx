@@ -82,6 +82,9 @@ const Legal = lazyWithRetry(() => import("./pages/Legal"));
 const License = lazyWithRetry(() => import("./pages/License"));
 const Download = lazyWithRetry(() => import("./pages/Download"));
 const OAuthAuthorize = lazyWithRetry(() => import("./pages/OAuthAuthorize"));
+const PollinationsOAuthCallback = lazyWithRetry(
+  () => import("./pages/PollinationsOAuthCallback"),
+);
 const Partners = lazyWithRetry(() => import("./pages/Partners"));
 const AdminPartners = lazyWithRetry(() => import("./pages/AdminPartners"));
 const AgentsPortal = lazyWithRetry(() => import("./pages/AgentsPortal"));
@@ -117,6 +120,10 @@ const App = () => (
                       <Route path="/projects" element={<Projects />} />
                       <Route path="/projects/:projectId" element={<Projects />} />
                       <Route path="/oauth/authorize" element={<OAuthAuthorize />} />
+                      <Route
+                        path="/oauth/pollinations/callback"
+                        element={<PollinationsOAuthCallback />}
+                      />
                     <Route path="/banned-ips" element={<BannedIps />} />
                     <Route path="/webdefender/banned-ips" element={<BannedIps />} />
                     <Route path="/games" element={<Games />} />

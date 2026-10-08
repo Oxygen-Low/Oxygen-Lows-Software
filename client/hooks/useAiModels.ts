@@ -139,6 +139,7 @@ const DEFAULT_SUMMARIZER_MODEL = "inclusionai/ling-3.1-flash";
 const LOCAL_STORAGE_KEY_POLLINATIONS = "pollinations_api_key";
 const LOCAL_STORAGE_CUSTOM_MODELS = "pollinations_custom_models";
 const LOCAL_STORAGE_DEFAULTS = "pollinations_feature_defaults";
+const LOCAL_STORAGE_KEY_SUPPORTER = "oxygen_pollinations_is_supporter";
 
 export function useAiModels() {
   const [models, setModels] = useState<Model[]>(BUILTIN_MODELS);
@@ -160,6 +161,14 @@ export function useAiModels() {
       return "";
     },
   );
+  const [isPollinationsSupporter, setIsPollinationsSupporterState] =
+    useState<boolean>(() => {
+      try {
+        return localStorage.getItem(LOCAL_STORAGE_KEY_SUPPORTER) === "true";
+      } catch {
+        return false;
+      }
+    });
   const [pollenBalance, setPollenBalance] = useState<number>(0);
   const [isMasterKeyActive, setIsMasterKeyActive] = useState(false);
   const loadIdRef = useRef<number>(0);
@@ -516,6 +525,13 @@ export function useAiModels() {
     [],
   );
 
+  const setIsPollinationsSupporter = useCallback((val: boolean) => {
+    setIsPollinationsSupporterState(val);
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY_SUPPORTER, val ? "true" : "false");
+    } catch {}
+  }, []);
+
   const refreshModels = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -533,6 +549,8 @@ export function useAiModels() {
     refreshModels,
     pollinationsApiKey,
     setPollinationsApiKey,
+    isPollinationsSupporter,
+    setIsPollinationsSupporter,
     saveApiKey,
     getApiKey,
     isProviderConfigured,
@@ -561,3 +579,4 @@ export function useAiModels() {
     hordeStatus: {} as Record<string, any>,
   };
 }
+

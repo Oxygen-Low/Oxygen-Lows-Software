@@ -984,3 +984,64 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
     );
   }
 });
+
+aiRouter.get("/pollinations/config", (c) => {
+  const appKey = process.env.POLLINATIONS_APP?.trim() || null;
+  const supporterAppKey = process.env.POLLINATIONS_SUPPORTER_APP?.trim() || null;
+  return c.json({
+    configured: !!(appKey || supporterAppKey),
+    appKey,
+    supporterAppKey,
+    hasSupporterApp: !!supporterAppKey,
+  });
+});
+
+aiRouter.post("/pollinations/token", async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const { code, code_verifier, redirect_uri, client_id } = body;
+    if (!code || !code_verifier || !redirect_uri) {
+      return c.json(
+        { error: "code, code_verifier, and redirect_uri are required" },
+        400,
+      );
+    }
+
+    const effectiveClientId =
+      client_id ||
+      process.env.POLLINATIONS_APP?.trim() ||
+      process.env.POLLINATIONS_SUPPORTER_APP?.trim() ||
+      undefined;
+
+    const tokenResponse = await fetch(
+      "https://enter.pollinations.ai/api/oauth/token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          grant_type: "authorization_code",
+          code,
+          code_verifier,
+          redirect_uri,
+          ...(effectiveClientId ? { client_id: effectiveClientId } : {}),
+        }),
+      },
+    );
+
+    if (!tokenResponse.ok) {
+      const errText = await tokenResponse.text();
+      return c.json(
+        { error: `Pollinations token exchange failed: ${errText}` },
+        tokenResponse.status as any,
+      );
+    }
+
+    const data = await tokenResponse.json();
+    return c.json(data);
+  } catch (err: any) {
+    return c.json({ error: err?.message || "Token exchange failed" }, 500);
+  }
+});
+
