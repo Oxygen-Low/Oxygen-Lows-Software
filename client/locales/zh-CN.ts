@@ -219,9 +219,9 @@ export const zhCN = {
     supporterBadge: "支持者 (+25%)",
     supporterToggleTitle: "支持 Oxygen Low's Software (+25% 花粉)",
     supporterToggleDesc:
-      "每次请求增加25%的花粉消耗。总消耗的20%将归开发者所有，其中超过50%直接用于Oxygen Low's Software的持续开发。",
+      "每次请求增加25%的花粉消耗。总消耗的20%将归开发者所有，用于提供花粉以运行 GPT Astra 和 Sol 等高性能模型，从而进一步改进 Oxygen Low's Software。",
     supporterToggleDescShort:
-      "+25%花粉消耗。20%归开发者，50%以上用于平台开发。",
+      "+25%花粉消耗。20%归开发者用于高性能模型 (GPT Astra、Sol) 以持续改进平台。",
     oneClickConnectTitle: "快捷一键连接 Pollinations",
     oneClickConnectSubtitle:
       "无需手动创建 API 密钥，点击几下即可通过 GitHub 或 Discord 授权 Oxygen Low's Software。",

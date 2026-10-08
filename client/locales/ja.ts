@@ -227,9 +227,9 @@ export const ja = {
     supporterBadge: "サポーター (+25%)",
     supporterToggleTitle: "Oxygen Low's Software を支援する (+25% ポーレン)",
     supporterToggleDesc:
-      "リクエストに+25%のポーレン消費が加算されます。消費合計の20%が開発者に分配され、その50%以上がOxygen Low's Softwareの開発資金に直接充てられます。",
+      "リクエストに+25%のポーレン消費が加算されます。消費合計の20%が開発者に分配され、GPT Astra や Sol などの高性能モデルを使用して Oxygen Low's Software をさらに改善するためのポーレンとして活用されます。",
     supporterToggleDescShort:
-      "+25%ポーレン消費。20%が開発者へ、50%以上がプラットフォーム開発に充当。",
+      "+25%ポーレン消費。20%が開発者へ渡り、高性能モデル(GPT Astra, Sol等)での機能改善に活用。",
     oneClickConnectTitle: "高速1クリック Pollinations 接続",
     oneClickConnectSubtitle:
       "APIキーを手動で作成することなく、数クリックでGitHubまたはDiscordを使用してOxygen Low's Softwareを承認します。",

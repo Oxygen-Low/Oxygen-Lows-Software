@@ -230,9 +230,9 @@ export const ru = {
     supporterBadge: "Спонсор (+25%)",
     supporterToggleTitle: "Поддержать Oxygen Low's Software (+25% пыльцы)",
     supporterToggleDesc:
-      "Добавляет +25% к расходу пыльцы при запросах. 20% общего расхода идет разработчику, из которых более 50% направляется напрямую на разработку Oxygen Low's Software.",
+      "Добавляет +25% к расходу пыльцы при запросах. 20% общего расхода идет разработчику, предоставляя пыльцу для использования мощных моделей (таких как GPT Astra и Sol) для дальнейшего улучшения Oxygen Low's Software.",
     supporterToggleDescShort:
-      "+25% пыльцы. 20% разработчику, >50% идет на развитие платформы.",
+      "+25% пыльцы. 20% разработчику на мощные модели (GPT Astra, Sol) для улучшения платформы.",
     oneClickConnectTitle: "Быстрое подключение Pollinations в 1 клик",
     oneClickConnectSubtitle:
       "Авторизуйте Oxygen Low's Software через GitHub или Discord в несколько кликов без ручного создания API-ключей.",

@@ -233,9 +233,9 @@ export const es = {
     supporterBadge: "Partidario (+25%)",
     supporterToggleTitle: "Apoyar a Oxygen Low's Software (+25% de Polen)",
     supporterToggleDesc:
-      "Agrega un +25% de uso de polen en las solicitudes. El 20% del uso total se destina al desarrollador, del cual más del 50% financia directamente el desarrollo de Oxygen Low's Software.",
+      "Agrega un +25% de uso de polen en las solicitudes. El 20% del uso total se destina al desarrollador, proporcionando Polen para usar modelos de alta potencia (como GPT Astra y Sol) para seguir mejorando Oxygen Low's Software.",
     supporterToggleDescShort:
-      "+25% de costo de polen. El 20% va al desarrollador, >50% financia el desarrollo.",
+      "+25% de costo de polen. El 20% va al desarrollador para modelos de alta potencia (GPT Astra, Sol) para mejorar la plataforma.",
     oneClickConnectTitle: "Conexión rápida de Pollinations en 1 clic",
     oneClickConnectSubtitle:
       "Autorice Oxygen Low's Software con GitHub o Discord en pocos clics sin crear claves API manualmente.",

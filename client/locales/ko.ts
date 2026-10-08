@@ -224,9 +224,9 @@ export const ko = {
     supporterBadge: "서포터 (+25%)",
     supporterToggleTitle: "Oxygen Low's Software 후원하기 (+25% 폴렌)",
     supporterToggleDesc:
-      "요청 시 폴렌 사용량이 +25% 추가됩니다. 총 사용량의 20%가 개발자에게 전달되며, 이 중 50% 이상이 Oxygen Low's Software 개발에 직접 투자됩니다.",
+      "요청 시 폴렌 사용량이 +25% 추가됩니다. 총 사용량의 20%가 개발자에게 전달되어 GPT Astra 및 Sol과 같은 고성능 모델을 사용해 Oxygen Low's Software를 지속적으로 개선하는 데 쓰입니다.",
     supporterToggleDescShort:
-      "+25% 폴렌 비용. 20%는 개발자에게 가며, 50% 이상이 플랫폼 개발에 쓰입니다.",
+      "+25% 폴렌 비용. 20%는 개발자에게 전달되어 고성능 모델(GPT Astra, Sol)로 플랫폼을 개선합니다.",
     oneClickConnectTitle: "빠른 원클릭 Pollinations 연결",
     oneClickConnectSubtitle:
       "API 키를 수동으로 생성할 필요 없이 몇 번의 클릭만으로 GitHub 또는 Discord를 통해 Oxygen Low's Software를 인증하세요.",

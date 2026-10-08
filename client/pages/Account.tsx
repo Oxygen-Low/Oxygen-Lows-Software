@@ -1259,7 +1259,7 @@ export default function Account() {
                         {t(
                           "account.supporterToggleDesc",
                           undefined,
-                          "Adds +25% pollen usage on requests. 20% of the total usage goes to the developer, of which more than 50% directly funds the development of Oxygen Low's Software.",
+                          "Adds +25% pollen usage on requests. 20% of the total usage goes to the developer, providing Pollen to use high-power models (such as GPT Astra and Sol) to further improve Oxygen Low's Software.",
                         )}
                       </p>
                     </div>

@@ -225,9 +225,9 @@ export const en = {
     supporterBadge: "Supporter (+25%)",
     supporterToggleTitle: "Support Oxygen Low's Software (+25% Pollen)",
     supporterToggleDesc:
-      "Adds +25% pollen usage on requests. 20% of the total usage goes to the developer, of which more than 50% directly funds the development of Oxygen Low's Software.",
+      "Adds +25% pollen usage on requests. 20% of the total usage goes to the developer, providing Pollen to use high-power models (such as GPT Astra and Sol) to further improve Oxygen Low's Software.",
     supporterToggleDescShort:
-      "+25% pollen cost. 20% goes to dev, >50% funds platform development.",
+      "+25% pollen cost. 20% goes to dev for high-power models (GPT Astra, Sol) to improve the platform.",
     oneClickConnectTitle: "Fast 1-Click Pollinations Connect",
     oneClickConnectSubtitle:
       "Authorize Oxygen Low's Software with GitHub or Discord in a few clicks without manually creating API keys.",

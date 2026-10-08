@@ -2993,7 +2993,7 @@ export function ChatbotApp() {
                   {t(
                     "account.supporterToggleDescShort",
                     undefined,
-                    "+25% pollen cost. 20% goes to dev, >50% funds platform development.",
+                    "+25% pollen cost. 20% goes to dev for high-power models (GPT Astra, Sol) to improve the platform.",
                   )}
                 </p>
               </div>
