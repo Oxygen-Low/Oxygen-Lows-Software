@@ -863,6 +863,7 @@ export function ChatbotApp() {
     models,
     refreshModels,
     pollinationsApiKey,
+    isPollinationsConfigured,
     setPollinationsApiKey,
     isPollinationsSupporter,
     setIsPollinationsSupporter,
@@ -1572,6 +1573,47 @@ export function ChatbotApp() {
     };
 
     if (provider === "pollinations") {
+      const isDirectKey = apiKey && (apiKey.startsWith("pk_") || apiKey.startsWith("sk_"));
+      if (!isDirectKey && session?.access_token) {
+        try {
+          const fetchOptions: RequestInit = {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            signal,
+            body: JSON.stringify({
+              provider: "pollinations",
+              model: model || "inclusionai/ling-3.1-flash",
+              messages: msgs,
+              stream: true,
+            }),
+          };
+          const res = await fetch("/api/ai/proxy", fetchOptions);
+          if (!res.ok) {
+            throw new Error(await parseAiProxyError(res));
+          }
+          return await streamResponseData(res, "pollinations");
+        } catch (err: any) {
+          console.warn(
+            "Pollinations proxy stream failed, falling back to Horde:",
+            err,
+          );
+          try {
+            return await runHordeFallback(
+              HORDE_FALLBACK_FAST_MODEL,
+              "rate_limit",
+            );
+          } catch (fastErr: any) {
+            return await runHordeFallback(
+              HORDE_FALLBACK_SMART_MODEL,
+              "rate_limit",
+            );
+          }
+        }
+      }
+
       try {
         let directContent = "";
         await streamPollinationsClient({
@@ -1581,7 +1623,7 @@ export function ChatbotApp() {
             content: m.content || "",
           })),
           signal,
-          apiKey: apiKey || undefined,
+          apiKey: isDirectKey ? apiKey : undefined,
           onChunk: (delta) => {
             directContent += delta;
             streamCallback(directContent);
@@ -2924,7 +2966,11 @@ export function ChatbotApp() {
     );
   }
 
-  if (!pollinationsApiKey || !pollinationsApiKey.trim()) {
+  const isConfigured =
+    isPollinationsConfigured ||
+    (!!pollinationsApiKey && pollinationsApiKey.trim().length > 0);
+
+  if (!isConfigured) {
     return (
       <div className="relative min-h-[calc(100vh-61px)] sm:min-h-[calc(100vh-73px)] w-full flex items-center justify-center p-4 bg-slate-950 text-white overflow-hidden">
         <InteractiveBackground />

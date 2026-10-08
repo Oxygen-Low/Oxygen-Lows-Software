@@ -48,12 +48,32 @@ describe("useAiModels Hook (Pollinations Exclusive)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve({ ok: true }),
-      text: () => Promise.resolve(""),
-    } as unknown as Response);
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/api/ai/keys")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              prefix: "pk_test_12345",
+              keys: [
+                {
+                  provider: "pollinations",
+                  prefix: "pk_test_12345",
+                  isConfigured: true,
+                },
+              ],
+            }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ ok: true, balance: 15.5, pollen: 15.5 }),
+        text: () => Promise.resolve(""),
+      } as unknown as Response);
+    });
   });
 
   afterEach(() => {
@@ -73,7 +93,7 @@ describe("useAiModels Hook (Pollinations Exclusive)", () => {
     ).toBe(true);
   });
 
-  it("manages Pollinations API key and queries Pollen balance", async () => {
+  it("manages Pollinations API key server-side and queries Pollen balance", async () => {
     const { result } = renderHook(() => useAiModels(), { wrapper });
 
     expect(result.current.pollinationsApiKey).toBe("");
@@ -84,7 +104,7 @@ describe("useAiModels Hook (Pollinations Exclusive)", () => {
       await result.current.setPollinationsApiKey("pk_test_12345");
     });
 
-    expect(result.current.pollinationsApiKey).toBe("pk_test_12345");
+    expect(result.current.isPollinationsConfigured).toBe(true);
     expect(result.current.isProviderConfigured("pollinations")).toBe(true);
     expect(result.current.configuredProviders).toContain("pollinations");
     expect(result.current.pollenBalance).toBe(15.5);

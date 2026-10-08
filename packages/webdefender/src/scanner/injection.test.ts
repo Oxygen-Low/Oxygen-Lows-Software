@@ -195,6 +195,34 @@ describe("scanRequest", () => {
     });
     expect(ssrfInReferer.threats.some((t) => t.type === "ssrf")).toBe(true);
 
+    const safeLanReferer = scanRequest("GET", "/account", {}, "", {
+      referer: "http://192.168.1.50:5000/account",
+    });
+    expect(safeLanReferer.threats.some((t) => t.type === "ssrf")).toBe(false);
+
+    const safeLocalhostReferer = scanRequest("GET", "/apps/chatbot", {}, "", {
+      referer: "http://127.0.0.1:5000/apps/chatbot",
+    });
+    expect(safeLocalhostReferer.threats.some((t) => t.type === "ssrf")).toBe(false);
+
+    const ssrfInQuery = scanRequest(
+      "GET",
+      "/api/proxy",
+      { target: "http://192.168.1.1/admin" },
+      "",
+      {},
+    );
+    expect(ssrfInQuery.threats.some((t) => t.type === "ssrf")).toBe(true);
+
+    const ssrfInBody = scanRequest(
+      "POST",
+      "/api/webhooks",
+      {},
+      JSON.stringify({ endpoint: "http://10.0.0.1:8080/internal" }),
+      {},
+    );
+    expect(ssrfInBody.threats.some((t) => t.type === "ssrf")).toBe(true);
+
     const xssInQuery = scanRequest(
       "GET",
       "/search",

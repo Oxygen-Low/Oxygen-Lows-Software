@@ -977,6 +977,46 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
   }
 });
 
+aiRouter.get("/pollinations/balance", apiLimiter, async (c) => {
+  const authHeader = c.req.header("authorization");
+  const token = extractBearerToken(authHeader);
+  let user = null;
+  if (token && token !== "undefined" && token !== "null") {
+    user = await resolveUserFromToken(token);
+  }
+  let effectiveApiKey = "";
+  if (user?.id) {
+    effectiveApiKey = (await getUserApiKey(user.id, "pollinations")) || "";
+  }
+  if (!effectiveApiKey) {
+    effectiveApiKey = process.env.POLLINATIONS_API_KEY || "";
+  }
+  if (!effectiveApiKey) {
+    return c.json({ balance: 0, pollen: 0 });
+  }
+
+  try {
+    const res = await fetch("https://gen.pollinations.ai/account/balance", {
+      headers: { Authorization: `Bearer ${effectiveApiKey}` },
+    });
+    if (!res.ok) {
+      return c.json({ balance: 0, pollen: 0 });
+    }
+    const data = await res.json();
+    const balance =
+      typeof data?.pollen === "number"
+        ? data.pollen
+        : typeof data?.balance === "number"
+        ? data.balance
+        : typeof data?.credits === "number"
+        ? data.credits
+        : 0;
+    return c.json({ balance, pollen: balance });
+  } catch {
+    return c.json({ balance: 0, pollen: 0 });
+  }
+});
+
 aiRouter.get("/pollinations/config", (c) => {
   const appKey = process.env.POLLINATIONS_APP?.trim() || null;
   const supporterAppKey = process.env.POLLINATIONS_SUPPORTER_APP?.trim() || null;

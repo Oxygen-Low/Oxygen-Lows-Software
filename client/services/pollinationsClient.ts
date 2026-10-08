@@ -325,41 +325,64 @@ export interface PollinationsBalanceResult {
 
 /**
  * Fetches the user's Pollen wallet balance from Pollinations AI.
- * If no key is provided or the endpoint returns an error/empty, returns 0.
+ * If a direct key is provided, calls Pollinations directly.
+ * Otherwise, queries the server balance endpoint using the authenticated session.
  */
 export async function fetchPollinationsBalance(
-  apiKey?: string | null,
+  tokenOrKey?: string | null,
 ): Promise<number> {
-  if (!apiKey || !apiKey.trim()) {
-    return 0;
-  }
+  const trimmed = tokenOrKey ? tokenOrKey.trim() : "";
 
-  try {
-    const response = await fetch("https://gen.pollinations.ai/account/balance", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiKey.trim()}`,
-      },
-    });
+  // If a direct Pollinations key (pk_... / sk_...) is provided, fetch directly
+  if (trimmed && (trimmed.startsWith("pk_") || trimmed.startsWith("sk_"))) {
+    try {
+      const response = await fetch(
+        "https://gen.pollinations.ai/account/balance",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${trimmed}`,
+          },
+        },
+      );
 
-    if (!response || !response.ok || typeof response.json !== "function") {
+      if (!response || !response.ok || typeof response.json !== "function") {
+        return 0;
+      }
+
+      const data = await response.json();
+      if (typeof data?.pollen === "number") {
+        return data.pollen;
+      }
+      if (typeof data?.balance === "number") {
+        return data.pollen || data.balance;
+      }
+      if (typeof data?.credits === "number") {
+        return data.credits;
+      }
+      return 0;
+    } catch (err) {
+      console.warn("Failed to fetch Pollinations balance:", err);
       return 0;
     }
-
-    const data = await response.json();
-    if (typeof data?.pollen === "number") {
-      return data.pollen;
-    }
-    if (typeof data?.balance === "number") {
-      return data.pollen || data.balance;
-    }
-    if (typeof data?.credits === "number") {
-      return data.credits;
-    }
-    return 0;
-  } catch (err) {
-    console.warn("Failed to fetch Pollinations balance:", err);
-    return 0;
   }
+
+  // Otherwise, query the server-side balance endpoint with the session token
+  try {
+    const headers: Record<string, string> = {};
+    if (trimmed) {
+      headers["Authorization"] = `Bearer ${trimmed}`;
+    }
+    const res = await fetch("/api/ai/pollinations/balance", { headers });
+    if (res.ok) {
+      const data = await res.json();
+      if (typeof data?.pollen === "number") return data.pollen;
+      if (typeof data?.balance === "number") return data.balance;
+    }
+  } catch (err) {
+    console.warn("Failed to fetch Pollinations balance from server:", err);
+  }
+
+  return 0;
 }
 

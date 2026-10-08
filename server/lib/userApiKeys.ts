@@ -209,7 +209,7 @@ export async function getUserApiKey(
  */
 export async function getAllUserApiKeys(
   userId: string | number,
-): Promise<Array<{ id: string; provider: string; prefix: string; updated_at: string }>> {
+): Promise<Array<{ id: string; provider: string; prefix: string; isConfigured: boolean; updated_at: string }>> {
   const cleanUserId = String(userId).trim();
   if (!cleanUserId) return [];
 
@@ -224,6 +224,7 @@ export async function getAllUserApiKeys(
     id: r.id || `${r.provider}`,
     provider: r.provider,
     prefix: r.prefix || (r.encrypted_key ? "configured" : ""),
+    isConfigured: !!r.encrypted_key,
     updated_at: r.updated_at || r.created_at || new Date().toISOString(),
   }));
 }

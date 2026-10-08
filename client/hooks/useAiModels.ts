@@ -120,22 +120,8 @@ export function useAiModels() {
   const [models, setModels] = useState<Model[]>(BUILTIN_MODELS);
   const [customModels, setCustomModels] = useState<Model[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [pollinationsApiKey, setPollinationsApiKeyState] = useState<string>(
-    () => {
-      try {
-        const direct =
-          localStorage.getItem(LOCAL_STORAGE_KEY_POLLINATIONS) ||
-          localStorage.getItem("oxygen_pollinations_api_key");
-        if (direct && direct.trim()) return direct.trim();
-        const legacy = localStorage.getItem("oxygen_api_keys");
-        if (legacy) {
-          const parsed = JSON.parse(legacy);
-          if (parsed?.pollinations) return parsed.pollinations;
-        }
-      } catch {}
-      return "";
-    },
-  );
+  const [pollinationsApiKey, setPollinationsApiKeyState] = useState<string>("");
+  const [isPollinationsConfigured, setIsPollinationsConfigured] = useState<boolean>(false);
   const [isPollinationsSupporter, setIsPollinationsSupporterState] =
     useState<boolean>(() => {
       try {
@@ -224,57 +210,66 @@ export function useAiModels() {
     } catch {}
   }, []);
 
-  // Load Pollinations API Key
-  const loadApiKey = useCallback(async () => {
-    const currentLoadId = ++loadIdRef.current;
-    let key = "";
+  // Purge legacy unencrypted keys from client-side localStorage
+  useEffect(() => {
     try {
-      const direct =
-        localStorage.getItem(LOCAL_STORAGE_KEY_POLLINATIONS) ||
-        localStorage.getItem("oxygen_pollinations_api_key");
-      if (direct && direct.trim()) {
-        key = direct.trim();
-      } else {
-        const legacyEncrypted = localStorage.getItem("oxygen_api_keys");
-        if (legacyEncrypted) {
-          const parsed = JSON.parse(legacyEncrypted);
-          if (parsed?.pollinations) {
-            key = parsed.pollinations;
-          }
+      localStorage.removeItem(LOCAL_STORAGE_KEY_POLLINATIONS);
+      localStorage.removeItem("oxygen_pollinations_api_key");
+      const legacy = localStorage.getItem("oxygen_api_keys");
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        if (parsed?.pollinations) {
+          delete parsed.pollinations;
+          localStorage.setItem("oxygen_api_keys", JSON.stringify(parsed));
         }
       }
+    } catch {}
+  }, []);
 
-      if (!key && supabase?.auth?.getSession) {
-        const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: null }));
-        const token = sessionData?.session?.access_token;
-        if (token && typeof window !== "undefined" && window.location?.origin && window.location.origin !== "null") {
+  // Load Pollinations API Key status from server
+  const loadApiKey = useCallback(async () => {
+    const currentLoadId = ++loadIdRef.current;
+    let configured = false;
+    let displayPrefix = "";
+    let sessionToken = "";
+
+    try {
+      if (supabase?.auth?.getSession) {
+        const { data: sessionData } = await supabase.auth
+          .getSession()
+          .catch(() => ({ data: null }));
+        sessionToken = sessionData?.session?.access_token || "";
+
+        if (sessionToken && typeof window !== "undefined") {
           try {
-            const url = new URL("/api/ai/keys", window.location.origin).toString();
-            const res = await fetch(url, {
-              headers: { Authorization: `Bearer ${token}` },
+            const res = await fetch("/api/ai/keys", {
+              headers: { Authorization: `Bearer ${sessionToken}` },
             });
             if (res.ok) {
               const data = await res.json();
               const polliKey = data?.keys?.find(
                 (k: any) => k.provider === "pollinations",
               );
-              if (polliKey?.key) {
-                key = polliKey.key;
+              if (polliKey) {
+                configured = true;
+                displayPrefix = polliKey.prefix || "configured";
               }
             }
           } catch {}
         }
       }
     } catch (e) {
-      console.warn("Failed to load pollinations api key", e);
+      console.warn("Failed to load pollinations api key status", e);
     }
 
     if (currentLoadId !== loadIdRef.current) return;
 
-    setPollinationsApiKeyState(key);
-    if (key) {
+    setIsPollinationsConfigured(configured);
+    setPollinationsApiKeyState(displayPrefix);
+
+    if (configured && sessionToken) {
       try {
-        const bal = await fetchPollinationsBalance(key);
+        const bal = await fetchPollinationsBalance(sessionToken);
         if (currentLoadId === loadIdRef.current) {
           setPollenBalance(bal);
         }
@@ -303,14 +298,18 @@ export function useAiModels() {
   }, [customModels]);
 
   const refreshPollenBalance = useCallback(
-    async (keyToUse?: string) => {
-      const activeKey = keyToUse !== undefined ? keyToUse : pollinationsApiKey;
-      if (!activeKey || !activeKey.trim()) {
-        setPollenBalance(0);
-        return 0;
-      }
+    async (tokenToUse?: string) => {
       try {
-        const bal = await fetchPollinationsBalance(activeKey);
+        let token = tokenToUse;
+        if (!token && supabase?.auth?.getSession) {
+          const { data } = await supabase.auth.getSession().catch(() => ({ data: null }));
+          token = data?.session?.access_token;
+        }
+        if (!token) {
+          setPollenBalance(0);
+          return 0;
+        }
+        const bal = await fetchPollinationsBalance(token);
         setPollenBalance(bal);
         return bal;
       } catch {
@@ -318,60 +317,51 @@ export function useAiModels() {
         return 0;
       }
     },
-    [pollinationsApiKey],
+    [],
   );
 
   const setPollinationsApiKey = useCallback(
     async (key: string) => {
       loadIdRef.current++;
       const trimmed = key.trim();
-      setPollinationsApiKeyState(trimmed);
-      try {
-        if (trimmed) {
-          localStorage.setItem(LOCAL_STORAGE_KEY_POLLINATIONS, trimmed);
-          // Also sync to legacy map for cross-component compatibility
-          const legacy = localStorage.getItem("oxygen_api_keys");
-          const parsed = legacy ? JSON.parse(legacy) : {};
-          parsed.pollinations = trimmed;
-          localStorage.setItem("oxygen_api_keys", JSON.stringify(parsed));
-        } else {
-          localStorage.removeItem(LOCAL_STORAGE_KEY_POLLINATIONS);
-          localStorage.removeItem("oxygen_pollinations_api_key");
-          const legacy = localStorage.getItem("oxygen_api_keys");
-          if (legacy) {
-            const parsed = JSON.parse(legacy);
-            delete parsed.pollinations;
-            localStorage.setItem("oxygen_api_keys", JSON.stringify(parsed));
-          }
-        }
 
-        // Sync to server if authenticated
+      try {
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData?.session?.access_token;
-        if (token && typeof window !== "undefined" && window.location?.origin && window.location.origin !== "null") {
+
+        if (token) {
           if (trimmed) {
-            const url = new URL("/api/ai/keys", window.location.origin).toString();
-            const res = await fetch(url, {
+            const res = await fetch("/api/ai/keys", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
               },
-              body: JSON.stringify({ provider: "pollinations", apiKey: trimmed, key: trimmed }),
+              body: JSON.stringify({
+                provider: "pollinations",
+                apiKey: trimmed,
+                key: trimmed,
+              }),
             });
             if (!res.ok) {
               let errorMsg = `Failed to save API key to server (${res.status})`;
               try {
                 const errData = await res.json();
                 if (errData?.error) {
-                  errorMsg = typeof errData.error === "string" ? errData.error : JSON.stringify(errData.error);
+                  errorMsg =
+                    typeof errData.error === "string"
+                      ? errData.error
+                      : JSON.stringify(errData.error);
                 }
               } catch {}
               throw new Error(errorMsg);
             }
+            const data = await res.json();
+            setIsPollinationsConfigured(true);
+            setPollinationsApiKeyState(data.prefix || "configured");
+            await refreshPollenBalance(token);
           } else {
-            const url = new URL("/api/ai/keys/pollinations", window.location.origin).toString();
-            const res = await fetch(url, {
+            const res = await fetch("/api/ai/keys/pollinations", {
               method: "DELETE",
               headers: { Authorization: `Bearer ${token}` },
             });
@@ -380,19 +370,25 @@ export function useAiModels() {
               try {
                 const errData = await res.json();
                 if (errData?.error) {
-                  errorMsg = typeof errData.error === "string" ? errData.error : JSON.stringify(errData.error);
+                  errorMsg =
+                    typeof errData.error === "string"
+                      ? errData.error
+                      : JSON.stringify(errData.error);
                 }
               } catch {}
               throw new Error(errorMsg);
             }
+            setIsPollinationsConfigured(false);
+            setPollinationsApiKeyState("");
+            setPollenBalance(0);
           }
+        } else {
+          throw new Error("You must be logged in to save your Pollinations connection.");
         }
       } catch (e) {
         console.error("Failed to save pollinations API key:", e);
         throw e;
       }
-
-      await refreshPollenBalance(trimmed);
     },
     [refreshPollenBalance],
   );
@@ -419,16 +415,16 @@ export function useAiModels() {
   const isProviderConfigured = useCallback(
     (provider: string) => {
       if (provider.toLowerCase() === "pollinations") {
-        return !!pollinationsApiKey && pollinationsApiKey.trim().length > 0;
+        return isPollinationsConfigured;
       }
       return false;
     },
-    [pollinationsApiKey],
+    [isPollinationsConfigured],
   );
 
   const configuredProviders = useMemo(() => {
-    return pollinationsApiKey && pollinationsApiKey.trim() ? ["pollinations"] : [];
-  }, [pollinationsApiKey]);
+    return isPollinationsConfigured ? ["pollinations"] : [];
+  }, [isPollinationsConfigured]);
 
   const addCustomModel = useCallback(
     async (newModel: { model_id: string; name?: string; provider?: string }) => {
@@ -523,6 +519,7 @@ export function useAiModels() {
     isLoading,
     refreshModels,
     pollinationsApiKey,
+    isPollinationsConfigured,
     setPollinationsApiKey,
     isPollinationsSupporter,
     setIsPollinationsSupporter,

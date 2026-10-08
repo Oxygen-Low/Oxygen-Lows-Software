@@ -177,16 +177,20 @@ export function scanRequest(
   const threats: Array<{ type: EventType; pattern: string }> = [];
 
   const inputs: string[] = [path, body];
+  const ssrfInputs: string[] = [path, body];
 
   for (const key in query) {
     inputs.push(key);
+    ssrfInputs.push(key);
     const val = query[key];
     if (Array.isArray(val)) {
       for (let i = 0; i < val.length; i++) {
         inputs.push(val[i]);
+        ssrfInputs.push(val[i]);
       }
     } else if (val) {
       inputs.push(val);
+      ssrfInputs.push(val);
     }
   }
 
@@ -197,14 +201,22 @@ export function scanRequest(
       if (Array.isArray(val)) {
         for (let i = 0; i < val.length; i++) {
           inputs.push(val[i]);
+          // Referer/cookie headers only trigger SSRF if targeting cloud metadata services (e.g. 169.254.169.254)
+          if (/169\.254\.\d+\.\d+/.test(val[i])) {
+            ssrfInputs.push(val[i]);
+          }
         }
       } else if (val) {
         inputs.push(val);
+        if (/169\.254\.\d+\.\d+/.test(val)) {
+          ssrfInputs.push(val);
+        }
       }
     }
   }
 
   const combinedInput = inputs.join(" ");
+  const combinedSsrfInput = ssrfInputs.join(" ");
 
   const sqlCheck = detectSqlInjection(combinedInput);
   if (sqlCheck.detected && sqlCheck.pattern)
@@ -218,7 +230,7 @@ export function scanRequest(
   if (traversalCheck.detected && traversalCheck.pattern)
     threats.push({ type: "path_traversal", pattern: traversalCheck.pattern });
 
-  const ssrfCheck = detectSsrf(combinedInput);
+  const ssrfCheck = detectSsrf(combinedSsrfInput);
   if (ssrfCheck.detected && ssrfCheck.pattern)
     threats.push({ type: "ssrf", pattern: ssrfCheck.pattern });
 

@@ -4,6 +4,7 @@ import { exchangePollinationsAuthCode } from "../services/pollinationsAuth";
 import { Loader2, CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { useTranslation } from "../contexts/LanguageContext";
+import { supabase } from "../lib/db";
 
 export default function PollinationsOAuthCallback() {
   const [searchParams] = useSearchParams();
@@ -37,6 +38,32 @@ export default function PollinationsOAuthCallback() {
         return;
       }
 
+      // Helper to sync key to server-side encrypted storage
+      const syncKeyToServer = async (apiKey: string) => {
+        try {
+          const { data: sessionData } = await supabase.auth
+            .getSession()
+            .catch(() => ({ data: null }));
+          const token = sessionData?.session?.access_token;
+          if (token) {
+            await fetch("/api/ai/keys", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                provider: "pollinations",
+                apiKey: apiKey.trim(),
+                key: apiKey.trim(),
+              }),
+            });
+          }
+        } catch (e) {
+          console.warn("Failed to sync key to server in callback:", e);
+        }
+      };
+
       // Check URL hash for direct token/api_key
       const hash = window.location.hash.substring(1);
       const hashParams = new URLSearchParams(hash);
@@ -47,12 +74,7 @@ export default function PollinationsOAuthCallback() {
           (sessionStorage.getItem("pollinations_auth_is_supporter") ||
             localStorage.getItem("pollinations_auth_is_supporter")) === "true";
 
-        localStorage.setItem("pollinations_api_key", hashApiKey.trim());
-        localStorage.setItem("oxygen_pollinations_api_key", hashApiKey.trim());
-        localStorage.setItem(
-          "oxygen_pollinations_is_supporter",
-          isSupporter ? "true" : "false",
-        );
+        await syncKeyToServer(hashApiKey);
 
         if (window.opener) {
           window.opener.postMessage(
@@ -94,12 +116,7 @@ export default function PollinationsOAuthCallback() {
       try {
         const result = await exchangePollinationsAuthCode({ code, state });
 
-        localStorage.setItem("pollinations_api_key", result.apiKey);
-        localStorage.setItem("oxygen_pollinations_api_key", result.apiKey);
-        localStorage.setItem(
-          "oxygen_pollinations_is_supporter",
-          result.isSupporter ? "true" : "false",
-        );
+        await syncKeyToServer(result.apiKey);
 
         if (window.opener) {
           window.opener.postMessage(

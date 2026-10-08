@@ -256,11 +256,15 @@ export async function exchangePollinationsAuthCode({
     undefined;
 
   if (savedState && state && savedState !== state) {
-    throw new Error("OAuth state verification mismatch. Possible CSRF attack.");
+    throw new Error(
+      "OAuth authentication state mismatch. Please retry connecting your Pollinations account.",
+    );
   }
 
   if (!codeVerifier) {
-    throw new Error("Missing PKCE code verifier in session.");
+    throw new Error(
+      "Missing PKCE authorization verifier. Please retry connecting your Pollinations account.",
+    );
   }
 
   const redirectUri = getPollinationsRedirectUri();

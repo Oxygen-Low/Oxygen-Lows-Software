@@ -225,6 +225,7 @@ export default function Account() {
     isLoading: modelsLoading,
     refreshModels,
     pollinationsApiKey,
+    isPollinationsConfigured,
     setPollinationsApiKey,
     isPollinationsSupporter,
     setIsPollinationsSupporter,
@@ -250,6 +251,10 @@ export default function Account() {
   const [isConnectingPollinations, setIsConnectingPollinations] =
     useState(false);
   const [showManualKeyAccordion, setShowManualKeyAccordion] = useState(false);
+
+  const isPollinationsConnected =
+    isPollinationsConfigured ||
+    (!!pollinationsApiKey && pollinationsApiKey.trim().length > 0);
 
   useEffect(() => {
     setPollinationsKeyInput(pollinationsApiKey || "");
@@ -1178,7 +1183,7 @@ export default function Account() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {pollinationsApiKey && isPollinationsSupporter && (
+                    {isPollinationsConnected && isPollinationsSupporter && (
                       <Badge
                         variant="outline"
                         className="bg-pink-950/40 border-pink-700 text-pink-300 text-xs px-2.5 py-1 flex items-center gap-1"
@@ -1187,7 +1192,7 @@ export default function Account() {
                         {t("account.supporterBadge", undefined, "Supporter (+25%)")}
                       </Badge>
                     )}
-                    {pollinationsApiKey ? (
+                    {isPollinationsConnected ? (
                       <Badge
                         variant="outline"
                         className="bg-emerald-950/40 border-emerald-800 text-emerald-300 text-xs px-2.5 py-1"
@@ -1270,7 +1275,7 @@ export default function Account() {
                 </div>
 
                 {/* 1-Click Connect Button or Pollen Balance & Actions */}
-                {!pollinationsApiKey ? (
+                {!isPollinationsConnected ? (
                   <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-indigo-950/40 border border-cyan-800/40 space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
@@ -1333,7 +1338,7 @@ export default function Account() {
                             )}
                           </p>
                           <p className="text-base font-bold text-amber-200">
-                            {pollinationsApiKey && pollenBalance > 0
+                            {isPollinationsConnected && pollenBalance > 0
                               ? `${Number(pollenBalance.toFixed(2))} Pollen`
                               : "0 Pollen"}
                           </p>
@@ -1490,7 +1495,7 @@ export default function Account() {
                           )}
                         </Button>
 
-                        {pollinationsApiKey && (
+                        {isPollinationsConnected && (
                           <Button
                             variant="ghost"
                             onClick={handleClearApiKey}
