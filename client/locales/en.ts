@@ -208,9 +208,9 @@ export const en = {
     pollinationsAccountTitle: "Pollinations Account & API Key",
     pollinationsAccountDesc:
       "Connect your Pollinations API key to unlock the Chatbot and query models.",
-    freeTierNoticeTitle: "Free Tier & Community Model Support",
+    freeTierNoticeTitle: "Free Tier & Official Model Support",
     freeTierNoticeText:
-      "Most models on Pollinations are 100% free to use, with community model support and an official free model tier. You can also connect private models and external providers via Pollinations without maintaining separate credentials.",
+      "Most models on Pollinations are 100% free to use with an official free model tier. You can also connect private models and external providers via Pollinations without maintaining separate credentials.",
     pollenWalletLabel: "Current Pollen Balance",
     managePollen: "Manage Pollen / Top Up",
     pollinationsApiKeyLabel: "Pollinations API Key",
@@ -247,7 +247,7 @@ export const en = {
     registerModel: "Register Model",
     addCustomModelTitle: "Register AI Model",
     addCustomModelDesc:
-      "Register a custom or community model hosted on Pollinations AI.",
+      "Register a custom model hosted on Pollinations AI.",
     provider: "Provider",
     selectProvider: "Select a provider",
     modelPreset: "Model Preset",
@@ -275,9 +275,6 @@ export const en = {
     standardModels: "Standard Models",
     questPollenNotice:
       "All models in this section use quest pollen, not paid pollen.",
-    communityModels: "Community Models",
-    communityDisclaimer:
-      "These community models may store data or be unreliable.",
     customModels: "Custom Models",
     configured: "Connected",
     notConfigured: "API Key Required",
@@ -3091,9 +3088,9 @@ export const en = {
   chatbot: {
     pollinationsRequiredTitle: "Pollinations AI Setup Required",
     pollinationsRequiredSubtitle: "Connect your API key to access Chatbot",
-    freeTierInfoTitle: "100% Free & Community Models",
+    freeTierInfoTitle: "100% Free Models",
     freeTierInfoText:
-      "Most models on Pollinations are completely free to use! Pollinations provides official free models, community models, and support for your own custom or private models.",
+      "Most models on Pollinations are completely free to use! Pollinations provides official free models and support for your own custom or private models.",
     enterApiKeyLabel: "Enter Pollinations API Key",
     saveAndStart: "Save & Start Chatting",
     openAccountSettings: "Account Settings",

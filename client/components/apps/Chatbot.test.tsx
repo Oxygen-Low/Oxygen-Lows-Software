@@ -1013,13 +1013,10 @@ describe("ChatbotApp", () => {
     );
     fireEvent.click(modelDropdownButton);
 
-    // Verify "Standard Models" and "Community Models" headers are visible
+    // Verify "Standard Models" header is visible
     await screen.findByText("Standard Models");
     await screen.findByText("All models in this section use quest pollen, not paid pollen.");
-    await screen.findByText("Community Models");
-    await screen.findByText("These community models may store data or be unreliable.");
     expect((await screen.findAllByText("Free")).length).toBeGreaterThan(0);
-    await screen.findByText("Deepseek v4 Flash");
 
     // Select Smart model
     const smartOption = screen.getByText("Smart");
@@ -1418,7 +1415,7 @@ describe("ChatbotApp", () => {
     renderChatbot();
 
     await screen.findByText("Pollinations AI Setup Required");
-    await screen.findByText("100% Free & Community Models");
+    await screen.findByText("100% Free Models");
 
     const input = screen.getByPlaceholderText(/from enter.pollinations.ai/i);
     fireEvent.change(input, { target: { value: "pk_new_key_123" } });

@@ -14,9 +14,8 @@ export interface Model {
   model_id: string;
   name?: string;
   rate?: string;
-  category?: "standard" | "community" | "custom";
+  category?: "standard" | "custom";
   isCustom?: boolean;
-  isCommunity?: boolean;
   isLocal?: boolean;
   isShared?: boolean;
 }
@@ -42,7 +41,7 @@ export const SUPPORTED_PROVIDERS: ProviderInfo[] = [
   {
     id: "pollinations",
     name: "Pollinations AI",
-    description: "Free & community text AI models (API key from enter.pollinations.ai)",
+    description: "Free text AI models (API key from enter.pollinations.ai)",
     requiresKey: true,
     keyPlaceholder: "API Key (pk_... / sk_... from enter.pollinations.ai)",
     docsUrl: "https://enter.pollinations.ai",
@@ -92,22 +91,6 @@ export const BUILTIN_MODELS: Model[] = [
     rate: "around 20 requests/$1",
     category: "standard",
   },
-  {
-    provider: "pollinations",
-    model_id: "community/MarcosFRG/deepseek-v4-flash-0731",
-    name: "Deepseek v4 Flash",
-    rate: "infinite requests/$1",
-    category: "community",
-    isCommunity: true,
-  },
-  {
-    provider: "pollinations",
-    model_id: "community/vendouple/gemini-3.8-flash",
-    name: "Gemini 3.8 Flash",
-    rate: "infinite requests/$1",
-    category: "community",
-    isCommunity: true,
-  },
 ];
 
 export const POPULAR_PRESETS: Record<
@@ -121,14 +104,6 @@ export const POPULAR_PRESETS: Record<
     { model_id: "openai/gpt-5.6-terra", name: "Balanced" },
     { model_id: "openai/gpt-6.1-sol", name: "Smart" },
     { model_id: "openai/gpt-6-astra", name: "Smartest" },
-    {
-      model_id: "community/MarcosFRG/deepseek-v4-flash-0731",
-      name: "Deepseek v4 Flash",
-    },
-    {
-      model_id: "community/vendouple/gemini-3.8-flash",
-      name: "Gemini 3.8 Flash",
-    },
   ],
 };
 

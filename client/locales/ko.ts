@@ -207,9 +207,9 @@ export const ko = {
     pollinationsAccountTitle: "Pollinations 계정 및 API 키",
     pollinationsAccountDesc:
       "Pollinations API 키를 연결하여 챗봇 잠금을 해제하고 모델을 사용하세요.",
-    freeTierNoticeTitle: "무료 티어 및 커뮤니티 모델 지원",
+    freeTierNoticeTitle: "무료 티어 및 공식 모델 지원",
     freeTierNoticeText:
-      "Pollinations의 대부분 모델은 완전 무료로 제공되며 커뮤니티 모델 및 공식 무료 티어가 지원됩니다. 별도의 자격 증명을 관리할 필요 없이 Pollinations를 통해 비공개 모델이나 외부 제공자를 연결할 수도 있습니다.",
+      "Pollinations의 대부분 모델은 완전 무료로 제공되며 공식 무료 티어가 지원됩니다. 별도의 자격 증명을 관리할 필요 없이 Pollinations를 통해 비공개 모델이나 외부 제공자를 연결할 수도 있습니다.",
     pollenWalletLabel: "현재 Pollen 잔액",
     managePollen: "Pollen 관리 / 충전",
     pollinationsApiKeyLabel: "Pollinations API 키",
@@ -246,7 +246,7 @@ export const ko = {
     registerModel: "모델 등록",
     addCustomModelTitle: "AI 모델 등록",
     addCustomModelDesc:
-      "Pollinations AI에서 호스팅되는 사용자 지정 또는 커뮤니티 모델을 등록합니다.",
+      "Pollinations AI에서 호스팅되는 사용자 지정 모델을 등록합니다.",
     provider: "제공자",
     selectProvider: "제공자 선택",
     modelPreset: "모델 프리셋",
@@ -274,9 +274,6 @@ export const ko = {
     standardModels: "기본 모델",
     questPollenNotice:
       "이 섹션의 모든 모델은 유료 꽃가루가 아닌 퀘스트 꽃가루를 사용합니다.",
-    communityModels: "커뮤니티 모델",
-    communityDisclaimer:
-      "이 커뮤니티 모델은 데이터를 저장하거나 불안정할 수 있습니다.",
     customModels: "커스텀 모델",
     configured: "연결됨",
     notConfigured: "API 키 필요",
@@ -3034,8 +3031,8 @@ notificationsTitle: "ì•Œë¦¼",
   chatbot: {
     pollinationsRequiredTitle: "Pollinations AI 설정 필요",
     pollinationsRequiredSubtitle: "Chatbot에 액세스하려면 API 키를 연결하세요",
-    freeTierInfoTitle: "100% 무료 및 커뮤니티 모델",
-    freeTierInfoText: "Pollinations의 대부분의 모델은 완전 무료로 사용할 수 있습니다! 공식 무료 모델, 커뮤니티 모델 및 맞춤형/비공개 모델 지원이 포함됩니다.",
+    freeTierInfoTitle: "100% 무료 모델",
+    freeTierInfoText: "Pollinations의 대부분의 모델은 완전 무료로 사용할 수 있습니다! 공식 무료 모델 및 맞춤형/비공개 모델 지원이 포함됩니다.",
     enterApiKeyLabel: "Pollinations API 키 입력",
     saveAndStart: "저장 및 대화 시작",
     openAccountSettings: "계정 설정",

@@ -210,9 +210,9 @@ export const ja = {
     pollinationsAccountTitle: "Pollinations アカウントと API キー",
     pollinationsAccountDesc:
       "Pollinations API キーを接続して、Chatbot をロック解除しモデルを呼び出します。",
-    freeTierNoticeTitle: "無料利用枠とコミュニティモデルのサポート",
+    freeTierNoticeTitle: "無料枠と公式モデルのサポート",
     freeTierNoticeText:
-      "Pollinationsのほとんどのモデルは完全無料で利用でき、コミュニティモデルや公式無料モデル枠もサポートされています。複数の資格情報を個別に管理することなく、Pollinations経由でプライベートモデルや外部プロバイダーを接続することも可能です。",
+      "Pollinationsのほとんどのモデルは完全無料で利用でき、公式無料モデル枠がサポートされています。複数の資格情報を個別に管理することなく、Pollinations経由でプライベートモデルや外部プロバイダーを接続することも可能です。",
     pollenWalletLabel: "現在の Pollen 残高",
     managePollen: "Pollen の管理 / チャージ",
     pollinationsApiKeyLabel: "Pollinations API キー",
@@ -249,7 +249,7 @@ export const ja = {
     registerModel: "モデルを登録",
     addCustomModelTitle: "AIモデルを登録",
     addCustomModelDesc:
-      "Pollinations AIでホストされているカスタムまたはコミュニティモデルを登録します。",
+      "Pollinations AIでホストされているカスタムモデルを登録します。",
     provider: "プロバイダー",
     selectProvider: "プロバイダーを選択",
     modelPreset: "モデルプリセット",
@@ -277,9 +277,6 @@ export const ja = {
     standardModels: "標準モデル",
     questPollenNotice:
       "このセクションのすべてのモデルは、有料の花粉ではなくクエスト花粉を使用します。",
-    communityModels: "コミュニティモデル",
-    communityDisclaimer:
-      "これらのコミュニティモデルはデータを保存したり、信頼性が低い場合があります。",
     customModels: "カスタムモデル",
     configured: "接続済み",
     notConfigured: "APIキーが必要です",
@@ -3057,8 +3054,8 @@ notificationsTitle: "é€šçŸ¥",
   chatbot: {
     pollinationsRequiredTitle: "Pollinations AIの設定が必要です",
     pollinationsRequiredSubtitle: "APIキーを接続してChatbotにアクセスしてください",
-    freeTierInfoTitle: "100%無料＆コミュニティモデル",
-    freeTierInfoText: "Pollinationsのほとんどのモデルは完全無料で使用できます！公式無料モデル、コミュニティモデル、カスタムやプライベートモデルが利用可能です。",
+    freeTierInfoTitle: "100%無料モデル",
+    freeTierInfoText: "Pollinationsのほとんどのモデルは完全無料で使用できます！公式無料モデルや、カスタム・プライベートモデルが利用可能です。",
     enterApiKeyLabel: "Pollinations APIキーを入力",
     saveAndStart: "保存してチャットを開始",
     openAccountSettings: "アカウント設定",

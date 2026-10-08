@@ -2236,7 +2236,7 @@ function AgentAssetsApp({
               Public Assets & Catalog
             </CardTitle>
             <CardDescription className="text-xs">
-              Explore and download public community models, characters, 3D assets, and datasets, or import them directly into your Agent Storage.
+              Explore and download public characters, 3D assets, and datasets, or import them directly into your Agent Storage.
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">

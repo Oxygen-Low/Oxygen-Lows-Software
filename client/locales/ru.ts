@@ -213,9 +213,9 @@ export const ru = {
     pollinationsAccountTitle: "Учетная запись и ключ API Pollinations",
     pollinationsAccountDesc:
       "Подключите ключ API Pollinations для доступа к Чат-боту и вызова моделей.",
-    freeTierNoticeTitle: "Бесплатный уровень и поддержка моделей сообщества",
+    freeTierNoticeTitle: "Бесплатный уровень и поддержка официальных моделей",
     freeTierNoticeText:
-      "Большинство моделей в Pollinations на 100% бесплатны, включая поддержку моделей сообщества и официальный бесплатный уровень. Вы также можете подключать частные модели и внешние провайдеры через Pollinations без необходимости раздельного управления учетными данными.",
+      "Большинство моделей в Pollinations на 100% бесплатны с официальным бесплатным уровнем. Вы также можете подключать частные модели и внешние провайдеры через Pollinations без необходимости раздельного управления учетными данными.",
     pollenWalletLabel: "Текущий баланс Pollen",
     managePollen: "Управление Pollen / Пополнение",
     pollinationsApiKeyLabel: "Ключ API Pollinations",
@@ -252,7 +252,7 @@ export const ru = {
     registerModel: "Зарегистрировать модель",
     addCustomModelTitle: "Зарегистрировать модель ИИ",
     addCustomModelDesc:
-      "Зарегистрируйте пользовательскую модель или модель сообщества на Pollinations AI.",
+      "Зарегистрируйте пользовательскую модель на Pollinations AI.",
     provider: "Провайдер",
     selectProvider: "Выберите провайдера",
     modelPreset: "Предустановка модели",
@@ -280,9 +280,6 @@ export const ru = {
     standardModels: "Стандартные модели",
     questPollenNotice:
       "Все модели в этом разделе используют пыльцу за задания, а не платную пыльцу.",
-    communityModels: "Модели сообщества",
-    communityDisclaimer:
-      "Эти модели сообщества могут сохранять данные или быть ненадежными.",
     customModels: "Пользовательские модели",
     configured: "Подключено",
     notConfigured: "Требуется ключ API",
@@ -3063,8 +3060,8 @@ notificationsTitle: "Ð£Ð²ÐµÐ´Ð¾Ð¼Ð»ÐµÐ½Ð¸Ñ",
   chatbot: {
     pollinationsRequiredTitle: "Требуется настройка Pollinations AI",
     pollinationsRequiredSubtitle: "Подключите API ключ для доступа к Chatbot",
-    freeTierInfoTitle: "100% Бесплатные модели и модели сообщества",
-    freeTierInfoText: "Большинство моделей на Pollinations абсолютно бесплатны! Pollinations предоставляет официальные бесплатные модели, модели сообщества и поддержку ваших собственных моделей.",
+    freeTierInfoTitle: "100% Бесплатные модели",
+    freeTierInfoText: "Большинство моделей на Pollinations абсолютно бесплатны! Pollinations предоставляет официальные бесплатные модели и поддержку ваших собственных моделей.",
     enterApiKeyLabel: "Введите API ключ Pollinations",
     saveAndStart: "Сохранить и начать чат",
     openAccountSettings: "Настройки аккаунта",

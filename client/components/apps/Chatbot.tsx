@@ -1146,11 +1146,7 @@ export function ChatbotApp() {
   );
 
   const standardModels = useMemo(() => {
-    return models.filter((m) => !m.isCustom && !m.isCommunity);
-  }, [models]);
-
-  const communityModels = useMemo(() => {
-    return models.filter((m) => !m.isCustom && m.isCommunity);
+    return models.filter((m) => !m.isCustom);
   }, [models]);
 
   const customModels = useMemo(() => {
@@ -2962,7 +2958,7 @@ export function ChatbotApp() {
                 {t(
                   "chatbot.freeTierInfoTitle",
                   undefined,
-                  "100% Free & Community Models",
+                  "100% Free Models",
                 )}
               </span>
             </div>
@@ -2970,7 +2966,7 @@ export function ChatbotApp() {
               {t(
                 "chatbot.freeTierInfoText",
                 undefined,
-                "Most models on Pollinations are completely free to use! Pollinations provides official free models, community models, and support for your own custom or private models.",
+                "Most models on Pollinations are completely free to use! Pollinations provides official free models and support for your own custom or private models.",
               )}
             </p>
           </div>
@@ -3878,52 +3874,7 @@ export function ChatbotApp() {
                         </>
                       )}
 
-                      {communityModels.length > 0 && (
-                        <>
-                          <div className="px-3 pt-3 pb-1">
-                            <p className="text-[10px] uppercase tracking-wider text-amber-400 font-display font-medium">
-                              {t("account.communityModels", undefined, "Community Models")}
-                            </p>
-                            <p className="text-[10px] text-amber-400/80 mt-0.5 leading-snug">
-                              {t(
-                                "account.communityDisclaimer",
-                                undefined,
-                                "These community models may store data or be unreliable.",
-                              )}
-                            </p>
-                          </div>
-                          <div className="px-2">
-                            {communityModels.map((m) => (
-                              <button
-                                key={`${m.provider}-${m.model_id}`}
-                                onClick={() => {
-                                  setSelectedModel(m.model_id);
-                                  setModelDropdownOpen(false);
-                                }}
-                                className={cn(
-                                  "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
-                                  selectedModel === m.model_id
-                                    ? "bg-white/5"
-                                    : "",
-                                )}
-                              >
-                                <div className="text-sm text-white font-medium">
-                                  {m.name || m.model_id}
-                                </div>
-                                <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
-                                  <span>
-                                    {m.model_id}
-                                    {m.rate ? ` • ${m.rate}` : ""}
-                                  </span>
-                                </div>
-                                {selectedModel === m.model_id && (
-                                  <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
+
 
                       {customModels.length > 0 && (
                         <>

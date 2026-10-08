@@ -216,9 +216,9 @@ export const es = {
     pollinationsAccountTitle: "Cuenta y Clave API de Pollinations",
     pollinationsAccountDesc:
       "Conecta tu clave API de Pollinations para desbloquear el Chatbot y consultar modelos.",
-    freeTierNoticeTitle: "Nivel Gratuito y Soporte de Modelos de la Comunidad",
+    freeTierNoticeTitle: "Nivel Gratuito y Soporte de Modelos Oficiales",
     freeTierNoticeText:
-      "La mayoría de los modelos en Pollinations son 100% gratuitos, con soporte para modelos comunitarios y un nivel oficial gratuito. También puedes conectar modelos privados y proveedores externos a través de Pollinations sin gestionar múltiples credenciales.",
+      "La mayoría de los modelos en Pollinations son 100% gratuitos con un nivel oficial gratuito. También puedes conectar modelos privados y proveedores externos a través de Pollinations sin gestionar múltiples credenciales.",
     pollenWalletLabel: "Saldo Actual de Pollen",
     managePollen: "Gestionar Pollen / Recargar",
     pollinationsApiKeyLabel: "Clave API de Pollinations",
@@ -255,7 +255,7 @@ export const es = {
     registerModel: "Registrar modelo",
     addCustomModelTitle: "Registrar modelo de IA",
     addCustomModelDesc:
-      "Registre un modelo personalizado o comunitario alojado en Pollinations AI.",
+      "Registre un modelo personalizado alojado en Pollinations AI.",
     provider: "Proveedor",
     selectProvider: "Selecciona un proveedor",
     modelPreset: "Ajuste predeterminado",
@@ -283,9 +283,6 @@ export const es = {
     standardModels: "Modelos Estándar",
     questPollenNotice:
       "Todos los modelos de esta sección usan polen de misiones, no polen de pago.",
-    communityModels: "Modelos de la Comunidad",
-    communityDisclaimer:
-      "Estos modelos de la comunidad pueden almacenar datos o ser poco confiables.",
     customModels: "Modelos Personalizados",
     configured: "Conectado",
     notConfigured: "Clave API Requerida",
@@ -3073,7 +3070,7 @@ export const es = {
   chatbot: {
     pollinationsRequiredTitle: "Configuración de Pollinations AI Requerida",
     pollinationsRequiredSubtitle: "Conecta tu clave API para acceder al Chatbot",
-    freeTierInfoTitle: "Modelos 100% Gratuitos y Comunitarios",
+    freeTierInfoTitle: "Modelos 100% Gratuitos",
     freeTierInfoText:
       "¡La mayoría de los modelos en Pollinations son completamente gratuitos! Pollinations ofrece modelos gratuitos oficiales, modelos comunitarios y soporte para tus propios modelos personalizados o privados.",
     enterApiKeyLabel: "Introduce la Clave API de Pollinations",

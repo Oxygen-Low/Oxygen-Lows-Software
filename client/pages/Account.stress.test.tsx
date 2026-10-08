@@ -179,7 +179,7 @@ describe("Account Models Tab — Adversarial Stress Test Suite", () => {
       ).toBeDefined();
 
       expect(screen.getByText(/Pollinations Account & API Key/i)).toBeDefined();
-      expect(screen.getByText(/Free Tier & Community Model/i)).toBeDefined();
+      expect(screen.getByText(/Free Tier & Official Model/i)).toBeDefined();
     });
   });
 

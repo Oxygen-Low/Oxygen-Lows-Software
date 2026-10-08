@@ -256,11 +256,7 @@ export default function Account() {
   }, [pollinationsApiKey]);
 
   const standardModels = useMemo(
-    () => models.filter((m) => !m.isCustom && !m.isCommunity),
-    [models],
-  );
-  const communityModels = useMemo(
-    () => models.filter((m) => !m.isCustom && m.isCommunity),
+    () => models.filter((m) => !m.isCustom),
     [models],
   );
   const customModelsList = useMemo(
@@ -1221,7 +1217,7 @@ export default function Account() {
                       {t(
                         "account.freeTierNoticeTitle",
                         undefined,
-                        "Free Tier & Community Model Support",
+                        "Free Tier & Official Model Support",
                       )}
                     </span>
                   </div>
@@ -1229,7 +1225,7 @@ export default function Account() {
                     {t(
                       "account.freeTierNoticeText",
                       undefined,
-                      "Most models on Pollinations are 100% free to use, with community model support and an official free model tier. You can also connect private models and external providers via Pollinations without maintaining separate credentials.",
+                      "Most models on Pollinations are 100% free to use with an official free model tier. You can also connect private models and external providers via Pollinations without maintaining separate credentials.",
                     )}
                   </p>
                 </div>
@@ -1836,48 +1832,7 @@ export default function Account() {
                   </div>
                 </div>
 
-                {/* 4b. Community Models */}
-                <div className="space-y-2.5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-amber-300">
-                      {t("account.communityModels", undefined, "Community Models")}
-                    </h4>
-                    <span className="text-[11px] text-amber-400/90 font-medium">
-                      {t(
-                        "account.communityDisclaimer",
-                        undefined,
-                        "These community models may store data or be unreliable.",
-                      )}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                    {communityModels.map((m) => (
-                      <div
-                        key={m.model_id}
-                        className="p-3 rounded-lg bg-slate-950 border border-amber-950/40 hover:border-amber-900/60 transition space-y-1"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-xs font-semibold text-white truncate">
-                            {m.name || m.model_id}
-                          </p>
-                          {m.rate && (
-                            <Badge
-                              variant="outline"
-                              className="text-[9px] px-1.5 py-0 border-amber-800/60 bg-amber-950/40 text-amber-300 shrink-0 font-normal"
-                            >
-                              {m.rate}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-slate-400 truncate font-mono">
-                          {m.model_id}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 4c. Custom Registered Models */}
+                {/* 4b. Custom Registered Models */}
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
@@ -1954,7 +1909,7 @@ export default function Account() {
               {t(
                 "account.addCustomModelDesc",
                 undefined,
-                "Register a custom or community model hosted on Pollinations AI.",
+                "Register a custom model hosted on Pollinations AI.",
               )}
             </DialogDescription>
           </DialogHeader>

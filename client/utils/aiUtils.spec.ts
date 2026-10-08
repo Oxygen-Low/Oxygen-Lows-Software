@@ -21,12 +21,6 @@ describe("formatModelLabel", () => {
     expect(formatModelLabel("pollinations", "openai/gpt-6-astra")).toBe(
       "Smartest",
     );
-    expect(
-      formatModelLabel("pollinations", "community/MarcosFRG/deepseek-v4-flash-0731"),
-    ).toBe("Deepseek v4 Flash");
-    expect(
-      formatModelLabel("pollinations", "community/vendouple/gemini-3.8-flash"),
-    ).toBe("Gemini 3.8 Flash");
     expect(formatModelLabel("pollinations", "unknown-model")).toBe(
       "unknown-model",
     );

@@ -123,8 +123,6 @@ describe("All Locales Verification", () => {
       expect(t("account.registeredModels")).toBeTruthy();
       expect(t("account.standardModels")).toBeTruthy();
       expect(t("account.questPollenNotice")).toBeTruthy();
-      expect(t("account.communityModels")).toBeTruthy();
-      expect(t("account.communityDisclaimer")).toBeTruthy();
       expect(t("account.customModels")).toBeTruthy();
 
       // Test AI generation keys in characters

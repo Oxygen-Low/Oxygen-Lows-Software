@@ -9,8 +9,6 @@ export const formatModelLabel = (provider: string, modelId: string) => {
       "openai/gpt-5.6-terra": "Balanced",
       "openai/gpt-6.1-sol": "Smart",
       "openai/gpt-6-astra": "Smartest",
-      "community/MarcosFRG/deepseek-v4-flash-0731": "Deepseek v4 Flash",
-      "community/vendouple/gemini-3.8-flash": "Gemini 3.8 Flash",
     };
     return labels[modelId] || modelId;
   }

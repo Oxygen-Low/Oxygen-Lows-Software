@@ -859,14 +859,6 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
           { id: "openai/gpt-5.6-terra", name: "Balanced" },
           { id: "openai/gpt-6.1-sol", name: "Smart" },
           { id: "openai/gpt-6-astra", name: "Smartest" },
-          {
-            id: "community/MarcosFRG/deepseek-v4-flash-0731",
-            name: "Deepseek v4 Flash",
-          },
-          {
-            id: "community/vendouple/gemini-3.8-flash",
-            name: "Gemini 3.8 Flash",
-          },
         ],
       });
     }
