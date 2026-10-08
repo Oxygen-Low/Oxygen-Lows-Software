@@ -864,6 +864,7 @@ export function ChatbotApp() {
     refreshModels,
     pollinationsApiKey,
     isPollinationsConfigured,
+    isKeyLoading,
     setPollinationsApiKey,
     isPollinationsSupporter,
     setIsPollinationsSupporter,
@@ -1325,36 +1326,62 @@ export function ChatbotApp() {
   const generateChatTitle = async (chatId: string, firstMsg: string) => {
     try {
       let title = "New Chat";
+      const isDirectKey = Boolean(
+        pollinationsApiKey &&
+          (pollinationsApiKey.startsWith("pk_") || pollinationsApiKey.startsWith("sk_")) &&
+          !pollinationsApiKey.includes("...") &&
+          pollinationsApiKey.length > 20,
+      );
 
-      try {
-        const directTitle = await fetchPollinationsClient({
-          model: "inclusionai/ling-3.1-flash",
-          messages: [
-            {
-              role: "user",
-              content: `Generate a short 3-5 word title for a chat that starts with this message: "${firstMsg}". Output ONLY the title, no quotes or prefix.`,
+      if (session?.access_token) {
+        try {
+          const res = await fetch("/api/ai/proxy", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
             },
-          ],
-          apiKey: pollinationsApiKey || undefined,
-        });
-        if (directTitle) {
-          title = directTitle.trim().replace(/^["']|["']$/g, "");
-        }
-      } catch (err: any) {
-        if (
-          err instanceof PollinationsRateLimitError ||
-          err instanceof PollinationsNotFoundError ||
-          err instanceof PollinationsAuthError ||
-          err?.statusCode === 429 ||
-          err?.statusCode === 404 ||
-          err?.statusCode === 402 ||
-          err?.statusCode === 401 ||
-          err?.statusCode === 403 ||
-          err?.message?.includes("404") ||
-          err?.message?.includes("402") ||
-          err?.message?.includes("401") ||
-          err?.message?.includes("403")
-        ) {
+            body: JSON.stringify({
+              provider: "pollinations",
+              model: "inclusionai/ling-3.1-flash",
+              messages: [
+                {
+                  role: "user",
+                  content: `Generate a short 3-5 word title for a chat that starts with this message: "${firstMsg}". Output ONLY the title, no quotes or prefix.`,
+                },
+              ],
+              stream: false,
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const text =
+              data?.choices?.[0]?.message?.content || data?.content || "";
+            if (text) {
+              title = text.trim().replace(/^["']|["']$/g, "");
+            }
+          }
+        } catch {}
+      } else if (isDirectKey) {
+        try {
+          const directTitle = await fetchPollinationsClient({
+            model: "inclusionai/ling-3.1-flash",
+            messages: [
+              {
+                role: "user",
+                content: `Generate a short 3-5 word title for a chat that starts with this message: "${firstMsg}". Output ONLY the title, no quotes or prefix.`,
+              },
+            ],
+            apiKey: pollinationsApiKey || undefined,
+          });
+          if (directTitle) {
+            title = directTitle.trim().replace(/^["']|["']$/g, "");
+          }
+        } catch {}
+      }
+
+      if (title === "New Chat") {
+        try {
           const fetchTitleViaProxy = async (hordeModel: string) => {
             return await fetch("/api/ai/proxy", {
               method: "POST",
@@ -1384,12 +1411,14 @@ export function ChatbotApp() {
 
           if (response.ok) {
             const data = await response.json();
-            if (data.choices?.[0]?.message?.content) {
-              title = data.choices[0].message.content
-                .trim()
-                .replace(/^["']|["']$/g, "");
+            const hordeTitle =
+              data.choices?.[0]?.message?.content?.trim() || "";
+            if (hordeTitle) {
+              title = hordeTitle.replace(/^["']|["']$/g, "");
             }
           }
+        } catch (hordeErr) {
+          console.warn("Horde title fallback failed:", hordeErr);
         }
       }
 
@@ -1573,7 +1602,12 @@ export function ChatbotApp() {
     };
 
     if (provider === "pollinations") {
-      const isDirectKey = apiKey && (apiKey.startsWith("pk_") || apiKey.startsWith("sk_"));
+      const isDirectKey = Boolean(
+        apiKey &&
+          (apiKey.startsWith("pk_") || apiKey.startsWith("sk_")) &&
+          !apiKey.includes("...") &&
+          apiKey.length > 20,
+      );
       if (!isDirectKey && session?.access_token) {
         try {
           const fetchOptions: RequestInit = {
@@ -1592,10 +1626,34 @@ export function ChatbotApp() {
           };
           const res = await fetch("/api/ai/proxy", fetchOptions);
           if (!res.ok) {
-            throw new Error(await parseAiProxyError(res));
+            const errStatus = res.status;
+            const errMsg = await parseAiProxyError(res);
+            const is401 =
+              errStatus === 401 ||
+              errStatus === 403 ||
+              errMsg.includes("401") ||
+              errMsg.includes("403") ||
+              errMsg.toLowerCase().includes("unauthorized") ||
+              errMsg.toLowerCase().includes("api key");
+            const is404 = errStatus === 404 || errMsg.includes("404");
+            const fallbackReason: "rate_limit" | "not_found" | "auth_required" =
+              is401 ? "auth_required" : is404 ? "not_found" : "rate_limit";
+
+            try {
+              return await runHordeFallback(
+                HORDE_FALLBACK_FAST_MODEL,
+                fallbackReason,
+              );
+            } catch (fastErr: any) {
+              return await runHordeFallback(
+                HORDE_FALLBACK_SMART_MODEL,
+                fallbackReason,
+              );
+            }
           }
           return await streamResponseData(res, "pollinations");
         } catch (err: any) {
+          if (signal.aborted) throw err;
           console.warn(
             "Pollinations proxy stream failed, falling back to Horde:",
             err,
@@ -1632,6 +1690,7 @@ export function ChatbotApp() {
         });
         return directContent;
       } catch (err: any) {
+        if (signal.aborted) throw err;
         const is401 =
           err instanceof PollinationsAuthError ||
           err?.statusCode === 401 ||
@@ -2962,6 +3021,15 @@ export function ChatbotApp() {
           onUnlocked={() => setEncryptionLocked(false)}
           categoryLabel="Chatbot Chats"
         />
+      </div>
+    );
+  }
+
+  if (isKeyLoading) {
+    return (
+      <div className="relative min-h-[calc(100vh-61px)] sm:min-h-[calc(100vh-73px)] w-full flex items-center justify-center p-4 bg-slate-950 text-white overflow-hidden">
+        <InteractiveBackground />
+        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
       </div>
     );
   }

@@ -100,6 +100,38 @@ describe("AI Router - Server-Side API Key Management & Proxy Resolution", () => 
     expect(capturedAuthHeader).toBe("Bearer sk-test-saved-server-key-123456789");
   });
 
+  it("resolves stored server-side API key in /proxy when a masked prefix is sent in body.apiKey", async () => {
+    let capturedAuthHeader = "";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any, init?: any) => {
+      if (url.toString().includes("openai.com")) {
+        capturedAuthHeader = init?.headers?.["Authorization"] || "";
+        return new Response(JSON.stringify({ choices: [{ message: { content: "ok" } }] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response("Not found", { status: 404 });
+    });
+
+    const res = await aiRouter.request("/proxy", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer valid-token",
+      },
+      body: JSON.stringify({
+        provider: "openai",
+        model: "gpt-4o",
+        messages: [{ role: "user", content: "Hello" }],
+        stream: false,
+        apiKey: "sk-test...789", // masked fingerprint from UI
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(capturedAuthHeader).toBe("Bearer sk-test-saved-server-key-123456789");
+  });
+
   it("deletes a stored provider key via DELETE /keys/:provider", async () => {
     const res = await aiRouter.request("/keys/openai", {
       method: "DELETE",

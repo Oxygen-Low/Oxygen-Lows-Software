@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/lib/db";
+import { getLocalSession } from "@/lib/localSession";
 import { fetchPollinationsBalance } from "@/services/pollinationsClient";
 import {
   encryptApiKey,
@@ -122,6 +123,7 @@ export function useAiModels() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [pollinationsApiKey, setPollinationsApiKeyState] = useState<string>("");
   const [isPollinationsConfigured, setIsPollinationsConfigured] = useState<boolean>(false);
+  const [isKeyLoading, setIsKeyLoading] = useState<boolean>(true);
   const [isPollinationsSupporter, setIsPollinationsSupporterState] =
     useState<boolean>(() => {
       try {
@@ -229,34 +231,38 @@ export function useAiModels() {
   // Load Pollinations API Key status from server
   const loadApiKey = useCallback(async () => {
     const currentLoadId = ++loadIdRef.current;
+    setIsKeyLoading(true);
     let configured = false;
     let displayPrefix = "";
     let sessionToken = "";
 
     try {
-      if (supabase?.auth?.getSession) {
+      const local = getLocalSession();
+      sessionToken = local?.access_token || "";
+
+      if (!sessionToken && supabase?.auth?.getSession) {
         const { data: sessionData } = await supabase.auth
           .getSession()
           .catch(() => ({ data: null }));
         sessionToken = sessionData?.session?.access_token || "";
+      }
 
-        if (sessionToken && typeof window !== "undefined") {
-          try {
-            const res = await fetch("/api/ai/keys", {
-              headers: { Authorization: `Bearer ${sessionToken}` },
-            });
-            if (res.ok) {
-              const data = await res.json();
-              const polliKey = data?.keys?.find(
-                (k: any) => k.provider === "pollinations",
-              );
-              if (polliKey) {
-                configured = true;
-                displayPrefix = polliKey.prefix || "configured";
-              }
+      if (sessionToken && typeof window !== "undefined") {
+        try {
+          const res = await fetch("/api/ai/keys", {
+            headers: { Authorization: `Bearer ${sessionToken}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const polliKey = data?.keys?.find(
+              (k: any) => k.provider === "pollinations",
+            );
+            if (polliKey) {
+              configured = true;
+              displayPrefix = polliKey.prefix || "configured";
             }
-          } catch {}
-        }
+          }
+        } catch {}
       }
     } catch (e) {
       console.warn("Failed to load pollinations api key status", e);
@@ -266,6 +272,7 @@ export function useAiModels() {
 
     setIsPollinationsConfigured(configured);
     setPollinationsApiKeyState(displayPrefix);
+    setIsKeyLoading(false);
 
     if (configured && sessionToken) {
       try {
@@ -300,7 +307,7 @@ export function useAiModels() {
   const refreshPollenBalance = useCallback(
     async (tokenToUse?: string) => {
       try {
-        let token = tokenToUse;
+        let token = tokenToUse || getLocalSession()?.access_token;
         if (!token && supabase?.auth?.getSession) {
           const { data } = await supabase.auth.getSession().catch(() => ({ data: null }));
           token = data?.session?.access_token;
@@ -326,8 +333,11 @@ export function useAiModels() {
       const trimmed = key.trim();
 
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
+        let token = getLocalSession()?.access_token;
+        if (!token && supabase?.auth?.getSession) {
+          const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: null }));
+          token = sessionData?.session?.access_token;
+        }
 
         if (token) {
           if (trimmed) {
@@ -517,6 +527,7 @@ export function useAiModels() {
     models,
     customModels,
     isLoading,
+    isKeyLoading,
     refreshModels,
     pollinationsApiKey,
     isPollinationsConfigured,

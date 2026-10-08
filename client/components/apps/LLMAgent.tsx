@@ -1684,7 +1684,12 @@ export function LLMAgentApp() {
           model: selectedModel,
           messages: apiMessages,
           stream: true,
-          apiKey: pollinationsApiKey || undefined,
+          apiKey:
+            pollinationsApiKey &&
+            !pollinationsApiKey.includes("...") &&
+            pollinationsApiKey.length > 20
+              ? pollinationsApiKey
+              : undefined,
           ...(supportsNativeTools ? { tools: AGENT_TOOLS } : {}),
         }),
       };

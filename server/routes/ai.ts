@@ -59,6 +59,15 @@ export function resolveHordeModel(model: string): string {
   return model;
 }
 
+export function isInvalidOrMaskedApiKey(key?: unknown): boolean {
+  if (!key || typeof key !== "string") return true;
+  const trimmed = key.trim();
+  if (trimmed.length === 0) return true;
+  if (trimmed.includes("...")) return true;
+  if (trimmed.toLowerCase() === "configured") return true;
+  return false;
+}
+
 export async function getFallbackHordeModel(
   preference: "fast" | "general" = "fast",
 ): Promise<string | null> {
@@ -284,7 +293,7 @@ aiRouter.post("/transcribe", apiLimiter, async (c) => {
     return c.json({ error: "Audio data is required" }, 400);
   }
 
-  let effectiveApiKey = clientApiKey;
+  let effectiveApiKey = isInvalidOrMaskedApiKey(clientApiKey) ? "" : clientApiKey.trim();
   if (!effectiveApiKey && user?.id) {
     effectiveApiKey =
       (await getUserApiKey(user.id, clientProvider)) ||
@@ -350,7 +359,7 @@ aiRouter.post("/tts", apiLimiter, async (c) => {
     return c.json({ error: "Text is required for TTS" }, 400);
   }
 
-  let effectiveApiKey = apiKey || "";
+  let effectiveApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
   if (!effectiveApiKey && user?.id) {
     effectiveApiKey =
       (await getUserApiKey(user.id, provider)) ||
@@ -444,7 +453,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     envKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY || "";
   }
 
-  let effectiveApiKey = apiKey;
+  let effectiveApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
   if (!effectiveApiKey && user?.id) {
     effectiveApiKey = (await getUserApiKey(user.id, provider)) || "";
   }
@@ -815,7 +824,7 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
     const { provider, apiKey } = await c.req.json();
     const cleanProvider = (provider || "").toLowerCase();
 
-    let effectiveApiKey = apiKey;
+    let effectiveApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
     if (!effectiveApiKey) {
       const authHeader = c.req.header("authorization");
       const token = extractBearerToken(authHeader);

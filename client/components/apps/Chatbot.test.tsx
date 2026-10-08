@@ -227,14 +227,50 @@ vi.mock("@/lib/db", () => {
   };
 });
 
-// Mock fetch for streaming
-global.fetch = vi.fn((url, options: any) => {
+let mockKeys: any[] = [{ provider: "pollinations", prefix: "pk_test_12345" }];
+
+const defaultFetchHandler = (url: any, options: any) => {
   const urlStr = String(url || "");
   if (urlStr.includes("pollen") || urlStr.includes("balance")) {
     return Promise.resolve({
       ok: true,
       json: () => Promise.resolve({ pollen: 10 }),
     });
+  }
+  if (urlStr.startsWith("/api/ai/keys") || urlStr === "/api/ai/keys") {
+    if (options?.method === "POST") {
+      const body = options.body ? JSON.parse(options.body) : {};
+      mockKeys = [{ provider: "pollinations", prefix: body.apiKey || "pk_saved" }];
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            success: true,
+            provider: "pollinations",
+            prefix: body.apiKey || "pk_saved",
+          }),
+      });
+    }
+    if (options?.method === "DELETE") {
+      mockKeys = [];
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+    }
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ keys: mockKeys }),
+    });
+  }
+  return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+};
+
+// Mock fetch for streaming
+global.fetch = vi.fn((url, options: any) => {
+  const urlStr = String(url || "");
+  if (urlStr.includes("pollen") || urlStr.includes("balance") || urlStr.startsWith("/api/ai/keys") || urlStr === "/api/ai/keys") {
+    return defaultFetchHandler(url, options);
   }
   if (urlStr === "/api/ai/proxy" || urlStr.includes("pollinations.ai")) {
     if (options?.body && options.body.includes('"stream":false')) {
@@ -290,7 +326,7 @@ describe("ChatbotApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    localStorage.setItem("oxygen_pollinations_api_key", "pk_test_12345");
+    mockKeys = [{ provider: "pollinations", prefix: "pk_test_12345" }];
     setLocalSession({
       access_token: "test-token",
       token_type: "bearer",
@@ -393,7 +429,7 @@ describe("ChatbotApp", () => {
             headers: { get: () => null },
           });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+        return defaultFetchHandler(url, options);
       }) as any;
 
       renderChatbot();
@@ -472,7 +508,7 @@ describe("ChatbotApp", () => {
             headers: { get: () => null },
           });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+        return defaultFetchHandler(url, options);
       }) as any;
 
       renderChatbot();
@@ -552,7 +588,7 @@ describe("ChatbotApp", () => {
             headers: { get: () => null },
           });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+        return defaultFetchHandler(url, options);
       }) as any;
 
       renderChatbot();
@@ -628,7 +664,7 @@ describe("ChatbotApp", () => {
             headers: { get: () => null },
           });
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+        return defaultFetchHandler(url, options);
       }) as any;
 
       renderChatbot();
@@ -817,7 +853,7 @@ describe("ChatbotApp", () => {
           });
         }
 
-        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+        return defaultFetchHandler(url, options);
       }) as any;
 
       renderChatbot();
@@ -949,10 +985,7 @@ describe("ChatbotApp", () => {
           });
         }
 
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([]),
-        });
+        return defaultFetchHandler(url, options);
       }) as any;
 
       renderChatbot();
@@ -1091,10 +1124,7 @@ describe("ChatbotApp", () => {
           headers: { get: () => null },
         });
       }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
+      return defaultFetchHandler(url, options);
     }) as any;
 
     mockCharacters = [mockCharWithStats];
@@ -1188,10 +1218,7 @@ describe("ChatbotApp", () => {
           headers: { get: () => null },
         });
       }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
+      return defaultFetchHandler(url, options);
     }) as any;
 
     try {
@@ -1243,7 +1270,7 @@ describe("ChatbotApp", () => {
     const originalFetch = global.fetch;
     const toastSpy = vi.spyOn(toast, "error");
     try {
-      (global as any).fetch = vi.fn((url: any) => {
+      (global as any).fetch = vi.fn((url: any, options: any) => {
         const urlStr = typeof url === "string" ? url : url.toString();
         if (urlStr.includes("pollinations.ai") || urlStr.includes("/api/ai/proxy")) {
           return Promise.resolve({
@@ -1258,7 +1285,7 @@ describe("ChatbotApp", () => {
             json: () => Promise.resolve({ error: { message: "Provider not configured" } }),
           } as unknown as Response);
         }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+        return defaultFetchHandler(url, options);
       });
 
       renderChatbot();
@@ -1304,7 +1331,7 @@ describe("ChatbotApp", () => {
       global.fetch = vi.fn((url: any, options: any) => {
         const urlStr = String(url || "");
 
-        // Direct Pollinations call returns 429
+        // Direct Pollinations or Proxy Pollinations call returns 429
         if (urlStr.includes("pollinations.ai")) {
           return Promise.resolve({
             ok: false,
@@ -1316,6 +1343,13 @@ describe("ChatbotApp", () => {
         // AI Proxy handles Horde fallback
         if (urlStr.includes("/api/ai/proxy")) {
           const bodyJson = JSON.parse(options?.body || "{}");
+          if (bodyJson.provider === "pollinations") {
+            return Promise.resolve({
+              ok: false,
+              status: 429,
+              statusText: "Too Many Requests",
+            });
+          }
           if (
             bodyJson.provider === "horde" &&
             bodyJson.model === "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"
@@ -1352,7 +1386,7 @@ describe("ChatbotApp", () => {
           });
         }
 
-        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+        return defaultFetchHandler(url, options);
       }) as any;
 
       renderChatbot();
@@ -1409,6 +1443,7 @@ describe("ChatbotApp", () => {
   });
 
   it("displays Pollinations API key requirement gate when key is missing and allows saving key inline", async () => {
+    mockKeys = [];
     localStorage.removeItem("oxygen_pollinations_api_key");
     localStorage.removeItem("pollinations_api_key");
     localStorage.removeItem("oxygen_api_keys");
@@ -1426,10 +1461,7 @@ describe("ChatbotApp", () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(
-        localStorage.getItem("pollinations_api_key") ||
-          localStorage.getItem("oxygen_pollinations_api_key"),
-      ).toBe("pk_new_key_123");
+      expect(screen.queryByText("Pollinations AI Setup Required")).toBeNull();
     });
   });
 });

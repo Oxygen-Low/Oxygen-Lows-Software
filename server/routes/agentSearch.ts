@@ -761,8 +761,15 @@ agentSearchRouter.post(
         return "";
       };
 
-      let resolvedResearchApiKey = apiKey;
-      let resolvedSummarizerApiKey = apiKey;
+      const isInvalidOrMaskedApiKey = (k?: unknown): boolean => {
+        if (!k || typeof k !== "string") return true;
+        const trimmed = k.trim();
+        if (trimmed.length === 0 || trimmed.includes("...") || trimmed.toLowerCase() === "configured") return true;
+        return false;
+      };
+
+      let resolvedResearchApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
+      let resolvedSummarizerApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
 
       if (!resolvedResearchApiKey && user?.id) {
         resolvedResearchApiKey =
