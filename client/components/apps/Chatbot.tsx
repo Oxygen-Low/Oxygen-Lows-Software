@@ -82,8 +82,131 @@ import {
   decryptCharacterData,
 } from "@/lib/crypto";
 
+// ─── Code Snippets for Background Animation ────────────────────────────
+
+const CODE_SNIPPETS = [
+  `-- Lua pathfinding implementation
+local function calculate_path(start, target)
+    local open_set = {start}
+    local closed_set = {}
+    while #open_set > 0 do
+        local current = get_lowest_f(open_set)
+        if current == target then
+            return construct_path(current)
+        end
+    end
+    return nil
+end`,
+  `// C++ Entity Manager System
+#include <iostream>
+#include <vector>
+
+class EntityManager {
+private:
+    std::vector<Entity*> entities;
+public:
+    void update(float dt) {
+        for(auto e : entities) {
+            e->tick(dt);
+        }
+    }
+};`,
+  `<!-- XML Server Configuration -->
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <system mode="production">
+        <memory_limit>4096M</memory_limit>
+        <cache_enabled>true</cache_enabled>
+    </system>
+</configuration>`,
+  `// C# Network Client Service
+using System;
+using System.Threading.Tasks;
+
+public class NetworkClient {
+    private readonly string _endpoint;
+    
+    public async Task<Response> Fetch() {
+        using var client = new HttpClient();
+        var result = await client.GetAsync(
+            _endpoint
+        );
+        return await result.Content
+            .ReadFromJsonAsync<Response>();
+    }
+}`,
+  `# Python ML Pipeline
+import torch
+import torch.nn as nn
+
+class Transformer(nn.Module):
+    def __init__(self, d_model, nhead):
+        super().__init__()
+        self.encoder = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=d_model,
+                nhead=nhead
+            ),
+            num_layers=6
+        )`,
+  `// Rust async runtime
+use tokio::sync::mpsc;
+
+async fn process_stream(
+    mut rx: mpsc::Receiver<Message>
+) -> Result<(), Error> {
+    while let Some(msg) = rx.recv().await {
+        match msg.kind {
+            Kind::Data => handle(msg),
+            Kind::Eof => break,
+        }
+    }
+    Ok(())
+}`,
+];
+
+// ─── Syntax Highlight Helper (for background animation) ───────────────
+
+function highlightCode(code: string): string {
+  let s = code
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  const kw = "#c678dd";
+  const fn_ = "#61afef";
+  const str = "#98c379";
+  const cmt = "#5c6370";
+  const tp = "#e06c75";
+
+  s = s
+    .replace(
+      /(--.*|\/\/.*|&lt;!--.*?--&gt;|#.*)/g,
+      `<span style="color:${cmt}">$1</span>`,
+    )
+    .replace(/(".*?"|'.*?')/g, `<span style="color:${str}">$1</span>`)
+    .replace(
+      /\b(function|return|if|else|for|while|class|public|private|void|int|string|bool|local|end|then|do|using|namespace|include|async|await|var|readonly|import|from|def|self|match|let|mut|break|const|super)\b/g,
+      `<span style="color:${kw}">$1</span>`,
+    )
+    .replace(
+      /\b([A-Z][a-zA-Z0-9_]*|float)\b/g,
+      `<span style="color:${tp}">$1</span>`,
+    )
+    .replace(/\b([a-zA-Z_]\w*)(?=\()/g, `<span style="color:${fn_}">$1</span>`);
+
+  return s;
+}
+
 const InteractiveBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const codeContainerRef = useRef<HTMLDivElement>(null);
+  const mouseRef = useRef({ x: -1000, y: -1000 });
+  const dotsRef = useRef<
+    { ox: number; oy: number; x: number; y: number; vx: number; vy: number }[]
+  >([]);
+  const animFrameRef = useRef<number>(0);
+  const parallaxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -91,20 +214,11 @@ const InteractiveBackground = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    let dots: any[] = [];
-    const spacing = 30; // distance between dots
-    const dotRadius = 1.5;
-    let mouseX = -1000;
-    let mouseY = -1000;
-    const repelRadius = 100;
-    const repelForce = 0.5;
-    const returnSpeed = 0.1;
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    let animationFrameId: number;
+    const spacing = 24;
+    const radius = 1.5;
+    const repelRadius = 150;
 
-    function resizeCanvas() {
+    function resize() {
       if (!canvas) return;
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -112,96 +226,147 @@ const InteractiveBackground = () => {
     }
 
     function initDots() {
-      dots = [];
-      if (!canvas || canvas.width <= 0 || canvas.height <= 0) return;
-      const cols = Math.min(Math.ceil(canvas.width / spacing), 200);
-      const rows = Math.min(Math.ceil(canvas.height / spacing), 200);
-
-      for (let i = 0; i < cols; i++) {
-        for (let j = 0; j < rows; j++) {
-          dots.push({
-            x: i * spacing,
-            y: j * spacing,
-            originX: i * spacing,
-            originY: j * spacing,
-            vx: 0,
-            vy: 0,
-          });
+      dotsRef.current = [];
+      if (!canvas) return;
+      for (let x = 0; x < canvas.width; x += spacing) {
+        for (let y = 0; y < canvas.height; y += spacing) {
+          dotsRef.current.push({ ox: x, oy: y, x, y, vx: 0, vy: 0 });
         }
       }
     }
 
-    function animateDots() {
-      if (prefersReducedMotion || !canvas || !ctx) return;
-
+    function draw() {
+      if (!ctx || !canvas) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "rgba(207, 188, 255, 0.15)"; // primary color with low opacity
+      ctx.fillStyle = "rgba(115, 115, 115, 0.3)";
       ctx.beginPath();
 
-      for (let i = 0; i < dots.length; i++) {
-        let dot = dots[i];
-
-        // Calculate distance from mouse
-        let dx = mouseX - dot.x;
-        let dy = mouseY - dot.y;
-        let dist = Math.sqrt(dx * dx + dy * dy);
+      for (const dot of dotsRef.current) {
+        const dx = mouseRef.current.x - dot.x;
+        const dy = mouseRef.current.y - dot.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist < repelRadius && dist > 0) {
-          // Repel
-          let force = (repelRadius - dist) / repelRadius;
-          let angle = Math.atan2(dy, dx);
-          let targetX = dot.x - Math.cos(angle) * force * repelForce * 50;
-          let targetY = dot.y - Math.sin(angle) * force * repelForce * 50;
-
-          dot.x += (targetX - dot.x) * 0.1;
-          dot.y += (targetY - dot.y) * 0.1;
-        } else {
-          // Return to origin
-          dot.x += (dot.originX - dot.x) * returnSpeed;
-          dot.y += (dot.originY - dot.y) * returnSpeed;
+          const force = (repelRadius - dist) / repelRadius;
+          dot.vx -= (dx / dist) * force * 1.5;
+          dot.vy -= (dy / dist) * force * 1.5;
         }
 
-        ctx.moveTo(dot.x + dotRadius, dot.y);
-        ctx.arc(dot.x, dot.y, dotRadius, 0, Math.PI * 2);
-      }
+        dot.vx += (dot.ox - dot.x) * 0.1;
+        dot.vy += (dot.oy - dot.y) * 0.1;
+        dot.vx *= 0.75;
+        dot.vy *= 0.75;
+        dot.x += dot.vx;
+        dot.y += dot.vy;
 
+        ctx.moveTo(dot.x + radius, dot.y);
+        ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
+      }
       ctx.fill();
-      animationFrameId = requestAnimationFrame(animateDots);
+      animFrameRef.current = requestAnimationFrame(draw);
     }
 
-    const handleResize = () => resizeCanvas();
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      mouseX = e.clientX - rect.left;
-      mouseY = e.clientY - rect.top;
-    };
-    const handleMouseOut = () => {
-      mouseX = -1000;
-      mouseY = -1000;
-    };
+    resize();
+    draw();
 
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseout", handleMouseOut);
+    const onResize = () => {
+      resize();
+    };
+    window.addEventListener("resize", onResize);
 
-    if (!prefersReducedMotion) {
-      resizeCanvas();
-      animationFrameId = requestAnimationFrame(animateDots);
+    const onMouseMove = (e: MouseEvent) => {
+      mouseRef.current.x = e.clientX;
+      mouseRef.current.y = e.clientY;
+
+      if (parallaxRef.current) {
+        const px = (e.clientX / window.innerWidth - 0.5) * -30;
+        const py = (e.clientY / window.innerHeight - 0.5) * -30;
+        parallaxRef.current.style.transform = `translate(${px}px, ${py}px)`;
+      }
+    };
+    document.addEventListener("mousemove", onMouseMove);
+
+    return () => {
+      cancelAnimationFrame(animFrameRef.current);
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("mousemove", onMouseMove);
+    };
+  }, []);
+
+  // Initialize code columns
+  useEffect(() => {
+    const container = codeContainerRef.current;
+    if (!container) return;
+
+    const colWidth = 350;
+    const numCols = Math.ceil(window.innerWidth / colWidth);
+    const intervals: ReturnType<typeof setInterval>[] = [];
+
+    for (let i = 0; i < numCols; i++) {
+      const col = document.createElement("div");
+      col.className = "agent-code-column";
+      col.style.left = `${i * colWidth}px`;
+      col.style.top = `${Math.random() * -200}px`;
+      container.appendChild(col);
+
+      function addSnippet() {
+        const text =
+          CODE_SNIPPETS[Math.floor(Math.random() * CODE_SNIPPETS.length)];
+        const div = document.createElement("div");
+        div.className = "agent-code-snippet";
+        if (Math.random() > 0.5) div.classList.add("agent-color-alt");
+
+        let charIndex = 0;
+        const typeInterval = setInterval(
+          () => {
+            const current = text.substring(0, charIndex);
+            const cursor =
+              charIndex < text.length
+                ? '<span class="agent-cursor">_</span>'
+                : "";
+            div.innerHTML = highlightCode(current) + cursor;
+            charIndex++;
+            if (charIndex > text.length) clearInterval(typeInterval);
+          },
+          10 + Math.random() * 20,
+        );
+
+        col.appendChild(div);
+        intervals.push(typeInterval);
+      }
+
+      addSnippet();
+      const colInterval = setInterval(
+        () => {
+          if (col.children.length > 3 && col.firstChild) {
+            col.removeChild(col.firstChild);
+          }
+          addSnippet();
+        },
+        6000 + Math.random() * 4000,
+      );
+      intervals.push(colInterval);
     }
 
     return () => {
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseout", handleMouseOut);
-      cancelAnimationFrame(animationFrameId);
+      intervals.forEach(clearInterval);
+      container.innerHTML = "";
     };
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="fixed top-0 left-0 w-full h-full z-[-1] pointer-events-none"
-    />
+    <div className="absolute inset-0 z-0 w-full h-full bg-[#0a0a0c] overflow-hidden pointer-events-none">
+      <div
+        ref={parallaxRef}
+        className="absolute inset-[-40px] w-[calc(100%+80px)] h-[calc(100%+80px)] transition-transform duration-100 ease-out pointer-events-none"
+      >
+        <div ref={codeContainerRef} className="absolute inset-0 z-0 pointer-events-none" />
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 z-10 w-full h-full pointer-events-none"
+        />
+      </div>
+    </div>
   );
 };
 
