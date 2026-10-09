@@ -153,6 +153,34 @@ describe("Notifications API Routes", () => {
       );
       expect(delRes.status).toBe(200);
     });
+
+    it("creates a notification with update and set phrases without issue", async () => {
+      const res = await app.request("/api/admin/notifications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer admin-token",
+        },
+        body: JSON.stringify({
+          title: "Update available: set your preferences",
+          message: "Please update your profile to set up two-factor authentication and notifications.",
+          type: "announcement",
+          target_type: "all",
+        }),
+      });
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.notification.title).toBe("Update available: set your preferences");
+
+      // Clean up
+      await app.request(`/api/admin/notifications/${data.notification.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: "Bearer admin-token",
+        },
+      });
+    });
   });
 
   describe("User Read/Unread and Dismiss Actions", () => {

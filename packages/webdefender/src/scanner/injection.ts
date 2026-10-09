@@ -15,16 +15,16 @@ function compilePatterns(
 }
 
 const SQLI_PATTERNS = [
-  /union\s+select/i,
-  /or\s+1\s*=\s*1/i,
-  /drop\s+table/i,
-  /insert\s+into/i,
-  /delete\s+from/i,
-  /update\s+.*?\s+set/i,
-  /exec\s*\(/i,
-  /xp_cmdshell/i,
-  /sleep\s*\(/i,
-  /benchmark\s*\(/i,
+  /\bunion\s+(?:all\s+)?select\b/i,
+  /\bor\s+1\s*=\s*1\b/i,
+  /\bdrop\s+table\b/i,
+  /\binsert\s+into\b/i,
+  /\bdelete\s+from\b/i,
+  /\bupdate\s+[`"\[]?[a-zA-Z0-9_$.]+[`"\]]?(?:\s+(?:as\s+)?[`"\[]?[a-zA-Z0-9_$]+[`"\]]?)?\s+set\s+[`"\[]?[a-zA-Z0-9_$.]+[`"\]]?\s*=/i,
+  /\bexec\s*\(/i,
+  /\bxp_cmdshell\b/i,
+  /\bsleep\s*\(/i,
+  /\bbenchmark\s*\(/i,
   /--\s*$/,
 ];
 

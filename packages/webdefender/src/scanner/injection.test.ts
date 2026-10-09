@@ -25,6 +25,18 @@ describe("detectSqlInjection", () => {
     expect(detectSqlInjection("normal user search term")).toEqual({
       detected: false,
     });
+    expect(
+      detectSqlInjection("Update available: set your notification preferences"),
+    ).toEqual({ detected: false });
+    expect(
+      detectSqlInjection("Please update your profile to set up 2-factor authentication"),
+    ).toEqual({ detected: false });
+    expect(
+      detectSqlInjection("We will update the system and set the timer"),
+    ).toEqual({ detected: false });
+    expect(
+      detectSqlInjection("Update to set"),
+    ).toEqual({ detected: false });
   });
 
   it("should detect UNION SELECT injection", () => {
@@ -54,6 +66,21 @@ describe("detectSqlInjection", () => {
       true,
     );
     expect(detectSqlInjection("UPDATE users SET is_admin = 1").detected).toBe(
+      true,
+    );
+    expect(detectSqlInjection("UPDATE [users] SET role = 'admin'").detected).toBe(
+      true,
+    );
+    expect(detectSqlInjection("UPDATE `accounts` SET balance=1000 WHERE id=1").detected).toBe(
+      true,
+    );
+    expect(detectSqlInjection("UPDATE \"users\" SET status = 'active'").detected).toBe(
+      true,
+    );
+    expect(detectSqlInjection("UPDATE schema.users SET role='admin'").detected).toBe(
+      true,
+    );
+    expect(detectSqlInjection("UPDATE users u SET u.role = 1").detected).toBe(
       true,
     );
   });
