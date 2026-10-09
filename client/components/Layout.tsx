@@ -29,7 +29,6 @@ import {
   Bell,
   MessageSquare,
   Handshake,
-  FolderTree,
   Sparkles,
 } from "lucide-react";
 import styles from "./Layout.module.css";
@@ -120,13 +119,6 @@ const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
     defaultLabel: "Characters",
     href: "/characters",
     icon: Contact,
-  },
-  {
-    key: "projects",
-    labelKey: "nav.projects",
-    defaultLabel: "Projects",
-    href: "/projects",
-    icon: FolderTree,
   },
   {
     key: "support",

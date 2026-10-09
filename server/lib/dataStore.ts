@@ -1020,9 +1020,6 @@ export function getTableFilePath(
       case "user_api_keys":
         filePath = path.join(userDir, "models", "api_keys.json");
         break;
-      case "projects":
-        filePath = path.join(userDir, "projects", "projects.json");
-        break;
       case "user_games":
       case "games":
       case "game_library":

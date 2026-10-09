@@ -16,7 +16,7 @@ const PUBLIC_TABLES = new Set(["profiles", "profile_pictures", "public_assets", 
 const USER_TABLES = new Set([
   ...PUBLIC_TABLES, "user_preferences", "data_saves", "data_save_categories", "chats", "chatbot_messages",
   "characters", "universes", "races", "user_passwords", "vpn_configs", "support_tickets", "support_messages",
-  "friendships", "friends", "blocks", "asset_verifications", "user_models", "user_api_keys", "projects",
+  "friendships", "friends", "blocks", "asset_verifications", "user_models", "user_api_keys",
   "user_games", "games", "game_library", "installed_games", "custom_games", "user_playtime", "game_playtime",
   "playtime", "playtimes", "user_presence", "game_presence", "presence", "presences", "game_conflicts",
 ]);
@@ -35,10 +35,6 @@ dataRouter.use("*", async (c, next) => {
   body.table = body.table.trim().toLowerCase();
   if (!USER_TABLES.has(body.table)) return c.json({ error: "Unauthorized" }, 403);
   const query = c.req.path.endsWith("/query");
-  // Projects must use the action-aware API so writes cannot bypass approval/history.
-  if (!query && body.table === "projects") {
-    return c.json({ data: null, error: "Use the projects API" }, 400);
-  }
   if (!user && (!query || !PUBLIC_TABLES.has(body.table))) return c.json({ error: "Unauthorized" }, 401);
   if (!query && ["public_assets", "public_characters", "asset_verifications"].includes(body.table)) return c.json({ error: "Unauthorized" }, 403);
   if (!query && body.data !== undefined) {
