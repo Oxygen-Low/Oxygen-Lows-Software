@@ -69,7 +69,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CodeHighlighter } from "@/components/ui/CodeHighlighter";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
-import { ArtifactSidebar } from "./ArtifactSidebar";
 import { EncryptionRequiredPrompt } from "@/components/EncryptionRequiredPrompt";
 import {
   isCategoryLocked,
@@ -412,38 +411,10 @@ interface Character {
   stats?: any;
 }
 
-interface Artifact {
-  id: string;
-  filename: string;
-  language: string;
-  content: string;
-}
-
 const HORDE_FALLBACK_FAST_MODEL =
   "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M";
 const HORDE_FALLBACK_SMART_MODEL =
   "aphrodite/TheDrummer/Behemoth-X-123B-v2.1";
-
-const ARTIFACT_REGEX =
-  /`\/([^/]+)\/\/([^/]+)\/`[\s\n]*\/\/\/\/([\s\S]*?)(?:\\\\|$)/g;
-
-const parseArtifacts = (content: string): Artifact[] => {
-  const artifacts: Artifact[] = [];
-  let match;
-  ARTIFACT_REGEX.lastIndex = 0;
-  while ((match = ARTIFACT_REGEX.exec(content)) !== null) {
-    if (match.index === ARTIFACT_REGEX.lastIndex) {
-      ARTIFACT_REGEX.lastIndex++;
-    }
-    artifacts.push({
-      id: Math.random().toString(36).substr(2, 9),
-      filename: match[1],
-      language: match[2],
-      content: match[3].trim(),
-    });
-  }
-  return artifacts;
-};
 
 const memoizedMarkdownComponents = {
   code({ node, inline, className, children, ...props }: any) {
@@ -471,7 +442,6 @@ const ChatMessage = React.memo(
     activeSiblingIndex = 0,
     onNavigate,
     onRegenerate,
-    setActiveArtifact,
     onSpeak,
     isSpeakingThisMessage = false,
   }: {
@@ -480,13 +450,11 @@ const ChatMessage = React.memo(
     activeSiblingIndex?: number;
     onNavigate?: (index: number) => void;
     onRegenerate?: () => void;
-    setActiveArtifact: (art: Artifact) => void;
     onSpeak?: (text: string, messageId?: string) => void;
     isSpeakingThisMessage?: boolean;
   }) => {
     const { t } = useTranslation();
-    const artifacts = m.role === "assistant" ? parseArtifacts(m.content) : [];
-    let displayContent = (m.content || "").replace(ARTIFACT_REGEX, "");
+    let displayContent = m.content || "";
     const [reasoningExpanded, setReasoningExpanded] = useState(false);
     const [copiedReasoning, setCopiedReasoning] = useState(false);
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -979,22 +947,6 @@ const ChatMessage = React.memo(
               </div>
             )}
           </div>
-          {artifacts.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {artifacts.map((art) => (
-                <button
-                  key={art.id}
-                  onClick={() => setActiveArtifact(art)}
-                  aria-label={`View artifact ${art.filename}`}
-                  title={`View artifact ${art.filename}`}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:border-cyan-500/50 transition-colors text-xs text-slate-300 focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none"
-                >
-                  <Code className="w-3 h-3 text-cyan-400" />
-                  {art.filename}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     );
@@ -1153,8 +1105,6 @@ export function ChatbotApp() {
   >(null);
   const [selectedUniverse, setSelectedUniverse] = useState<string | null>(null);
 
-  const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
-  const lastParsedLengthRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { t, languageCode } = useTranslation();
@@ -2314,15 +2264,6 @@ export function ChatbotApp() {
               m.id === "temp-streaming" ? { ...m, content } : m,
             ),
           );
-
-          if (
-            content.length - lastParsedLengthRef.current > 50 ||
-            content.includes("\\\\")
-          ) {
-            const arts = parseArtifacts(content);
-            if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-            lastParsedLengthRef.current = content.length;
-          }
         },
         onFallback,
       );
@@ -2351,15 +2292,6 @@ export function ChatbotApp() {
               m.id === "temp-streaming" ? { ...m, content } : m,
             ),
           );
-
-          if (
-            content.length - lastParsedLengthRef.current > 50 ||
-            content.includes("\\\\")
-          ) {
-            const arts = parseArtifacts(content);
-            if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-            lastParsedLengthRef.current = content.length;
-          }
         },
         onFallback,
       );
@@ -2428,15 +2360,6 @@ export function ChatbotApp() {
             m.id === "temp-streaming" ? { ...m, content } : m,
           ),
         );
-
-        if (
-          content.length - lastParsedLengthRef.current > 50 ||
-          content.includes("\\\\")
-        ) {
-          const arts = parseArtifacts(content);
-          if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-          lastParsedLengthRef.current = content.length;
-        }
       },
       onFallback,
     );
@@ -2468,15 +2391,6 @@ export function ChatbotApp() {
             m.id === "temp-streaming" ? { ...m, content } : m,
           ),
         );
-
-        if (
-          content.length - lastParsedLengthRef.current > 50 ||
-          content.includes("\\\\")
-        ) {
-          const arts = parseArtifacts(content);
-          if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-          lastParsedLengthRef.current = content.length;
-        }
       },
       onFallback,
     );
@@ -2587,7 +2501,6 @@ export function ChatbotApp() {
     if (!textOverride) setInput("");
     setIsTyping(true);
     isTypingRef.current = true;
-    lastParsedLengthRef.current = 0;
     setQueueStatus(null);
 
     try {
@@ -2973,7 +2886,6 @@ export function ChatbotApp() {
     setActiveChildren(activeChildrenRef.current);
     setIsTyping(true);
     isTypingRef.current = true;
-    lastParsedLengthRef.current = 0;
     setQueueStatus(null);
 
     try {
@@ -3741,7 +3653,6 @@ export function ChatbotApp() {
                     }
                   }}
                   onRegenerate={handleRegenerate}
-                  setActiveArtifact={setActiveArtifact}
                   onSpeak={handleSpeakMessage}
                   isSpeakingThisMessage={
                     liveVoice.isSpeaking && speakingMessageId === m.id
@@ -4274,13 +4185,6 @@ export function ChatbotApp() {
           </div>
         </div>
       </main>
-
-      {activeArtifact && (
-        <ArtifactSidebar
-          artifact={activeArtifact}
-          onClose={() => setActiveArtifact(null)}
-        />
-      )}
     </div>
   );
 }
