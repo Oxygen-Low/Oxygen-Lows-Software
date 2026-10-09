@@ -1464,6 +1464,37 @@ describe("ChatbotApp", () => {
       expect(screen.queryByText("Pollinations AI Setup Required")).toBeNull();
     });
   });
+
+  it("renders read aloud button next to regenerate on assistant message and triggers speech", async () => {
+    renderChatbot();
+
+    const newChatButton = await screen.findByRole("button", {
+      name: "New Chat",
+    });
+    fireEvent.click(newChatButton);
+
+    const input = await screen.findByPlaceholderText("Type a message...");
+    fireEvent.change(input, { target: { value: "Hello assistant" } });
+
+    const sendButton = screen.getByLabelText("Send message");
+    fireEvent.click(sendButton);
+
+    await screen.findByText("Hello from AI", {}, { timeout: 10000 });
+
+    const readAloudButtons = await screen.findAllByRole("button", {
+      name: /Read aloud/i,
+    });
+    expect(readAloudButtons.length).toBeGreaterThan(0);
+
+    const regenerateButton = screen.getByTitle("Regenerate");
+    expect(regenerateButton).toBeDefined();
+
+    // The assistant read aloud button should be a sibling in the same action row
+    const assistantReadAloud = readAloudButtons[readAloudButtons.length - 1];
+    expect(assistantReadAloud.parentElement).toBe(regenerateButton.parentElement);
+
+    fireEvent.click(assistantReadAloud);
+  });
 });
 
 

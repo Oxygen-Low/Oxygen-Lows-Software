@@ -581,30 +581,6 @@ const ChatMessage = React.memo(
             <p className="text-white text-sm font-display font-medium ml-1">
               Chatbot
             </p>
-            {onSpeak && displayContent && !m.is_image_gen && (
-              <button
-                type="button"
-                onClick={() => onSpeak(displayContent, m.id)}
-                className={cn(
-                  "p-1.5 rounded hover:bg-white/10 transition-colors",
-                  isSpeakingThisMessage
-                    ? "text-primary bg-primary/10 animate-pulse"
-                    : "text-slate-400 hover:text-white",
-                )}
-                title={
-                  isSpeakingThisMessage
-                    ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
-                    : t("apps.chatbotReadAloud", undefined, "Read aloud")
-                }
-                aria-label={
-                  isSpeakingThisMessage
-                    ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
-                    : t("apps.chatbotReadAloud", undefined, "Read aloud")
-                }
-              >
-                <Mic className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
           <div className="w-full">
             {m.usedFallback && (
@@ -911,39 +887,67 @@ const ChatMessage = React.memo(
                 </div>
               </div>
             )}
-            {siblings.length > 0 && (
+            {(siblings.length > 0 || (onSpeak && displayContent && !m.is_image_gen)) && (
               <div className="flex items-center gap-2 mt-2 ml-1 text-slate-400 text-xs">
-                <button
-                  onClick={() => onNavigate?.(activeSiblingIndex - 1)}
-                  disabled={activeSiblingIndex === 0}
-                  className="hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 p-1 flex items-center justify-center transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="font-mono select-none">
-                  {activeSiblingIndex + 1} / {siblings.length}
-                </span>
-                <button
-                  onClick={() => {
-                    if (activeSiblingIndex < siblings.length - 1) {
-                      onNavigate?.(activeSiblingIndex + 1);
-                    } else {
-                      onRegenerate?.();
+                {siblings.length > 0 && (
+                  <>
+                    <button
+                      onClick={() => onNavigate?.(activeSiblingIndex - 1)}
+                      disabled={activeSiblingIndex === 0}
+                      className="hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 p-1 flex items-center justify-center transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="font-mono select-none">
+                      {activeSiblingIndex + 1} / {siblings.length}
+                    </span>
+                    <button
+                      onClick={() => {
+                        if (activeSiblingIndex < siblings.length - 1) {
+                          onNavigate?.(activeSiblingIndex + 1);
+                        } else {
+                          onRegenerate?.();
+                        }
+                      }}
+                      className="hover:text-white p-1 flex items-center justify-center transition-colors"
+                      title={
+                        activeSiblingIndex < siblings.length - 1
+                          ? "Next"
+                          : "Regenerate"
+                      }
+                    >
+                      {activeSiblingIndex < siblings.length - 1 ? (
+                        <ChevronRight className="w-4 h-4" />
+                      ) : (
+                        <RotateCw className="w-4 h-4" />
+                      )}
+                    </button>
+                  </>
+                )}
+                {onSpeak && displayContent && !m.is_image_gen && (
+                  <button
+                    type="button"
+                    onClick={() => onSpeak(displayContent, m.id)}
+                    className={cn(
+                      "p-1 rounded hover:bg-white/10 transition-colors flex items-center justify-center",
+                      isSpeakingThisMessage
+                        ? "text-primary bg-primary/10 animate-pulse"
+                        : "text-slate-400 hover:text-white",
+                    )}
+                    title={
+                      isSpeakingThisMessage
+                        ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
+                        : t("apps.chatbotReadAloud", undefined, "Read aloud")
                     }
-                  }}
-                  className="hover:text-white p-1 flex items-center justify-center transition-colors"
-                  title={
-                    activeSiblingIndex < siblings.length - 1
-                      ? "Next"
-                      : "Regenerate"
-                  }
-                >
-                  {activeSiblingIndex < siblings.length - 1 ? (
-                    <ChevronRight className="w-4 h-4" />
-                  ) : (
-                    <RotateCw className="w-4 h-4" />
-                  )}
-                </button>
+                    aria-label={
+                      isSpeakingThisMessage
+                        ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
+                        : t("apps.chatbotReadAloud", undefined, "Read aloud")
+                    }
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             )}
           </div>
