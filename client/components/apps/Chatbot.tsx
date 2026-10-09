@@ -213,22 +213,43 @@ const InteractiveBackground = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const spacing = 24;
-    const radius = 1.5;
-    const repelRadius = 150;
+    const prefersReducedMotion =
+      typeof window !== "undefined" && typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        : false;
 
-    function resize() {
-      if (!canvas) return;
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      initDots();
+    function getGridConfig() {
+      const isMobile = window.innerWidth < 768;
+      return {
+        spacing: isMobile ? 32 : 24,
+        radius: isMobile ? 1.25 : 1.5,
+        repelRadius: isMobile ? 110 : 150,
+        repelForce: isMobile ? 1.2 : 1.5,
+      };
     }
 
-    function initDots() {
+    let config = getGridConfig();
+
+    function resize() {
+      if (!canvas || !ctx) return;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      config = getGridConfig();
+      initDots(w, h);
+    }
+
+    function initDots(w: number, h: number) {
       dotsRef.current = [];
-      if (!canvas) return;
-      for (let x = 0; x < canvas.width; x += spacing) {
-        for (let y = 0; y < canvas.height; y += spacing) {
+      for (let x = 0; x < w; x += config.spacing) {
+        for (let y = 0; y < h; y += config.spacing) {
           dotsRef.current.push({ ox: x, oy: y, x, y, vx: 0, vy: 0 });
         }
       }
@@ -236,7 +257,9 @@ const InteractiveBackground = () => {
 
     function draw() {
       if (!ctx || !canvas) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = "rgba(115, 115, 115, 0.3)";
       ctx.beginPath();
 
@@ -245,10 +268,10 @@ const InteractiveBackground = () => {
         const dy = mouseRef.current.y - dot.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < repelRadius && dist > 0) {
-          const force = (repelRadius - dist) / repelRadius;
-          dot.vx -= (dx / dist) * force * 1.5;
-          dot.vy -= (dy / dist) * force * 1.5;
+        if (dist < config.repelRadius && dist > 0) {
+          const force = (config.repelRadius - dist) / config.repelRadius;
+          dot.vx -= (dx / dist) * force * config.repelForce;
+          dot.vy -= (dy / dist) * force * config.repelForce;
         }
 
         dot.vx += (dot.ox - dot.x) * 0.1;
@@ -258,11 +281,14 @@ const InteractiveBackground = () => {
         dot.x += dot.vx;
         dot.y += dot.vy;
 
-        ctx.moveTo(dot.x + radius, dot.y);
-        ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
+        ctx.moveTo(dot.x + config.radius, dot.y);
+        ctx.arc(dot.x, dot.y, config.radius, 0, Math.PI * 2);
       }
       ctx.fill();
-      animFrameRef.current = requestAnimationFrame(draw);
+
+      if (!prefersReducedMotion && !document.hidden) {
+        animFrameRef.current = requestAnimationFrame(draw);
+      }
     }
 
     resize();
@@ -270,96 +296,200 @@ const InteractiveBackground = () => {
 
     const onResize = () => {
       resize();
+      if (prefersReducedMotion) draw();
     };
     window.addEventListener("resize", onResize);
 
-    const onMouseMove = (e: MouseEvent) => {
-      mouseRef.current.x = e.clientX;
-      mouseRef.current.y = e.clientY;
+    const updatePointer = (clientX: number, clientY: number) => {
+      mouseRef.current.x = clientX;
+      mouseRef.current.y = clientY;
 
       if (parallaxRef.current) {
-        const px = (e.clientX / window.innerWidth - 0.5) * -30;
-        const py = (e.clientY / window.innerHeight - 0.5) * -30;
-        parallaxRef.current.style.transform = `translate(${px}px, ${py}px)`;
+        const px = (clientX / window.innerWidth - 0.5) * -20;
+        const py = (clientY / window.innerHeight - 0.5) * -20;
+        parallaxRef.current.style.transform = `translate3d(${px}px, ${py}px, 0)`;
       }
     };
+
+    const resetPointer = () => {
+      mouseRef.current.x = -1000;
+      mouseRef.current.y = -1000;
+      if (parallaxRef.current) {
+        parallaxRef.current.style.transform = "translate3d(0, 0, 0)";
+      }
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      updatePointer(e.clientX, e.clientY);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches && e.touches.length > 0) {
+        updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches && e.touches.length > 0) {
+        updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const onOrientation = (e: DeviceOrientationEvent) => {
+      if (e.gamma !== null && e.beta !== null && parallaxRef.current) {
+        const tiltX = Math.max(-15, Math.min(15, (e.gamma / 30) * 15));
+        const tiltY = Math.max(-15, Math.min(15, ((e.beta - 45) / 30) * 15));
+        parallaxRef.current.style.transform = `translate3d(${-tiltX}px, ${-tiltY}px, 0)`;
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(animFrameRef.current);
+      } else if (!prefersReducedMotion) {
+        animFrameRef.current = requestAnimationFrame(draw);
+      }
+    };
+
     document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("touchmove", onTouchMove, { passive: true });
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchend", resetPointer, { passive: true });
+    document.addEventListener("touchcancel", resetPointer, { passive: true });
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    if (typeof window !== "undefined" && "DeviceOrientationEvent" in window) {
+      window.addEventListener("deviceorientation", onOrientation, {
+        passive: true,
+      });
+    }
 
     return () => {
       cancelAnimationFrame(animFrameRef.current);
       window.removeEventListener("resize", onResize);
       document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchend", resetPointer);
+      document.removeEventListener("touchcancel", resetPointer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (typeof window !== "undefined" && "DeviceOrientationEvent" in window) {
+        window.removeEventListener("deviceorientation", onOrientation);
+      }
     };
   }, []);
 
-  // Initialize code columns
+  // Initialize responsive code columns
   useEffect(() => {
     const container = codeContainerRef.current;
     if (!container) return;
 
-    const colWidth = 350;
-    const numCols = Math.ceil(window.innerWidth / colWidth);
+    const prefersReducedMotion =
+      typeof window !== "undefined" && typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        : false;
+    if (prefersReducedMotion) return;
+
     const intervals: ReturnType<typeof setInterval>[] = [];
 
-    for (let i = 0; i < numCols; i++) {
-      const col = document.createElement("div");
-      col.className = "agent-code-column";
-      col.style.left = `${i * colWidth}px`;
-      col.style.top = `${Math.random() * -200}px`;
-      container.appendChild(col);
+    function buildColumns() {
+      if (!container) return;
+      intervals.forEach(clearInterval);
+      intervals.length = 0;
+      container.innerHTML = "";
 
-      function addSnippet() {
-        const text =
-          CODE_SNIPPETS[Math.floor(Math.random() * CODE_SNIPPETS.length)];
-        const div = document.createElement("div");
-        div.className = "agent-code-snippet";
-        if (Math.random() > 0.5) div.classList.add("agent-color-alt");
+      const isMobile = window.innerWidth < 768;
+      const colWidth = isMobile
+        ? Math.max(260, window.innerWidth - 32)
+        : 350;
+      const numCols = isMobile ? 1 : Math.ceil(window.innerWidth / colWidth);
+      const maxSnippets = isMobile ? 2 : 3;
 
-        let charIndex = 0;
-        const typeInterval = setInterval(
+      for (let i = 0; i < numCols; i++) {
+        const col = document.createElement("div");
+        col.className = "agent-code-column";
+        col.style.left = isMobile ? "16px" : `${i * colWidth}px`;
+        col.style.top = `${Math.random() * -180}px`;
+        container.appendChild(col);
+
+        function addSnippet() {
+          if (document.hidden) return;
+          const text =
+            CODE_SNIPPETS[Math.floor(Math.random() * CODE_SNIPPETS.length)];
+          const div = document.createElement("div");
+          div.className = "agent-code-snippet";
+          if (Math.random() > 0.5) div.classList.add("agent-color-alt");
+
+          let charIndex = 0;
+          const typingSpeed = isMobile
+            ? 25 + Math.random() * 20
+            : 10 + Math.random() * 20;
+
+          const typeInterval = setInterval(
+            () => {
+              if (document.hidden) return;
+              const current = text.substring(0, charIndex);
+              const cursor =
+                charIndex < text.length
+                  ? '<span class="agent-cursor">_</span>'
+                  : "";
+              div.innerHTML = highlightCode(current) + cursor;
+              charIndex++;
+              if (charIndex > text.length) clearInterval(typeInterval);
+            },
+            typingSpeed,
+          );
+
+          col.appendChild(div);
+          intervals.push(typeInterval);
+        }
+
+        addSnippet();
+        const colInterval = setInterval(
           () => {
-            const current = text.substring(0, charIndex);
-            const cursor =
-              charIndex < text.length
-                ? '<span class="agent-cursor">_</span>'
-                : "";
-            div.innerHTML = highlightCode(current) + cursor;
-            charIndex++;
-            if (charIndex > text.length) clearInterval(typeInterval);
+            if (col.children.length >= maxSnippets && col.firstChild) {
+              col.removeChild(col.firstChild);
+            }
+            addSnippet();
           },
-          10 + Math.random() * 20,
+          isMobile
+            ? 8000 + Math.random() * 4000
+            : 6000 + Math.random() * 4000,
         );
-
-        col.appendChild(div);
-        intervals.push(typeInterval);
+        intervals.push(colInterval);
       }
-
-      addSnippet();
-      const colInterval = setInterval(
-        () => {
-          if (col.children.length > 3 && col.firstChild) {
-            col.removeChild(col.firstChild);
-          }
-          addSnippet();
-        },
-        6000 + Math.random() * 4000,
-      );
-      intervals.push(colInterval);
     }
 
+    buildColumns();
+
+    let resizeTimer: ReturnType<typeof setTimeout>;
+    const onResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        buildColumns();
+      }, 250);
+    };
+
+    window.addEventListener("resize", onResize);
+
     return () => {
+      clearTimeout(resizeTimer);
       intervals.forEach(clearInterval);
-      container.innerHTML = "";
+      window.removeEventListener("resize", onResize);
+      if (container) container.innerHTML = "";
     };
   }, []);
 
   return (
-    <div className="absolute inset-0 z-0 w-full h-full bg-[#0a0a0c] overflow-hidden pointer-events-none">
+    <div className="absolute inset-0 z-0 w-full h-full bg-[#0a0a0c] overflow-hidden pointer-events-none select-none">
       <div
         ref={parallaxRef}
-        className="absolute inset-[-40px] w-[calc(100%+80px)] h-[calc(100%+80px)] transition-transform duration-100 ease-out pointer-events-none"
+        className="absolute inset-[-40px] w-[calc(100%+80px)] h-[calc(100%+80px)] transition-transform duration-150 ease-out pointer-events-none"
       >
-        <div ref={codeContainerRef} className="absolute inset-0 z-0 pointer-events-none" />
+        <div
+          ref={codeContainerRef}
+          className="absolute inset-0 z-0 pointer-events-none"
+        />
         <canvas
           ref={canvasRef}
           className="absolute inset-0 z-10 w-full h-full pointer-events-none"

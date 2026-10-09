@@ -1495,6 +1495,42 @@ describe("ChatbotApp", () => {
 
     fireEvent.click(assistantReadAloud);
   });
+
+  it("handles mobile touch, resize, orientation and visibility events for interactive background", async () => {
+    renderChatbot();
+
+    // Verify touch events trigger without errors
+    fireEvent.touchStart(document, {
+      touches: [{ clientX: 180, clientY: 300 }],
+    });
+    fireEvent.touchMove(document, {
+      touches: [{ clientX: 200, clientY: 350 }],
+    });
+    fireEvent.touchEnd(document);
+    fireEvent.touchCancel(document);
+
+    // Verify window resize and orientation
+    fireEvent(window, new Event("resize"));
+    fireEvent(
+      window,
+      new CustomEvent("deviceorientation", {
+        detail: { gamma: 10, beta: 50 },
+      } as any),
+    );
+
+    // Verify visibility change
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      get: () => true,
+    });
+    fireEvent(document, new Event("visibilitychange"));
+
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      get: () => false,
+    });
+    fireEvent(document, new Event("visibilitychange"));
+  });
 });
 
 

@@ -436,6 +436,7 @@
   pointer-events: none;
   overflow: hidden;
   opacity: 0.5;
+  transition: opacity 0.3s ease;
 }
 
 .agent-code-snippet {
@@ -443,6 +444,7 @@
   word-break: break-all;
   animation: agent-fadeInOut 12s infinite linear;
   opacity: 0;
+  will-change: transform, opacity;
 }
 
 .agent-code-snippet.agent-color-alt {
@@ -453,6 +455,39 @@
   color: #ffffff;
   opacity: 0.7;
   animation: agent-blink 0.8s step-end infinite;
+}
+
+@media (max-width: 768px) {
+  .agent-code-column {
+    width: min(320px, calc(100vw - 32px));
+    padding: 0.75rem;
+    font-size: 11px;
+    line-height: 1.5;
+    opacity: 0.3;
+    gap: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .agent-code-column {
+    width: calc(100vw - 24px);
+    padding: 0.5rem;
+    font-size: 10px;
+    line-height: 1.45;
+    opacity: 0.22;
+    gap: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-code-snippet {
+    animation: none;
+    opacity: 0.25;
+  }
+  .agent-cursor {
+    animation: none;
+    opacity: 0.5;
+  }
 }
 
 @keyframes agent-fadeInOut {
