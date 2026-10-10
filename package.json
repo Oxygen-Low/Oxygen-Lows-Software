@@ -82,7 +82,7 @@
     "@radix-ui/react-toggle": "^1.1.18",
     "@radix-ui/react-toggle-group": "^1.1.19",
     "@radix-ui/react-tooltip": "^1.2.16",
-    "@react-three/drei": "^10.7.8",
+    "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
     "@swc/core": "^1.16.13",
     "@tailwindcss/typography": "^0.5.20",
