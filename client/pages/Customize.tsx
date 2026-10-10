@@ -118,8 +118,6 @@ export default function Customize() {
     toggleShuffle,
     loop,
     toggleLoop,
-    playlistSessionVolume,
-    setPlaylistSessionVolume,
     setTrackVolume,
     getTrackBackgroundUrl,
     getTrackBackgroundSource,
@@ -496,62 +494,6 @@ export default function Customize() {
                 ? t("common.yes", undefined, "On")
                 : t("common.no", undefined, "Off")}
             </button>
-          </div>
-
-          {/* Session Playlist Volume */}
-          <div className="mb-6 p-4 bg-card rounded-lg border border-border space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <label className="text-foreground font-medium flex items-center gap-2">
-                  <Volume2 className="w-4 h-4 text-primary" />
-                  <span>
-                    {t(
-                      "customize.playlistSessionVolume",
-                      undefined,
-                      "Session Playlist Volume",
-                    )}
-                  </span>
-                  <span className="font-mono text-xs px-2 py-0.5 rounded bg-primary/10 text-primary font-semibold">
-                    {Math.round(playlistSessionVolume * 100)}%
-                  </span>
-                </label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t(
-                    "customize.sessionVolumeDesc",
-                    undefined,
-                    "Adjust volume for playlist playback during this tab session. Resets when refreshed.",
-                  )}
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPlaylistSessionVolume(1)}
-                disabled={playlistSessionVolume === 1}
-                className="text-xs h-8"
-              >
-                <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-                {t(
-                  "customize.resetSessionVolume",
-                  undefined,
-                  "Reset session volume",
-                )}
-              </Button>
-            </div>
-            <div className="pt-1">
-              <Slider
-                value={[Math.round(playlistSessionVolume * 100)]}
-                min={0}
-                max={100}
-                step={1}
-                onValueChange={([val]) => setPlaylistSessionVolume(val / 100)}
-                aria-label={t(
-                  "customize.playlistSessionVolume",
-                  undefined,
-                  "Session Playlist Volume",
-                )}
-              />
-            </div>
           </div>
 
           {/* Playlist */}

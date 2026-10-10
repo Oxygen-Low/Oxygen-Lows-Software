@@ -263,6 +263,39 @@ describe("MusicPlayer & TopbarMusicPlayer components", () => {
     fireEvent.click(resetBtn);
     expect(mockSetPlaylistSessionVolume).toHaveBeenCalledWith(1);
   });
+
+  it("renders topbar mute/volume button as session volume control and toggles popover", () => {
+    const mockSetPlaylistSessionVolume = vi.fn();
+    mockUseMusic.mockReturnValue({
+      ...defaultContext,
+      playlistSessionVolume: 0.8,
+      setPlaylistSessionVolume: mockSetPlaylistSessionVolume,
+    });
+
+    render(
+      <MemoryRouter>
+        <TopbarMusicPlayer />
+      </MemoryRouter>,
+    );
+
+    // Click topbar volume button
+    const volBtn = screen.getByRole("button", { name: "Session Playlist Volume" });
+    expect(volBtn).not.toBeNull();
+    fireEvent.click(volBtn);
+
+    const popup = within(screen.getByRole("dialog"));
+    expect(popup.getByText("80%")).not.toBeNull();
+
+    // Adjust volume slider in topbar popover
+    const slider = popup.getByLabelText("Session Playlist Volume");
+    fireEvent.change(slider, { target: { value: "0.4" } });
+    expect(mockSetPlaylistSessionVolume).toHaveBeenCalledWith(0.4);
+
+    // Click Mute in popover
+    const muteBtn = popup.getByRole("button", { name: "Mute" });
+    fireEvent.click(muteBtn);
+    expect(defaultContext.toggleMute).toHaveBeenCalled();
+  });
 });
 
 describe("MusicContext loop integration", () => {

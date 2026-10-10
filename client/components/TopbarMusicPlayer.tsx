@@ -466,22 +466,111 @@ export const TopbarMusicPlayer: React.FC = () => {
           <Repeat className="w-3.5 h-3.5" />
         </Button>
 
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={toggleMute}
-          className="hidden @[36rem]/music:inline-flex h-9 w-9 shrink-0 p-0 rounded-md text-muted-foreground hover:text-primary"
-          title={isMuted ? "Unmute" : "Mute"}
-          aria-label={isMuted ? "Unmute" : "Mute"}
-        >
-          {isMuted || volume === 0 ? (
-            <VolumeX className="w-3.5 h-3.5 text-muted-foreground" />
-          ) : volume < 0.5 ? (
-            <Volume1 className="w-3.5 h-3.5 text-primary" />
-          ) : (
-            <Volume2 className="w-3.5 h-3.5 text-primary" />
-          )}
-        </Button>
+        {/* Topbar Session Volume Popover */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="hidden @[36rem]/music:inline-flex h-9 w-9 shrink-0 p-0 rounded-md text-muted-foreground hover:text-primary"
+              title={
+                isMuted
+                  ? t("customize.unmute", undefined, "Unmute")
+                  : t("customize.playlistSessionVolume", undefined, "Session Volume")
+              }
+              aria-label={
+                isMuted
+                  ? t("customize.unmute", undefined, "Unmute")
+                  : t("customize.playlistSessionVolume", undefined, "Session Volume")
+              }
+            >
+              {isMuted || playlistSessionVolume === 0 || volume === 0 ? (
+                <VolumeX className="w-3.5 h-3.5 text-muted-foreground" />
+              ) : playlistSessionVolume < 0.5 ? (
+                <Volume1 className="w-3.5 h-3.5 text-primary" />
+              ) : (
+                <Volume2 className="w-3.5 h-3.5 text-primary" />
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="center"
+            sideOffset={8}
+            className="w-56 p-3 space-y-3 z-[70]"
+          >
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-foreground">
+                {t(
+                  "customize.playlistSessionVolume",
+                  undefined,
+                  "Session Volume",
+                )}
+              </span>
+              <span className="font-mono text-muted-foreground font-semibold">
+                {isMuted ? "0%" : `${Math.round(playlistSessionVolume * 100)}%`}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={isMuted ? 0 : playlistSessionVolume}
+              onChange={(e) => {
+                if (isMuted) toggleMute();
+                setPlaylistSessionVolume(parseFloat(e.target.value));
+              }}
+              aria-label={t(
+                "customize.playlistSessionVolume",
+                undefined,
+                "Session Volume",
+              )}
+              className="w-full accent-primary cursor-pointer h-1.5 bg-muted rounded-full"
+            />
+            <div className="flex items-center gap-1.5 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleMute}
+                className="flex-1 text-xs h-7"
+              >
+                {isMuted ? (
+                  <>
+                    <Volume2 className="w-3 h-3 mr-1" />
+                    {t("customize.unmute", undefined, "Unmute")}
+                  </>
+                ) : (
+                  <>
+                    <VolumeX className="w-3 h-3 mr-1" />
+                    {t("customize.mute", undefined, "Mute")}
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (isMuted) toggleMute();
+                  setPlaylistSessionVolume(1);
+                }}
+                disabled={!isMuted && playlistSessionVolume === 1}
+                className="text-xs h-7 px-2"
+                title={t(
+                  "customize.resetSessionVolume",
+                  undefined,
+                  "Reset session volume",
+                )}
+                aria-label={t(
+                  "customize.resetSessionVolume",
+                  undefined,
+                  "Reset session volume",
+                )}
+              >
+                <RotateCcw className="w-3 h-3" />
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {/* Playlist Popover */}
         <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>

@@ -199,25 +199,8 @@ describe("Customize page playlist individual track volume", () => {
     );
   });
 
-  it("renders the Session Playlist Volume card and handles resetting", async () => {
-    mockMusicContext.playlistSessionVolume = 0.6;
+  it("does not render session volume control on customize page", () => {
     render(<Customize />);
-
-    expect(screen.getByText("Session Playlist Volume")).not.toBeNull();
-    expect(screen.getByText("60%")).not.toBeNull();
-
-    const resetButton = screen.getByRole("button", { name: "Reset session volume" });
-    expect(resetButton.hasAttribute("disabled")).toBe(false);
-
-    fireEvent.click(resetButton);
-    expect(mockSetPlaylistSessionVolume).toHaveBeenCalledWith(1);
-  });
-
-  it("disables the Reset session volume button when session volume is 100%", () => {
-    mockMusicContext.playlistSessionVolume = 1;
-    render(<Customize />);
-
-    const resetButton = screen.getByRole("button", { name: "Reset session volume" });
-    expect(resetButton.hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByText("Session Playlist Volume")).toBeNull();
   });
 });
