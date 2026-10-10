@@ -1119,6 +1119,10 @@ export const ru = {
     tracksCount: "Ñ‚Ñ€ÐµÐºÐ¾Ð²",
     trackVolume: "Ð“Ñ€Ð¾Ð¼ÐºÐ¾ÑÑ‚ÑŒ Ñ‚Ñ€ÐµÐºÐ°",
     resetVolume: "Ð¡Ð±Ñ€Ð¾ÑÐ¸Ñ‚ÑŒ Ð½Ð° 100%",
+    playlistSessionVolume: "Громкость плейлиста для текущей сессии",
+    sessionVolumeDesc:
+      "Настройка громкости плейлиста для текущей вкладки. Сбрасывается при обновлении страницы.",
+    resetSessionVolume: "Сбросить громкость сессии",
     trackBackground: "Фон трека",
     setBackground: "Установить фон",
     changeBackground: "Изменить фон",

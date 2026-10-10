@@ -1115,6 +1115,10 @@ export const ja = {
     tracksCount: "æ›²",
     trackVolume: "ãƒˆãƒ©ãƒƒã‚¯ã®éŸ³é‡",
     resetVolume: "100%ã«ãƒªã‚»ãƒƒãƒˆ",
+    playlistSessionVolume: "セッションプレイリストの音量",
+    sessionVolumeDesc:
+      "このタブセッション中のプレイリスト再生音量を調整します。更新するとリセットされます。",
+    resetSessionVolume: "セッション音量をリセット",
     trackBackground: "トラックの背景",
     setBackground: "背景を設定",
     changeBackground: "背景を変更",

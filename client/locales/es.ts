@@ -1127,6 +1127,10 @@ export const es = {
     tracksCount: "pistas",
     trackVolume: "Volumen de la pista",
     resetVolume: "Restablecer al 100%",
+    playlistSessionVolume: "Volumen de lista de reproducción de la sesión",
+    sessionVolumeDesc:
+      "Ajusta el volumen para la reproducción durante esta sesión de pestaña. Se restablece al actualizar.",
+    resetSessionVolume: "Restablecer volumen de la sesión",
     trackBackground: "Fondo de la pista",
     setBackground: "Establecer fondo",
     changeBackground: "Cambiar fondo",

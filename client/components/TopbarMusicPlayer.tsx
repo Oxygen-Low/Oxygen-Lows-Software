@@ -13,6 +13,7 @@ import {
   Music,
   ListMusic,
   ExternalLink,
+  RotateCcw,
 } from "lucide-react";
 import { useMusic } from "@/hooks/useMusic";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -97,6 +98,8 @@ export const TopbarMusicPlayer: React.FC = () => {
     shuffle,
     loop,
     volume,
+    playlistSessionVolume,
+    setPlaylistSessionVolume,
     isMuted,
     audioRef,
     play,
@@ -163,6 +166,60 @@ export const TopbarMusicPlayer: React.FC = () => {
           {t("customize.title", undefined, "Customize")}
           <ExternalLink className="w-3 h-3" />
         </Link>
+      </div>
+
+      {/* Session Playlist Volume Control */}
+      <div className="mb-3 p-2 bg-muted/40 rounded-md border border-border/40 space-y-1.5">
+        <div className="flex items-center justify-between text-[11px]">
+          <div className="flex items-center gap-1.5 font-medium text-foreground">
+            <Volume2 className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span>
+              {t(
+                "customize.playlistSessionVolume",
+                undefined,
+                "Session Volume",
+              )}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[10px] px-1 py-0.2 rounded bg-primary/10 text-primary font-semibold">
+              {Math.round(playlistSessionVolume * 100)}%
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setPlaylistSessionVolume(1)}
+              disabled={playlistSessionVolume === 1}
+              className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+              title={t(
+                "customize.resetSessionVolume",
+                undefined,
+                "Reset session volume",
+              )}
+              aria-label={t(
+                "customize.resetSessionVolume",
+                undefined,
+                "Reset session volume",
+              )}
+            >
+              <RotateCcw className="w-3 h-3" />
+            </Button>
+          </div>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={playlistSessionVolume}
+          onChange={(e) => setPlaylistSessionVolume(parseFloat(e.target.value))}
+          aria-label={t(
+            "customize.playlistSessionVolume",
+            undefined,
+            "Session Volume",
+          )}
+          className="w-full accent-primary cursor-pointer h-1.5 bg-muted rounded-full"
+        />
       </div>
 
       {currentTrack && (

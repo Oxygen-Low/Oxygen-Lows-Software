@@ -1112,6 +1112,10 @@ export const en = {
     tracksCount: "tracks",
     trackVolume: "Track Volume",
     resetVolume: "Reset to 100%",
+    playlistSessionVolume: "Session Playlist Volume",
+    sessionVolumeDesc:
+      "Adjust volume for playlist playback during this tab session. Resets when refreshed.",
+    resetSessionVolume: "Reset session volume",
     trackBackground: "Track Background",
     setBackground: "Set Background",
     changeBackground: "Change Background",

@@ -11,6 +11,7 @@ global.ResizeObserver = class {
 };
 
 const mockSetTrackVolume = vi.fn();
+const mockSetPlaylistSessionVolume = vi.fn();
 const mockMoveTrack = vi.fn();
 const mockRemoveTrack = vi.fn();
 const mockPlayTrack = vi.fn();
@@ -42,6 +43,9 @@ const mockMusicContext = {
   toggleShuffle: vi.fn(),
   loop: false,
   toggleLoop: vi.fn(),
+  volume: 1,
+  playlistSessionVolume: 1,
+  setPlaylistSessionVolume: mockSetPlaylistSessionVolume,
   setTrackVolume: mockSetTrackVolume,
   trackBackgrounds: {
     "alpha.mp3": { file: "songbg-alpha.webp", source: "images/custom-bg.png" },
@@ -158,7 +162,7 @@ describe("Customize page playlist individual track volume", () => {
     fireEvent.click(volumeButtons[1]);
 
     await waitFor(() => {
-      expect(screen.getByText("100%")).not.toBeNull();
+      expect(screen.getAllByText("100%").length).toBeGreaterThanOrEqual(1);
     });
 
     const resetButton = screen.getByRole("button", { name: "Reset to 100%" });
@@ -191,7 +195,29 @@ describe("Customize page playlist individual track volume", () => {
     fireEvent.click(removeBtn);
 
     expect(mockRemoveTrackBackground).toHaveBeenCalledWith(
-      expect.objectContaining({ fileName: "alpha.mp3" })
+      expect.objectContaining({ fileName: "alpha.mp3" }),
     );
+  });
+
+  it("renders the Session Playlist Volume card and handles resetting", async () => {
+    mockMusicContext.playlistSessionVolume = 0.6;
+    render(<Customize />);
+
+    expect(screen.getByText("Session Playlist Volume")).not.toBeNull();
+    expect(screen.getByText("60%")).not.toBeNull();
+
+    const resetButton = screen.getByRole("button", { name: "Reset session volume" });
+    expect(resetButton.hasAttribute("disabled")).toBe(false);
+
+    fireEvent.click(resetButton);
+    expect(mockSetPlaylistSessionVolume).toHaveBeenCalledWith(1);
+  });
+
+  it("disables the Reset session volume button when session volume is 100%", () => {
+    mockMusicContext.playlistSessionVolume = 1;
+    render(<Customize />);
+
+    const resetButton = screen.getByRole("button", { name: "Reset session volume" });
+    expect(resetButton.hasAttribute("disabled")).toBe(true);
   });
 });

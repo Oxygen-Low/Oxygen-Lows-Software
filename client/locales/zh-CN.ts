@@ -1075,6 +1075,10 @@ export const zhCN = {
     tracksCount: "é¦–æ›²ç›®",
     trackVolume: "æ›²ç›®éŸ³é‡",
     resetVolume: "é‡ç½®ä¸º 100%",
+    playlistSessionVolume: "当前会话播放列表音量",
+    sessionVolumeDesc:
+      "调整此标签页会话期间的播放列表音量。刷新后将重置。",
+    resetSessionVolume: "重置会话音量",
     trackBackground: "曲目背景",
     setBackground: "设置背景",
     changeBackground: "更改背景",

@@ -1104,6 +1104,10 @@ export const ko = {
     tracksCount: "ê°œ íŠ¸ëž™",
     trackVolume: "íŠ¸ëž™ ìŒëŸ‰",
     resetVolume: "100%ë¡œ ìž¬ì„¤ì •",
+    playlistSessionVolume: "세션 재생 목록 음량",
+    sessionVolumeDesc:
+      "이 탭 세션 동안의 재생 목록 볼륨을 조절합니다. 새로고침 시 초기화됩니다。",
+    resetSessionVolume: "세션 음량 초기화",
     trackBackground: "트랙 배경",
     setBackground: "배경 설정",
     changeBackground: "배경 변경",
