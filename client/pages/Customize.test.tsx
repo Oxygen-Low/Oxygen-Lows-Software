@@ -16,6 +16,7 @@ const mockMoveTrack = vi.fn();
 const mockRemoveTrack = vi.fn();
 const mockPlayTrack = vi.fn();
 const mockClearPlaylist = vi.fn();
+const mockAddTracks = vi.fn();
 const mockSetTrackBackground = vi.fn();
 const mockRemoveTrackBackground = vi.fn();
 const mockGetTrackBackgroundUrl = vi.fn((track: any) =>
@@ -35,6 +36,7 @@ const mockMusicContext = {
   play: vi.fn(),
   pause: vi.fn(),
   addTrack: vi.fn(),
+  addTracks: mockAddTracks,
   removeTrack: mockRemoveTrack,
   moveTrack: mockMoveTrack,
   clearPlaylist: mockClearPlaylist,
@@ -102,8 +104,23 @@ vi.mock("@/hooks/usePageTitle", () => ({
   usePageTitle: vi.fn(),
 }));
 
+const mockToast = vi.fn();
 vi.mock("@/hooks/use-toast", () => ({
-  useToast: () => ({ toast: vi.fn() }),
+  useToast: () => ({ toast: mockToast }),
+}));
+
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => ({ session: { user: { id: "user-123" } } }),
+}));
+
+const mockStorageList = vi.fn();
+vi.mock("@/lib/storage", () => ({
+  storage: {
+    from: vi.fn(() => ({
+      list: mockStorageList,
+      download: vi.fn().mockResolvedValue({ data: new Blob(), error: null }),
+    })),
+  },
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -202,5 +219,100 @@ describe("Customize page playlist individual track volume", () => {
   it("does not render session volume control on customize page", () => {
     render(<Customize />);
     expect(screen.queryByText("Session Playlist Volume")).toBeNull();
+  });
+
+  it("renders Add All Audio Files buttons on the customize page", () => {
+    render(<Customize />);
+    const addAllButtons = screen.getAllByRole("button", { name: "Add All Audio Files" });
+    expect(addAllButtons.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("adds all audio files found in storage with a single button press", async () => {
+    mockStorageList.mockImplementation((path: string) => {
+      if (path === "user-123") {
+        return Promise.resolve({
+          data: [
+            { id: "1", name: "song1.mp3", metadata: { mimetype: "audio/mpeg" } },
+            { id: "2", name: "song2.wav", metadata: { mimetype: "audio/wav" } },
+            { id: null, name: "music-folder", metadata: { mimetype: "" } }, // folder
+          ],
+          error: null,
+        });
+      }
+      if (path === "user-123/music-folder") {
+        return Promise.resolve({
+          data: [
+            { id: "3", name: "song3.ogg", metadata: { mimetype: "audio/ogg" } },
+          ],
+          error: null,
+        });
+      }
+      return Promise.resolve({ data: [], error: null });
+    });
+
+    render(<Customize />);
+    const addAllButtons = screen.getAllByRole("button", { name: "Add All Audio Files" });
+    fireEvent.click(addAllButtons[0]);
+
+    await waitFor(() => {
+      expect(mockAddTracks).toHaveBeenCalledWith([
+        { id: "1", name: "song1", fileName: "user-123/song1.mp3" },
+        { id: "2", name: "song2", fileName: "user-123/song2.wav" },
+        { id: "3", name: "song3", fileName: "user-123/music-folder/song3.ogg" },
+      ]);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Success",
+        description: "Added 3 track(s) to playlist",
+      }),
+    );
+  });
+
+  it("shows an info toast if no audio files are found in storage", async () => {
+    mockStorageList.mockResolvedValue({
+      data: [
+        { id: "doc1", name: "document.pdf", metadata: { mimetype: "application/pdf" } },
+      ],
+      error: null,
+    });
+
+    render(<Customize />);
+    const addAllButtons = screen.getAllByRole("button", { name: "Add All Audio Files" });
+    fireEvent.click(addAllButtons[0]);
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Info",
+          description: "No audio files found in storage",
+        }),
+      );
+    });
+    expect(mockAddTracks).not.toHaveBeenCalled();
+  });
+
+  it("shows an info toast if all audio files are already in the playlist", async () => {
+    mockStorageList.mockResolvedValue({
+      data: [
+        { id: "alpha-id", name: "alpha.mp3", metadata: { mimetype: "audio/mpeg" } },
+      ],
+      error: null,
+    });
+
+    render(<Customize />);
+    const addAllButtons = screen.getAllByRole("button", { name: "Add All Audio Files" });
+    fireEvent.click(addAllButtons[0]);
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Info",
+          description: "All audio files are already in the playlist",
+        }),
+      );
+    });
+    expect(mockAddTracks).not.toHaveBeenCalled();
   });
 });

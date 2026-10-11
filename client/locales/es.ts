@@ -1115,6 +1115,11 @@ export const es = {
     clearPlaylistConfirm:
       "Â¿EstÃ¡s seguro de que deseas vaciar toda tu lista de reproducciÃ³n?",
     clearPlaylistSuccess: "Lista de reproducciÃ³n vaciada",
+    addAllAudio: "Añadir todos los archivos de audio",
+    addingAllAudio: "Añadiendo archivos de audio...",
+    addAllAudioSuccess: "Se añadieron {count} pista(s) a la lista de reproducción",
+    noAudioFilesFound: "No se encontraron archivos de audio en el almacenamiento",
+    allAudioAlreadyInPlaylist: "Todos los archivos de audio ya están en la lista de reproducción",
     moveUp: "Mover arriba",
     moveDown: "Mover abajo",
     removeTrack: "Eliminar pista",

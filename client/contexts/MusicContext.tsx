@@ -59,6 +59,7 @@ export interface MusicContextType {
   setTrackVolume: (index: number, volume: number) => void;
   toggleMute: () => void;
   addTrack: (track: PlaylistTrack) => Promise<void>;
+  addTracks: (tracks: PlaylistTrack[]) => Promise<void>;
   removeTrack: (trackFileName: string) => Promise<void>;
   reorderPlaylist: (newPlaylist: PlaylistTrack[]) => Promise<void>;
   moveTrack: (fromIndex: number, toIndex: number) => Promise<void>;
@@ -948,24 +949,29 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     await playTrack(prevTrack);
   }, [playlist, playTrack, seek]);
 
-  const addTrack = useCallback(
-    async (track: PlaylistTrack) => {
-      if (!session?.user?.id) return;
+  const addTracks = useCallback(
+    async (tracks: PlaylistTrack[]) => {
+      if (!session?.user?.id || tracks.length === 0) return;
+
+      let newlyAdded: PlaylistTrack[] = [];
       setPlaylistState((prev) => {
-        const updatedPlaylist = [...prev, track];
+        newlyAdded = tracks.filter((t) => !prev.some((p) => matchTrack(p, t)));
+        if (newlyAdded.length === 0) return prev;
+        const updatedPlaylist = [...prev, ...newlyAdded];
         playlistRef.current = updatedPlaylist;
         savePreferences({
           playlist: updatedPlaylist,
-          currentTrack: currentTrackRef.current || track,
+          currentTrack: currentTrackRef.current || newlyAdded[0],
         });
         return updatedPlaylist;
       });
 
-      if (!currentTrackRef.current) {
+      if (!currentTrackRef.current && newlyAdded.length > 0) {
+        const first = newlyAdded[0];
         const currentToken = ++playTokenRef.current;
-        setCurrentTrackState(track);
-        currentTrackRef.current = track;
-        const url = await resolvePlaybackUrl(track.fileName);
+        setCurrentTrackState(first);
+        currentTrackRef.current = first;
+        const url = await resolvePlaybackUrl(first.fileName);
         if (currentToken !== playTokenRef.current) return;
         if (url && audioRef.current) {
           audioRef.current.src = url;
@@ -974,6 +980,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     },
     [session?.user?.id, resolvePlaybackUrl, savePreferences],
+  );
+
+  const addTrack = useCallback(
+    async (track: PlaylistTrack) => {
+      return addTracks([track]);
+    },
+    [addTracks],
   );
 
   const removeTrack = useCallback(
@@ -1228,6 +1241,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       setTrackVolume,
       toggleMute,
       addTrack,
+      addTracks,
       removeTrack,
       reorderPlaylist,
       moveTrack,
@@ -1265,6 +1279,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       setTrackVolume,
       toggleMute,
       addTrack,
+      addTracks,
       removeTrack,
       reorderPlaylist,
       moveTrack,
@@ -1313,6 +1328,7 @@ const defaultFallbackMusicContext: MusicContextType = {
   setTrackVolume: () => {},
   toggleMute: () => {},
   addTrack: async () => {},
+  addTracks: async () => {},
   removeTrack: async () => {},
   reorderPlaylist: async () => {},
   moveTrack: async () => {},

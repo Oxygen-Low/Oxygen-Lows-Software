@@ -7,6 +7,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { MusicPlayer } from "@/components/MusicPlayer";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
+import { useAuth } from "@/hooks/useAuth";
 import { storage } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,8 @@ import {
   RotateCcw,
   Image as ImageIcon,
   Crop,
+  ListPlus,
+  Loader2,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
@@ -103,6 +106,7 @@ export default function Customize() {
     ),
   });
 
+  const { session } = useAuth();
   const {
     playlist,
     currentTrack,
@@ -110,6 +114,7 @@ export default function Customize() {
     play,
     pause,
     addTrack,
+    addTracks,
     removeTrack,
     moveTrack,
     clearPlaylist,
@@ -177,6 +182,140 @@ export default function Customize() {
         title: "Info",
         description: "Track already in playlist",
       });
+    }
+  };
+
+  const [isAddingAll, setIsAddingAll] = useState(false);
+
+  const handleAddAllAudio = async () => {
+    if (isAddingAll) return;
+    setIsAddingAll(true);
+    try {
+      const root = session?.user?.id ? `${session.user.id}` : "";
+      const audioTracks: PlaylistTrack[] = [];
+      const foldersToScan: string[] = [""];
+      const visited = new Set<string>();
+      let scannedCount = 0;
+
+      while (foldersToScan.length > 0 && scannedCount < 100) {
+        const relativeFolder = foldersToScan.shift()!;
+        if (visited.has(relativeFolder)) continue;
+        visited.add(relativeFolder);
+        scannedCount++;
+
+        const fullPath = relativeFolder
+          ? (root ? `${root}/${relativeFolder}` : relativeFolder)
+          : root;
+
+        const { data, error } = await storage.from("Storage").list(fullPath, {
+          sortBy: { column: "name", order: "asc" },
+        });
+
+        if (error || !data) continue;
+
+        for (const item of data) {
+          const isFolder = !item.id;
+          if (isFolder) {
+            const subFolder = relativeFolder
+              ? `${relativeFolder}/${item.name}`
+              : item.name;
+            foldersToScan.push(subFolder);
+          } else {
+            const mime = item.metadata?.mimetype || "";
+            const lowerName = item.name.toLowerCase();
+            const AUDIO_EXTS = [
+              ".mp3",
+              ".wav",
+              ".ogg",
+              ".m4a",
+              ".aac",
+              ".flac",
+              ".opus",
+              ".webm",
+              ".wma",
+            ];
+            const isAudio =
+              mime.startsWith("audio/") ||
+              AUDIO_EXTS.some((ext) => lowerName.endsWith(ext));
+
+            if (isAudio) {
+              const relativeName = relativeFolder
+                ? `${relativeFolder}/${item.name}`
+                : item.name;
+              const fullName = root ? `${root}/${relativeName}` : relativeName;
+              const trackName = item.name.replace(/\.[^/.]+$/, "");
+              audioTracks.push({
+                id: item.id || undefined,
+                name: trackName,
+                fileName: fullName,
+              });
+            }
+          }
+        }
+      }
+
+      if (audioTracks.length === 0) {
+        toast({
+          title: t("common.info", undefined, "Info"),
+          description: t(
+            "customize.noAudioFilesFound",
+            undefined,
+            "No audio files found in storage",
+          ),
+        });
+        return;
+      }
+
+      const seenFileNames = new Set<string>();
+      const tracksToAdd = audioTracks.filter((track) => {
+        if (seenFileNames.has(track.fileName)) return false;
+        seenFileNames.add(track.fileName);
+
+        const alreadyIn = playlist.some(
+          (p) =>
+            p.fileName === track.fileName ||
+            p.fileName.endsWith("/" + track.fileName) ||
+            track.fileName.endsWith("/" + p.fileName),
+        );
+        return !alreadyIn;
+      });
+
+      if (tracksToAdd.length === 0) {
+        toast({
+          title: t("common.info", undefined, "Info"),
+          description: t(
+            "customize.allAudioAlreadyInPlaylist",
+            undefined,
+            "All audio files are already in the playlist",
+          ),
+        });
+        return;
+      }
+
+      if (addTracks) {
+        await addTracks(tracksToAdd);
+      } else {
+        for (const tr of tracksToAdd) {
+          await addTrack(tr);
+        }
+      }
+
+      toast({
+        title: t("common.success", undefined, "Success"),
+        description: t(
+          "customize.addAllAudioSuccess",
+          { count: String(tracksToAdd.length) },
+          `Added ${tracksToAdd.length} track(s) to playlist`,
+        ),
+      });
+    } catch (err: any) {
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: err?.message || "Failed to add audio files",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingAll(false);
     }
   };
 
@@ -509,37 +648,54 @@ export default function Customize() {
                   </span>
                 )}
               </div>
-              {playlist.length > 0 && (
+              <div className="flex items-center gap-2">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        t(
-                          "customize.clearPlaylistConfirm",
-                          undefined,
-                          "Are you sure you want to clear your entire playlist?",
-                        ),
-                      )
-                    ) {
-                      clearPlaylist();
-                      toast({
-                        title: t("common.success", undefined, "Success"),
-                        description: t(
-                          "customize.clearPlaylistSuccess",
-                          undefined,
-                          "Playlist cleared",
-                        ),
-                      });
-                    }
-                  }}
-                  className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-2"
+                  onClick={handleAddAllAudio}
+                  disabled={isAddingAll}
+                  aria-busy={isAddingAll}
+                  className="text-xs h-8 px-2.5"
                 >
-                  <Trash2 className="w-3.5 h-3.5 mr-1" />
-                  {t("customize.clearPlaylist", undefined, "Clear Playlist")}
+                  {isAddingAll ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                  ) : (
+                    <ListPlus className="w-3.5 h-3.5 mr-1" />
+                  )}
+                  {t("customize.addAllAudio", undefined, "Add All Audio Files")}
                 </Button>
-              )}
+                {playlist.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          t(
+                            "customize.clearPlaylistConfirm",
+                            undefined,
+                            "Are you sure you want to clear your entire playlist?",
+                          ),
+                        )
+                      ) {
+                        clearPlaylist();
+                        toast({
+                          title: t("common.success", undefined, "Success"),
+                          description: t(
+                            "customize.clearPlaylistSuccess",
+                            undefined,
+                            "Playlist cleared",
+                          ),
+                        });
+                      }
+                    }}
+                    className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-2"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1" />
+                    {t("customize.clearPlaylist", undefined, "Clear Playlist")}
+                  </Button>
+                )}
+              </div>
             </div>
 
             {playlist.length === 0 ? (
@@ -790,33 +946,53 @@ export default function Customize() {
             <h3 className="text-lg font-semibold mb-3 text-foreground">
               {t("customize.addFromStorage", undefined, "Add from Storage")}
             </h3>
-            <StorageFileSelector
-              allowedExtensions={[
-                ".mp3",
-                ".wav",
-                ".ogg",
-                ".m4a",
-                ".aac",
-                ".flac",
-                ".opus",
-                ".webm",
-                ".wma",
-              ]}
-              allowedTypes={["audio"]}
-              onSelect={(file) => {
-                const track = {
-                  id: file.id,
-                  name: file.name,
-                };
-                handleAddTrack(track);
-              }}
-              trigger={
-                <Button className="w-full h-24 border-dashed border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex flex-col gap-2">
-                  <Music className="w-8 h-8 opacity-50" />
-                  <span>{t("customize.selectAudioFromStorage", undefined, "Select Audio from Storage")}</span>
-                </Button>
-              }
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <StorageFileSelector
+                allowedExtensions={[
+                  ".mp3",
+                  ".wav",
+                  ".ogg",
+                  ".m4a",
+                  ".aac",
+                  ".flac",
+                  ".opus",
+                  ".webm",
+                  ".wma",
+                ]}
+                allowedTypes={["audio"]}
+                onSelect={(file) => {
+                  const track = {
+                    id: file.id,
+                    name: file.name,
+                  };
+                  handleAddTrack(track);
+                }}
+                trigger={
+                  <Button className="w-full h-24 border-dashed border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex flex-col gap-2">
+                    <Music className="w-8 h-8 opacity-50" />
+                    <span>{t("customize.selectAudioFromStorage", undefined, "Select Audio from Storage")}</span>
+                  </Button>
+                }
+              />
+              <Button
+                variant="outline"
+                onClick={handleAddAllAudio}
+                disabled={isAddingAll}
+                aria-busy={isAddingAll}
+                className="w-full h-24 border-dashed border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex flex-col gap-2"
+              >
+                {isAddingAll ? (
+                  <Loader2 className="w-8 h-8 opacity-50 animate-spin text-primary" />
+                ) : (
+                  <ListPlus className="w-8 h-8 opacity-50 text-cyan-400" />
+                )}
+                <span>
+                  {isAddingAll
+                    ? t("customize.addingAllAudio", undefined, "Adding audio files...")
+                    : t("customize.addAllAudio", undefined, "Add All Audio Files")}
+                </span>
+              </Button>
+            </div>
           </div>
         </div>
         {/* Image Crop Dialog for Track Background */}

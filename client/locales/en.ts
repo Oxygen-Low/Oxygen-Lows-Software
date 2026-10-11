@@ -1100,6 +1100,11 @@ export const en = {
     clearPlaylistConfirm:
       "Are you sure you want to clear your entire playlist?",
     clearPlaylistSuccess: "Playlist cleared",
+    addAllAudio: "Add All Audio Files",
+    addingAllAudio: "Adding audio files...",
+    addAllAudioSuccess: "Added {count} track(s) to playlist",
+    noAudioFilesFound: "No audio files found in storage",
+    allAudioAlreadyInPlaylist: "All audio files are already in the playlist",
     moveUp: "Move Up",
     moveDown: "Move Down",
     removeTrack: "Remove Track",
