@@ -2,7 +2,7 @@ import type { Channel, MusicProject, NoteEvent, Pattern, PlayMode } from "../typ
 import { STEPS_PER_BAR, secondsPerStep } from "../constants";
 import { getAudioContext } from "./audioContext";
 import { MixerGraph } from "./mixerEffects";
-import { playVoice, type VoiceHandle } from "./synthEngine";
+import { playVoice, playSampleVoice, type VoiceHandle } from "./synthEngine";
 
 export function songLengthBars(project: MusicProject): number {
   let bars = 1;
@@ -197,16 +197,29 @@ export class StudioEngine {
     for (const ev of events) {
       const ch = project.channels.find((c) => c.id === ev.channelId);
       if (!ch) continue;
-      playVoice(
-        this.ctx,
-        this.graph.getChannelInput(ch),
-        ch.params,
-        ev.pitch,
-        time + ev.time,
-        ev.duration,
-        ev.velocity,
-        { glideFrom: this.lastPitch.get(ch.id) },
-      );
+      const sample = ch.sampleId && project.samples?.[ch.sampleId];
+      if (sample?.audioBuffer) {
+        playSampleVoice(
+          this.ctx,
+          this.graph.getChannelInput(ch),
+          sample.audioBuffer,
+          ev.pitch,
+          ch.stepNote,
+          time + ev.time,
+          ev.velocity,
+        );
+      } else {
+        playVoice(
+          this.ctx,
+          this.graph.getChannelInput(ch),
+          ch.params,
+          ev.pitch,
+          time + ev.time,
+          ev.duration,
+          ev.velocity,
+          { glideFrom: this.lastPitch.get(ch.id) },
+        );
+      }
       this.lastPitch.set(ch.id, ev.pitch);
     }
   }
@@ -225,8 +238,19 @@ export class StudioEngine {
   }
 
   /** Plays a channel sound immediately (UI auditioning). */
-  preview(channel: Channel, midi: number, velocity = 0.85, duration = 0.35): VoiceHandle {
+  preview(channel: Channel, midi: number, velocity = 0.85, duration = 0.35, sampleBuffer?: AudioBuffer): VoiceHandle {
     if (this.ctx.state === "suspended") void this.ctx.resume();
+    if (sampleBuffer) {
+      return playSampleVoice(
+        this.ctx,
+        this.graph.getChannelInput(channel),
+        sampleBuffer,
+        midi,
+        channel.stepNote,
+        this.ctx.currentTime + 0.005,
+        velocity,
+      );
+    }
     return playVoice(
       this.ctx,
       this.graph.getChannelInput(channel),

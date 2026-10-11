@@ -183,6 +183,37 @@ export class InsertStrip {
     setParam(this.fader.gain, audible ? clamp(track.volume, 0, 1.5) : 0, ctx);
     setParam(this.panner.pan, clamp(track.pan, -1, 1), ctx);
 
+    // Apply modular FX slot overrides if configured
+    if (Array.isArray(track.fxSlots)) {
+      for (const slot of track.fxSlots) {
+        if (!slot.enabled) continue;
+        if (slot.type === "eq") {
+          if (slot.params.low !== undefined) setParam(this.eqLow.gain, clamp(slot.params.low, -15, 15), ctx);
+          if (slot.params.mid !== undefined) setParam(this.eqMid.gain, clamp(slot.params.mid, -15, 15), ctx);
+          if (slot.params.high !== undefined) setParam(this.eqHigh.gain, clamp(slot.params.high, -15, 15), ctx);
+        } else if (slot.type === "reverb") {
+          const revWet = slot.params.mix !== undefined ? slot.params.mix : slot.wet;
+          setParam(this.reverbSend.gain, clamp(revWet, 0, 1) * 0.9, ctx);
+          if (slot.params.decay && Math.abs(slot.params.decay - this.reverbSize) > 0.1) {
+            this.convolver.buffer = getImpulseResponse(ctx, slot.params.decay);
+            this.reverbSize = slot.params.decay;
+          }
+        } else if (slot.type === "delay") {
+          const delWet = slot.params.mix !== undefined ? slot.params.mix : slot.wet;
+          setParam(this.delaySend.gain, clamp(delWet, 0, 1) * 0.8, ctx);
+          if (slot.params.feedback !== undefined) setParam(this.delayFeedback.gain, clamp(slot.params.feedback, 0, 0.9), ctx);
+        } else if (slot.type === "distortion") {
+          const dDrive = slot.params.drive !== undefined ? slot.params.drive : 0;
+          this.shaper.curve = dDrive > 0.001 ? makeDriveCurve(dDrive) : null;
+          setParam(this.driveMakeup.gain, 1 / (1 + dDrive * 1.5), ctx);
+        } else if (slot.type === "chorus") {
+          const cDepth = slot.params.depth !== undefined ? slot.params.depth : slot.wet;
+          setParam(this.chorusWet.gain, clamp(cDepth, 0, 1) * 0.7, ctx);
+          setParam(this.chorusLfoGain.gain, clamp(cDepth, 0, 1) * 0.006, ctx);
+        }
+      }
+    }
+
     if (this.limiter) {
       const on = track.limiter;
       setParam(this.limiter.threshold, on ? -2 : 0, ctx);

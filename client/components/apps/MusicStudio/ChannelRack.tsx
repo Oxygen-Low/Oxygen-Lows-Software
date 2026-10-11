@@ -267,19 +267,51 @@ export const ChannelRack: React.FC<ChannelRackProps> = ({
                   hideLabel
                 />
 
-                {/* Channel Name / Audition button */}
+                {/* Channel Button with Mini Piano Roll preview */}
                 <button
                   type="button"
-                  onClick={() => onPreviewChannel(channel)}
-                  className="flex-1 min-w-0 text-left px-2 py-1 rounded bg-slate-800/90 hover:bg-slate-700/80 transition flex items-center justify-between group"
-                  title={`${channelName(channel, t)} (Click to audition)`}
+                  onClick={() => onOpenSynth(channel)}
+                  className="flex-1 min-w-0 text-left px-2 py-1 rounded bg-gradient-to-r from-slate-800 to-slate-850 hover:from-slate-750 hover:to-slate-700 border border-slate-700/60 transition flex items-center justify-between group shadow-sm"
+                  title={`${channelName(channel, t)} (Click for Channel Settings)`}
                 >
                   <span
-                    className="truncate text-xs font-semibold text-slate-200 group-hover:text-cyan-400"
+                    className="truncate text-xs font-bold text-slate-200 group-hover:text-cyan-400"
                     style={{ borderLeft: `3px solid ${channel.color}`, paddingLeft: "6px" }}
                   >
                     {channelName(channel, t)}
                   </span>
+
+                  {/* Mini Roll Graphic indicator */}
+                  <div className="w-12 h-4 bg-slate-950/80 rounded border border-slate-800/80 shrink-0 ml-1.5 overflow-hidden flex items-center px-0.5 relative">
+                    {hasNotes ? (
+                      <div className="w-full h-full flex items-center gap-0.5">
+                        {(activePattern.notes[channel.id] || []).slice(0, 8).map((n) => (
+                          <div
+                            key={n.id}
+                            className="h-2 rounded-xs"
+                            style={{
+                              backgroundColor: channel.color,
+                              width: `${Math.min(8, Math.max(2, n.length * 1.5))}px`,
+                              opacity: 0.85,
+                            }}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex items-center gap-0.5">
+                        {steps.map((st, sidx) => (
+                          <div
+                            key={sidx}
+                            className={cn(
+                              "w-0.5 h-1.5 rounded-full shrink-0",
+                              st.on ? "opacity-100" : "opacity-10"
+                            )}
+                            style={{ backgroundColor: channel.color }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </button>
 
                 {/* Mixer Track assign selector */}

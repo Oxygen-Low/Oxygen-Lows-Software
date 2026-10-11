@@ -5,6 +5,7 @@ import { ChannelRack } from "./ChannelRack";
 import { PianoRoll } from "./PianoRoll";
 import { PlaylistArranger } from "./PlaylistArranger";
 import { MixerConsole } from "./MixerConsole";
+import { WindowFrame } from "./WindowFrame";
 import { InstrumentEditorModal } from "./InstrumentEditorModal";
 import { ProjectsDialog } from "./ProjectsDialog";
 import { ExportDialog } from "./ExportDialog";
@@ -35,6 +36,103 @@ export const MusicStudioApp: React.FC = () => {
   // Studio interface mode states
   const [mode, setMode] = useState<PlayMode>("pattern");
   const [view, setView] = useState<StudioView>("rack");
+  // Multi-window DAW desktop state
+  const [windows, setWindows] = useState<Record<WindowId, WindowState>>({
+    rack: {
+      id: "rack",
+      title: t("channelRack"),
+      isOpen: true,
+      isMinimized: false,
+      x: 16,
+      y: 16,
+      width: 700,
+      height: 400,
+      zIndex: 10,
+    },
+    piano: {
+      id: "piano",
+      title: t("pianoRoll"),
+      isOpen: false,
+      isMinimized: false,
+      x: 140,
+      y: 80,
+      width: 780,
+      height: 440,
+      zIndex: 11,
+    },
+    playlist: {
+      id: "playlist",
+      title: t("playlist"),
+      isOpen: false,
+      isMinimized: false,
+      x: 60,
+      y: 60,
+      width: 820,
+      height: 420,
+      zIndex: 9,
+    },
+    mixer: {
+      id: "mixer",
+      title: t("mixer"),
+      isOpen: false,
+      isMinimized: false,
+      x: 100,
+      y: 120,
+      width: 860,
+      height: 450,
+      zIndex: 8,
+    },
+    browser: {
+      id: "browser",
+      title: "Browser",
+      isOpen: false,
+      isMinimized: false,
+      x: 20,
+      y: 20,
+      width: 320,
+      height: 400,
+      zIndex: 7,
+    },
+  });
+
+  const [topZ, setTopZ] = useState<number>(20);
+
+  const focusWindow = useCallback((id: WindowId) => {
+    setTopZ((prev) => {
+      const next = prev + 1;
+      setWindows((w) => ({
+        ...w,
+        [id]: { ...w[id], isOpen: true, isMinimized: false, zIndex: next },
+      }));
+      return next;
+    });
+    setView(id);
+  }, []);
+
+  const toggleWindow = useCallback((id: WindowId) => {
+    setWindows((w) => {
+      const current = w[id];
+      const willOpen = !current.isOpen || current.isMinimized;
+      return {
+        ...w,
+        [id]: {
+          ...current,
+          isOpen: willOpen,
+          isMinimized: false,
+          zIndex: willOpen ? topZ + 1 : current.zIndex,
+        },
+      };
+    });
+    setTopZ((prev) => prev + 1);
+    setView(id);
+  }, [topZ]);
+
+  const updateWindowState = useCallback((id: WindowId, partial: Partial<WindowState>) => {
+    setWindows((w) => ({
+      ...w,
+      [id]: { ...w[id], ...partial },
+    }));
+  }, []);
   const [activePatternId, setActivePatternId] = useState<string>(() => project.patterns[0]?.id || "");
   const [activePianoChannelId, setActivePianoChannelId] = useState<string>(() => project.channels[0]?.id || "");
   const [metronome, setMetronome] = useState<boolean>(false);
@@ -144,6 +242,18 @@ export const MusicStudioApp: React.FC = () => {
       if (e.code === "Space") {
         e.preventDefault();
         handleTogglePlay();
+      } else if (e.code === "F5") {
+        e.preventDefault();
+        toggleWindow("playlist");
+      } else if (e.code === "F6") {
+        e.preventDefault();
+        toggleWindow("rack");
+      } else if (e.code === "F7") {
+        e.preventDefault();
+        toggleWindow("piano");
+      } else if (e.code === "F9") {
+        e.preventDefault();
+        toggleWindow("mixer");
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
         if (e.shiftKey) handleRedo();
@@ -163,7 +273,7 @@ export const MusicStudioApp: React.FC = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleTogglePlay, handleUndo, handleRedo, project.channels, activePianoChannelId]);
+  }, [handleTogglePlay, handleUndo, handleRedo, toggleWindow, project.channels, activePianoChannelId]);
 
   // Active Pattern safety
   const activePattern =
@@ -187,7 +297,10 @@ export const MusicStudioApp: React.FC = () => {
         onTogglePlay={handleTogglePlay}
         onStop={handleStop}
         onModeChange={setMode}
-        onViewChange={setView}
+        onViewChange={(v) => {
+          setView(v);
+          focusWindow(v);
+        }}
         onBpmChange={(bpm) => updateProjectWithHistory({ ...project, bpm })}
         onSwingChange={(swing) => updateProjectWithHistory({ ...project, swing })}
         onMasterChange={(masterVolume) => updateProjectWithHistory({ ...project, masterVolume })}
@@ -231,43 +344,98 @@ export const MusicStudioApp: React.FC = () => {
         getAnalyser={() => engineRef.current?.graph.masterAnalyser || null}
       />
 
-      {/* Main Workspace Area (View Switcher) */}
-      <div className="flex-1 p-2 sm:p-3 overflow-hidden">
-        {view === "rack" && activePattern && (
-          <ChannelRack
-            t={t}
-            project={project}
-            activePattern={activePattern}
-            playStep={playStep}
-            onUpdateProject={updateProjectWithHistory}
-            onPreviewChannel={(ch) => engineRef.current?.preview(ch, ch.stepNote)}
-            onOpenSynth={(ch) => setSynthModalChannel(ch)}
-            onOpenPianoRoll={(chId) => {
-              setActivePianoChannelId(chId);
-              setView("piano");
-            }}
-            onAddChannel={(presetId) => {
-              const { project: next, id } = addChannel(project, presetId);
-              updateProjectWithHistory(next);
-              setActivePianoChannelId(id);
-            }}
-          />
+      {/* Main Multi-Window DAW Desktop Canvas */}
+      <div className="relative flex-1 overflow-hidden bg-slate-950 p-2 sm:p-3">
+        {/* Background Grid Accent */}
+        <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-25 pointer-events-none" />
+
+        {/* Channel Rack Window */}
+        {activePattern && (
+          <WindowFrame
+            id="rack"
+            title={`${t("channelRack")} (F6)`}
+            isOpen={windows.rack.isOpen}
+            isMinimized={windows.rack.isMinimized}
+            x={windows.rack.x}
+            y={windows.rack.y}
+            width={windows.rack.width}
+            height={windows.rack.height}
+            zIndex={windows.rack.zIndex}
+            onFocus={() => focusWindow("rack")}
+            onClose={() => updateWindowState("rack", { isOpen: false })}
+            onMinimize={() => updateWindowState("rack", { isMinimized: !windows.rack.isMinimized })}
+            onMove={(x, y) => updateWindowState("rack", { x, y })}
+            onResize={(width, height) => updateWindowState("rack", { width, height })}
+          >
+            <ChannelRack
+              t={t}
+              project={project}
+              activePattern={activePattern}
+              playStep={playStep}
+              onUpdateProject={updateProjectWithHistory}
+              onPreviewChannel={(ch) => engineRef.current?.preview(ch, ch.stepNote)}
+              onOpenSynth={(ch) => setSynthModalChannel(ch)}
+              onOpenPianoRoll={(chId) => {
+                setActivePianoChannelId(chId);
+                focusWindow("piano");
+              }}
+              onAddChannel={(presetId) => {
+                const { project: next, id } = addChannel(project, presetId);
+                updateProjectWithHistory(next);
+                setActivePianoChannelId(id);
+              }}
+            />
+          </WindowFrame>
         )}
 
-        {view === "piano" && activePattern && (
-          <PianoRoll
-            t={t}
-            project={project}
-            activePattern={activePattern}
-            activeChannelId={activePianoChannelId}
-            playStep={playStep}
-            onSelectChannel={setActivePianoChannelId}
-            onUpdateProject={updateProjectWithHistory}
-            onPreviewNote={(ch, midi) => engineRef.current?.preview(ch, midi)}
-          />
+        {/* Piano Roll Window */}
+        {activePattern && (
+          <WindowFrame
+            id="piano"
+            title={`${t("pianoRoll")} (F7)`}
+            isOpen={windows.piano.isOpen}
+            isMinimized={windows.piano.isMinimized}
+            x={windows.piano.x}
+            y={windows.piano.y}
+            width={windows.piano.width}
+            height={windows.piano.height}
+            zIndex={windows.piano.zIndex}
+            onFocus={() => focusWindow("piano")}
+            onClose={() => updateWindowState("piano", { isOpen: false })}
+            onMinimize={() => updateWindowState("piano", { isMinimized: !windows.piano.isMinimized })}
+            onMove={(x, y) => updateWindowState("piano", { x, y })}
+            onResize={(width, height) => updateWindowState("piano", { width, height })}
+          >
+            <PianoRoll
+              t={t}
+              project={project}
+              activePattern={activePattern}
+              activeChannelId={activePianoChannelId}
+              playStep={playStep}
+              onSelectChannel={setActivePianoChannelId}
+              onUpdateProject={updateProjectWithHistory}
+              onPreviewNote={(ch, midi) => engineRef.current?.preview(ch, midi)}
+            />
+          </WindowFrame>
         )}
 
-        {view === "playlist" && (
+        {/* Playlist Arranger Window */}
+        <WindowFrame
+          id="playlist"
+          title={`${t("playlist")} (F5)`}
+          isOpen={windows.playlist.isOpen}
+          isMinimized={windows.playlist.isMinimized}
+          x={windows.playlist.x}
+          y={windows.playlist.y}
+          width={windows.playlist.width}
+          height={windows.playlist.height}
+          zIndex={windows.playlist.zIndex}
+          onFocus={() => focusWindow("playlist")}
+          onClose={() => updateWindowState("playlist", { isOpen: false })}
+          onMinimize={() => updateWindowState("playlist", { isMinimized: !windows.playlist.isMinimized })}
+          onMove={(x, y) => updateWindowState("playlist", { x, y })}
+          onResize={(width, height) => updateWindowState("playlist", { width, height })}
+        >
           <PlaylistArranger
             t={t}
             project={project}
@@ -276,15 +444,31 @@ export const MusicStudioApp: React.FC = () => {
             onUpdateProject={updateProjectWithHistory}
             onSelectPattern={setActivePatternId}
           />
-        )}
+        </WindowFrame>
 
-        {view === "mixer" && (
+        {/* Mixer Console Window */}
+        <WindowFrame
+          id="mixer"
+          title={`${t("mixer")} (F9)`}
+          isOpen={windows.mixer.isOpen}
+          isMinimized={windows.mixer.isMinimized}
+          x={windows.mixer.x}
+          y={windows.mixer.y}
+          width={windows.mixer.width}
+          height={windows.mixer.height}
+          zIndex={windows.mixer.zIndex}
+          onFocus={() => focusWindow("mixer")}
+          onClose={() => updateWindowState("mixer", { isOpen: false })}
+          onMinimize={() => updateWindowState("mixer", { isMinimized: !windows.mixer.isMinimized })}
+          onMove={(x, y) => updateWindowState("mixer", { x, y })}
+          onResize={(width, height) => updateWindowState("mixer", { width, height })}
+        >
           <MixerConsole
             t={t}
             project={project}
             onUpdateProject={updateProjectWithHistory}
           />
-        )}
+        </WindowFrame>
       </div>
 
       {/* Synth Sound Designer Modal */}

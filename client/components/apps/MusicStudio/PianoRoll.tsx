@@ -350,6 +350,67 @@ export const PianoRoll: React.FC<PianoRollProps> = ({
             );
           })}
         </div>
+
+        {/* Velocity Stalks Lane (Authentic Piano Roll Velocity Editor) */}
+        <div className="h-20 shrink-0 bg-slate-950 border-t border-slate-800 flex flex-col">
+          <div className="h-4 px-2 bg-slate-900/90 border-b border-slate-800/80 flex items-center justify-between text-[9px] font-mono text-slate-400">
+            <span className="uppercase font-semibold tracking-wider text-slate-300">
+              {t("noteVelocity")} ({notes.length} {t("notes")})
+            </span>
+            <span className="text-slate-500">{t("clickDragVelocity")}</span>
+          </div>
+
+          <div className="flex-1 flex relative items-end px-16 pb-1">
+            {notes.map((note) => {
+              const leftPercent = (note.start / patternSteps) * 100;
+              const heightPercent = Math.max(5, Math.min(100, (note.velocity || 0.8) * 100));
+
+              return (
+                <div
+                  key={note.id}
+                  className="absolute bottom-1 w-3 -ml-1.5 flex flex-col items-center group cursor-ns-resize"
+                  style={{ left: `${leftPercent}%` }}
+                  title={`${noteName(note.pitch)}: ${Math.round((note.velocity || 0.8) * 100)}%`}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    const startY = e.clientY;
+                    const startVel = note.velocity || 0.8;
+                    const handleMove = (me: PointerEvent) => {
+                      const deltaY = startY - me.clientY;
+                      const nextVel = Math.max(0.05, Math.min(1.0, startVel + deltaY / 60));
+                      const updated = notes.map((n) =>
+                        n.id === note.id ? { ...n, velocity: nextVel } : n
+                      );
+                      onUpdateProject(
+                        setNotes(project, activePattern.id, activeChannel.id, updated)
+                      );
+                    };
+                    const handleUp = () => {
+                      window.removeEventListener("pointermove", handleMove);
+                      window.removeEventListener("pointerup", handleUp);
+                    };
+                    window.addEventListener("pointermove", handleMove);
+                    window.addEventListener("pointerup", handleUp);
+                  }}
+                >
+                  {/* Velocity stalk head */}
+                  <div
+                    className="w-2.5 h-2.5 rounded-full border border-slate-950 shadow-xs transition group-hover:scale-125"
+                    style={{ backgroundColor: activeChannel?.color || "#22d3ee" }}
+                  />
+                  {/* Velocity vertical stem */}
+                  <div
+                    className="w-0.5 rounded-t-xs"
+                    style={{
+                      height: `${heightPercent * 0.55}px`,
+                      backgroundColor: activeChannel?.color || "#22d3ee",
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

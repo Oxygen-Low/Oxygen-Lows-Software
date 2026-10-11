@@ -39,6 +39,13 @@ export function createMixerTrack(partial: Partial<MixerTrack> = {}): MixerTrack 
     filterType: "lowpass",
     filterCutoff: 20000,
     limiter: false,
+    fxSlots: Array.from({ length: 10 }, (_, i) => ({
+      id: `slot_${i}`,
+      type: "none",
+      enabled: true,
+      wet: 1.0,
+      params: {},
+    })),
     ...partial,
   };
 }
@@ -338,6 +345,15 @@ export function normalizeProject(raw: unknown): MusicProject | null {
       { length: PLAYLIST_TRACKS },
       (_, i) => !!r.playlistTrackMutes?.[i],
     ),
-    mixer: base.mixer.map((def, i) => ({ ...def, ...(mixer[i] || {}) })),
+    mixer: base.mixer.map((def, i) => {
+      const src = mixer[i] || {};
+      return {
+        ...def,
+        ...src,
+        fxSlots: Array.isArray(src.fxSlots) && src.fxSlots.length === 10
+          ? src.fxSlots
+          : def.fxSlots,
+      };
+    }),
   };
 }

@@ -239,3 +239,49 @@ export function playVoice(
   };
   return handle;
 }
+
+/**
+ * Plays an audio sample buffer (e.g. user loaded drum hit or instrument sample).
+ */
+export function playSampleVoice(
+  ctx: BaseAudioContext,
+  destination: AudioNode,
+  buffer: AudioBuffer,
+  midi: number,
+  rootNote: number,
+  time: number,
+  velocity: number,
+  gainMultiplier = 1.0,
+): VoiceHandle {
+  const t = Math.max(time, ctx.currentTime);
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+
+  // Pitch shift playback rate based on MIDI key relative to root note
+  const semitones = midi - rootNote;
+  src.playbackRate.setValueAtTime(Math.pow(2, semitones / 12), t);
+
+  const amp = ctx.createGain();
+  const peak = Math.max(0.0001, clamp(velocity, 0, 1) * gainMultiplier * 0.7);
+  amp.gain.setValueAtTime(peak, t);
+
+  src.connect(amp);
+  amp.connect(destination);
+
+  const duration = buffer.duration / Math.pow(2, semitones / 12);
+  const end = t + duration;
+
+  src.start(t);
+  src.stop(end + 0.05);
+
+  return {
+    end,
+    release: (at?: number) => {
+      const rt = Math.max(at ?? ctx.currentTime, ctx.currentTime);
+      amp.gain.linearRampToValueAtTime(0, rt + 0.05);
+      try {
+        src.stop(rt + 0.06);
+      } catch {}
+    },
+  };
+}

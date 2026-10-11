@@ -162,10 +162,205 @@ export const MixerConsole: React.FC<MixerConsoleProps> = ({
             </span>
           </div>
 
-          {/* 3-Band Parametric EQ */}
+          {/* 10 Modular FX Slots Rack */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              FX Slots (1-10)
+            </span>
+            <div className="flex flex-col gap-1.5">
+              {(selectedTrack.fxSlots || []).map((slot, sIdx) => {
+                const updateSlot = (partial: Partial<typeof slot>) => {
+                  const newSlots = [...(selectedTrack.fxSlots || [])];
+                  newSlots[sIdx] = { ...slot, ...partial };
+                  handleUpdateSelected({ fxSlots: newSlots });
+                };
+
+                const updateParam = (key: string, val: number) => {
+                  const params = { ...(slot.params || {}), [key]: val };
+                  updateSlot({ params });
+                };
+
+                return (
+                  <div
+                    key={slot.id || sIdx}
+                    className={cn(
+                      "rounded border border-slate-800 bg-slate-950/70 p-1.5 transition",
+                      slot.enabled && slot.type !== "none" ? "border-cyan-500/40" : "opacity-75"
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span className="w-4 font-mono text-[10px] text-slate-500">{sIdx + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateSlot({ enabled: !slot.enabled })}
+                        className={cn(
+                          "h-2.5 w-2.5 rounded-full transition",
+                          slot.enabled && slot.type !== "none"
+                            ? "bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]"
+                            : "bg-slate-700 hover:bg-slate-600"
+                        )}
+                        title={slot.enabled ? t("on") : t("off")}
+                      />
+                      <select
+                        value={slot.type}
+                        onChange={(e) =>
+                          updateSlot({
+                            type: e.target.value as any,
+                            enabled: e.target.value !== "none",
+                          })
+                        }
+                        className="flex-1 rounded bg-slate-900 px-1 py-0.5 text-[11px] text-slate-200 border border-slate-800 focus:outline-none focus:border-cyan-500"
+                      >
+                        <option value="none">-- (Empty Slot) --</option>
+                        <option value="eq">Parametric EQ</option>
+                        <option value="reverb">Reverb</option>
+                        <option value="delay">Delay</option>
+                        <option value="distortion">Distortion</option>
+                        <option value="chorus">Chorus</option>
+                      </select>
+                      {slot.type !== "none" && (
+                        <div className="shrink-0">
+                          <Knob
+                            label="Wet"
+                            value={slot.wet ?? 1}
+                            min={0}
+                            max={1}
+                            defaultValue={1}
+                            size={22}
+                            onChange={(v) => updateSlot({ wet: v })}
+                            format={fmtPercent}
+                            hideLabel
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Slot Expanded Parameter Controls */}
+                    {slot.enabled && slot.type === "eq" && (
+                      <div className="mt-1.5 flex justify-around border-t border-slate-800/80 pt-1">
+                        <Knob
+                          label={t("low")}
+                          value={slot.params?.low ?? 0}
+                          min={-15}
+                          max={15}
+                          defaultValue={0}
+                          size={24}
+                          onChange={(v) => updateParam("low", v)}
+                          format={fmtDb}
+                        />
+                        <Knob
+                          label={t("mid")}
+                          value={slot.params?.mid ?? 0}
+                          min={-15}
+                          max={15}
+                          defaultValue={0}
+                          size={24}
+                          onChange={(v) => updateParam("mid", v)}
+                          format={fmtDb}
+                        />
+                        <Knob
+                          label={t("high")}
+                          value={slot.params?.high ?? 0}
+                          min={-15}
+                          max={15}
+                          defaultValue={0}
+                          size={24}
+                          onChange={(v) => updateParam("high", v)}
+                          format={fmtDb}
+                        />
+                      </div>
+                    )}
+
+                    {slot.enabled && slot.type === "reverb" && (
+                      <div className="mt-1.5 flex justify-around border-t border-slate-800/80 pt-1">
+                        <Knob
+                          label={t("mix")}
+                          value={slot.params?.mix ?? 0.3}
+                          min={0}
+                          max={1}
+                          defaultValue={0.3}
+                          size={24}
+                          onChange={(v) => updateParam("mix", v)}
+                          format={fmtPercent}
+                        />
+                        <Knob
+                          label={t("decay")}
+                          value={slot.params?.decay ?? 2}
+                          min={0.5}
+                          max={5}
+                          defaultValue={2}
+                          size={24}
+                          onChange={(v) => updateParam("decay", v)}
+                          format={fmtSec}
+                        />
+                      </div>
+                    )}
+
+                    {slot.enabled && slot.type === "delay" && (
+                      <div className="mt-1.5 flex justify-around border-t border-slate-800/80 pt-1">
+                        <Knob
+                          label={t("mix")}
+                          value={slot.params?.mix ?? 0.25}
+                          min={0}
+                          max={1}
+                          defaultValue={0.25}
+                          size={24}
+                          onChange={(v) => updateParam("mix", v)}
+                          format={fmtPercent}
+                        />
+                        <Knob
+                          label={t("feedback")}
+                          value={slot.params?.feedback ?? 0.35}
+                          min={0}
+                          max={0.85}
+                          defaultValue={0.35}
+                          size={24}
+                          onChange={(v) => updateParam("feedback", v)}
+                          format={fmtPercent}
+                        />
+                      </div>
+                    )}
+
+                    {slot.enabled && slot.type === "distortion" && (
+                      <div className="mt-1.5 flex justify-around border-t border-slate-800/80 pt-1">
+                        <Knob
+                          label={t("drive")}
+                          value={slot.params?.drive ?? 0.2}
+                          min={0}
+                          max={1}
+                          defaultValue={0.2}
+                          size={24}
+                          color="#f97316"
+                          onChange={(v) => updateParam("drive", v)}
+                          format={fmtPercent}
+                        />
+                      </div>
+                    )}
+
+                    {slot.enabled && slot.type === "chorus" && (
+                      <div className="mt-1.5 flex justify-around border-t border-slate-800/80 pt-1">
+                        <Knob
+                          label={t("chorus")}
+                          value={slot.params?.depth ?? 0.3}
+                          min={0}
+                          max={1}
+                          defaultValue={0.3}
+                          size={24}
+                          onChange={(v) => updateParam("depth", v)}
+                          format={fmtPercent}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Quick 3-Band Parametric EQ */}
           <div className="bg-slate-950/70 border border-slate-800 rounded-lg p-2.5 flex flex-col gap-2">
             <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wide">
-              {t("parametricEq")}
+              {t("parametricEq")} (Quick EQ)
             </span>
             <div className="flex justify-around items-center pt-1">
               <Knob
