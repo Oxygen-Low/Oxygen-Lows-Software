@@ -373,6 +373,14 @@ type _AssertKoModels = AssertTrue<ExactKeys<typeof en.models, typeof ko.models>>
 type _AssertRuModels = AssertTrue<ExactKeys<typeof en.models, typeof ru.models>>;
 type _AssertZhModels = AssertTrue<ExactKeys<typeof en.models, typeof zhCN.models>>;
 
+// 11. musicStudio leaf keys exact parity across all 6 locales
+type _AssertEsMusicStudio = AssertTrue<ExactKeys<typeof en.musicStudio, typeof es.musicStudio>>;
+type _AssertJaMusicStudio = AssertTrue<ExactKeys<typeof en.musicStudio, typeof ja.musicStudio>>;
+type _AssertKoMusicStudio = AssertTrue<ExactKeys<typeof en.musicStudio, typeof ko.musicStudio>>;
+type _AssertRuMusicStudio = AssertTrue<ExactKeys<typeof en.musicStudio, typeof ru.musicStudio>>;
+type _AssertZhMusicStudio = AssertTrue<ExactKeys<typeof en.musicStudio, typeof zhCN.musicStudio>>;
+
+
 
 
 

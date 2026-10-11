@@ -37,6 +37,7 @@ import {
   Search,
   X,
   Cpu,
+  Headphones,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -134,6 +135,11 @@ const PixelArtStudioApp = lazy(() =>
 const ThreeDStudioApp = lazy(() =>
   import("@/components/studio3d/ThreeDStudioApp").then((m) => ({
     default: m.ThreeDStudioApp,
+  })),
+);
+const MusicStudioApp = lazy(() =>
+  import("@/components/apps/MusicStudio").then((m) => ({
+    default: m.MusicStudioApp,
   })),
 );
 const WebBrowserApp = lazy(() =>
@@ -508,6 +514,18 @@ const APPS: AppMetadata[] = [
     component: PixelArtStudioApp,
   },
   {
+    id: "music-studio",
+    nameKey: "apps.musicStudioTitle",
+    defaultName: "Music Studio",
+    descKey: "apps.musicStudioDesc",
+    defaultDesc:
+      "Compose beats, melodies, multi-channel synthesizer instruments, drum loops, and full songs with an interactive mixer and zero-attribution presets.",
+    categories: ["All", "Utility", "Development"],
+    availability: "web-and-desktop",
+    icon: <Headphones className="w-8 h-8 text-cyan-500" />,
+    component: MusicStudioApp,
+  },
+  {
     id: "web-browser",
     nameKey: "apps.webBrowserTitle",
     defaultName: "Web Browser",
@@ -724,6 +742,7 @@ export default function Apps() {
       activeApp.id === "vpn" ||
       activeApp.id === "game-library" ||
       activeApp.id === "image-studio" ||
+      activeApp.id === "music-studio" ||
       activeApp.id === "3d-background";
 
     return (
