@@ -3,7 +3,7 @@ import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
 import { queryTable } from "../lib/dataStore.ts";
 import { validateAiUrl } from "../lib/safeAiUrl.ts";
-import { getRobotsRules, isPathAllowed } from "../lib/oxylowCrawler.ts";
+import { getRobotsRules, isPathAllowed, searchOxylowIndex } from "../lib/oxylowCrawler.ts";
 import {
   streamHordeWithContinuation,
   fetchHordeNonStreamWithContinuation,
@@ -51,9 +51,11 @@ export const AI_SEARCH_USER_AGENT =
   "Mozilla/5.0 (compatible; oxylow-aisearch/1.0; +https://oxygenlow.com/bot; support@oxygenlow.com)";
 export const AI_SEARCH_CONTACT_EMAIL = "support@oxygenlow.com";
 
+export const BROWSER_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+
 const AI_SEARCH_HEADERS = {
-  "User-Agent": AI_SEARCH_USER_AGENT,
-  From: AI_SEARCH_CONTACT_EMAIL,
+  "User-Agent": BROWSER_USER_AGENT,
   Accept:
     "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   "Accept-Language": "en-US,en;q=0.5",
@@ -173,60 +175,181 @@ const SEARCH_TOOLS = [
   },
 ];
 
-async function performWebSearch(query: string) {
+export async function performWebSearch(query: string) {
+  const cleanQuery = typeof query === "string" ? query.trim() : "";
+  if (!cleanQuery) {
+    return "Error: Empty search query.";
+  }
+
+  const snippets: string[] = [];
+  const urls: string[] = [];
+
+  const addResult = (snippet: string, rawUrl?: string | null) => {
+    const cleanSnippet = stripHtmlTags(snippet).replace(/\s+/g, " ").trim();
+    const normalizedUrl = rawUrl ? normalizeUrl(rawUrl) : null;
+    if (cleanSnippet && cleanSnippet.length > 5 && !snippets.includes(cleanSnippet)) {
+      snippets.push(cleanSnippet);
+      if (normalizedUrl && !urls.includes(normalizedUrl)) {
+        urls.push(normalizedUrl);
+      }
+    }
+  };
+
+  // 1. DuckDuckGo Search (Try POST then GET)
   try {
-    const res = await fetch(
-      `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
+    let html = "";
+    const postRes = await fetch("https://html.duckduckgo.com/html/", {
+      method: "POST",
+      headers: {
+        "User-Agent": BROWSER_USER_AGENT,
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+      },
+      body: `q=${encodeURIComponent(cleanQuery)}&b=`,
+      signal: AbortSignal.timeout(4000),
+    }).catch(() => null);
+
+    if (postRes && postRes.ok) {
+      html = await postRes.text();
+    } else {
+      const getRes = await fetch(
+        `https://html.duckduckgo.com/html/?q=${encodeURIComponent(cleanQuery)}`,
+        {
+          headers: {
+            "User-Agent": BROWSER_USER_AGENT,
+            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+          },
+          signal: AbortSignal.timeout(4000),
+        },
+      ).catch(() => null);
+      if (getRes && getRes.ok) {
+        html = await getRes.text();
+      }
+    }
+
+    if (html && !html.includes('class="badge--ad"') && (html.includes("result__snippet") || html.includes("result__url"))) {
+      const snippetRegex =
+        /class="result__snippet[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+      let match;
+      while ((match = snippetRegex.exec(html)) !== null && snippets.length < 8) {
+        let href = match[1];
+        if (href.includes("uddg=")) {
+          try {
+            const m = href.match(/uddg=([^&]+)/);
+            if (m) href = decodeURIComponent(m[1]);
+          } catch {}
+        }
+        addResult(match[2], href);
+      }
+
+      if (urls.length === 0) {
+        const urlRegex =
+          /class="result__url"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+        while ((match = urlRegex.exec(html)) !== null && urls.length < 8) {
+          const normalized = normalizeUrl(match[1]);
+          if (normalized && !urls.includes(normalized)) urls.push(normalized);
+        }
+      }
+
+      if (snippets.length === 0) {
+        const genericSnippetRegex =
+          /class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
+        while ((match = genericSnippetRegex.exec(html)) !== null && snippets.length < 8) {
+          addResult(match[1]);
+        }
+      }
+    }
+  } catch {}
+
+  // 2. Wikipedia Authoritative Knowledge Search & Extracts API (Factual Encyclopedia Source)
+  try {
+    const wikiSearchRes = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(cleanQuery)}&utf8=1&format=json&srlimit=4`,
       {
-        headers: AI_SEARCH_HEADERS,
+        headers: { "User-Agent": "OxygenLowSoftware/1.0 (https://oxygenlow.com; support@oxygenlow.com)" },
         signal: AbortSignal.timeout(4000),
       },
-    );
-    if (!res.ok) throw new Error("Search request failed");
+    ).catch(() => null);
 
-    const html = await res.text();
-    const snippets: string[] = [];
-    const urls: string[] = [];
+    if (wikiSearchRes && wikiSearchRes.ok) {
+      const searchData: any = await wikiSearchRes.json().catch(() => null);
+      const hits = searchData?.query?.search || [];
+      if (hits.length > 0) {
+        const titles = hits.map((h: any) => h.title).join("|");
+        const extractRes = await fetch(
+          `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&titles=${encodeURIComponent(titles)}&format=json`,
+          {
+            headers: { "User-Agent": "OxygenLowSoftware/1.0 (https://oxygenlow.com; support@oxygenlow.com)" },
+            signal: AbortSignal.timeout(4000),
+          },
+        ).catch(() => null);
 
-    // Extract snippets and their matching hrefs
-    const snippetRegex =
-      /class="result__snippet[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
-    let match;
-    while ((match = snippetRegex.exec(html)) !== null && snippets.length < 10) {
-      const cleanSnippet = stripHtmlTags(match[2]).trim();
-      const normalizedHref = normalizeUrl(match[1]);
-      if (cleanSnippet) {
-        snippets.push(cleanSnippet);
-        if (normalizedHref) urls.push(normalizedHref);
+        if (extractRes && extractRes.ok) {
+          const extractData: any = await extractRes.json().catch(() => null);
+          const pages = Object.values(extractData?.query?.pages || {}) as any[];
+          for (const page of pages) {
+            if (page?.extract && typeof page.extract === "string" && page.extract.trim()) {
+              const cleanExtract = page.extract.slice(0, 600).trim();
+              const pageUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g, "_"))}`;
+              addResult(`[Wikipedia: ${page.title}] ${cleanExtract}`, pageUrl);
+            }
+          }
+        }
+
+        // Fallback to search snippets if full extracts weren't available
+        if (snippets.length === 0) {
+          for (const hit of hits) {
+            const pageUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(hit.title.replace(/ /g, "_"))}`;
+            addResult(`[Wikipedia: ${hit.title}] ${hit.snippet}`, pageUrl);
+          }
+        }
       }
     }
+  } catch {}
 
-    // Fallback if snippet links weren't found
-    if (urls.length === 0) {
-      const urlRegex =
-        /class="result__url"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
-      while ((match = urlRegex.exec(html)) !== null && urls.length < 10) {
-        const normalizedHref = normalizeUrl(match[1]);
-        if (normalizedHref) urls.push(normalizedHref);
+  // 3. Wikinews API for recent events coverage
+  if (snippets.length < 3) {
+    try {
+      const newsRes = await fetch(
+        `https://en.wikinews.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(cleanQuery)}&utf8=1&format=json&srlimit=2`,
+        {
+          headers: { "User-Agent": "OxygenLowSoftware/1.0 (https://oxygenlow.com; support@oxygenlow.com)" },
+          signal: AbortSignal.timeout(3000),
+        },
+      ).catch(() => null);
+
+      if (newsRes && newsRes.ok) {
+        const newsData: any = await newsRes.json().catch(() => null);
+        const hits = newsData?.query?.search || [];
+        for (const hit of hits) {
+          const pageUrl = `https://en.wikinews.org/wiki/${encodeURIComponent(hit.title.replace(/ /g, "_"))}`;
+          addResult(`[Wikinews: ${hit.title}] ${hit.snippet}`, pageUrl);
+        }
       }
-    }
+    } catch {}
+  }
 
-    if (snippets.length === 0) {
-      const genericSnippetRegex =
-        /class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
-      while (
-        (match = genericSnippetRegex.exec(html)) !== null &&
-        snippets.length < 10
-      ) {
-        const cleanSnippet = stripHtmlTags(match[1]).trim();
-        if (cleanSnippet) snippets.push(cleanSnippet);
+  // 4. Oxylow Local Search Index Fallback
+  if (snippets.length < 2) {
+    try {
+      const localResults = searchOxylowIndex(cleanQuery, 1, 3);
+      if (localResults?.results && Array.isArray(localResults.results)) {
+        for (const r of localResults.results) {
+          if (r.snippet || r.title) {
+            addResult(`[Indexed: ${r.title || r.url}] ${r.snippet || r.description || ""}`, r.url);
+          }
+        }
       }
-    }
+    } catch {}
+  }
 
-    return { snippets, urls };
-  } catch (err) {
+  if (snippets.length === 0) {
     return "Error: Failed to perform web search. The search engine might be blocking the request.";
   }
+
+  return { snippets, urls };
 }
 
 async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
@@ -256,7 +379,11 @@ async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
 
   try {
     const res = await fetch(cleanUrl, {
-      headers: AI_SEARCH_HEADERS,
+      headers: {
+        "User-Agent": BROWSER_USER_AGENT,
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+      },
       signal: AbortSignal.timeout(6000),
     });
 
