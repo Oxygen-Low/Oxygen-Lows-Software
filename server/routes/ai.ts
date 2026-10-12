@@ -14,13 +14,17 @@ import {
   moderateText,
   handleModerationEnforcement,
 } from "../lib/safety/openAiModeration.ts";
+import {
+  getUserApiKey,
+  getAllUserApiKeys,
+  setUserApiKey,
+  deleteUserApiKey,
+} from "../lib/userApiKeys.ts";
 
 export const aiRouter = new Hono();
 
 const DEFAULT_MODELS = [
-  { provider: "horde", model_id: "Fast" },
-  { provider: "horde", model_id: "Smart" },
-  { provider: "horde", model_id: "Writing" },
+  { provider: "pollinations", model_id: "inclusionai/ling-3.1-flash" },
 ];
 
 export const HORDE_MODELS_MAP: Record<string, string[]> = {
@@ -44,7 +48,7 @@ export const HORDE_MODELS_MAP: Record<string, string[]> = {
     "koboldcpp/L3-8B-Stheno-v3.2",
     "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
   ],
-  Smart: ["aphrodite/DeepSeek-V4.1-Flash"],
+  Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
   Writing: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
 };
 
@@ -53,6 +57,15 @@ export function resolveHordeModel(model: string): string {
     return HORDE_MODELS_MAP[model].join(",");
   }
   return model;
+}
+
+export function isInvalidOrMaskedApiKey(key?: unknown): boolean {
+  if (!key || typeof key !== "string") return true;
+  const trimmed = key.trim();
+  if (trimmed.length === 0) return true;
+  if (trimmed.includes("...")) return true;
+  if (trimmed.toLowerCase() === "configured") return true;
+  return false;
 }
 
 export async function getFallbackHordeModel(
@@ -150,6 +163,53 @@ aiRouter.get("/local-providers", apiLimiter, async (c) => {
   return c.json([...DEFAULT_MODELS]);
 });
 
+// User LLM API Key Management (Server-side Encrypted)
+aiRouter.get("/keys", apiLimiter, async (c) => {
+  const authHeader = c.req.header("authorization");
+  const token = extractBearerToken(authHeader);
+  if (!token) return c.json({ error: "Unauthorized" }, 401);
+  const user = await resolveUserFromToken(token);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  const keys = await getAllUserApiKeys(user.id);
+  return c.json({ keys });
+});
+
+aiRouter.post("/keys", apiLimiter, async (c) => {
+  const authHeader = c.req.header("authorization");
+  const token = extractBearerToken(authHeader);
+  if (!token) return c.json({ error: "Unauthorized" }, 401);
+  const user = await resolveUserFromToken(token);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  const body = await c.req.json().catch(() => ({}));
+  const provider = body.provider;
+  const rawKey = body.apiKey || body.key;
+  if (!provider || typeof provider !== "string") {
+    return c.json({ error: "Provider is required" }, 400);
+  }
+  if (!rawKey || typeof rawKey !== "string" || !rawKey.trim()) {
+    return c.json({ error: "API key is required" }, 400);
+  }
+
+  const result = await setUserApiKey(user.id, provider, rawKey.trim());
+  return c.json({ success: true, provider: result.provider, prefix: result.prefix });
+});
+
+aiRouter.delete("/keys/:provider", apiLimiter, async (c) => {
+  const authHeader = c.req.header("authorization");
+  const token = extractBearerToken(authHeader);
+  if (!token) return c.json({ error: "Unauthorized" }, 401);
+  const user = await resolveUserFromToken(token);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  const provider = c.req.param("provider");
+  if (!provider) return c.json({ error: "Provider is required" }, 400);
+
+  await deleteUserApiKey(user.id, provider);
+  return c.json({ success: true, provider: provider.toLowerCase() });
+});
+
 aiRouter.get("/horde-status", apiLimiter, async (c) => {
   try {
     const response = await fetch(
@@ -193,6 +253,177 @@ aiRouter.get("/horde-status", apiLimiter, async (c) => {
   }
 });
 
+aiRouter.post("/transcribe", apiLimiter, async (c) => {
+  const authHeader = c.req.header("authorization");
+  const token = extractBearerToken(authHeader);
+  let user = null;
+  if (token && token !== "undefined" && token !== "null") {
+    user = await resolveUserFromToken(token);
+  }
+
+  let fileBuffer: Buffer | null = null;
+  let clientApiKey = "";
+  let clientProvider = "pollinations";
+  let requestedModel = "openai/whisper-large-v3";
+
+  const contentType = c.req.header("content-type") || "";
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await c.req.formData().catch(() => null);
+    if (!formData) return c.json({ error: "Invalid form data" }, 400);
+    const file = formData.get("file");
+    clientApiKey = (formData.get("apiKey") as string) || "";
+    clientProvider = (formData.get("provider") as string) || "pollinations";
+    const m = (formData.get("model") as string);
+    if (m) requestedModel = m;
+    if (file && typeof (file as any).arrayBuffer === "function") {
+      const ab = await (file as any).arrayBuffer();
+      fileBuffer = Buffer.from(ab);
+    }
+  } else {
+    const body = await c.req.json().catch(() => ({}));
+    if (body.audio) {
+      fileBuffer = Buffer.from(body.audio, "base64");
+    }
+    clientApiKey = body.apiKey || "";
+    clientProvider = body.provider || "pollinations";
+    if (body.model) requestedModel = body.model;
+  }
+
+  if (!fileBuffer || fileBuffer.length === 0) {
+    return c.json({ error: "Audio data is required" }, 400);
+  }
+
+  let effectiveApiKey = isInvalidOrMaskedApiKey(clientApiKey) ? "" : clientApiKey.trim();
+  if (!effectiveApiKey && user?.id) {
+    effectiveApiKey =
+      (await getUserApiKey(user.id, clientProvider)) ||
+      (await getUserApiKey(user.id, "openai")) ||
+      (await getUserApiKey(user.id, "pollinations")) ||
+      "";
+  }
+  if (!effectiveApiKey) {
+    effectiveApiKey = process.env.OPENAI_API_KEY || process.env.POLLINATIONS_API_KEY || "";
+  }
+
+  try {
+    const isOpenAiDirect =
+      effectiveApiKey && effectiveApiKey.startsWith("sk-") && !effectiveApiKey.startsWith("pk_");
+
+    const upstreamForm = new FormData();
+    const blob = new Blob([new Uint8Array(fileBuffer)], { type: "audio/webm" });
+    upstreamForm.append("file", blob, "audio.webm");
+    upstreamForm.append(
+      "model",
+      isOpenAiDirect ? "whisper-1" : (requestedModel || "openai/whisper-large-v3"),
+    );
+
+    const headers: Record<string, string> = {};
+    if (effectiveApiKey) {
+      headers["Authorization"] = `Bearer ${effectiveApiKey}`;
+    }
+
+    const endpoint = isOpenAiDirect
+      ? "https://api.openai.com/v1/audio/transcriptions"
+      : "https://gen.pollinations.ai/v1/audio/transcriptions";
+
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: upstreamForm,
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      return c.json({ error: `Transcription upstream error: ${err}` }, 502);
+    }
+
+    const json = await res.json();
+    return c.json({ text: json.text || json.transcript || "" });
+  } catch (err: any) {
+    return c.json({ error: err?.message || "Transcription failed" }, 500);
+  }
+});
+
+aiRouter.post("/tts", apiLimiter, async (c) => {
+  const authHeader = c.req.header("authorization");
+  const token = extractBearerToken(authHeader);
+  let user = null;
+  if (token && token !== "undefined" && token !== "null") {
+    user = await resolveUserFromToken(token);
+  }
+
+  const { input, text, voice = "alloy", model = "openai/tts-1", apiKey, provider = "pollinations" } =
+    await c.req.json().catch(() => ({}));
+  const inputText = input || text;
+  if (!inputText || typeof inputText !== "string" || !inputText.trim()) {
+    return c.json({ error: "Text is required for TTS" }, 400);
+  }
+
+  let effectiveApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
+  if (!effectiveApiKey && user?.id) {
+    effectiveApiKey =
+      (await getUserApiKey(user.id, provider)) ||
+      (await getUserApiKey(user.id, "openai")) ||
+      (await getUserApiKey(user.id, "pollinations")) ||
+      "";
+  }
+  if (!effectiveApiKey) {
+    effectiveApiKey = process.env.OPENAI_API_KEY || process.env.POLLINATIONS_API_KEY || "";
+  }
+
+  const isOpenAiDirect =
+    effectiveApiKey && effectiveApiKey.startsWith("sk-") && !effectiveApiKey.startsWith("pk_");
+  const targetUrl = isOpenAiDirect
+    ? "https://api.openai.com/v1/audio/speech"
+    : "https://gen.pollinations.ai/v1/audio/speech";
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (effectiveApiKey) {
+    headers["Authorization"] = `Bearer ${effectiveApiKey}`;
+  }
+
+  const upstreamModel = isOpenAiDirect ? "tts-1" : (model || "openai/tts-1");
+
+  try {
+    const res = await fetch(targetUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: upstreamModel,
+        input: inputText.slice(0, 4096),
+        voice: voice || "alloy",
+      }),
+    });
+
+    if (!res.ok) {
+      // Fallback to GET audio endpoint on Pollinations if /v1/audio/speech returns error
+      if (!isOpenAiDirect) {
+        const fallbackUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(
+          inputText.slice(0, 500),
+        )}?voice=${encodeURIComponent(voice || "alloy")}`;
+        const fallbackRes = await fetch(fallbackUrl, {
+          headers: effectiveApiKey ? { Authorization: `Bearer ${effectiveApiKey}` } : {},
+        });
+        if (fallbackRes.ok) {
+          const contentType = fallbackRes.headers.get("content-type") || "audio/mpeg";
+          c.header("Content-Type", contentType);
+          return c.body(fallbackRes.body as any);
+        }
+      }
+      const err = await res.text();
+      return c.json({ error: `TTS upstream error: ${err}` }, 502);
+    }
+
+    const contentType = res.headers.get("content-type") || "audio/mpeg";
+    c.header("Content-Type", contentType);
+    return c.body(res.body as any);
+  } catch (err: any) {
+    return c.json({ error: err?.message || "TTS generation failed" }, 500);
+  }
+});
+
 aiRouter.post("/proxy", apiLimiter, async (c) => {
   const { provider, model, messages, prompt, systemPrompt, stream, apiKey, baseUrl, tools } =
     await c.req.json();
@@ -222,7 +453,13 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     envKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY || "";
   }
 
-  const effectiveApiKey = apiKey || envKey;
+  let effectiveApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
+  if (!effectiveApiKey && user?.id) {
+    effectiveApiKey = (await getUserApiKey(user.id, provider)) || "";
+  }
+  if (!effectiveApiKey) {
+    effectiveApiKey = envKey;
+  }
   let integration: any = effectiveApiKey ? { api_key: effectiveApiKey } : null;
   if (baseUrl) {
     try {
@@ -423,7 +660,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       requestBody = { ...requestBody, model, messages: finalMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
     } else if (provider === "pollinations") {
-      targetUrl = "https://text.pollinations.ai/openai/chat/completions";
+      targetUrl = "https://gen.pollinations.ai/v1/chat/completions";
       requestBody = { ...requestBody, model, messages: finalMessages };
       if (integration?.api_key) {
         fetchOptions.headers["Authorization"] = `Bearer ${integration.api_key}`;
@@ -587,14 +824,36 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
     const { provider, apiKey } = await c.req.json();
     const cleanProvider = (provider || "").toLowerCase();
 
+    let effectiveApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
+    if (!effectiveApiKey) {
+      const authHeader = c.req.header("authorization");
+      const token = extractBearerToken(authHeader);
+      if (token) {
+        const user = await resolveUserFromToken(token);
+        if (user?.id) {
+          effectiveApiKey = (await getUserApiKey(user.id, cleanProvider)) || "";
+        }
+      }
+    }
+
     if (cleanProvider === "pollinations") {
       try {
-        const res = await fetch("https://text.pollinations.ai/models");
+        const fetchHeaders: Record<string, string> = {};
+        if (effectiveApiKey) {
+          fetchHeaders["Authorization"] = `Bearer ${effectiveApiKey}`;
+        }
+        let res = await fetch("https://gen.pollinations.ai/v1/models", {
+          headers: fetchHeaders,
+        });
+        if (!res.ok) {
+          res = await fetch("https://text.pollinations.ai/models");
+        }
         if (res.ok) {
           const list = await res.json();
-          if (Array.isArray(list)) {
-            const models = list.map((m: any) => ({
-              id: typeof m === "string" ? m : (m.name || m.id),
+          const items = Array.isArray(list) ? list : list?.data;
+          if (Array.isArray(items)) {
+            const models = items.map((m: any) => ({
+              id: typeof m === "string" ? m : (m.id || m.name),
               name: typeof m === "string" ? m : (m.description || m.name || m.id),
             }));
             return c.json({ models });
@@ -603,18 +862,17 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
       } catch {}
       return c.json({
         models: [
-          { id: "openai", name: "OpenAI GPT-4o Mini (Pollinations)" },
-          { id: "mistral", name: "Mistral Nemo (Pollinations)" },
-          { id: "deepseek", name: "DeepSeek V3 (Pollinations)" },
-          { id: "deepseek-r1", name: "DeepSeek R1 (Pollinations)" },
-          { id: "qwen", name: "Qwen 2.5 72B (Pollinations)" },
-          { id: "claude-hybrid", name: "Claude 3.5 Sonnet (Hybrid)" },
-          { id: "karma", name: "Karma (Pollinations)" },
+          { id: "inclusionai/ling-3.1-flash", name: "Free" },
+          { id: "amazon/nova-micro-v1", name: "Cheap" },
+          { id: "openai/gpt-6-luna", name: "Fast" },
+          { id: "openai/gpt-5.6-terra", name: "Balanced" },
+          { id: "openai/gpt-6.1-sol", name: "Smart" },
+          { id: "openai/gpt-6-astra", name: "Smartest" },
         ],
       });
     }
 
-    if (!apiKey && cleanProvider !== "openrouter") {
+    if (!effectiveApiKey && cleanProvider !== "openrouter") {
       return c.json(
         { error: "API key is required to fetch models for this provider" },
         400,
@@ -623,7 +881,7 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
 
     if (cleanProvider === "openai") {
       const res = await fetch("https://api.openai.com/v1/models", {
-        headers: { Authorization: `Bearer ${apiKey}` },
+        headers: { Authorization: `Bearer ${effectiveApiKey}` },
       });
       if (!res.ok) {
         const err = await res.text();
@@ -648,7 +906,7 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
 
     if (cleanProvider === "openrouter") {
       const headers: Record<string, string> = {};
-      if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
+      if (effectiveApiKey) headers["Authorization"] = `Bearer ${effectiveApiKey}`;
       const res = await fetch("https://openrouter.ai/api/v1/models", { headers });
       if (!res.ok) {
         const err = await res.text();
@@ -667,7 +925,7 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
 
     if (cleanProvider === "grok" || cleanProvider === "xai") {
       const res = await fetch("https://api.x.ai/v1/models", {
-        headers: { Authorization: `Bearer ${apiKey}` },
+        headers: { Authorization: `Bearer ${effectiveApiKey}` },
       });
       if (!res.ok) {
         const err = await res.text();
@@ -684,7 +942,7 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
     if (cleanProvider === "google" || cleanProvider === "gemini") {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(
-          apiKey,
+          effectiveApiKey,
         )}`,
       );
       if (!res.ok) {
@@ -727,3 +985,104 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
     );
   }
 });
+
+aiRouter.get("/pollinations/balance", apiLimiter, async (c) => {
+  const authHeader = c.req.header("authorization");
+  const token = extractBearerToken(authHeader);
+  let user = null;
+  if (token && token !== "undefined" && token !== "null") {
+    user = await resolveUserFromToken(token);
+  }
+  let effectiveApiKey = "";
+  if (user?.id) {
+    effectiveApiKey = (await getUserApiKey(user.id, "pollinations")) || "";
+  }
+  if (!effectiveApiKey) {
+    effectiveApiKey = process.env.POLLINATIONS_API_KEY || "";
+  }
+  if (!effectiveApiKey) {
+    return c.json({ balance: 0, pollen: 0 });
+  }
+
+  try {
+    const res = await fetch("https://gen.pollinations.ai/account/balance", {
+      headers: { Authorization: `Bearer ${effectiveApiKey}` },
+    });
+    if (!res.ok) {
+      return c.json({ balance: 0, pollen: 0 });
+    }
+    const data = await res.json();
+    const balance =
+      typeof data?.pollen === "number"
+        ? data.pollen
+        : typeof data?.balance === "number"
+        ? data.balance
+        : typeof data?.credits === "number"
+        ? data.credits
+        : 0;
+    return c.json({ balance, pollen: balance });
+  } catch {
+    return c.json({ balance: 0, pollen: 0 });
+  }
+});
+
+aiRouter.get("/pollinations/config", (c) => {
+  const appKey = process.env.POLLINATIONS_APP?.trim() || null;
+  const supporterAppKey = process.env.POLLINATIONS_SUPPORTER_APP?.trim() || null;
+  return c.json({
+    configured: !!(appKey || supporterAppKey),
+    appKey,
+    supporterAppKey,
+    hasSupporterApp: !!supporterAppKey,
+  });
+});
+
+aiRouter.post("/pollinations/token", async (c) => {
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const { code, code_verifier, redirect_uri, client_id } = body;
+    if (!code || !code_verifier || !redirect_uri) {
+      return c.json(
+        { error: "code, code_verifier, and redirect_uri are required" },
+        400,
+      );
+    }
+
+    const effectiveClientId =
+      client_id ||
+      process.env.POLLINATIONS_APP?.trim() ||
+      process.env.POLLINATIONS_SUPPORTER_APP?.trim() ||
+      undefined;
+
+    const tokenResponse = await fetch(
+      "https://enter.pollinations.ai/api/oauth/token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          grant_type: "authorization_code",
+          code,
+          code_verifier,
+          redirect_uri,
+          ...(effectiveClientId ? { client_id: effectiveClientId } : {}),
+        }),
+      },
+    );
+
+    if (!tokenResponse.ok) {
+      const errText = await tokenResponse.text();
+      return c.json(
+        { error: `Pollinations token exchange failed: ${errText}` },
+        tokenResponse.status as any,
+      );
+    }
+
+    const data = await tokenResponse.json();
+    return c.json(data);
+  } catch (err: any) {
+    return c.json({ error: err?.message || "Token exchange failed" }, 500);
+  }
+});
+

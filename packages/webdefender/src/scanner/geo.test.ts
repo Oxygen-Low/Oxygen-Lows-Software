@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getCountryCode, CDN_COUNTRY_HEADERS } from "./geo.js";
+import { getCountryCode } from "./geo.js";
 import { DefenderClient } from "../webdefender.js";
 
 describe("getCountryCode (CDN Headers)", () => {

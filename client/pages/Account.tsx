@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
@@ -20,7 +21,16 @@ import {
   RefreshCw,
   KeyRound,
   ExternalLink,
+  Eye,
+  EyeOff,
+  Heart,
+  ChevronDown,
+  ChevronUp,
+  Unlink,
+  ShieldCheck,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { initiatePollinationsOAuth } from "@/services/pollinationsAuth";
 import { useToast } from "@/hooks/use-toast";
 import { db, supabase } from "@/lib/db";
 import { storage } from "@/lib/storage";
@@ -99,6 +109,29 @@ export default function Account() {
   usePageTitle(t("titles.account", undefined, "Account"), {
     description: t("account.profileSettings", undefined, "Profile Settings"),
   });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<string>(
+    tabParam === "models" ? "models" : "profile",
+  );
+
+  useEffect(() => {
+    if (tabParam === "models" || tabParam === "profile") {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
+  const handleTabChange = (val: string) => {
+    setActiveTab(val);
+    const newParams = new URLSearchParams(searchParams);
+    if (val === "profile") {
+      newParams.delete("tab");
+    } else {
+      newParams.set("tab", val);
+    }
+    setSearchParams(newParams, { replace: true });
+  };
+
   const [profilePicture, setProfilePicture] = useState<ProfilePicture | null>(
     null,
   );
@@ -188,12 +221,16 @@ export default function Account() {
   // Models Tab State & Hooks
   const {
     models,
+    customModels,
     isLoading: modelsLoading,
     refreshModels,
-    hordeStatus,
-    localStatus,
-    configuredProviders,
-    isProviderConfigured,
+    pollinationsApiKey,
+    isPollinationsConfigured,
+    setPollinationsApiKey,
+    isPollinationsSupporter,
+    setIsPollinationsSupporter,
+    pollenBalance,
+    refreshPollenBalance,
     addCustomModel,
     removeCustomModel,
     chatbotDefaultModel,
@@ -207,13 +244,35 @@ export default function Account() {
     setResearchSummarizerDefault,
   } = useAiModels();
 
+  // Pollinations API Key Management State
+  const [pollinationsKeyInput, setPollinationsKeyInput] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isSavingKey, setIsSavingKey] = useState(false);
+  const [isConnectingPollinations, setIsConnectingPollinations] =
+    useState(false);
+  const [showManualKeyAccordion, setShowManualKeyAccordion] = useState(false);
+
+  const isPollinationsConnected =
+    isPollinationsConfigured ||
+    (!!pollinationsApiKey && pollinationsApiKey.trim().length > 0);
+
+  useEffect(() => {
+    setPollinationsKeyInput(pollinationsApiKey || "");
+  }, [pollinationsApiKey]);
+
+  const standardModels = useMemo(
+    () => models.filter((m) => !m.isCustom),
+    [models],
+  );
+  const customModelsList = useMemo(
+    () => models.filter((m) => m.isCustom),
+    [models],
+  );
+
   // Add Model Dialog State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [addProvider, setAddProvider] = useState<string>("openai");
-  const [selectedPreset, setSelectedPreset] = useState<string>("gpt-4o");
-  const [customModelId, setCustomModelId] = useState<string>("gpt-4o");
-  const [customModelName, setCustomModelName] =
-    useState<string>("GPT-4o (Omni)");
+  const [customModelId, setCustomModelId] = useState<string>("");
+  const [customModelName, setCustomModelName] = useState<string>("");
   const [addError, setAddError] = useState<string | null>(null);
   const [isSubmittingModel, setIsSubmittingModel] = useState(false);
 
@@ -454,62 +513,87 @@ export default function Account() {
     }
   };
 
-  // Provider options for Add Model Dialog
-  const providerOptions = useMemo(
-    () => [
-      { value: "openai", label: "OpenAI", isLocal: false },
-      { value: "anthropic", label: "Anthropic Claude", isLocal: false },
-      { value: "google", label: "Google Gemini", isLocal: false },
-      { value: "openrouter", label: "OpenRouter", isLocal: false },
-      { value: "grok", label: "xAI Grok", isLocal: false },
-      { value: "local-ollama", label: "Local Ollama", isLocal: true },
-      { value: "local-lmstudio", label: "Local LM Studio", isLocal: true },
-      { value: "local-kobold", label: "Local KoboldCPP", isLocal: true },
-      { value: "horde", label: "AI Horde", isLocal: false },
-    ],
-    [],
-  );
-
-  // When provider changes in Add Model modal, update default preset & custom id
-  const handleProviderSelectChange = (newProvider: string) => {
-    setAddProvider(newProvider);
-    setAddError(null);
-    const presets = POPULAR_PRESETS[newProvider] || [];
-    if (presets.length > 0) {
-      setSelectedPreset(presets[0].model_id);
-      setCustomModelId(presets[0].model_id);
-      setCustomModelName(presets[0].name);
-    } else {
-      setSelectedPreset("custom");
-      setCustomModelId("");
-      setCustomModelName("");
+  // Pollinations API Key handlers
+  const handleSaveApiKey = async () => {
+    setIsSavingKey(true);
+    try {
+      await setPollinationsApiKey(pollinationsKeyInput.trim());
+      toast({
+        title: t(
+          "account.apiKeySaved",
+          undefined,
+          "Pollinations API key saved successfully",
+        ),
+      });
+    } catch (err: any) {
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: err?.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingKey(false);
     }
   };
 
-  const handlePresetSelectChange = (newPreset: string) => {
-    setSelectedPreset(newPreset);
-    setAddError(null);
-    if (newPreset === "custom") {
-      setCustomModelId("");
-      setCustomModelName("");
-    } else {
-      const presets = POPULAR_PRESETS[addProvider] || [];
-      const match = presets.find((p) => p.model_id === newPreset);
-      if (match) {
-        setCustomModelId(match.model_id);
-        setCustomModelName(match.name);
-      } else {
-        setCustomModelId(newPreset);
+  const handleClearApiKey = async () => {
+    setIsSavingKey(true);
+    try {
+      setPollinationsKeyInput("");
+      await setPollinationsApiKey("");
+      toast({
+        title: t(
+          "account.apiKeyRemoved",
+          undefined,
+          "Pollinations API key removed",
+        ),
+      });
+    } catch (err: any) {
+      toast({
+        title: t("common.error", undefined, "Error"),
+        description: err?.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingKey(false);
+    }
+  };
+
+  const handleConnectPollinations = async () => {
+    setIsConnectingPollinations(true);
+    try {
+      const result = await initiatePollinationsOAuth({
+        isSupporter: isPollinationsSupporter,
+      });
+      if (result?.apiKey) {
+        await setPollinationsApiKey(result.apiKey);
+        setIsPollinationsSupporter(result.isSupporter);
+        toast({
+          title: t(
+            "account.authSuccessToast",
+            undefined,
+            "Pollinations connected successfully!",
+          ),
+        });
       }
+    } catch (err: any) {
+      if (err?.message && !err.message.includes("closed")) {
+        toast({
+          title: t("account.authFailedToast", undefined, "Connection Failed"),
+          description: err.message,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsConnectingPollinations(false);
     }
   };
 
+
+  // Add Model Handlers for Pollinations
   const handleOpenAddModelModal = () => {
-    setAddProvider("openai");
-    const presets = POPULAR_PRESETS["openai"] || [];
-    setSelectedPreset(presets[0]?.model_id || "custom");
-    setCustomModelId(presets[0]?.model_id || "");
-    setCustomModelName(presets[0]?.name || "");
+    setCustomModelId("");
+    setCustomModelName("");
     setAddError(null);
     setIsAddModalOpen(true);
   };
@@ -525,14 +609,11 @@ export default function Account() {
     setIsSubmittingModel(true);
     setAddError(null);
 
-    const res = await addCustomModel(
-      addProvider,
-      customModelId.trim(),
-      customModelName.trim() || undefined,
-    );
-    setIsSubmittingModel(false);
-
-    if (res.success) {
+    try {
+      await addCustomModel({
+        model_id: customModelId.trim(),
+        name: customModelName.trim() || undefined,
+      });
       toast({
         title: t(
           "account.modelAdded",
@@ -541,133 +622,66 @@ export default function Account() {
         ),
       });
       setIsAddModalOpen(false);
-    } else {
+    } catch (err: any) {
       setAddError(
-        res.error || t("common.error", undefined, "Error registering model"),
+        err?.message || t("common.error", undefined, "Error registering model"),
       );
+    } finally {
+      setIsSubmittingModel(false);
     }
   };
 
   const handleDeleteModelConfirm = async () => {
     if (!modelToDelete) return;
     setIsDeletingModel(true);
-    const res = await removeCustomModel(
-      modelToDelete.provider,
-      modelToDelete.model_id,
-    );
-    setIsDeletingModel(false);
-    setModelToDelete(null);
-
-    if (res.success) {
+    try {
+      await removeCustomModel(modelToDelete.model_id);
       toast({
         title: t("account.modelRemoved", undefined, "Model removed"),
       });
-    } else {
+    } catch (err: any) {
       toast({
         title: t("common.error", undefined, "Error"),
-        description: res.error,
+        description: err?.message,
         variant: "destructive",
       });
+    } finally {
+      setIsDeletingModel(false);
+      setModelToDelete(null);
     }
   };
-
-  // Group models cleanly for display
-  const localModels = useMemo(() => {
-    return models.filter(
-      (m) =>
-        m.isLocal ||
-        m.provider.startsWith("local-") ||
-        ["ollama", "lmstudio", "kobold", "koboldcpp"].includes(m.provider),
-    );
-  }, [models]);
-
-  const cloudProviders = useMemo(
-    () => ["openai", "google", "anthropic", "openrouter", "grok"],
-    [],
-  );
-
-  const cloudModelsByProvider = useMemo(() => {
-    const map: Record<string, Model[]> = {};
-    for (const p of cloudProviders) {
-      map[p] = models.filter((m) => m.provider.toLowerCase() === p);
-    }
-    return map;
-  }, [models, cloudProviders]);
-
-  const builtInModels = useMemo(() => {
-    const fromModels = models.filter(
-      (m) => m.provider.toLowerCase() === "horde",
-    );
-    return fromModels.length > 0 ? fromModels : BUILTIN_MODELS;
-  }, [models]);
-
-  // Model value serialization for Select components: "provider:::model_id"
-  const getModelKey = (provider: string | null, modelId: string | null) => {
-    if (!provider || !modelId) return "";
-    return `${provider}:::${modelId}`;
-  };
-
-  const parseModelKey = (key: string) => {
-    const parts = key.split(":::");
-    if (parts.length === 2) {
-      return { provider: parts[0], modelId: parts[1] };
-    }
-    return null;
-  };
-
-  const chatbotSelectedKey = getModelKey(
-    chatbotDefaultProvider,
-    chatbotDefaultModel,
-  );
-  const researchAgentSelectedKey = getModelKey(
-    researchAgentDefaultProvider,
-    researchAgentDefaultModel,
-  );
-  const researchSummarizerSelectedKey = getModelKey(
-    researchSummarizerDefaultProvider,
-    researchSummarizerDefaultModel,
-  );
 
   const handleChatbotDefaultSelect = async (val: string) => {
-    const parsed = parseModelKey(val);
-    if (parsed) {
-      await setChatbotDefault(parsed.modelId, parsed.provider);
-      toast({
-        title: t(
-          "account.defaultModelUpdated",
-          undefined,
-          "Default model updated",
-        ),
-      });
-    }
+    await setChatbotDefault(val);
+    toast({
+      title: t(
+        "account.defaultModelUpdated",
+        undefined,
+        "Default model updated",
+      ),
+    });
   };
 
   const handleResearchAgentDefaultSelect = async (val: string) => {
-    const parsed = parseModelKey(val);
-    if (parsed) {
-      await setResearchAgentDefault(parsed.modelId, parsed.provider);
-      toast({
-        title: t(
-          "account.defaultModelUpdated",
-          undefined,
-          "Default model updated",
-        ),
-      });
-    }
+    await setResearchAgentDefault(val);
+    toast({
+      title: t(
+        "account.defaultModelUpdated",
+        undefined,
+        "Default model updated",
+      ),
+    });
   };
 
   const handleResearchSummarizerDefaultSelect = async (val: string) => {
-    const parsed = parseModelKey(val);
-    if (parsed) {
-      await setResearchSummarizerDefault(parsed.modelId, parsed.provider);
-      toast({
-        title: t(
-          "account.defaultModelUpdated",
-          undefined,
-          "Default model updated",
-        ),
-      });
-    }
+    await setResearchSummarizerDefault(val);
+    toast({
+      title: t(
+        "account.defaultModelUpdated",
+        undefined,
+        "Default model updated",
+      ),
+    });
   };
 
   return (
@@ -739,7 +753,7 @@ export default function Account() {
           </div>
         </div>
 
-        <Tabs defaultValue="profile" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="bg-slate-900 border-slate-800">
             <TabsTrigger value="profile">
               {t("account.profile", undefined, "Profile")}
@@ -1115,7 +1129,7 @@ export default function Account() {
             className="space-y-6"
             data-testid="models-tab-content"
           >
-            {/* Header Card */}
+            {/* 1. Header Card */}
             <Card className="bg-slate-900/50 border-slate-800">
               <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -1127,7 +1141,7 @@ export default function Account() {
                     {t(
                       "account.modelsSubtitle",
                       undefined,
-                      "Configure AI models, detect running local instances, register custom endpoints, and set feature defaults.",
+                      "Configure custom models, connect your Pollinations AI account, monitor your Pollen wallet, and set feature defaults.",
                     )}
                   </CardDescription>
                 </div>
@@ -1144,7 +1158,379 @@ export default function Account() {
               </CardHeader>
             </Card>
 
-            {/* Feature Default Model Pickers Section */}
+            {/* 2. Pollinations Account & 1-Click Connect Section */}
+            <Card className="bg-slate-900/50 border-slate-800">
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <KeyRound className="w-5 h-5 text-amber-400" />
+                    <div>
+                      <CardTitle className="text-white text-lg">
+                        {t(
+                          "account.pollinationsAccountTitle",
+                          undefined,
+                          "Pollinations Account & API Key",
+                        )}
+                      </CardTitle>
+                      <CardDescription className="mt-0.5">
+                        {t(
+                          "account.pollinationsAccountDesc",
+                          undefined,
+                          "Connect your Pollinations account to unlock 100+ AI models and manage your Pollen wallet.",
+                        )}
+                      </CardDescription>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {isPollinationsConnected && isPollinationsSupporter && (
+                      <Badge
+                        variant="outline"
+                        className="bg-pink-950/40 border-pink-700 text-pink-300 text-xs px-2.5 py-1 flex items-center gap-1"
+                      >
+                        <Heart className="w-3 h-3 text-pink-400 fill-pink-400" />
+                        {t("account.supporterBadge", undefined, "Supporter (+25%)")}
+                      </Badge>
+                    )}
+                    {isPollinationsConnected ? (
+                      <Badge
+                        variant="outline"
+                        className="bg-emerald-950/40 border-emerald-800 text-emerald-300 text-xs px-2.5 py-1"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                        {t("account.configured", undefined, "Connected")}
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="bg-amber-950/30 border-amber-800/60 text-amber-300 text-xs px-2.5 py-1"
+                      >
+                        <AlertCircle className="w-3.5 h-3.5 mr-1" />
+                        {t("account.keyRequired", undefined, "Not Connected")}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                {/* Clear & Prominent Information Banner */}
+                <div className="p-4 rounded-xl bg-cyan-950/30 border border-cyan-800/50 text-slate-200 space-y-1.5">
+                  <div className="flex items-center gap-2 text-cyan-300 font-semibold text-sm">
+                    <Sparkles className="w-4 h-4" />
+                    <span>
+                      {t(
+                        "account.freeTierNoticeTitle",
+                        undefined,
+                        "Free Tier & Official Model Support",
+                      )}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {t(
+                      "account.freeTierNoticeText",
+                      undefined,
+                      "Most models on Pollinations are 100% free to use with an official free model tier. You can also connect private models and external providers via Pollinations without maintaining separate credentials.",
+                    )}
+                  </p>
+                </div>
+
+                {/* Optional Supporter Toggle Box */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <Heart className="w-5 h-5 fill-pink-400/20" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-slate-200">
+                          {t(
+                            "account.supporterToggleTitle",
+                            undefined,
+                            "Support Oxygen Low's Software (+25% Pollen)",
+                          )}
+                        </p>
+                        {isPollinationsSupporter && (
+                          <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                            {t("account.active", undefined, "Active")}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+                        {t(
+                          "account.supporterToggleDesc",
+                          undefined,
+                          "Adds +25% pollen usage on requests. 20% of the total usage goes to the developer, providing Pollen to use high-power models (such as GPT Astra and Sol) to further improve Oxygen Low's Software.",
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <Switch
+                      checked={isPollinationsSupporter}
+                      onCheckedChange={setIsPollinationsSupporter}
+                      aria-label="Supporter mode toggle"
+                    />
+                  </div>
+                </div>
+
+                {/* 1-Click Connect Button or Pollen Balance & Actions */}
+                {!isPollinationsConnected ? (
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-indigo-950/40 border border-cyan-800/40 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-white">
+                          {t(
+                            "account.oneClickConnectTitle",
+                            undefined,
+                            "Fast 1-Click Pollinations Connect",
+                          )}
+                        </h4>
+                        <p className="text-xs text-slate-300">
+                          {t(
+                            "account.oneClickConnectSubtitle",
+                            undefined,
+                            "Authorize Oxygen Low's Software with GitHub or Discord in a few clicks without manually creating API keys.",
+                          )}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleConnectPollinations}
+                        disabled={isConnectingPollinations}
+                        className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-semibold px-5 h-9 shrink-0 shadow-lg shadow-cyan-950/50"
+                      >
+                        {isConnectingPollinations ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" />
+                            {t(
+                              "account.connectingPollinations",
+                              undefined,
+                              "Connecting...",
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5 mr-2" />
+                            {t(
+                              "account.connectPollinations",
+                              undefined,
+                              "Connect with Pollinations",
+                            )}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Pollen Wallet Balance Bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-amber-400/10 text-amber-300 flex items-center justify-center shrink-0">
+                          <Sparkles className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-400">
+                            {t(
+                              "account.pollenWalletLabel",
+                              undefined,
+                              "Current Pollen Balance",
+                            )}
+                          </p>
+                          <p className="text-base font-bold text-amber-200">
+                            {isPollinationsConnected && pollenBalance > 0
+                              ? `${Number(pollenBalance.toFixed(2))} Pollen`
+                              : "0 Pollen"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => refreshModels()}
+                          disabled={modelsLoading}
+                          className="border-slate-800 text-slate-300 hover:text-white text-xs h-8"
+                        >
+                          <RefreshCw
+                            className={`w-3.5 h-3.5 mr-1.5 ${modelsLoading ? "animate-spin" : ""}`}
+                          />
+                          {t("common.refresh", undefined, "Refresh")}
+                        </Button>
+                        <a
+                          href="https://enter.pollinations.ai/pollen"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs transition-colors"
+                        >
+                          <span>
+                            {t(
+                              "account.managePollen",
+                              undefined,
+                              "Manage Pollen / Top Up",
+                            )}
+                          </span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleConnectPollinations}
+                          disabled={isConnectingPollinations}
+                          className="border-slate-800 text-slate-300 hover:text-white text-xs h-8"
+                          title="Reconnect or change between Standard and Supporter app"
+                        >
+                          <RefreshCw
+                            className={`w-3.5 h-3.5 mr-1.5 ${isConnectingPollinations ? "animate-spin" : ""}`}
+                          />
+                          {t(
+                            "account.reconnectPollinations",
+                            undefined,
+                            "Reconnect App",
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleClearApiKey}
+                          disabled={isSavingKey}
+                          className="text-red-400 hover:text-red-300 hover:bg-red-950/20 text-xs h-8"
+                        >
+                          <Unlink className="w-3.5 h-3.5 mr-1" />
+                          {t("account.disconnectPollinations", undefined, "Disconnect")}
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Collapsible Manual API Key Entry */}
+                <div className="pt-2 border-t border-slate-800/60">
+                  <button
+                    type="button"
+                    onClick={() => setShowManualKeyAccordion((prev) => !prev)}
+                    className="flex items-center justify-between w-full text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors py-1.5"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <KeyRound className="w-3.5 h-3.5" />
+                      {t(
+                        "account.manualKeyAccordion",
+                        undefined,
+                        "Manual API Key Entry (Advanced)",
+                      )}
+                    </span>
+                    {showManualKeyAccordion ? (
+                      <ChevronUp className="w-4 h-4 text-slate-400" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                    )}
+                  </button>
+
+                  {showManualKeyAccordion && (
+                    <div className="space-y-2 pt-3">
+                      <Label
+                        htmlFor="pollinations-api-key-input"
+                        className="text-xs font-medium text-slate-300"
+                      >
+                        {t(
+                          "account.pollinationsApiKeyLabel",
+                          undefined,
+                          "Pollinations API Key",
+                        )}
+                      </Label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            id="pollinations-api-key-input"
+                            type={showApiKey ? "text" : "password"}
+                            value={pollinationsKeyInput}
+                            onChange={(e) =>
+                              setPollinationsKeyInput(e.target.value)
+                            }
+                            placeholder={t(
+                              "account.apiKeyPlaceholder",
+                              undefined,
+                              "pk_... or sk_... from enter.pollinations.ai/keys",
+                            )}
+                            className="bg-slate-950 border-slate-800 text-xs text-white font-mono pr-9 h-9"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowApiKey((prev) => !prev)}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                            title={
+                              showApiKey
+                                ? t("account.hideApiKey", undefined, "Hide key")
+                                : t("account.showApiKey", undefined, "Show key")
+                            }
+                            aria-label={
+                              showApiKey
+                                ? t("account.hideApiKey", undefined, "Hide key")
+                                : t("account.showApiKey", undefined, "Show key")
+                            }
+                            aria-pressed={showApiKey}
+                          >
+                            {showApiKey ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+
+                        <Button
+                          onClick={handleSaveApiKey}
+                          disabled={
+                            isSavingKey ||
+                            pollinationsKeyInput.trim() ===
+                              (pollinationsApiKey || "")
+                          }
+                          className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs h-9 px-4 shrink-0"
+                        >
+                          {isSavingKey ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            t("common.save", undefined, "Save Key")
+                          )}
+                        </Button>
+
+                        {isPollinationsConnected && (
+                          <Button
+                            variant="ghost"
+                            onClick={handleClearApiKey}
+                            disabled={isSavingKey}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-950/20 text-xs h-9 px-3 shrink-0"
+                          >
+                            {t("account.clearKey", undefined, "Clear")}
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex justify-between items-center text-[11px] text-slate-400 pt-0.5">
+                        <span>
+                          {t(
+                            "account.apiKeyHint",
+                            undefined,
+                            "Get or manage your API keys on the Pollinations Dashboard.",
+                          )}
+                        </span>
+                        <a
+                          href="https://enter.pollinations.ai/keys"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-cyan-400 hover:underline inline-flex items-center gap-1"
+                        >
+                          enter.pollinations.ai/keys
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 3. Feature Default Model Pickers Section */}
             <Card className="bg-slate-900/50 border-slate-800">
               <CardHeader>
                 <CardTitle className="text-white text-lg flex items-center gap-2">
@@ -1159,7 +1545,7 @@ export default function Account() {
                   {t(
                     "account.featureDefaultsDesc",
                     undefined,
-                    "Configure default AI models for Chatbot, Research Agent, and Search Summarizer.",
+                    "Configure default Pollinations AI models for Chatbot, Research Agent, and Search Summarizer.",
                   )}
                 </CardDescription>
               </CardHeader>
@@ -1182,14 +1568,6 @@ export default function Account() {
                             )}
                           </h4>
                         </div>
-                        {chatbotDefaultProvider && (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] px-1.5 py-0 border-cyan-800/60 bg-cyan-950/30 text-cyan-300"
-                          >
-                            {chatbotDefaultProvider}
-                          </Badge>
-                        )}
                       </div>
                       <p className="text-xs text-slate-400 leading-relaxed">
                         {t(
@@ -1201,7 +1579,7 @@ export default function Account() {
                     </div>
 
                     <Select
-                      value={chatbotSelectedKey}
+                      value={chatbotDefaultModel}
                       onValueChange={handleChatbotDefaultSelect}
                     >
                       <SelectTrigger
@@ -1221,15 +1599,15 @@ export default function Account() {
                       <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[260px]">
                         {models.map((m) => (
                           <SelectItem
-                            key={`${m.provider}:::${m.model_id}`}
-                            value={`${m.provider}:::${m.model_id}`}
+                            key={m.model_id}
+                            value={m.model_id}
                             className="text-xs focus:bg-slate-800 py-1.5"
                           >
                             <span className="font-medium text-slate-200">
                               {m.name || m.model_id}
                             </span>
                             <span className="ml-2 text-[10px] text-slate-400">
-                              ({m.provider})
+                              ({m.model_id})
                             </span>
                           </SelectItem>
                         ))}
@@ -1254,26 +1632,18 @@ export default function Account() {
                             )}
                           </h4>
                         </div>
-                        {researchAgentDefaultProvider && (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] px-1.5 py-0 border-purple-800/60 bg-purple-950/30 text-purple-300"
-                          >
-                            {researchAgentDefaultProvider}
-                          </Badge>
-                        )}
                       </div>
                       <p className="text-xs text-slate-400 leading-relaxed">
                         {t(
                           "account.researchAgentDefaultDesc",
                           undefined,
-                          "Agentic search exploration and fact-gathering tool loop model.",
+                          "Agentic search exploration and fact-gathering loop model.",
                         )}
                       </p>
                     </div>
 
                     <Select
-                      value={researchAgentSelectedKey}
+                      value={researchAgentDefaultModel}
                       onValueChange={handleResearchAgentDefaultSelect}
                     >
                       <SelectTrigger
@@ -1288,23 +1658,22 @@ export default function Account() {
                       >
                         <SelectValue
                           placeholder={
-                            researchAgentDefaultModel ||
-                            "Default: koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"
+                            researchAgentDefaultModel || "Select Model..."
                           }
                         />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[260px]">
                         {models.map((m) => (
                           <SelectItem
-                            key={`${m.provider}:::${m.model_id}`}
-                            value={`${m.provider}:::${m.model_id}`}
+                            key={m.model_id}
+                            value={m.model_id}
                             className="text-xs focus:bg-slate-800 py-1.5"
                           >
                             <span className="font-medium text-slate-200">
                               {m.name || m.model_id}
                             </span>
                             <span className="ml-2 text-[10px] text-slate-400">
-                              ({m.provider})
+                              ({m.model_id})
                             </span>
                           </SelectItem>
                         ))}
@@ -1329,26 +1698,18 @@ export default function Account() {
                             )}
                           </h4>
                         </div>
-                        {researchSummarizerDefaultProvider && (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] px-1.5 py-0 border-amber-800/60 bg-amber-950/30 text-amber-300"
-                          >
-                            {researchSummarizerDefaultProvider}
-                          </Badge>
-                        )}
                       </div>
                       <p className="text-xs text-slate-400 leading-relaxed">
                         {t(
                           "account.researchSummarizerDefaultDesc",
                           undefined,
-                          "Model used to synthesize research findings into comprehensive final answers.",
+                          "Model used to synthesize research findings into comprehensive answers.",
                         )}
                       </p>
                     </div>
 
                     <Select
-                      value={researchSummarizerSelectedKey}
+                      value={researchSummarizerDefaultModel}
                       onValueChange={handleResearchSummarizerDefaultSelect}
                     >
                       <SelectTrigger
@@ -1363,23 +1724,22 @@ export default function Account() {
                       >
                         <SelectValue
                           placeholder={
-                            researchSummarizerDefaultModel ||
-                            "Default: nemotron-3-120b"
+                            researchSummarizerDefaultModel || "Select Model..."
                           }
                         />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[260px]">
                         {models.map((m) => (
                           <SelectItem
-                            key={`${m.provider}:::${m.model_id}`}
-                            value={`${m.provider}:::${m.model_id}`}
+                            key={m.model_id}
+                            value={m.model_id}
                             className="text-xs focus:bg-slate-800 py-1.5"
                           >
                             <span className="font-medium text-slate-200">
                               {m.name || m.model_id}
                             </span>
                             <span className="ml-2 text-[10px] text-slate-400">
-                              ({m.provider})
+                              ({m.model_id})
                             </span>
                           </SelectItem>
                         ))}
@@ -1390,273 +1750,147 @@ export default function Account() {
               </CardContent>
             </Card>
 
-            {/* Active & Registered Models Grouped by Provider */}
+            {/* 4. Active & Custom Registered Models */}
             <Card className="bg-slate-900/50 border-slate-800">
               <CardHeader>
-                <CardTitle className="text-white text-lg flex items-center justify-between">
-                  <span>
-                    {t(
-                      "account.registeredModels",
-                      undefined,
-                      "Active & Registered Models",
-                    )}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => refreshModels()}
-                    className="text-slate-400 hover:text-white h-8 px-2 gap-1.5 text-xs"
-                    title={t("common.refresh", undefined, "Refresh")}
-                  >
-                    <RefreshCw
-                      className={`w-3.5 h-3.5 ${modelsLoading ? "animate-spin" : ""}`}
-                    />
-                    {t("common.refresh", undefined, "Refresh")}
-                  </Button>
-                </CardTitle>
-                <CardDescription>
-                  {t(
-                    "account.registeredModelsDesc",
-                    undefined,
-                    "All available models grouped by provider, including detected local endpoints and custom registrations.",
-                  )}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* 1. Local Models Group */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
-                    <div className="flex items-center gap-2">
-                      <Server className="w-4 h-4 text-emerald-400" />
-                      <h4 className="text-sm font-semibold text-white">
-                        {t(
-                          "account.localModelsGroup",
-                          undefined,
-                          "Local Models (Ollama / LM Studio / KoboldCPP)",
-                        )}
-                      </h4>
-                    </div>
-                    {localStatus.totalLocal <= 0 && (
-                      <Badge
-                        variant="outline"
-                        className="bg-slate-950 border-slate-800 text-slate-500 text-xs"
-                      >
-                        {t("account.localStatusOffline", undefined, "Offline")}
-                      </Badge>
-                    )}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <CardTitle className="text-white text-lg">
+                      {t(
+                        "account.registeredModels",
+                        undefined,
+                        "Active & Custom Models",
+                      )}
+                    </CardTitle>
+                    <CardDescription className="mt-0.5">
+                      {t(
+                        "account.registeredModelsDesc",
+                        undefined,
+                        "All available Pollinations models, including official presets and custom registered models.",
+                      )}
+                    </CardDescription>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => refreshModels()}
+                      className="text-slate-400 hover:text-white h-8 px-2 gap-1.5 text-xs"
+                      title={t("common.refresh", undefined, "Refresh")}
+                    >
+                      <RefreshCw
+                        className={`w-3.5 h-3.5 ${modelsLoading ? "animate-spin" : ""}`}
+                      />
+                      {t("common.refresh", undefined, "Refresh")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleOpenAddModelModal}
+                      className="bg-cyan-600 hover:bg-cyan-500 text-white h-8 px-2.5 gap-1.5 text-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      {t("account.addModel", undefined, "Add Model")}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
 
-                  {localModels.length === 0 ? (
-                    <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/60 text-center space-y-1">
-                      <p className="text-xs text-slate-400">
+              <CardContent className="space-y-6">
+                {/* 4a. Standard Models (Quest Pollen) */}
+                <div className="space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                      {t("account.standardModels", undefined, "Standard Models")}
+                    </h4>
+                    <span className="text-[11px] text-cyan-400 font-medium">
+                      {t(
+                        "account.questPollenNotice",
+                        undefined,
+                        "All models in this section use quest pollen, not paid pollen.",
+                      )}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    {standardModels.map((m) => (
+                      <div
+                        key={m.model_id}
+                        className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition space-y-1"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-white truncate">
+                            {m.name || m.model_id}
+                          </p>
+                          {m.rate && (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] px-1.5 py-0 border-cyan-800/60 bg-cyan-950/40 text-cyan-300 shrink-0 font-normal"
+                            >
+                              {m.rate}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400 truncate font-mono">
+                          {m.model_id}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4b. Custom Registered Models */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                      {t("account.customModels", undefined, "Custom Models")}
+                    </h4>
+                  </div>
+                  {customModelsList.length === 0 ? (
+                    <div className="p-4 rounded-lg bg-slate-950/60 border border-dashed border-slate-800 text-center">
+                      <p className="text-xs text-slate-500">
                         {t(
-                          "account.noLocalModelsDetected",
+                          "account.noModelsAvailable",
                           undefined,
-                          "No local models detected. Launch Ollama (11434), LM Studio (1234), or KoboldCPP (5001) to auto-detect.",
+                          "No custom models registered.",
                         )}
                       </p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {localModels.map((m) => (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      {customModelsList.map((m) => (
                         <div
-                          key={`${m.provider}:${m.model_id}`}
+                          key={m.model_id}
                           className="flex items-center justify-between p-3 rounded-lg bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition"
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                            <div className="min-w-0">
+                          <div className="min-w-0 pr-2">
+                            <div className="flex items-center gap-2">
                               <p className="text-xs font-medium text-white truncate">
                                 {m.name || m.model_id}
                               </p>
-                              <p className="text-[10px] text-slate-400 truncate">
-                                {m.provider} &bull; {m.model_id}
-                              </p>
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] px-1.5 py-0 border-cyan-800/60 bg-cyan-950/30 text-cyan-300"
+                              >
+                                {t("account.customBadge", undefined, "Custom")}
+                              </Badge>
                             </div>
+                            <p className="text-[10px] text-slate-400 truncate mt-0.5 font-mono">
+                              {m.model_id}
+                            </p>
                           </div>
-                          {m.isCustom && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setModelToDelete(m)}
-                              className="text-slate-500 hover:text-red-400 p-1.5 h-7 w-7 rounded-md shrink-0"
-                              title={t("common.delete", undefined, "Delete")}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setModelToDelete(m)}
+                            className="text-slate-500 hover:text-red-400 p-1.5 h-7 w-7 rounded-md shrink-0"
+                            title={t("common.delete", undefined, "Delete")}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         </div>
                       ))}
                     </div>
                   )}
-                </div>
-
-                {/* 2. Cloud Providers Group */}
-                <div className="space-y-4 pt-2">
-                  <div className="flex items-center gap-2 pb-2 border-b border-slate-800/80">
-                    <Cpu className="w-4 h-4 text-cyan-400" />
-                    <h4 className="text-sm font-semibold text-white">
-                      {t(
-                        "account.cloudModelsGroup",
-                        undefined,
-                        "Cloud Providers",
-                      )}
-                    </h4>
-                  </div>
-
-                  <div className="space-y-4">
-                    {cloudProviders.map((prov) => {
-                      const pModels = cloudModelsByProvider[prov] || [];
-                      const isConfigured = isProviderConfigured(prov);
-                      const providerLabel =
-                        prov === "openai"
-                          ? "OpenAI"
-                          : prov === "anthropic"
-                            ? "Anthropic Claude"
-                            : prov === "google"
-                              ? "Google Gemini"
-                              : prov === "openrouter"
-                                ? "OpenRouter"
-                                : "xAI Grok";
-
-                      return (
-                        <div
-                          key={prov}
-                          className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3"
-                        >
-                          <div className="flex items-center justify-between flex-wrap gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold text-slate-200">
-                                {providerLabel}
-                              </span>
-                              {isConfigured ? (
-                                <Badge
-                                  variant="outline"
-                                  className="bg-emerald-950/40 border-emerald-800 text-emerald-300 text-[10px] px-2 py-0.5"
-                                >
-                                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                                  {t(
-                                    "account.configured",
-                                    undefined,
-                                    "Configured",
-                                  )}
-                                </Badge>
-                              ) : (
-                                <Badge
-                                  variant="outline"
-                                  className="bg-amber-950/30 border-amber-800/60 text-amber-300 text-[10px] px-2 py-0.5"
-                                >
-                                  <AlertCircle className="w-3 h-3 mr-1" />
-                                  {t(
-                                    "account.notConfigured",
-                                    undefined,
-                                    "API Key Required",
-                                  )}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-
-                          {pModels.length === 0 ? (
-                            <p className="text-xs text-slate-500 italic">
-                              {t(
-                                "account.noModelsAvailable",
-                                undefined,
-                                "No custom models registered for this provider.",
-                              )}
-                            </p>
-                          ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {pModels.map((m) => (
-                                <div
-                                  key={`${m.provider}:${m.model_id}`}
-                                  className="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 hover:border-slate-700 transition"
-                                >
-                                  <div className="min-w-0 pr-2">
-                                    <div className="flex items-center gap-1.5">
-                                      <p className="text-xs font-medium text-white truncate">
-                                        {m.name || m.model_id}
-                                      </p>
-                                      {m.isCustom && (
-                                        <Badge
-                                          variant="outline"
-                                          className="text-[9px] px-1 py-0 border-cyan-800/50 bg-cyan-950/30 text-cyan-400"
-                                        >
-                                          {t(
-                                            "account.customBadge",
-                                            undefined,
-                                            "Custom",
-                                          )}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <p className="text-[10px] text-slate-400 truncate">
-                                      {m.model_id}
-                                    </p>
-                                  </div>
-                                  {m.isCustom && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => setModelToDelete(m)}
-                                      className="text-slate-500 hover:text-red-400 p-1 h-6 w-6 rounded shrink-0"
-                                      title={t(
-                                        "common.delete",
-                                        undefined,
-                                        "Delete",
-                                      )}
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </Button>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 3. Built-in Cloud Services */}
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center gap-2 pb-2 border-b border-slate-800/80">
-                    <Sparkles className="w-4 h-4 text-amber-400" />
-                    <h4 className="text-sm font-semibold text-white">
-                      {t(
-                        "account.builtInModelsGroup",
-                        undefined,
-                        "Built-in Cloud Services (AI Horde)",
-                      )}
-                    </h4>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {builtInModels.map((m) => (
-                      <div
-                        key={`${m.provider}:${m.model_id}`}
-                        className="flex items-center justify-between p-3 rounded-lg bg-slate-950 border border-slate-800/80"
-                      >
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-xs font-medium text-white truncate">
-                              {m.name || m.model_id}
-                            </p>
-                            <Badge
-                              variant="outline"
-                              className="text-[9px] px-1 py-0 border-slate-700 bg-slate-900 text-slate-400"
-                            >
-                              {m.provider}
-                            </Badge>
-                          </div>
-                          <p className="text-[10px] text-slate-500 truncate">
-                            {m.model_id}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1670,122 +1904,29 @@ export default function Account() {
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
               <Plus className="w-5 h-5 text-cyan-400" />
-              {t("account.addCustomModelTitle", undefined, "Register AI Model")}
+              {t(
+                "account.addCustomModelTitle",
+                undefined,
+                "Register AI Model",
+              )}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-400">
               {t(
                 "account.addCustomModelDesc",
                 undefined,
-                "Add a model from a configured provider or enter a custom model identifier.",
+                "Register a custom model hosted on Pollinations AI.",
               )}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {/* Provider Selection */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-slate-300">
-                {t("account.provider", undefined, "Provider")}
-              </Label>
-              <Select
-                value={addProvider}
-                onValueChange={handleProviderSelectChange}
-              >
-                <SelectTrigger
-                  id="add-model-provider-select"
-                  className="bg-slate-950 border-slate-800 text-white text-xs h-9"
-                >
-                  <SelectValue
-                    placeholder={t(
-                      "account.selectProvider",
-                      undefined,
-                      "Select a provider",
-                    )}
-                  />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                  {providerOptions.map((opt) => {
-                    const isConfigured =
-                      opt.isLocal || isProviderConfigured(opt.value);
-                    return (
-                      <SelectItem
-                        key={opt.value}
-                        value={opt.value}
-                        className="text-xs focus:bg-slate-800 py-1.5"
-                      >
-                        <div className="flex items-center justify-between w-full gap-2">
-                          <span>{opt.label}</span>
-                          {isConfigured && (
-                            <span className="text-[10px] text-emerald-400">
-                              &#10003; active
-                            </span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Model Preset Selection */}
-            {POPULAR_PRESETS[addProvider]?.length > 0 && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-slate-300">
-                  {t("account.modelPreset", undefined, "Model Preset")}
-                </Label>
-                <Select
-                  value={selectedPreset}
-                  onValueChange={handlePresetSelectChange}
-                >
-                  <SelectTrigger
-                    id="add-model-preset-select"
-                    className="bg-slate-950 border-slate-800 text-white text-xs h-9"
-                  >
-                    <SelectValue
-                      placeholder={t(
-                        "account.selectPreset",
-                        undefined,
-                        "Select a preset",
-                      )}
-                    />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[220px]">
-                    {POPULAR_PRESETS[addProvider].map((preset) => (
-                      <SelectItem
-                        key={preset.model_id}
-                        value={preset.model_id}
-                        className="text-xs focus:bg-slate-800 py-1.5"
-                      >
-                        <span className="font-medium">{preset.name}</span>
-                        <span className="ml-2 text-[10px] text-slate-400">
-                          ({preset.model_id})
-                        </span>
-                      </SelectItem>
-                    ))}
-                    <SelectItem
-                      value="custom"
-                      className="text-xs focus:bg-slate-800 py-1.5 font-semibold text-cyan-400"
-                    >
-                      +{" "}
-                      {t(
-                        "account.customModelPreset",
-                        undefined,
-                        "Custom Model ID...",
-                      )}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
             {/* Model ID Text Input */}
             <div className="space-y-1.5">
               <Label
                 htmlFor="custom-model-id-input"
                 className="text-xs font-medium text-slate-300"
               >
-                {t("account.modelId", undefined, "Model ID")}{" "}
+                {t("account.modelId", undefined, "Model ID / Path")}{" "}
                 <span className="text-red-400">*</span>
               </Label>
               <Input
@@ -1795,11 +1936,7 @@ export default function Account() {
                   setCustomModelId(e.target.value);
                   setAddError(null);
                 }}
-                placeholder={t(
-                  "account.modelIdPlaceholder",
-                  undefined,
-                  "e.g. gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1",
-                )}
+                placeholder="e.g. openai/gpt-4o, claude-3-7-sonnet, deepseek/deepseek-r1"
                 className="bg-slate-950 border-slate-800 text-xs h-9 text-white font-mono"
               />
             </div>
@@ -1816,29 +1953,10 @@ export default function Account() {
                 id="custom-model-name-input"
                 value={customModelName}
                 onChange={(e) => setCustomModelName(e.target.value)}
-                placeholder={t(
-                  "account.modelNamePlaceholder",
-                  undefined,
-                  "e.g. GPT-4o (Omni)",
-                )}
+                placeholder="e.g. My Custom Model"
                 className="bg-slate-950 border-slate-800 text-xs h-9 text-white"
               />
             </div>
-
-            {/* Warning if unconfigured provider */}
-            {!providerOptions.find((p) => p.value === addProvider)?.isLocal &&
-              !isProviderConfigured(addProvider) && (
-                <div className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-800/50 flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-amber-200/90 leading-tight">
-                    {t(
-                      "account.providerNotConfiguredWarning",
-                      undefined,
-                      "Note: This provider does not have an active API key configured. You can register the model now and configure credentials later.",
-                    )}
-                  </p>
-                </div>
-              )}
 
             {/* Error message */}
             {addError && (
@@ -1895,7 +2013,8 @@ export default function Account() {
               )}
               {modelToDelete && (
                 <span className="block mt-2 font-mono text-cyan-300 font-semibold">
-                  {modelToDelete.provider} : {modelToDelete.model_id}
+                  {modelToDelete.name || modelToDelete.model_id} (
+                  {modelToDelete.model_id})
                 </span>
               )}
             </AlertDialogDescription>

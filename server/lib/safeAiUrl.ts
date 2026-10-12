@@ -22,28 +22,17 @@ export const isPrivateIP = (ip: string): boolean => {
       return true;
     return false;
   } else if (net.isIPv6(ip)) {
-    const expanded = ip.toLowerCase();
-    if (
-      expanded === "::1" ||
-      expanded === "0:0:0:0:0:0:0:1" ||
-      expanded === "::" ||
-      expanded === "0:0:0:0:0:0:0:0"
-    )
-      return true;
-    const v4MappedMatch = expanded.match(
-      /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/,
-    );
-    if (v4MappedMatch) return isPrivateIP(v4MappedMatch[1]);
-    if (
-      expanded.startsWith("fc") ||
-      expanded.startsWith("fd") ||
-      expanded.startsWith("fe8") ||
-      expanded.startsWith("fe9") ||
-      expanded.startsWith("fea") ||
-      expanded.startsWith("feb")
-    )
-      return true;
-    return false;
+    // URL normalizes compressed/expanded IPv6 and dotted mapped IPv4.
+    const normalized = new URL(`http://[${ip}]/`).hostname.slice(1, -1);
+    if (normalized.startsWith("::ffff:")) {
+      const words = normalized.slice(7).split(":");
+      const value = (parseInt(words[0], 16) * 65536) + parseInt(words[1], 16);
+      return isPrivateIP([value >>> 24, (value >>> 16) & 255, (value >>> 8) & 255, value & 255].join("."));
+    }
+    // Only global unicast; exclude reserved transition/documentation networks.
+    const first = parseInt(normalized.split(":")[0], 16);
+    return !(first >= 0x2000 && first <= 0x3fff) ||
+      (first === 0x2001 && (parseInt(normalized.split(":")[1] || "0", 16) < 0x200 || normalized.startsWith("2001:db8:"))) || normalized.startsWith("2002:") || normalized.startsWith("3fff:");
   }
   return false;
 };
@@ -58,6 +47,7 @@ const LOCALHOST_HOSTNAMES = new Set([
 ]);
 
 export function assertPublicHostname(hostname: string): void {
+  hostname = hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "");
   if (
     isPrivateIP(hostname) ||
     LOCALHOST_HOSTNAMES.has(hostname.toLowerCase())
@@ -93,6 +83,7 @@ export async function resolveCustomProviderUrl(
   if (url.username || url.password)
     throw new Error("Credentials in URL are not allowed");
 
+  if (!["https:", "http:"].includes(url.protocol)) throw new Error("HTTP(S) required");
   assertPublicHostname(url.hostname);
 
   const addresses = await lookup(url.hostname, { all: true });

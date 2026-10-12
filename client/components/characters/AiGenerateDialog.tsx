@@ -36,6 +36,7 @@ export interface Character {
   appearance?: string | null;
   personality?: string | null;
   backstory?: string | null;
+  situation?: string | null;
   hidden_description?: string | null;
   is_universe?: boolean;
   is_race?: boolean;
@@ -267,7 +268,7 @@ export function AiGenerateDialog({
           {
             provider: "horde",
             model_id: "Smart",
-            name: "Smart - aphrodite/DeepSeek-V4.1-Flash",
+            name: "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
           },
           {
             provider: "horde",

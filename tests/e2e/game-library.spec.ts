@@ -693,7 +693,7 @@ describe("E2E Test Suite: Desktop Game Library (Milestones M1-M5)", () => {
     establishFriendship(String(userAlice.id), String(userCharlie.id));
     establishFriendship(String(userBob.id), String(userCharlie.id));
     // Dave remains non-friend
-  });
+  }, 30000);
 
   afterAll(() => {
     // Clean up test users from Data/

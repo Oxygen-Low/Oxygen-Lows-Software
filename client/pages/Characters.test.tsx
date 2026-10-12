@@ -19,6 +19,15 @@ import {
 } from "@/lib/crypto";
 
 const mockToast = vi.fn();
+const { reviewDialogProps } = vi.hoisted(() => ({
+  reviewDialogProps: vi.fn(),
+}));
+vi.mock("@/components/characters/AiReviewDialog", () => ({
+  AiReviewDialog: (props: any) => {
+    reviewDialogProps(props);
+    return <div data-testid="character-review">{props.character.name}</div>;
+  },
+}));
 
 const { mockStorage, mockStorageFrom } = vi.hoisted(() => {
   const mockStorageFrom = {
@@ -141,6 +150,74 @@ describe("Characters Component", () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it("opens a review of the saved character with its linked lore", async () => {
+    const universe = { id: "world", name: "Moon City", is_universe: true };
+    const race = {
+      id: "race",
+      name: "Elves",
+      is_race: true,
+      universe_id: "world",
+    };
+    const character = {
+      id: "hero",
+      name: "Mira",
+      backstory: "Saved history",
+      universe_id: "world",
+      race_id: "race",
+    };
+    const builder = supabase.from("characters").select("*");
+    vi.mocked(builder.order).mockResolvedValueOnce({
+      data: [character, universe, race],
+      error: null,
+      count: 3,
+    });
+    render(<Characters />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Review with AI" }),
+    );
+    expect(screen.getByTestId("character-review")).toBeDefined();
+    expect(reviewDialogProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining(character),
+        universe: expect.objectContaining(universe),
+        race: expect.objectContaining(race),
+        entityType: "character",
+      }),
+    );
+    expect(builder.update).not.toHaveBeenCalled();
+    expect(builder.insert).not.toHaveBeenCalled();
+
+    // Review Universe
+    fireEvent.click(screen.getByText("My Universes"));
+    const univReviewBtn = await screen.findByRole("button", {
+      name: "Review with AI",
+    });
+    fireEvent.click(univReviewBtn);
+    expect(reviewDialogProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining(universe),
+        universe: undefined,
+        race: undefined,
+        entityType: "universe",
+      }),
+    );
+
+    // Review Race (with linked universe if assigned)
+    fireEvent.click(screen.getByText("My Races"));
+    const raceReviewBtn = await screen.findByRole("button", {
+      name: "Review with AI",
+    });
+    fireEvent.click(raceReviewBtn);
+    expect(reviewDialogProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        character: expect.objectContaining(race),
+        universe: expect.objectContaining(universe),
+        race: undefined,
+        entityType: "race",
+      }),
+    );
   });
 
   it("renders characters tabs and new character button", async () => {
@@ -302,5 +379,86 @@ describe("Characters Component", () => {
     await waitFor(() => {
       expect(supabase.from).toHaveBeenCalledWith("characters");
     });
+  });
+
+  it("inputs and saves Current Situation & Abilities for a character", async () => {
+    render(<Characters />);
+
+    const newCharButton = screen.getByRole("button", {
+      name: /New Character/i,
+    });
+    fireEvent.click(newCharButton);
+
+    const nameInput = screen.getByLabelText("Name");
+    fireEvent.change(nameInput, { target: { value: "Archmage Cynthia" } });
+
+    const situationInput = screen.getByLabelText(
+      /Current Situation & Abilities/i,
+    );
+    expect(situationInput).toBeDefined();
+    fireEvent.change(situationInput, {
+      target: {
+        value:
+          "Currently leading the Arcane Vanguard, capable of high-tier Chronomancy and spatial distortion spells.",
+      },
+    });
+
+    const saveBtn = screen.getByRole("button", { name: /Save Character/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(supabase.from).toHaveBeenCalledWith("characters");
+    });
+  });
+
+  it("copies importable text of a character to clipboard", async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    const testChar = {
+      id: "char-export-1",
+      user_id: "test-user-id",
+      name: "Solas",
+      display_name: "Solas the Wise",
+      short_description: "An elven apostate mage.",
+      appearance: "Bald elf with glowing tattoos.",
+      personality: "Calm, intellectual, secretive.",
+      backstory: "Ancient wanderer.",
+    };
+
+    const mockClient: any = {
+      select: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({ data: [testChar], error: null }),
+      eq: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+    };
+    (supabase.from as any).mockImplementation(() => mockClient);
+
+    render(<Characters />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Solas the Wise")).toBeDefined();
+    });
+
+    const copyButtons = screen.getAllByRole("button", {
+      name: /Copy Importable Text/i,
+    });
+    expect(copyButtons.length).toBeGreaterThan(0);
+    fireEvent.click(copyButtons[0]);
+
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalled();
+    });
+
+    const copiedArg = writeTextMock.mock.calls[0][0];
+    expect(copiedArg).toContain("# Solas the Wise");
+    expect(copiedArg).toContain("## Overview\nAn elven apostate mage.");
+    expect(copiedArg).toContain("## Appearance\nBald elf with glowing tattoos.");
+    expect(copiedArg).toContain("## Personality\nCalm, intellectual, secretive.");
+    expect(copiedArg).toContain("## Backstory\nAncient wanderer.");
   });
 });

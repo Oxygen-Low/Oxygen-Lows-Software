@@ -11,6 +11,9 @@ on:
       - ".github/workflows/release.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   version:
     name: Calculate Version
@@ -120,7 +123,7 @@ jobs:
       - name: Decode Keystore
         if: env.KEYSTORE_BASE64 != ''
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > Android/app/release.jks
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > Android/app/release.jks
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 

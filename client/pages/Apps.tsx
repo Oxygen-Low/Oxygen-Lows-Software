@@ -37,6 +37,7 @@ import {
   Search,
   X,
   Cpu,
+  Headphones,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -136,6 +137,11 @@ const ThreeDStudioApp = lazy(() =>
     default: m.ThreeDStudioApp,
   })),
 );
+const MusicStudioApp = lazy(() =>
+  import("@/components/apps/MusicStudio").then((m) => ({
+    default: m.MusicStudioApp,
+  })),
+);
 const WebBrowserApp = lazy(() =>
   import("@/components/apps/WebBrowser").then((m) => ({
     default: m.WebBrowserApp,
@@ -156,9 +162,9 @@ const ChatApp = lazy(() =>
     default: m.ChatApp,
   })),
 );
-const ModelsApp = lazy(() =>
-  import("@/components/apps/Models").then((m) => ({
-    default: m.ModelsApp,
+const AgentsManagerApp = lazy(() =>
+  import("@/components/apps/AgentsManager").then((m) => ({
+    default: m.AgentsManagerApp,
   })),
 );
 
@@ -435,6 +441,19 @@ const APPS: AppMetadata[] = [
     authRequired: true,
   },
   {
+    id: "agents",
+    nameKey: "apps.agentsTitle",
+    defaultName: "Agent Accounts",
+    descKey: "apps.agentsDesc",
+    defaultDesc:
+      "Authorize and manage LLM bots, configure sub-allocated storage, and inspect agent activity.",
+    categories: ["All", "LLM/AI", "Development", "Security"],
+    availability: "web-and-desktop",
+    icon: <Bot className="w-8 h-8 text-cyan-500" />,
+    component: AgentsManagerApp,
+    authRequired: true,
+  },
+  {
     id: "game-library",
     nameKey: "apps.gameLibraryTitle",
     defaultName: "Game Library",
@@ -495,6 +514,18 @@ const APPS: AppMetadata[] = [
     component: PixelArtStudioApp,
   },
   {
+    id: "music-studio",
+    nameKey: "apps.musicStudioTitle",
+    defaultName: "Music Studio",
+    descKey: "apps.musicStudioDesc",
+    defaultDesc:
+      "Compose beats, melodies, multi-channel synthesizer instruments, drum loops, and full songs with an interactive mixer and zero-attribution presets.",
+    categories: ["All", "Utility", "Development"],
+    availability: "web-and-desktop",
+    icon: <Headphones className="w-8 h-8 text-cyan-500" />,
+    component: MusicStudioApp,
+  },
+  {
     id: "web-browser",
     nameKey: "apps.webBrowserTitle",
     defaultName: "Web Browser",
@@ -518,18 +549,6 @@ const APPS: AppMetadata[] = [
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
     component: WebmasterApp,
     authRequired: true,
-  },
-  {
-    id: "models",
-    nameKey: "apps.modelsTitle",
-    defaultName: "Models",
-    descKey: "apps.modelsDesc",
-    defaultDesc:
-      "Add AI providers, connect local models, and manage encrypted API keys.",
-    categories: ["All", "LLM/AI", "Utility"],
-    availability: "web-and-desktop",
-    icon: <Cpu className="w-8 h-8 text-cyan-500" />,
-    component: ModelsApp,
   },
 ];
 
@@ -723,6 +742,7 @@ export default function Apps() {
       activeApp.id === "vpn" ||
       activeApp.id === "game-library" ||
       activeApp.id === "image-studio" ||
+      activeApp.id === "music-studio" ||
       activeApp.id === "3d-background";
 
     return (

@@ -671,6 +671,16 @@ export default function AdminVerification() {
                               </p>
                             </div>
                           )}
+                          {meta.situation && (
+                            <div>
+                              <span className="text-slate-500">
+                                Current Situation & Abilities:
+                              </span>
+                              <p className="text-slate-300 whitespace-pre-wrap">
+                                {meta.situation}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

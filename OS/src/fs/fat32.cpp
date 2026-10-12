@@ -6,6 +6,19 @@
 
 namespace {
 
+uint16_t read_le16(const uint8_t* p) {
+    return static_cast<uint16_t>(p[0]) | (static_cast<uint16_t>(p[1]) << 8);
+}
+uint32_t read_le32(const uint8_t* p) {
+    return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) |
+        (static_cast<uint32_t>(p[2]) << 16) | (static_cast<uint32_t>(p[3]) << 24);
+}
+
+static uint32_t g_cluster_count = 0;
+// The simplified writer has no FAT allocation support. Only write a volume
+// freshly formatted in this boot; never overwrite allocations on imported disks.
+static bool g_writable = false;
+static uint32_t g_next_free_cluster = 3;
 static FAT32FSInfo g_fat32_info = { false, 0, 0, 512, 8, 32, 2, 0, 2, 0, 0 };
 
 [[maybe_unused]] bool str_equals_case(const char* s1, const char* s2) {
@@ -49,6 +62,7 @@ void format_83_name(const char* input, char output[11]) {
 }
 
 uint32_t cluster_to_lba(uint32_t cluster) {
+    if (cluster < 2 || cluster - 2 >= g_cluster_count) return 0xFFFFFFFF;
     return g_fat32_info.first_data_sector + (cluster - 2) * g_fat32_info.sectors_per_cluster;
 }
 
@@ -58,6 +72,8 @@ extern "C" {
 
 bool fat32_init(uint8_t drive) {
     g_fat32_info.mounted = false;
+    g_writable = false;
+    g_cluster_count = 0;
     g_fat32_info.drive = drive;
 
     if (!ata_is_drive_present(drive)) {
@@ -78,6 +94,9 @@ bool fat32_init(uint8_t drive) {
         return false;
     }
 
+    const ATADriveInfo* drive_info = ata_get_drive_info(drive);
+    if (!drive_info || drive_info->is_atapi || !drive_info->total_sectors) return false;
+    uint32_t partition_sectors = drive_info->total_sectors;
     uint32_t partition_lba = 0;
     bool found_fat32 = false;
 
@@ -86,7 +105,10 @@ bool fat32_init(uint8_t drive) {
         int entry = 446 + (i * 16);
         uint8_t type = sector[entry + 4];
         if (type == 0x0B || type == 0x0C) { // FAT32 with CHS or LBA
-            partition_lba = *reinterpret_cast<uint32_t*>(&sector[entry + 8]);
+            partition_lba = read_le32(&sector[entry + 8]);
+            partition_sectors = read_le32(&sector[entry + 12]);
+            if (!partition_sectors || partition_lba >= drive_info->total_sectors ||
+                partition_sectors > drive_info->total_sectors - partition_lba) return false;
             found_fat32 = true;
             break;
         }
@@ -112,21 +134,26 @@ bool fat32_init(uint8_t drive) {
     }
 
     g_fat32_info.lba_start           = partition_lba;
-    g_fat32_info.bytes_per_sector    = *reinterpret_cast<uint16_t*>(&sector[11]);
+    g_fat32_info.bytes_per_sector    = read_le16(&sector[11]);
     g_fat32_info.sectors_per_cluster = sector[13];
-    g_fat32_info.reserved_sectors    = *reinterpret_cast<uint16_t*>(&sector[14]);
+    g_fat32_info.reserved_sectors    = read_le16(&sector[14]);
     g_fat32_info.num_fats            = sector[16];
-    g_fat32_info.sectors_per_fat     = *reinterpret_cast<uint32_t*>(&sector[36]);
-    g_fat32_info.root_cluster        = *reinterpret_cast<uint32_t*>(&sector[44]);
+    g_fat32_info.sectors_per_fat     = read_le32(&sector[36]);
+    g_fat32_info.root_cluster        = read_le32(&sector[44]);
 
-    if (g_fat32_info.bytes_per_sector != 512 || g_fat32_info.sectors_per_cluster == 0) {
-        serial_printf("[FAT32] Invalid BPB geometry on drive %u\n", drive);
-        return false;
-    }
-
-    g_fat32_info.first_data_sector = g_fat32_info.lba_start +
-                                     g_fat32_info.reserved_sectors +
-                                     (g_fat32_info.num_fats * g_fat32_info.sectors_per_fat);
+    const uint32_t total_sectors = read_le32(&sector[32]);
+    const uint32_t spc = g_fat32_info.sectors_per_cluster;
+    const uint64_t metadata = static_cast<uint64_t>(g_fat32_info.reserved_sectors) +
+        static_cast<uint64_t>(g_fat32_info.num_fats) * g_fat32_info.sectors_per_fat;
+    if (sector[510] != 0x55 || sector[511] != 0xAA || g_fat32_info.bytes_per_sector != 512 ||
+        !spc || spc > 128 || (spc & (spc - 1)) || !g_fat32_info.reserved_sectors ||
+        !g_fat32_info.num_fats || g_fat32_info.num_fats > 2 || !g_fat32_info.sectors_per_fat ||
+        total_sectors > partition_sectors || metadata >= total_sectors) return false;
+    g_cluster_count = (total_sectors - metadata) / spc;
+    if (!g_cluster_count || g_cluster_count >= 0x0FFFFFF5 ||
+        static_cast<uint64_t>(g_fat32_info.sectors_per_fat) * 128 < static_cast<uint64_t>(g_cluster_count) + 2 ||
+        g_fat32_info.root_cluster < 2 || g_fat32_info.root_cluster - 2 >= g_cluster_count) return false;
+    g_fat32_info.first_data_sector = partition_lba + static_cast<uint32_t>(metadata);
 
     g_fat32_info.mounted = true;
     serial_printf("[FAT32] Mounted FAT32 volume on drive %u (Root Cluster: %u, Data Sector: %u)\n",
@@ -156,7 +183,7 @@ void fat32_mount_vfs(void) {
 
 bool fat32_format_disk(uint8_t drive) {
     const ATADriveInfo* d_info = ata_get_drive_info(drive);
-    if (!d_info || !d_info->present || d_info->is_atapi) {
+    if (!d_info || !d_info->present || d_info->is_atapi || d_info->total_sectors < 65536) {
         serial_printf("[FAT32] Cannot format drive %u: invalid or ATAPI\n", drive);
         return false;
     }
@@ -194,6 +221,7 @@ bool fat32_format_disk(uint8_t drive) {
         return false;
     }
 
+    const uint32_t volume_sectors = d_info->total_sectors - 2048;
     // 2. Write FAT32 Volume Boot Record (VBR) at LBA 2048
     for (size_t i = 0; i < 512; ++i) sector[i] = 0;
 
@@ -216,10 +244,10 @@ bool fat32_format_disk(uint8_t drive) {
     vbr->sectors_per_track = 63;
     vbr->num_heads = 255;
     vbr->hidden_sectors = 2048;
-    vbr->total_sectors_32 = part0->sector_count;
+    vbr->total_sectors_32 = volume_sectors;
 
     // Calculate FAT size
-    uint32_t total_clusters = (part0->sector_count - 32) / 8;
+    uint32_t total_clusters = (volume_sectors - 32) / 8;
     uint32_t fat_size = ((total_clusters * 4) + 511) / 512;
     if (fat_size < 32) fat_size = 32;
 
@@ -249,7 +277,7 @@ bool fat32_format_disk(uint8_t drive) {
     // 3. Clear Reserved Sectors & FSInfo sector
     for (size_t i = 0; i < 512; ++i) sector[i] = 0;
     for (uint32_t s = 1; s < 32; ++s) {
-        ata_write_sectors(drive, 2048 + s, 1, sector);
+        if (!ata_write_sectors(drive, 2048 + s, 1, sector)) return false;
     }
 
     // 4. Initialize FAT1 and FAT2
@@ -262,29 +290,32 @@ bool fat32_format_disk(uint8_t drive) {
 
     // Write FAT1 sector 0
     uint32_t fat1_start = 2048 + 32;
-    ata_write_sectors(drive, fat1_start, 1, sector);
+    if (!ata_write_sectors(drive, fat1_start, 1, sector)) return false;
 
     // Write FAT2 sector 0
     uint32_t fat2_start = fat1_start + fat_size;
-    ata_write_sectors(drive, fat2_start, 1, sector);
+    if (!ata_write_sectors(drive, fat2_start, 1, sector)) return false;
 
     // Zero out remaining FAT sectors
     for (size_t i = 0; i < 512; ++i) sector[i] = 0;
-    for (uint32_t s = 1; s < fat_size && s < 64; ++s) {
-        ata_write_sectors(drive, fat1_start + s, 1, sector);
-        ata_write_sectors(drive, fat2_start + s, 1, sector);
+    for (uint32_t s = 1; s < fat_size; ++s) {
+        if (!ata_write_sectors(drive, fat1_start + s, 1, sector)) return false;
+        if (!ata_write_sectors(drive, fat2_start + s, 1, sector)) return false;
     }
 
     // 5. Clear Root Directory Cluster (Cluster 2)
     uint32_t root_lba = fat2_start + fat_size;
     for (uint8_t s = 0; s < 8; ++s) {
-        ata_write_sectors(drive, root_lba + s, 1, sector);
+        if (!ata_write_sectors(drive, root_lba + s, 1, sector)) return false;
     }
 
     serial_printf("[FAT32] Drive %u successfully formatted as FAT32\n", drive);
 
     // Re-mount volume
-    return fat32_init(drive);
+    const bool mounted = fat32_init(drive);
+    g_writable = mounted;
+    g_next_free_cluster = 3;
+    return mounted;
 }
 
 size_t fat32_read_file(const char* filename, uint8_t* buffer, size_t max_size) {
@@ -323,9 +354,10 @@ size_t fat32_read_file(const char* filename, uint8_t* buffer, size_t max_size) {
                 size_t copied = 0;
                 while (cluster < 0x0FFFFFF8 && cluster >= 2 && copied < read_bytes) {
                     uint32_t data_lba = cluster_to_lba(cluster);
+                    if (data_lba == 0xFFFFFFFF) return 0;
                     for (uint8_t cs = 0; cs < g_fat32_info.sectors_per_cluster && copied < read_bytes; ++cs) {
                         uint8_t cluster_buf[512];
-                        ata_read_sectors(g_fat32_info.drive, data_lba + cs, 1, cluster_buf);
+                        if (!ata_read_sectors(g_fat32_info.drive, data_lba + cs, 1, cluster_buf)) return 0;
                         size_t to_copy = (read_bytes - copied < 512) ? (read_bytes - copied) : 512;
                         for (size_t b = 0; b < to_copy; ++b) {
                             buffer[copied++] = cluster_buf[b];
@@ -342,18 +374,18 @@ size_t fat32_read_file(const char* filename, uint8_t* buffer, size_t max_size) {
 }
 
 bool fat32_write_file(const char* filename, const uint8_t* buffer, size_t size) {
-    if (!g_fat32_info.mounted || !filename || !buffer) return false;
+    if (!g_fat32_info.mounted || !g_writable || !filename || !buffer) return false;
 
     char target_83[11];
     format_83_name(filename, target_83);
 
     // Find a free cluster or use next available
     // For simplicity, allocate sequential clusters starting at cluster 3
-    static uint32_t next_free_cluster = 3;
-    uint32_t start_cluster = next_free_cluster;
-
-    uint32_t clusters_needed = (size + (8 * 512) - 1) / (8 * 512);
-    if (clusters_needed == 0) clusters_needed = 1;
+    uint32_t start_cluster = g_next_free_cluster;
+    const size_t cluster_size = static_cast<size_t>(g_fat32_info.sectors_per_cluster) * 512;
+    // Reader supports one cluster only; reject truncating/overflowing writes.
+    if (size > cluster_size || start_cluster < 3 || start_cluster - 2 >= g_cluster_count) return false;
+    const uint32_t clusters_needed = 1;
 
     // Write file data sectors
     size_t written = 0;
@@ -370,11 +402,21 @@ bool fat32_write_file(const char* filename, const uint8_t* buffer, size_t size) 
                     sec_buf[b] = 0;
                 }
             }
-            ata_write_sectors(g_fat32_info.drive, data_lba + s, 1, sec_buf);
+            if (!ata_write_sectors(g_fat32_info.drive, data_lba + s, 1, sec_buf)) return false;
         }
     }
 
-    next_free_cluster += clusters_needed;
+    for (uint8_t fat = 0; fat < g_fat32_info.num_fats; ++fat) {
+        const uint32_t lba = g_fat32_info.lba_start + g_fat32_info.reserved_sectors +
+            fat * g_fat32_info.sectors_per_fat + start_cluster / 128;
+        uint8_t fat_sector[512];
+        if (!ata_read_sectors(g_fat32_info.drive, lba, 1, fat_sector)) return false;
+        const uint32_t offset = (start_cluster % 128) * 4;
+        fat_sector[offset] = fat_sector[offset + 1] = fat_sector[offset + 2] = 0xFF;
+        fat_sector[offset + 3] = 0x0F;
+        if (!ata_write_sectors(g_fat32_info.drive, lba, 1, fat_sector)) return false;
+    }
+    g_next_free_cluster += clusters_needed;
 
     // Update Root Directory Entry
     uint8_t root_sec[512];
@@ -410,7 +452,7 @@ bool fat32_write_file(const char* filename, const uint8_t* buffer, size_t size) 
             entries[target_slot].first_cluster_low  = static_cast<uint16_t>(start_cluster & 0xFFFF);
             entries[target_slot].file_size = static_cast<uint32_t>(size);
 
-            ata_write_sectors(g_fat32_info.drive, root_lba + s, 1, root_sec);
+            if (!ata_write_sectors(g_fat32_info.drive, root_lba + s, 1, root_sec)) return false;
             serial_printf("[FAT32] Successfully wrote '%s' (%u bytes) on drive %u\n",
                           filename, static_cast<uint32_t>(size), g_fat32_info.drive);
             return true;
@@ -509,7 +551,7 @@ bool fat32_verify_and_repair(uint8_t drive, FAT32ProgressCallback cb) {
         if (cb) cb("Repairing corrupted MBR boot signature...", 35);
         sector[510] = 0x55;
         sector[511] = 0xAA;
-        ata_write_sectors(drive, 0, 1, sector);
+        if (!ata_write_sectors(drive, 0, 1, sector)) return false;
     }
 
     if (cb) cb("Validating Volume Boot Record (VBR) and FAT tables...", 50);

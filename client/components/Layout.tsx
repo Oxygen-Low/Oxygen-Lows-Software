@@ -9,6 +9,7 @@ import {
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { useAiModels } from "@/hooks/useAiModels";
 import {
   LogOut,
   Package,
@@ -28,11 +29,10 @@ import {
   Bell,
   MessageSquare,
   Handshake,
-  FolderTree,
+  Sparkles,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { TopbarMusicPlayer } from "./TopbarMusicPlayer";
-import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
 import { useNotifications } from "@/hooks/useNotifications";
 
 interface LayoutProps {
@@ -121,13 +121,6 @@ const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
     icon: Contact,
   },
   {
-    key: "projects",
-    labelKey: "nav.projects",
-    defaultLabel: "Projects",
-    href: "/projects",
-    icon: FolderTree,
-  },
-  {
     key: "support",
     labelKey: "nav.support",
     defaultLabel: "Support",
@@ -160,6 +153,7 @@ const MOBILE_MENU_BUTTON_CLASSES =
 export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
   const { session, signOut } = useAuth();
   const { unreadCount } = useNotifications();
+  const { pollenBalance, pollinationsApiKey } = useAiModels();
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -264,7 +258,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
         className={`${styles["header"]} backdrop-blur-md sticky top-0 z-[60] h-[61px] sm:h-[73px] flex items-center`}
       >
         <div className="w-full h-full px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-4 min-w-0 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0 shrink">
             {/* Mobile Hamburger Toggle Button */}
             <button
               type="button"
@@ -303,7 +297,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
 
             <Link
               to="/download"
-              className="hidden sm:flex items-center justify-center p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-white shrink-0"
+              className="hidden lg:flex items-center justify-center p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-white shrink-0"
               title={t("nav.downloadApp", undefined, "Download Desktop App")}
             >
               <DownloadIcon className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -328,7 +322,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
           </div>
 
           {/* Topbar Music Player / Playlist directly in the middle */}
-          <div className="flex-1 h-full flex items-center justify-center min-w-0 max-w-2xl mx-1 sm:mx-2 py-1 sm:py-1.5">
+          <div className="@container/music flex-1 h-full flex items-center justify-center min-w-[92px] max-w-2xl mx-1 sm:mx-2 py-1 sm:py-1.5">
             <TopbarMusicPlayer />
           </div>
 
@@ -351,7 +345,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
             {session ? (
               <>
                 <span
-                  className={`${styles["user-email"]} text-xs sm:text-sm hidden md:inline truncate max-w-[180px]`}
+                  className={`${styles["user-email"]} text-xs sm:text-sm hidden xl:inline truncate max-w-[180px]`}
                 >
                   {session.user.email}
                 </span>
@@ -445,6 +439,39 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
 
           {/* Navigation Links */}
           <nav className="p-3 sm:p-4 space-y-1 sm:space-y-2 flex-1 overflow-y-auto pt-2">
+            {/* Pollinations Pollen Wallet Button (Above Apps) */}
+            <div className="pb-1.5 mb-1 border-b border-border/40">
+              <a
+                href="https://enter.pollinations.ai/pollen"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="sidebar-pollen-wallet"
+                className="group flex items-center justify-between px-3.5 py-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 hover:border-amber-500/40 transition-all duration-200"
+                title={t(
+                  "nav.pollenWalletTooltip",
+                  undefined,
+                  "Pollinations Wallet - Click to view/manage Pollen",
+                )}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-6 h-6 rounded-md bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[10px] text-amber-300/70 font-semibold uppercase tracking-wider">
+                      {t("nav.pollenWallet", undefined, "Pollinations")}
+                    </span>
+                    <span className="text-xs font-bold text-amber-200 truncate">
+                      {pollinationsApiKey && pollenBalance > 0
+                        ? `${Number(pollenBalance.toFixed(2))} Pollen`
+                        : "0 Pollen"}
+                    </span>
+                  </div>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-amber-300/60 group-hover:text-amber-200 shrink-0" />
+              </a>
+            </div>
+
             {navItems.map((item) => {
               const Icon = item.icon;
 
@@ -515,9 +542,6 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               </a>
             </div>
           </nav>
-
-          {/* Music Player embedded in sidebar for mobile and desktop drawer */}
-          <SidebarMusicPlayer />
         </aside>
       </div>
 

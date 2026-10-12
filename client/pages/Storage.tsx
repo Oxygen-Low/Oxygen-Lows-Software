@@ -645,7 +645,7 @@ export default function Storage() {
     const cats = {
       text: {
         color: "bg-white",
-        label: "Text/Artifacts",
+        label: "Text Documents",
         icon: FileText,
         files: [] as any[],
         size: 0,
@@ -888,7 +888,7 @@ export default function Storage() {
               <div>
                 <h3 className="text-lg font-medium text-white">Files</h3>
                 <p className="text-xs sm:text-sm text-slate-400">
-                  Your uploaded files, published assets, and saved artifacts.
+                  Your uploaded files, published assets, and saved documents.
                 </p>
               </div>
               <div className="flex gap-2">

@@ -1,6 +1,6 @@
 {
   "name": "@oxygenlow/webdefender",
-  "version": "1.11.2",
+  "version": "1.11.5",
   "author": "Oxygen Low's Software",
   "description": "Oxygen Low's Software Web Defender: Protect your website or API from DDoS, injection attacks, bots, and malicious traffic.",
   "type": "module",
@@ -50,7 +50,7 @@
     "url": "git+https://github.com/Oxygen-Low/Oxygen-Lows-Software.git"
   },
   "devDependencies": {
-    "@types/node": "^26.6.2",
+    "@types/node": "^26.6.3",
     "typescript": "7.0.2"
   }
 }

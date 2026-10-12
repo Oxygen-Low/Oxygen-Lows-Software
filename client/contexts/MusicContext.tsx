@@ -41,6 +41,7 @@ export interface MusicContextType {
   shuffle: boolean;
   loop: boolean;
   volume: number;
+  playlistSessionVolume: number;
   isMuted: boolean;
   isLoading: boolean;
   audioRef: React.RefObject<HTMLAudioElement>;
@@ -54,6 +55,7 @@ export interface MusicContextType {
   playPrev: () => Promise<void>;
   seek: (positionMs: number) => void;
   setVolume: (vol: number) => void;
+  setPlaylistSessionVolume: (vol: number) => void;
   setTrackVolume: (index: number, volume: number) => void;
   toggleMute: () => void;
   addTrack: (track: PlaylistTrack) => Promise<void>;
@@ -141,6 +143,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       return false;
     }
   });
+  const [playlistSessionVolume, setPlaylistSessionVolumeState] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [trackBackgrounds, setTrackBackgroundsState] =
     useState<TrackBackgroundMap>({});
@@ -156,6 +159,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   const playNextRef = useRef<(() => void) | undefined>(undefined);
   const playTokenRef = useRef(0);
   const volumeRef = useRef(volume);
+  const playlistSessionVolumeRef = useRef(playlistSessionVolume);
   const isMutedRef = useRef(isMuted);
 
   // Synchronously keep refs updated during render so that any callbacks or event handlers
@@ -166,6 +170,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
   shuffleRef.current = shuffle;
   loopRef.current = loop;
   volumeRef.current = volume;
+  playlistSessionVolumeRef.current = playlistSessionVolume;
   isMutedRef.current = isMuted;
 
   useLayoutEffect(() => {
@@ -175,8 +180,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     shuffleRef.current = shuffle;
     loopRef.current = loop;
     volumeRef.current = volume;
+    playlistSessionVolumeRef.current = playlistSessionVolume;
     isMutedRef.current = isMuted;
-  }, [playlist, currentTrack, isPlaying, shuffle, loop, volume, isMuted]);
+  }, [playlist, currentTrack, isPlaying, shuffle, loop, volume, playlistSessionVolume, isMuted]);
 
   useEffect(() => {
     playlistRef.current = playlist;
@@ -185,14 +191,17 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
     shuffleRef.current = shuffle;
     loopRef.current = loop;
     volumeRef.current = volume;
+    playlistSessionVolumeRef.current = playlistSessionVolume;
     isMutedRef.current = isMuted;
     if (audioRef.current) {
       audioRef.current.loop = loop;
       const trackVol = currentTrack?.volume ?? 1;
-      audioRef.current.volume = isMuted ? 0 : Math.max(0, Math.min(1, volume * trackVol));
+      audioRef.current.volume = isMuted
+        ? 0
+        : Math.max(0, Math.min(1, volume * playlistSessionVolume * trackVol));
       audioRef.current.muted = isMuted;
     }
-  }, [playlist, currentTrack, isPlaying, shuffle, loop, volume, isMuted]);
+  }, [playlist, currentTrack, isPlaying, shuffle, loop, volume, playlistSessionVolume, isMuted]);
 
   // Clean up blob URL on unmount
   useEffect(() => {
@@ -478,7 +487,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
               const trackVol = track.volume ?? 1;
               audioRef.current.volume = isMutedRef.current
                 ? 0
-                : Math.max(0, Math.min(1, volumeRef.current * trackVol));
+                : Math.max(0, Math.min(1, volumeRef.current * playlistSessionVolumeRef.current * trackVol));
               const { shouldResume, position } = getAutoResumeState();
               const seekTo = shouldResume ? position : savedPosition;
 
@@ -588,7 +597,9 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       audioRef.current.src = url;
       audioRef.current.currentTime = 0;
       const trackVol = track.volume ?? 1;
-      audioRef.current.volume = isMuted ? 0 : Math.max(0, Math.min(1, volume * trackVol));
+      audioRef.current.volume = isMuted
+        ? 0
+        : Math.max(0, Math.min(1, volume * playlistSessionVolume * trackVol));
       try {
         await audioRef.current.play();
         if (currentToken !== playTokenRef.current) return;
@@ -613,7 +624,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         });
       }
     },
-    [playlist, resolvePlaybackUrl, savePreferences, saveExitState, isMuted, volume],
+    [playlist, resolvePlaybackUrl, savePreferences, saveExitState, isMuted, volume, playlistSessionVolume],
   );
 
   const playNext = useCallback(async () => {
@@ -816,11 +827,28 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       setVolumeState(clamped);
       if (audioRef.current) {
         const trackVol = currentTrackRef.current?.volume ?? 1;
-        audioRef.current.volume = isMuted ? 0 : Math.max(0, Math.min(1, clamped * trackVol));
+        audioRef.current.volume = isMuted
+          ? 0
+          : Math.max(0, Math.min(1, clamped * playlistSessionVolumeRef.current * trackVol));
       }
       try {
         localStorage.setItem(VOLUME_STORAGE_KEY, String(clamped));
       } catch {}
+    },
+    [isMuted],
+  );
+
+  const setPlaylistSessionVolume = useCallback(
+    (vol: number) => {
+      const clamped = Math.max(0, Math.min(1, vol));
+      setPlaylistSessionVolumeState(clamped);
+      playlistSessionVolumeRef.current = clamped;
+      if (audioRef.current) {
+        const trackVol = currentTrackRef.current?.volume ?? 1;
+        audioRef.current.volume = isMuted
+          ? 0
+          : Math.max(0, Math.min(1, volumeRef.current * clamped * trackVol));
+      }
     },
     [isMuted],
   );
@@ -847,7 +875,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
           if (audioRef.current) {
             audioRef.current.volume = isMuted
               ? 0
-              : Math.max(0, Math.min(1, volume * clamped));
+              : Math.max(
+                  0,
+                  Math.min(
+                    1,
+                    volume * playlistSessionVolumeRef.current * clamped,
+                  ),
+                );
           }
         }
 
@@ -869,7 +903,13 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
         const trackVol = currentTrackRef.current?.volume ?? 1;
         audioRef.current.volume = next
           ? 0
-          : Math.max(0, Math.min(1, volume * trackVol));
+          : Math.max(
+              0,
+              Math.min(
+                1,
+                volume * playlistSessionVolumeRef.current * trackVol,
+              ),
+            );
       }
       try {
         localStorage.setItem(MUTED_STORAGE_KEY, String(next));
@@ -1173,6 +1213,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       shuffle,
       loop,
       volume,
+      playlistSessionVolume,
       isMuted,
       isLoading,
       audioRef,
@@ -1183,6 +1224,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       playPrev,
       seek,
       setVolume,
+      setPlaylistSessionVolume,
       setTrackVolume,
       toggleMute,
       addTrack,
@@ -1209,6 +1251,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       shuffle,
       loop,
       volume,
+      playlistSessionVolume,
       isMuted,
       isLoading,
       play,
@@ -1218,6 +1261,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       playPrev,
       seek,
       setVolume,
+      setPlaylistSessionVolume,
       setTrackVolume,
       toggleMute,
       addTrack,
@@ -1254,6 +1298,7 @@ const defaultFallbackMusicContext: MusicContextType = {
   shuffle: false,
   loop: false,
   volume: 1,
+  playlistSessionVolume: 1,
   isMuted: false,
   isLoading: false,
   audioRef: { current: null },
@@ -1264,6 +1309,7 @@ const defaultFallbackMusicContext: MusicContextType = {
   playPrev: async () => {},
   seek: () => {},
   setVolume: () => {},
+  setPlaylistSessionVolume: () => {},
   setTrackVolume: () => {},
   toggleMute: () => {},
   addTrack: async () => {},

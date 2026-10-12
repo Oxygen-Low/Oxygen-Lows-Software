@@ -54,7 +54,6 @@ const Security = lazyWithRetry(() => import("./pages/Security"));
 const Storage = lazyWithRetry(() => import("./pages/Storage"));
 const Customize = lazyWithRetry(() => import("./pages/Customize"));
 const Characters = lazyWithRetry(() => import("./pages/Characters"));
-const Projects = lazyWithRetry(() => import("./pages/Projects"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const UserProfile = lazyWithRetry(() => import("./pages/UserProfile"));
 const Support = lazyWithRetry(() => import("./pages/Support"));
@@ -82,8 +81,12 @@ const Legal = lazyWithRetry(() => import("./pages/Legal"));
 const License = lazyWithRetry(() => import("./pages/License"));
 const Download = lazyWithRetry(() => import("./pages/Download"));
 const OAuthAuthorize = lazyWithRetry(() => import("./pages/OAuthAuthorize"));
+const PollinationsOAuthCallback = lazyWithRetry(
+  () => import("./pages/PollinationsOAuthCallback"),
+);
 const Partners = lazyWithRetry(() => import("./pages/Partners"));
 const AdminPartners = lazyWithRetry(() => import("./pages/AdminPartners"));
+const AgentsPortal = lazyWithRetry(() => import("./pages/AgentsPortal"));
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -110,10 +113,14 @@ const App = () => (
                       <Route path="/apps" element={<Apps />} />
                       <Route path="/apps/:appId" element={<Apps />} />
                       <Route path="/apps/3d-background" element={<Apps />} />
+                      <Route path="/agents" element={<AgentsPortal />} />
+                      <Route path="/agents/*" element={<AgentsPortal />} />
                       <Route path="/chat" element={<Chat />} />
-                      <Route path="/projects" element={<Projects />} />
-                      <Route path="/projects/:projectId" element={<Projects />} />
                       <Route path="/oauth/authorize" element={<OAuthAuthorize />} />
+                      <Route
+                        path="/oauth/pollinations/callback"
+                        element={<PollinationsOAuthCallback />}
+                      />
                     <Route path="/banned-ips" element={<BannedIps />} />
                     <Route path="/webdefender/banned-ips" element={<BannedIps />} />
                     <Route path="/games" element={<Games />} />

@@ -2,17 +2,23 @@ package com.oxygenlow.oxygen_lows_software
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
-import android.webkit.JavascriptInterface
+import android.os.Handler
+import android.os.Looper
+import android.webkit.WebResourceRequest
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import org.json.JSONObject
@@ -22,6 +28,16 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private lateinit var webAppInterface: WebAppInterface
+    private var isForeground = false
+    private var isUpdateInProgress = false
+    private val updateHandler = Handler(Looper.getMainLooper())
+    private val updateCheckRunnable = object : Runnable {
+        override fun run() {
+            if (!isForeground) return
+            performUpdateCheck()
+            updateHandler.postDelayed(this, 30_000L)
+        }
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,24 +54,141 @@ class MainActivity : AppCompatActivity() {
         webView.settings.mediaPlaybackRequiresUserGesture = false
         
         webAppInterface = WebAppInterface(this, webView)
-        webView.addJavascriptInterface(webAppInterface, "AndroidApp")
+        // The legacy JavascriptInterface cannot identify the calling frame/origin.
+        // Older WebViews retain web functionality without privileged commands.
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
+            WebViewCompat.addWebMessageListener(webView, "AndroidApp", NativeSecurity.trustedOrigins) {
+                    _, message, sourceOrigin, isMainFrame, _ ->
+                if (isMainFrame && NativeSecurity.isTrustedOrigin(sourceOrigin.toString()) &&
+                    NativeSecurity.isTrustedOrigin(webView.url)) {
+                    message.data?.let { webAppInterface.postMessage(it) }
+                }
+            }
+        } else {
+            showWebViewUpdatePrompt()
+        }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                val target = request?.url?.toString() ?: return true
+                if (NativeSecurity.isTrustedOrigin(target)) return false
+                if (request.isForMainFrame && NativeSecurity.isWebUrl(target)) {
+                    try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target))) } catch (_: Exception) { }
+                }
+                return true
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                injectPolyfill()
+                if (NativeSecurity.isTrustedOrigin(url)) injectPolyfill()
             }
         }
-        
-        webView.webChromeClient = WebChromeClient()
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onPermissionRequest(request: android.webkit.PermissionRequest?) {
+                if (request == null) return
+                val origin = request.origin?.toString() ?: ""
+                if (NativeSecurity.isTrustedOrigin(origin)) {
+                    request.grant(request.resources)
+                } else {
+                    request.deny()
+                }
+            }
+        }
+
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.RECORD_AUDIO
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            androidx.core.app.ActivityCompat.requestPermissions(
+                this,
+                arrayOf(android.Manifest.permission.RECORD_AUDIO),
+                1002
+            )
+        }
 
         if (intent?.data?.scheme == "oxygenlows") {
             handleIntent(intent)
         } else {
             webView.loadUrl("https://oxygenlow.com/?android=1")
         }
+    }
 
-        checkForUpdatesOnStartup()
+    override fun onResume() {
+        super.onResume()
+        isForeground = true
+        updateHandler.removeCallbacks(updateCheckRunnable)
+        updateHandler.post(updateCheckRunnable)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        isForeground = false
+        updateHandler.removeCallbacks(updateCheckRunnable)
+    }
+
+    override fun onDestroy() {
+        isForeground = false
+        updateHandler.removeCallbacks(updateCheckRunnable)
+        super.onDestroy()
+    }
+
+    private fun performUpdateCheck() {
+        if (isUpdateInProgress) return
+        Thread {
+            if (!isForeground || isUpdateInProgress) return@Thread
+            isUpdateInProgress = true
+            try {
+                val updateManager = UpdateManager(this)
+                val updateInfo = updateManager.checkForUpdates()
+                if (isForeground && updateInfo.hasUpdate && !updateInfo.downloadUrl.isNullOrBlank()) {
+                    runOnUiThread {
+                        if (isForeground && !isFinishing && !isDestroyed) {
+                            val versionStr = updateInfo.version ?: ""
+                            Toast.makeText(
+                                this,
+                                getString(R.string.update_downloading, versionStr),
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                    updateManager.downloadAndInstall(this, updateInfo.downloadUrl)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isUpdateInProgress = false
+            }
+        }.start()
+    }
+
+    private fun showWebViewUpdatePrompt() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.webview_update_title)
+            .setMessage(R.string.webview_update_message)
+            .setPositiveButton(R.string.webview_update_action) { _, _ -> openWebViewUpdate() }
+            .setNegativeButton(R.string.webview_update_later, null)
+            .show()
+    }
+
+    private fun openWebViewUpdate() {
+        // Some devices use Chrome or another package as their WebView provider.
+        val providerPackage = WebViewCompat.getCurrentWebViewPackage(this)?.packageName
+            ?: "com.google.android.webview"
+        val storeUri = Uri.parse("market://details").buildUpon()
+            .appendQueryParameter("id", providerPackage).build()
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, storeUri).setPackage("com.android.vending"))
+        } catch (_: ActivityNotFoundException) {
+            val webUri = Uri.parse("https://play.google.com/store/apps/details").buildUpon()
+                .appendQueryParameter("id", providerPackage).build()
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, webUri))
+            } catch (_: ActivityNotFoundException) {
+                Toast.makeText(this, R.string.webview_update_unavailable, Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -67,20 +200,10 @@ class MainActivity : AppCompatActivity() {
     private fun handleIntent(intent: Intent?) {
         intent?.data?.let { uri ->
             if (uri.scheme == "oxygenlows") {
-                val currentBase = try {
-                    val currentUrl = webView.url
-                    if (!currentUrl.isNullOrBlank()) {
-                        val parsed = Uri.parse(currentUrl)
-                        "${parsed.scheme}://${parsed.authority}/"
-                    } else {
-                        "https://oxygenlow.com/"
-                    }
-                } catch (e: Exception) {
-                    "https://oxygenlow.com/"
-                }
-                val urlString = uri.toString().replaceFirst("oxygenlows://", currentBase)
-                val separator = if (urlString.contains("?")) "&" else "?"
-                webView.loadUrl(urlString + separator + "android=1")
+                val urlString = "https://oxygenlow.com/auth/callback" +
+                    (uri.encodedQuery?.let { "?$it" } ?: "") +
+                    (uri.encodedFragment?.let { "#$it" } ?: "")
+                webView.loadUrl(Uri.parse(urlString).buildUpon().appendQueryParameter("android", "1").build().toString())
             }
         }
     }
@@ -108,7 +231,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun injectPolyfill() {
+        if (!NativeSecurity.isTrustedOrigin(webView.url)) return
         val js = """
+            if (window.top !== window || !window.AndroidApp) { /* no native bridge */ }
+            else {
             if (!window.chrome) {
                 window.chrome = {};
             }
@@ -139,6 +265,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 };
             }
+            }
         """.trimIndent()
         webView.evaluateJavascript(js, null)
     }
@@ -148,7 +275,6 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
 
     private var activeRingtone: Ringtone? = null
 
-    @JavascriptInterface
     fun postMessage(message: String) {
         try {
             val json = JSONObject(message)
@@ -226,6 +352,7 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
                 }
                 "open_browser" -> {
                     val url = json.optString("url")
+                    require(NativeSecurity.isWebUrl(url)) { "Invalid browser URL" }
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                     context.startActivity(intent)
                     val response = JSONObject().apply {
@@ -342,7 +469,9 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
 
     private fun sendResponse(jsonResponse: String) {
         context.runOnUiThread {
-            webView.evaluateJavascript("window.dispatchAndroidMessage('${jsonResponse.replace("'", "\\'")}');", null)
+            if (NativeSecurity.isTrustedOrigin(webView.url)) {
+                webView.evaluateJavascript("window.dispatchAndroidMessage(${JSONObject.quote(jsonResponse)});", null)
+            }
         }
     }
 }

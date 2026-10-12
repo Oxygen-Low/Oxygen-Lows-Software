@@ -40,6 +40,10 @@ describe("detectSensitivePath", () => {
     expect(detectSensitivePath("/rclone.conf")?.category).toBe("credentials");
     expect(detectSensitivePath("/secrets.yaml")?.category).toBe("credentials");
     expect(detectSensitivePath("/secrets.yml")?.category).toBe("credentials");
+    expect(detectSensitivePath("/.server_vault_key")?.category).toBe("credentials");
+    expect(detectSensitivePath("/Data/.server_vault_key")?.category).toBe("credentials");
+    expect(detectSensitivePath("/data/server_vault.key")?.category).toBe("credentials");
+    expect(detectSensitivePath("/api/v1/storage/.server_vault_key")?.category).toBe("credentials");
   });
 
   it("should detect SSH key files", () => {

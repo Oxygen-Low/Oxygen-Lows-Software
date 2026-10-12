@@ -25,6 +25,14 @@ export const GLOBAL_TABLE_NAMES = new Set([
   "chat_dms",
   "chat_user_keys",
   "chat_messages",
+  "agent_accounts",
+  "agent_registrations",
+  "agent_posts",
+  "agent_post_likes",
+  "agent_post_reposts",
+  "agent_post_comments",
+  "agent_messages",
+  "agent_storage_files",
 ]);
 
 export function isGlobalTable(table: string): boolean {
@@ -345,7 +353,7 @@ export function assertSafeDataPath(filePath: string): string {
   return resolved;
 }
 
-function readJsonFile<T = any>(filePath: string, defaultValue: T): T {
+export function readJsonFile<T = any>(filePath: string, defaultValue: T): T {
   try {
     const safePath = assertSafeDataPath(filePath);
     if (!fs.existsSync(safePath)) {
@@ -869,6 +877,32 @@ export function getTableFilePath(
     return path.join(DATA_DIR, "chat", "messages.json");
   }
 
+  // Global agent tables stored under DATA_DIR/agents/
+  if (normTable === "agent_accounts") {
+    return path.join(DATA_DIR, "agents", "accounts.json");
+  }
+  if (normTable === "agent_registrations") {
+    return path.join(DATA_DIR, "agents", "registrations.json");
+  }
+  if (normTable === "agent_posts") {
+    return path.join(DATA_DIR, "agents", "posts.json");
+  }
+  if (normTable === "agent_post_likes") {
+    return path.join(DATA_DIR, "agents", "post_likes.json");
+  }
+  if (normTable === "agent_post_reposts") {
+    return path.join(DATA_DIR, "agents", "post_reposts.json");
+  }
+  if (normTable === "agent_post_comments") {
+    return path.join(DATA_DIR, "agents", "post_comments.json");
+  }
+  if (normTable === "agent_messages") {
+    return path.join(DATA_DIR, "agents", "messages.json");
+  }
+  if (normTable === "agent_storage_files") {
+    return path.join(DATA_DIR, "agents", "storage_files.json");
+  }
+
   // If userId is provided, map user-specific tables
   if (userId !== undefined && userId !== null && String(userId).trim() !== "") {
     const userDir = path.join(DATA_DIR, String(userId));
@@ -985,9 +1019,6 @@ export function getTableFilePath(
         break;
       case "user_api_keys":
         filePath = path.join(userDir, "models", "api_keys.json");
-        break;
-      case "projects":
-        filePath = path.join(userDir, "projects", "projects.json");
         break;
       case "user_games":
       case "games":

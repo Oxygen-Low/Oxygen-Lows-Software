@@ -64,6 +64,11 @@ const RULES: SensitivePathRule[] = [
       "/user_secrets.yaml",
       "/user_secrets.json",
       "/.secrets",
+      "/.server_vault_key",
+      "/.server_vault.key",
+      "/data/.server_vault_key",
+      "/data/server_vault.key",
+      "/server_vault.key",
       "/credentials",
       "/credentials.json",
       "/credentials.yaml",
@@ -417,12 +422,15 @@ export function detectSensitivePath(rawPath: string): SensitivePathMatch | null 
     return { path, category: "canary" };
   }
 
-  // 4. Dotenv detection on final segment (e.g. /api/.env, /.env.production, /test.env)
+  // 4. Dotenv & Vault Key detection on final segment (e.g. /api/.env, /Data/.server_vault_key)
   const lastSegment = path.split("/").pop() ?? "";
   if (
     lastSegment === ".env" ||
     lastSegment.startsWith(".env.") ||
-    lastSegment.endsWith(".env")
+    lastSegment.endsWith(".env") ||
+    lastSegment === ".server_vault_key" ||
+    lastSegment === "server_vault.key" ||
+    lastSegment.includes("server_vault_key")
   ) {
     return { path, category: "credentials" };
   }

@@ -16,7 +16,10 @@ import {
   Send,
   Lock,
   Sparkles,
+  Copy,
 } from "lucide-react";
+import { copyEntityAsMarkdown } from "@/utils/characterExport";
+import { AiReviewDialog } from "@/components/characters/AiReviewDialog";
 import { AiGenerateDialog } from "@/components/characters/AiGenerateDialog";
 import type { GeneratedEntityResult } from "@/services/entityGenerator";
 
@@ -74,6 +77,7 @@ interface Character {
   appearance: string | null;
   personality: string | null;
   backstory: string | null;
+  situation?: string | null;
   hidden_description: string | null;
   is_universe?: boolean;
   is_race?: boolean;
@@ -157,6 +161,10 @@ export default function Characters() {
   );
   const [publishModalAnonymous, setPublishModalAnonymous] = useState(false);
 
+  const [reviewingCharacter, setReviewingCharacter] = useState<Character | null>(
+    null,
+  );
+
   // AI Generation Modal State
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
   const [aiInitialType, setAiInitialType] = useState<
@@ -194,6 +202,7 @@ export default function Characters() {
       appearance: entity.appearance,
       personality: entity.personality,
       backstory: entity.backstory,
+      situation: entity.situation,
       hidden_description: entity.hidden_description,
       is_universe: entity.is_universe,
       is_race: entity.is_race,
@@ -341,6 +350,7 @@ export default function Characters() {
         appearance: currentCharacter.appearance,
         personality: currentCharacter.personality,
         backstory: currentCharacter.backstory,
+        situation: currentCharacter.situation,
         hidden_description: currentCharacter.hidden_description,
         is_universe: currentCharacter.is_universe || false,
         is_race: currentCharacter.is_race || false,
@@ -424,6 +434,7 @@ export default function Characters() {
               appearance: currentCharacter.appearance,
               personality: currentCharacter.personality,
               backstory: currentCharacter.backstory,
+              situation: currentCharacter.situation,
               hidden_description: currentCharacter.hidden_description,
               image_path: currentCharacter.image_path,
               is_universe: currentCharacter.is_universe || false,
@@ -573,6 +584,7 @@ export default function Characters() {
             appearance: char.appearance,
             personality: char.personality,
             backstory: char.backstory,
+            situation: char.situation,
             hidden_description: char.hidden_description,
             image_path: char.image_path,
             image_url: char.image_url,
@@ -1244,6 +1256,35 @@ export default function Characters() {
                         />
                       </div>
 
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="char-situation"
+                          className="text-sm font-medium"
+                        >
+                          {t(
+                            "characters.situation",
+                            undefined,
+                            "Current Situation & Abilities",
+                          )}
+                        </label>
+                        <Textarea
+                          id="char-situation"
+                          value={currentCharacter.situation || ""}
+                          onChange={(e) =>
+                            setCurrentCharacter((prev) => ({
+                              ...prev,
+                              situation: e.target.value,
+                            }))
+                          }
+                          placeholder={t(
+                            "characters.situationPlaceholder",
+                            undefined,
+                            "What they currently are, their powers, capabilities, skills, and current situation...",
+                          )}
+                          className="bg-slate-800 border-slate-700 h-28"
+                        />
+                      </div>
+
                       {/* Character Stats Block */}
                       <div className="p-4 bg-slate-950/60 rounded-lg border border-slate-800 space-y-3">
                         <div className="flex items-center justify-between">
@@ -1499,6 +1540,38 @@ export default function Characters() {
                     )}
 
                   <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      copyEntityAsMarkdown(currentCharacter as any, {
+                        toast: (msg, opts) =>
+                          toast({
+                            title: msg,
+                            variant: opts?.variant,
+                          }),
+                        successMessage: t(
+                          "characters.importableTextCopied",
+                          undefined,
+                          "Importable text copied to clipboard!",
+                        ),
+                        errorMessage: t(
+                          "characters.copyImportableTextFailed",
+                          undefined,
+                          "Failed to copy text to clipboard",
+                        ),
+                      })
+                    }
+                    className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                  >
+                    <Copy className="w-4 h-4 mr-1.5" />
+                    {t(
+                      "characters.copyImportableText",
+                      undefined,
+                      "Copy Importable Text",
+                    )}
+                  </Button>
+
+                  <Button
                     onClick={() => handleSave(false)}
                     className="bg-cyan-600 hover:bg-cyan-700 text-white"
                   >
@@ -1692,6 +1765,48 @@ export default function Characters() {
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-cyan-800/60 text-cyan-300 hover:bg-cyan-950/60"
+                          onClick={() => setReviewingCharacter(char)}
+                        >
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          {t("characters.aiReview.action")}
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-xs border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white flex items-center justify-center gap-1.5"
+                          onClick={() =>
+                            copyEntityAsMarkdown(char, {
+                              toast: (msg, opts) =>
+                                toast({
+                                  title: msg,
+                                  variant: opts?.variant,
+                                }),
+                              successMessage: t(
+                                "characters.importableTextCopied",
+                                undefined,
+                                "Importable text copied to clipboard!",
+                              ),
+                              errorMessage: t(
+                                "characters.copyImportableTextFailed",
+                                undefined,
+                                "Failed to copy text to clipboard",
+                              ),
+                            })
+                          }
+                        >
+                          <Copy className="w-3.5 h-3.5 text-cyan-400" />
+                          {t(
+                            "characters.copyImportableText",
+                            undefined,
+                            "Copy Importable Text",
+                          )}
+                        </Button>
 
                         {char.is_race && (
                           <Button
@@ -2065,6 +2180,31 @@ export default function Characters() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {reviewingCharacter && !encryptionLocked && (
+        <AiReviewDialog
+          key={reviewingCharacter.id}
+          character={reviewingCharacter}
+          entityType={
+            reviewingCharacter.is_universe
+              ? "universe"
+              : reviewingCharacter.is_race
+                ? "race"
+                : "character"
+          }
+          universe={
+            reviewingCharacter.is_universe
+              ? undefined
+              : universesMap.get(reviewingCharacter.universe_id || "")
+          }
+          race={
+            reviewingCharacter.is_race || reviewingCharacter.is_universe
+              ? undefined
+              : racesMap.get(reviewingCharacter.race_id || "")
+          }
+          onClose={() => setReviewingCharacter(null)}
+        />
+      )}
 
       {/* AI Entity Generation Modal */}
       <AiGenerateDialog

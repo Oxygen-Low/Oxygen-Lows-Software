@@ -44,8 +44,15 @@ void mouse_write_command(uint8_t cmd) {
 }
 
 uint8_t mouse_read_data(void) {
-    mouse_wait_output();
-    return inb(0x60);
+    uint32_t timeout = 100000;
+    while (timeout--) {
+        uint8_t status = inb(0x64);
+        if ((status & 0x01) && (status & 0x20)) {
+            return inb(0x60);
+        }
+        io_wait();
+    }
+    return 0;
 }
 
 } // anonymous namespace
@@ -78,9 +85,9 @@ void mouse_handler(InterruptFrame* frame) {
         uint8_t data = inb(0x60);
         uint64_t now = pit_get_uptime_ms();
 
-        // If an inter-packet gap exceeds 250ms, previous packet was dropped.
+        // If an inter-packet gap exceeds 100ms, previous packet was dropped.
         // Resync to start of packet.
-        if (g_mouse_cycle > 0 && (now - g_last_packet_time > 250)) {
+        if (g_mouse_cycle > 0 && (now - g_last_packet_time > 100)) {
             g_mouse_cycle = 0;
         }
         g_last_packet_time = now;
@@ -113,15 +120,20 @@ void mouse_handler(InterruptFrame* frame) {
         continue;
 
 process_packet:
-        // Extract 9-bit two's complement deltas using sign bits from packet 0
-        int32_t delta_x = g_mouse_packet[1];
-        if (g_mouse_packet[0] & 0x10) {
-            delta_x = delta_x - 256;
+        // Framing sanity check: Bit 3 must be 1, overflow bits must be 0
+        if ((g_mouse_packet[0] & 0x08) == 0 || (g_mouse_packet[0] & 0xC0) != 0) {
+            continue;
         }
 
-        int32_t delta_y = g_mouse_packet[2];
+        // Extract 9-bit two's complement deltas using sign bits from packet 0
+        int32_t delta_x = static_cast<int32_t>(g_mouse_packet[1]);
+        if (g_mouse_packet[0] & 0x10) {
+            delta_x -= 256;
+        }
+
+        int32_t delta_y = static_cast<int32_t>(g_mouse_packet[2]);
         if (g_mouse_packet[0] & 0x20) {
-            delta_y = delta_y - 256;
+            delta_y -= 256;
         }
 
         // If overflow bits are set, discard movement
@@ -214,15 +226,14 @@ void mouse_init(uint32_t screen_w, uint32_t screen_h) {
 }
 
 void mouse_start(void) {
-    // 1. Drain any residual bytes in 8042 controller before streaming
+    // 1. Drain any residual bytes in 8042 controller before enabling streaming
     mouse_flush();
 
-    // 2. Enable data packet streaming (0xF4) while IRQ is masked to avoid ACK byte race
+    // 2. Enable data packet streaming (0xF4) while IRQ is masked
     mouse_write_command(0xF4);
     mouse_read_data(); // ACK (0xFA)
 
-    // 3. Flush any residual bytes and reset synchronization state
-    mouse_flush();
+    // 3. Reset synchronization state without flushing (which would consume packet bytes)
     g_mouse_cycle = 0;
     g_last_packet_time = pit_get_uptime_ms();
 

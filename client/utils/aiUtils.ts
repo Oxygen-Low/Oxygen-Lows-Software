@@ -1,10 +1,21 @@
 import { handleSafetyModeration } from "@/lib/safetyModeration";
 
 export const formatModelLabel = (provider: string, modelId: string) => {
+  if (provider === "pollinations") {
+    const labels: Record<string, string> = {
+      "inclusionai/ling-3.1-flash": "Free",
+      "amazon/nova-micro-v1": "Cheap",
+      "openai/gpt-6-luna": "Fast",
+      "openai/gpt-5.6-terra": "Balanced",
+      "openai/gpt-6.1-sol": "Smart",
+      "openai/gpt-6-astra": "Smartest",
+    };
+    return labels[modelId] || modelId;
+  }
   if (provider === "horde") {
     const labels: Record<string, string> = {
       Fast: "Fast - koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
-      Smart: "Smart - aphrodite/DeepSeek-V4.1-Flash",
+      Smart: "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
       Writing: "Writing - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
     };
     return labels[modelId] || "AI Horde - " + modelId;

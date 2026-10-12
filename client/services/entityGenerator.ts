@@ -1,5 +1,11 @@
 import { supabase } from "@/lib/db";
 import { safeParseJson } from "@shared/jsonRepair";
+import {
+  fetchPollinationsClient,
+  PollinationsRateLimitError,
+  PollinationsNotFoundError,
+  PollinationsAuthError,
+} from "./pollinationsClient";
 
 export interface EntityGenerationOptions {
   type: "character" | "universe" | "race";
@@ -19,6 +25,7 @@ export interface EntityGenerationOptions {
     appearance?: string | null;
     personality?: string | null;
     backstory?: string | null;
+    situation?: string | null;
     hidden_description?: string | null;
     is_universe?: boolean;
   } | null;
@@ -30,6 +37,7 @@ export interface EntityGenerationOptions {
     appearance?: string | null;
     personality?: string | null;
     backstory?: string | null;
+    situation?: string | null;
     hidden_description?: string | null;
     is_race?: boolean;
   } | null;
@@ -48,6 +56,7 @@ export interface GeneratedEntityResult {
   appearance: string;
   personality: string;
   backstory: string;
+  situation?: string;
   hidden_description: string;
   universe_id?: string;
   race_id?: string;
@@ -141,6 +150,7 @@ export interface CharacterSchema {
   appearance: string;
   personality: string;
   backstory: string;
+  situation: string;
   hidden_description: string;
   stats?: {
     str: number;
@@ -166,6 +176,7 @@ export function buildCharacterGenerationPrompt(params: {
     appearance: "Physical traits, clothing, distinctive markings, gear",
     personality: "Psychological profile, virtues, flaws, speech style",
     backstory: "Personal history, formative events, affiliations",
+    situation: "Current status, role, abilities, powers, and present situation",
     hidden_description: "Private GM/creator notes and secrets",
   };
 
@@ -308,12 +319,98 @@ export function buildUniverseGenerationPrompt(params: {
   return { system, user: userParts.join("\n\n") };
 }
 
-async function callModel(
+export async function callModel(
   model: EntityGenerationOptions["model"],
   messages: Array<{ role: string; content: string }>,
   signal?: AbortSignal,
   apiKey?: string,
 ): Promise<string> {
+  let effectiveApiKey = apiKey;
+  if (!effectiveApiKey && typeof window !== "undefined") {
+    try {
+      const rawLocal =
+        localStorage.getItem("oxygen_api_keys") ||
+        localStorage.getItem("oxygen_encrypted_api_keys");
+      if (rawLocal) {
+        const parsed = JSON.parse(rawLocal);
+        if (parsed && typeof parsed[model.provider?.toLowerCase()] === "string") {
+          effectiveApiKey = parsed[model.provider.toLowerCase()].trim();
+        }
+      }
+    } catch {}
+  }
+
+  if (model.provider === "pollinations") {
+    try {
+      return await fetchPollinationsClient({
+        model: model.model_id || "inclusionai/ling-3.1-flash",
+        messages: messages.map((m) => ({
+          role: (m.role || "user") as "system" | "user" | "assistant",
+          content: m.content || "",
+        })),
+        signal,
+        apiKey: effectiveApiKey,
+      });
+    } catch (err: any) {
+      if (
+        err instanceof PollinationsRateLimitError ||
+        err instanceof PollinationsNotFoundError ||
+        err instanceof PollinationsAuthError ||
+        err?.statusCode === 429 ||
+        err?.statusCode === 404 ||
+        err?.statusCode === 402 ||
+        err?.statusCode === 401 ||
+        err?.statusCode === 403 ||
+        err?.message?.includes("404") ||
+        err?.message?.includes("402") ||
+        err?.message?.includes("401") ||
+        err?.message?.includes("403")
+      ) {
+        // Fallback to Horde Fast, then Smart via server proxy
+        try {
+          let headers: Record<string, string> = { "Content-Type": "application/json" };
+          try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const token = sessionData?.session?.access_token;
+            if (token) {
+              headers["Authorization"] = `Bearer ${token}`;
+            }
+          } catch {}
+
+          const fastRes = await fetch("/api/ai/proxy", {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              model: "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+              provider: "horde",
+              messages,
+              apiKey: apiKey || undefined,
+            }),
+            signal,
+          });
+
+          if (fastRes.ok) {
+            const json = await fastRes.json();
+            return (
+              json?.choices?.[0]?.message?.content ||
+              json?.message?.content ||
+              json?.result ||
+              ""
+            );
+          }
+          throw new Error(`Fast fallback failed: ${fastRes.status}`);
+        } catch {
+          model = {
+            provider: "horde",
+            model_id: "aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
+          };
+        }
+      } else {
+        throw err;
+      }
+    }
+  }
+
   const isLocalOllama = model.isLocal && model.provider === "local-ollama";
   const isLocalLmStudio = model.isLocal && model.provider === "local-lmstudio";
   const isLocalKobold = model.isLocal && model.provider === "local-kobold";
@@ -641,6 +738,7 @@ export async function executeEntityGeneration(
       appearance: parsed.appearance || "",
       personality: parsed.personality || "",
       backstory: parsed.backstory || "",
+      situation: parsed.situation || "",
       hidden_description: parsed.hidden_description || "",
       universe_id: universe?.id,
       race_id: race?.id,
@@ -657,6 +755,7 @@ export async function executeEntityGeneration(
       appearance: parsed.appearance || "",
       personality: parsed.personality || "",
       backstory: parsed.backstory || "",
+      situation: "",
       hidden_description: parsed.hidden_description || "",
       universe_id: universe?.id,
       is_universe: false,
@@ -670,6 +769,7 @@ export async function executeEntityGeneration(
       appearance: "",
       personality: "",
       backstory: "",
+      situation: "",
       hidden_description: parsed.hidden_description || "",
       universe_id: undefined,
       is_universe: true,

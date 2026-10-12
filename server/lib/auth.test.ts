@@ -192,3 +192,17 @@ describe("resolveUserFromToken", () => {
     expect(result?.role).toBe("admin");
   });
 });
+
+describe("session purpose and expiry", () => {
+  it("rejects trailing token segments", () => {
+    expect(verifyToken(generateToken({ id: "42", username: "x", email: "x@example.com" }) + ".junk")).toBeNull();
+  });
+  it("rejects expired sessions", () => {
+    expect(verifyToken(generateToken({ id: "42", username: "x", email: "x@example.com" }, -1))).toBeNull();
+  });
+  it("does not accept OAuth state as a session or vice versa", async () => {
+    const { generateOAuthState, verifyOAuthState } = await import("./auth.ts");
+    expect(verifyToken("ol_" + generateOAuthState({ userId: "42" }))).toBeNull();
+    expect(verifyOAuthState(generateToken({ id: "42", username: "x", email: "x@example.com" }).slice(3))).toBeNull();
+  });
+});

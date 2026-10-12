@@ -31,6 +31,17 @@ describe("All Locales Verification", () => {
     { code: "ru", name: "Russian", flag: "🇷🇺", countryCode: "ru", dict: ru },
   ];
 
+  it("provides every character review label in every locale", () => {
+    for (const { dict } of allLocales) {
+      for (const key of Object.keys(en.characters.aiReview)) {
+        expect(
+          (dict.characters?.aiReview as Record<string, string>)?.[key],
+        ).toEqual(expect.any(String));
+      }
+      expect(dict.characters?.aiReview?.title).toContain("{name}");
+    }
+  });
+
   it("should have all requested languages present in SUPPORTED_LANGUAGES", () => {
     allLocales.forEach(({ code, name, flag, countryCode }) => {
       const option = SUPPORTED_LANGUAGES.find((l) => l.code === code);
@@ -102,8 +113,9 @@ describe("All Locales Verification", () => {
       expect(t("account.researchAgentDefaultTitle")).toBeTruthy();
       expect(t("account.researchSummarizerDefaultTitle")).toBeTruthy();
       expect(t("account.registeredModels")).toBeTruthy();
-      expect(t("account.localModelsGroup")).toBeTruthy();
-      expect(t("account.cloudModelsGroup")).toBeTruthy();
+      expect(t("account.standardModels")).toBeTruthy();
+      expect(t("account.questPollenNotice")).toBeTruthy();
+      expect(t("account.customModels")).toBeTruthy();
 
       // Test AI generation keys in characters
       expect(t("characters.aiGenerate.button")).toBeTruthy();
@@ -360,6 +372,14 @@ type _AssertJaModels = AssertTrue<ExactKeys<typeof en.models, typeof ja.models>>
 type _AssertKoModels = AssertTrue<ExactKeys<typeof en.models, typeof ko.models>>;
 type _AssertRuModels = AssertTrue<ExactKeys<typeof en.models, typeof ru.models>>;
 type _AssertZhModels = AssertTrue<ExactKeys<typeof en.models, typeof zhCN.models>>;
+
+// 11. musicStudio leaf keys exact parity across all 6 locales
+type _AssertEsMusicStudio = AssertTrue<ExactKeys<typeof en.musicStudio, typeof es.musicStudio>>;
+type _AssertJaMusicStudio = AssertTrue<ExactKeys<typeof en.musicStudio, typeof ja.musicStudio>>;
+type _AssertKoMusicStudio = AssertTrue<ExactKeys<typeof en.musicStudio, typeof ko.musicStudio>>;
+type _AssertRuMusicStudio = AssertTrue<ExactKeys<typeof en.musicStudio, typeof ru.musicStudio>>;
+type _AssertZhMusicStudio = AssertTrue<ExactKeys<typeof en.musicStudio, typeof zhCN.musicStudio>>;
+
 
 
 

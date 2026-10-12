@@ -2,12 +2,36 @@ import { describe, it, expect } from "vitest";
 import { formatModelLabel } from "./aiUtils";
 
 describe("formatModelLabel", () => {
+  it("should handle pollinations provider", () => {
+    expect(
+      formatModelLabel("pollinations", "inclusionai/ling-3.1-flash"),
+    ).toBe("Free");
+    expect(formatModelLabel("pollinations", "amazon/nova-micro-v1")).toBe(
+      "Cheap",
+    );
+    expect(formatModelLabel("pollinations", "openai/gpt-6-luna")).toBe(
+      "Fast",
+    );
+    expect(formatModelLabel("pollinations", "openai/gpt-5.6-terra")).toBe(
+      "Balanced",
+    );
+    expect(formatModelLabel("pollinations", "openai/gpt-6.1-sol")).toBe(
+      "Smart",
+    );
+    expect(formatModelLabel("pollinations", "openai/gpt-6-astra")).toBe(
+      "Smartest",
+    );
+    expect(formatModelLabel("pollinations", "unknown-model")).toBe(
+      "unknown-model",
+    );
+  });
+
   it("should handle horde provider", () => {
     expect(formatModelLabel("horde", "Fast")).toBe(
       "Fast - koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
     );
     expect(formatModelLabel("horde", "Smart")).toBe(
-      "Smart - aphrodite/DeepSeek-V4.1-Flash",
+      "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
     );
     expect(formatModelLabel("horde", "Writing")).toBe(
       "Writing - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",

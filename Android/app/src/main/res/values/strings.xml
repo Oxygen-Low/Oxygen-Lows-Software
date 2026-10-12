@@ -3,4 +3,9 @@
     <string name="update_downloading">Downloading Oxygen Low\'s Software update (%1$s)...</string>
     <string name="update_ready">Update ready. Starting installer...</string>
     <string name="update_failed">Failed to download update.</string>
+    <string name="webview_update_title">Update Android System WebView</string>
+    <string name="webview_update_message">Your WebView does not support native app features such as VPN connections, ringtones, and in-app update controls. Update Android System WebView (or your current WebView provider) through Google Play, then reopen the app. You can continue using web features in the meantime.</string>
+    <string name="webview_update_action">Update</string>
+    <string name="webview_update_later">Not now</string>
+    <string name="webview_update_unavailable">Unable to open Google Play. Update Android System WebView or your WebView provider manually, then reopen the app.</string>
 </resources>

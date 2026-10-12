@@ -372,7 +372,7 @@ describe("Agent Search Route", () => {
     expect(summarizerCalled).toBe(true);
   });
 
-  test("Maps Horde 'Smart' model alias to aphrodite/DeepSeek-V4.1-Flash", async () => {
+  test("Maps Horde 'Smart' model alias to aphrodite/TheDrummer/Behemoth-X-123B-v2.1", async () => {
     let capturedHordeModel = "";
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
       const urlStr = String(url);
@@ -409,7 +409,7 @@ describe("Agent Search Route", () => {
 
      expect(res.status).toBe(200);
      expect(capturedHordeModel).toBe(
-       "aphrodite/DeepSeek-V4.1-Flash",
+       "aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
      );
    });
 

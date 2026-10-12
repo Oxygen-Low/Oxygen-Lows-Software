@@ -2,6 +2,7 @@ import "dotenv/config";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { compress } from "hono/compress";
+import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
 import { demoRouter } from "./routes/demo.ts";
 import { proxyRouter } from "./routes/proxy.ts";
@@ -31,7 +32,7 @@ import { modelsRouter } from "./routes/models.ts";
 import { v1Router } from "./routes/v1.ts";
 import { contentTestRouter } from "./routes/contentTest.ts";
 import { partnersRouter } from "./routes/partners.ts";
-import { projectsRouter } from "./routes/projects.ts";
+import { agentsRouter } from "./routes/agents.ts";
 import { resumeInterruptedCrawls } from "./lib/oxylowCrawler.ts";
 import {
   getActiveDefenderBannedIps,
@@ -53,6 +54,27 @@ setRealtimeBroadcast(broadcastChange);
 wipeServerPasswordsAndMigrateSchema();
 
 const app = new Hono();
+
+// Register outside secureHeaders so its post-handler defaults cannot overwrite
+// the isolation required by responses containing untrusted documents.
+app.use("*", async (c, next) => {
+  await next();
+  const path = c.req.path;
+  const browserDocument = path === "/api/browser/proxy";
+  const storedDocument = path.startsWith("/api/storage/download/") || path.startsWith("/api/storage/public/");
+  if (browserDocument || storedDocument) {
+    const policy = c.res.headers.get("Content-Security-Policy") || "";
+    c.header("Content-Security-Policy", `${browserDocument ? "sandbox allow-scripts" : "sandbox"}; ${policy}`);
+    c.header("X-Content-Type-Options", "nosniff");
+  }
+});
+
+const apiBodyLimit = bodyLimit({ maxSize: 10 * 1024 * 1024 });
+app.use("*", (c, next) => {
+  // Full file uploads have their own quota-sized limit; chunks stay bounded.
+  if (c.req.path.startsWith("/api/storage/upload/")) return next();
+  return apiBodyLimit(c, next);
+});
 
 app.use(compress());
 
@@ -77,8 +99,8 @@ app.use("*", async (c, next) => {
     c.req.path.startsWith("/api/browser") ||
     c.req.path.startsWith("/api/webmaster") ||
     c.req.path.startsWith("/api/chat") ||
-    c.req.path.startsWith("/api/projects") ||
-    c.req.path.startsWith("/api/chess")
+    c.req.path.startsWith("/api/chess") ||
+    c.req.path.startsWith("/api/agents")
   ) {
     return next();
   }
@@ -157,6 +179,11 @@ app.use(
         "https://generativelanguage.googleapis.com",
         "https://openrouter.ai",
         "https://api.x.ai",
+        "https://gen.pollinations.ai",
+        "https://text.pollinations.ai",
+        "https://image.pollinations.ai",
+        "https://pollinations.ai",
+        "https://*.pollinations.ai",
       ],
       frameSrc: ["'self'", "blob:"],
       frameAncestors: ["'self'"],
@@ -1232,10 +1259,10 @@ app.route("/api/admin/safety", adminCsamRouter);
 app.route("/api/browser", browserRouter);
 app.route("/api/webmaster", webmasterRouter);
 app.route("/api/chat", chatRouter);
-app.route("/api/projects", projectsRouter);
 app.route("/api/chess", chessRouter);
 app.route("/api/models", modelsRouter);
 app.route("/api/partners", partnersRouter);
+app.route("/api/agents", agentsRouter);
 app.route("/v1", v1Router);
 app.route("/api/v1", v1Router);
 app.route("/api/contenttest", contentTestRouter);

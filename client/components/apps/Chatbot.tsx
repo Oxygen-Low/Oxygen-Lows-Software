@@ -30,12 +30,30 @@ import {
   RotateCw,
   Square,
   ArrowUp,
+  AlertTriangle,
+  Radio,
+  Mic,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  Heart,
 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Switch } from "@/components/ui/switch";
+import { initiatePollinationsOAuth } from "@/services/pollinationsAuth";
 import {
   fetchImageModels,
   generateImage,
   ImageModelInfo,
 } from "@/services/imageGen";
+import {
+  streamPollinationsClient,
+  fetchPollinationsClient,
+  createSseDeltaTranslator,
+  PollinationsRateLimitError,
+  PollinationsNotFoundError,
+  PollinationsAuthError,
+} from "@/services/pollinationsClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -44,13 +62,13 @@ import { db, supabase } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useAiModels, type Model } from "@/hooks/useAiModels";
+import { useLiveVoice } from "@/hooks/useLiveVoice";
 import { WEBSITE_KNOWLEDGE_SYSTEM_PROMPT } from "@shared/websiteKnowledge";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CodeHighlighter } from "@/components/ui/CodeHighlighter";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
-import { ArtifactSidebar } from "./ArtifactSidebar";
 import { EncryptionRequiredPrompt } from "@/components/EncryptionRequiredPrompt";
 import {
   isCategoryLocked,
@@ -63,8 +81,131 @@ import {
   decryptCharacterData,
 } from "@/lib/crypto";
 
+// ─── Code Snippets for Background Animation ────────────────────────────
+
+const CODE_SNIPPETS = [
+  `-- Lua pathfinding implementation
+local function calculate_path(start, target)
+    local open_set = {start}
+    local closed_set = {}
+    while #open_set > 0 do
+        local current = get_lowest_f(open_set)
+        if current == target then
+            return construct_path(current)
+        end
+    end
+    return nil
+end`,
+  `// C++ Entity Manager System
+#include <iostream>
+#include <vector>
+
+class EntityManager {
+private:
+    std::vector<Entity*> entities;
+public:
+    void update(float dt) {
+        for(auto e : entities) {
+            e->tick(dt);
+        }
+    }
+};`,
+  `<!-- XML Server Configuration -->
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <system mode="production">
+        <memory_limit>4096M</memory_limit>
+        <cache_enabled>true</cache_enabled>
+    </system>
+</configuration>`,
+  `// C# Network Client Service
+using System;
+using System.Threading.Tasks;
+
+public class NetworkClient {
+    private readonly string _endpoint;
+    
+    public async Task<Response> Fetch() {
+        using var client = new HttpClient();
+        var result = await client.GetAsync(
+            _endpoint
+        );
+        return await result.Content
+            .ReadFromJsonAsync<Response>();
+    }
+}`,
+  `# Python ML Pipeline
+import torch
+import torch.nn as nn
+
+class Transformer(nn.Module):
+    def __init__(self, d_model, nhead):
+        super().__init__()
+        self.encoder = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=d_model,
+                nhead=nhead
+            ),
+            num_layers=6
+        )`,
+  `// Rust async runtime
+use tokio::sync::mpsc;
+
+async fn process_stream(
+    mut rx: mpsc::Receiver<Message>
+) -> Result<(), Error> {
+    while let Some(msg) = rx.recv().await {
+        match msg.kind {
+            Kind::Data => handle(msg),
+            Kind::Eof => break,
+        }
+    }
+    Ok(())
+}`,
+];
+
+// ─── Syntax Highlight Helper (for background animation) ───────────────
+
+function highlightCode(code: string): string {
+  let s = code
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  const kw = "#c678dd";
+  const fn_ = "#61afef";
+  const str = "#98c379";
+  const cmt = "#5c6370";
+  const tp = "#e06c75";
+
+  s = s
+    .replace(
+      /(--.*|\/\/.*|&lt;!--.*?--&gt;|#.*)/g,
+      `<span style="color:${cmt}">$1</span>`,
+    )
+    .replace(/(".*?"|'.*?')/g, `<span style="color:${str}">$1</span>`)
+    .replace(
+      /\b(function|return|if|else|for|while|class|public|private|void|int|string|bool|local|end|then|do|using|namespace|include|async|await|var|readonly|import|from|def|self|match|let|mut|break|const|super)\b/g,
+      `<span style="color:${kw}">$1</span>`,
+    )
+    .replace(
+      /\b([A-Z][a-zA-Z0-9_]*|float)\b/g,
+      `<span style="color:${tp}">$1</span>`,
+    )
+    .replace(/\b([a-zA-Z_]\w*)(?=\()/g, `<span style="color:${fn_}">$1</span>`);
+
+  return s;
+}
+
 const InteractiveBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const codeContainerRef = useRef<HTMLDivElement>(null);
+  const mouseRef = useRef({ x: -1000, y: -1000 });
+  const dotsRef = useRef<
+    { ox: number; oy: number; x: number; y: number; vx: number; vy: number }[]
+  >([]);
+  const animFrameRef = useRef<number>(0);
+  const parallaxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -72,117 +213,289 @@ const InteractiveBackground = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    let dots: any[] = [];
-    const spacing = 30; // distance between dots
-    const dotRadius = 1.5;
-    let mouseX = -1000;
-    let mouseY = -1000;
-    const repelRadius = 100;
-    const repelForce = 0.5;
-    const returnSpeed = 0.1;
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    let animationFrameId: number;
+    const prefersReducedMotion =
+      typeof window !== "undefined" && typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        : false;
 
-    function resizeCanvas() {
-      if (!canvas) return;
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      initDots();
+    function getGridConfig() {
+      const isMobile = window.innerWidth < 768;
+      return {
+        spacing: isMobile ? 32 : 24,
+        radius: isMobile ? 1.25 : 1.5,
+        repelRadius: isMobile ? 110 : 150,
+        repelForce: isMobile ? 1.2 : 1.5,
+      };
     }
 
-    function initDots() {
-      dots = [];
-      if (!canvas || canvas.width <= 0 || canvas.height <= 0) return;
-      const cols = Math.min(Math.ceil(canvas.width / spacing), 200);
-      const rows = Math.min(Math.ceil(canvas.height / spacing), 200);
+    let config = getGridConfig();
 
-      for (let i = 0; i < cols; i++) {
-        for (let j = 0; j < rows; j++) {
-          dots.push({
-            x: i * spacing,
-            y: j * spacing,
-            originX: i * spacing,
-            originY: j * spacing,
-            vx: 0,
-            vy: 0,
-          });
+    function resize() {
+      if (!canvas || !ctx) return;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      config = getGridConfig();
+      initDots(w, h);
+    }
+
+    function initDots(w: number, h: number) {
+      dotsRef.current = [];
+      for (let x = 0; x < w; x += config.spacing) {
+        for (let y = 0; y < h; y += config.spacing) {
+          dotsRef.current.push({ ox: x, oy: y, x, y, vx: 0, vy: 0 });
         }
       }
     }
 
-    function animateDots() {
-      if (prefersReducedMotion || !canvas || !ctx) return;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "rgba(207, 188, 255, 0.15)"; // primary color with low opacity
+    function draw() {
+      if (!ctx || !canvas) return;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(115, 115, 115, 0.3)";
       ctx.beginPath();
 
-      for (let i = 0; i < dots.length; i++) {
-        let dot = dots[i];
+      for (const dot of dotsRef.current) {
+        const dx = mouseRef.current.x - dot.x;
+        const dy = mouseRef.current.y - dot.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
 
-        // Calculate distance from mouse
-        let dx = mouseX - dot.x;
-        let dy = mouseY - dot.y;
-        let dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist < repelRadius && dist > 0) {
-          // Repel
-          let force = (repelRadius - dist) / repelRadius;
-          let angle = Math.atan2(dy, dx);
-          let targetX = dot.x - Math.cos(angle) * force * repelForce * 50;
-          let targetY = dot.y - Math.sin(angle) * force * repelForce * 50;
-
-          dot.x += (targetX - dot.x) * 0.1;
-          dot.y += (targetY - dot.y) * 0.1;
-        } else {
-          // Return to origin
-          dot.x += (dot.originX - dot.x) * returnSpeed;
-          dot.y += (dot.originY - dot.y) * returnSpeed;
+        if (dist < config.repelRadius && dist > 0) {
+          const force = (config.repelRadius - dist) / config.repelRadius;
+          dot.vx -= (dx / dist) * force * config.repelForce;
+          dot.vy -= (dy / dist) * force * config.repelForce;
         }
 
-        ctx.moveTo(dot.x + dotRadius, dot.y);
-        ctx.arc(dot.x, dot.y, dotRadius, 0, Math.PI * 2);
-      }
+        dot.vx += (dot.ox - dot.x) * 0.1;
+        dot.vy += (dot.oy - dot.y) * 0.1;
+        dot.vx *= 0.75;
+        dot.vy *= 0.75;
+        dot.x += dot.vx;
+        dot.y += dot.vy;
 
+        ctx.moveTo(dot.x + config.radius, dot.y);
+        ctx.arc(dot.x, dot.y, config.radius, 0, Math.PI * 2);
+      }
       ctx.fill();
-      animationFrameId = requestAnimationFrame(animateDots);
+
+      if (!prefersReducedMotion && !document.hidden) {
+        animFrameRef.current = requestAnimationFrame(draw);
+      }
     }
 
-    const handleResize = () => resizeCanvas();
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      mouseX = e.clientX - rect.left;
-      mouseY = e.clientY - rect.top;
+    resize();
+    draw();
+
+    const onResize = () => {
+      resize();
+      if (prefersReducedMotion) draw();
     };
-    const handleMouseOut = () => {
-      mouseX = -1000;
-      mouseY = -1000;
+    window.addEventListener("resize", onResize);
+
+    const updatePointer = (clientX: number, clientY: number) => {
+      mouseRef.current.x = clientX;
+      mouseRef.current.y = clientY;
+
+      if (parallaxRef.current) {
+        const px = (clientX / window.innerWidth - 0.5) * -20;
+        const py = (clientY / window.innerHeight - 0.5) * -20;
+        parallaxRef.current.style.transform = `translate3d(${px}px, ${py}px, 0)`;
+      }
     };
 
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseout", handleMouseOut);
+    const resetPointer = () => {
+      mouseRef.current.x = -1000;
+      mouseRef.current.y = -1000;
+      if (parallaxRef.current) {
+        parallaxRef.current.style.transform = "translate3d(0, 0, 0)";
+      }
+    };
 
-    if (!prefersReducedMotion) {
-      resizeCanvas();
-      animationFrameId = requestAnimationFrame(animateDots);
+    const onMouseMove = (e: MouseEvent) => {
+      updatePointer(e.clientX, e.clientY);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches && e.touches.length > 0) {
+        updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches && e.touches.length > 0) {
+        updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const onOrientation = (e: DeviceOrientationEvent) => {
+      if (e.gamma !== null && e.beta !== null && parallaxRef.current) {
+        const tiltX = Math.max(-15, Math.min(15, (e.gamma / 30) * 15));
+        const tiltY = Math.max(-15, Math.min(15, ((e.beta - 45) / 30) * 15));
+        parallaxRef.current.style.transform = `translate3d(${-tiltX}px, ${-tiltY}px, 0)`;
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(animFrameRef.current);
+      } else if (!prefersReducedMotion) {
+        animFrameRef.current = requestAnimationFrame(draw);
+      }
+    };
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("touchmove", onTouchMove, { passive: true });
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchend", resetPointer, { passive: true });
+    document.addEventListener("touchcancel", resetPointer, { passive: true });
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    if (typeof window !== "undefined" && "DeviceOrientationEvent" in window) {
+      window.addEventListener("deviceorientation", onOrientation, {
+        passive: true,
+      });
     }
 
     return () => {
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseout", handleMouseOut);
-      cancelAnimationFrame(animationFrameId);
+      cancelAnimationFrame(animFrameRef.current);
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchend", resetPointer);
+      document.removeEventListener("touchcancel", resetPointer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (typeof window !== "undefined" && "DeviceOrientationEvent" in window) {
+        window.removeEventListener("deviceorientation", onOrientation);
+      }
+    };
+  }, []);
+
+  // Initialize responsive code columns
+  useEffect(() => {
+    const container = codeContainerRef.current;
+    if (!container) return;
+
+    const prefersReducedMotion =
+      typeof window !== "undefined" && typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        : false;
+    if (prefersReducedMotion) return;
+
+    const intervals: ReturnType<typeof setInterval>[] = [];
+
+    function buildColumns() {
+      if (!container) return;
+      intervals.forEach(clearInterval);
+      intervals.length = 0;
+      container.innerHTML = "";
+
+      const isMobile = window.innerWidth < 768;
+      const colWidth = isMobile
+        ? Math.max(260, window.innerWidth - 32)
+        : 350;
+      const numCols = isMobile ? 1 : Math.ceil(window.innerWidth / colWidth);
+      const maxSnippets = isMobile ? 2 : 3;
+
+      for (let i = 0; i < numCols; i++) {
+        const col = document.createElement("div");
+        col.className = "agent-code-column";
+        col.style.left = isMobile ? "16px" : `${i * colWidth}px`;
+        col.style.top = `${Math.random() * -180}px`;
+        container.appendChild(col);
+
+        function addSnippet() {
+          if (document.hidden) return;
+          const text =
+            CODE_SNIPPETS[Math.floor(Math.random() * CODE_SNIPPETS.length)];
+          const div = document.createElement("div");
+          div.className = "agent-code-snippet";
+          if (Math.random() > 0.5) div.classList.add("agent-color-alt");
+
+          let charIndex = 0;
+          const typingSpeed = isMobile
+            ? 25 + Math.random() * 20
+            : 10 + Math.random() * 20;
+
+          const typeInterval = setInterval(
+            () => {
+              if (document.hidden) return;
+              const current = text.substring(0, charIndex);
+              const cursor =
+                charIndex < text.length
+                  ? '<span class="agent-cursor">_</span>'
+                  : "";
+              div.innerHTML = highlightCode(current) + cursor;
+              charIndex++;
+              if (charIndex > text.length) clearInterval(typeInterval);
+            },
+            typingSpeed,
+          );
+
+          col.appendChild(div);
+          intervals.push(typeInterval);
+        }
+
+        addSnippet();
+        const colInterval = setInterval(
+          () => {
+            if (col.children.length >= maxSnippets && col.firstChild) {
+              col.removeChild(col.firstChild);
+            }
+            addSnippet();
+          },
+          isMobile
+            ? 8000 + Math.random() * 4000
+            : 6000 + Math.random() * 4000,
+        );
+        intervals.push(colInterval);
+      }
+    }
+
+    buildColumns();
+
+    let resizeTimer: ReturnType<typeof setTimeout>;
+    const onResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        buildColumns();
+      }, 250);
+    };
+
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      clearTimeout(resizeTimer);
+      intervals.forEach(clearInterval);
+      window.removeEventListener("resize", onResize);
+      if (container) container.innerHTML = "";
     };
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="fixed top-0 left-0 w-full h-full z-[-1] pointer-events-none"
-    />
+    <div className="absolute inset-0 z-0 w-full h-full bg-[#0a0a0c] overflow-hidden pointer-events-none select-none">
+      <div
+        ref={parallaxRef}
+        className="absolute inset-[-40px] w-[calc(100%+80px)] h-[calc(100%+80px)] transition-transform duration-150 ease-out pointer-events-none"
+      >
+        <div
+          ref={codeContainerRef}
+          className="absolute inset-0 z-0 pointer-events-none"
+        />
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 z-10 w-full h-full pointer-events-none"
+        />
+      </div>
+    </div>
   );
 };
 
@@ -198,6 +511,9 @@ interface Message {
   is_image_gen?: boolean;
   image_url?: string;
   image_model?: string;
+  usedFallback?: boolean;
+  fallbackModel?: string;
+  fallbackReason?: string;
 }
 
 interface Chat {
@@ -220,37 +536,15 @@ interface Character {
   appearance?: string | null;
   personality?: string | null;
   backstory?: string | null;
+  situation?: string | null;
   stats_enabled?: boolean;
   stats?: any;
 }
 
-interface Artifact {
-  id: string;
-  filename: string;
-  language: string;
-  content: string;
-}
-
-const ARTIFACT_REGEX =
-  /`\/([^/]+)\/\/([^/]+)\/`[\s\n]*\/\/\/\/([\s\S]*?)(?:\\\\|$)/g;
-
-const parseArtifacts = (content: string): Artifact[] => {
-  const artifacts: Artifact[] = [];
-  let match;
-  ARTIFACT_REGEX.lastIndex = 0;
-  while ((match = ARTIFACT_REGEX.exec(content)) !== null) {
-    if (match.index === ARTIFACT_REGEX.lastIndex) {
-      ARTIFACT_REGEX.lastIndex++;
-    }
-    artifacts.push({
-      id: Math.random().toString(36).substr(2, 9),
-      filename: match[1],
-      language: match[2],
-      content: match[3].trim(),
-    });
-  }
-  return artifacts;
-};
+const HORDE_FALLBACK_FAST_MODEL =
+  "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M";
+const HORDE_FALLBACK_SMART_MODEL =
+  "aphrodite/TheDrummer/Behemoth-X-123B-v2.1";
 
 const memoizedMarkdownComponents = {
   code({ node, inline, className, children, ...props }: any) {
@@ -278,18 +572,19 @@ const ChatMessage = React.memo(
     activeSiblingIndex = 0,
     onNavigate,
     onRegenerate,
-    setActiveArtifact,
+    onSpeak,
+    isSpeakingThisMessage = false,
   }: {
     message: Message;
     siblings?: Message[];
     activeSiblingIndex?: number;
     onNavigate?: (index: number) => void;
     onRegenerate?: () => void;
-    setActiveArtifact: (art: Artifact) => void;
+    onSpeak?: (text: string, messageId?: string) => void;
+    isSpeakingThisMessage?: boolean;
   }) => {
     const { t } = useTranslation();
-    const artifacts = m.role === "assistant" ? parseArtifacts(m.content) : [];
-    let displayContent = (m.content || "").replace(ARTIFACT_REGEX, "");
+    let displayContent = m.content || "";
     const [reasoningExpanded, setReasoningExpanded] = useState(false);
     const [copiedReasoning, setCopiedReasoning] = useState(false);
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -335,9 +630,35 @@ const ChatMessage = React.memo(
 
     if (m.role === "user") {
       return (
-        <div className="flex gap-4 justify-end w-full animate-[fade-in_0.3s_ease-out] mb-4">
+        <div className="flex gap-4 justify-end w-full animate-[fade-in_0.3s_ease-out] mb-4 group/user-msg">
           <div className="flex flex-col gap-2 max-w-[80%] items-end">
-            <p className="text-slate-400 text-xs font-display mr-1">User</p>
+            <div className="flex items-center gap-1.5 mr-1">
+              {onSpeak && displayContent && (
+                <button
+                  type="button"
+                  onClick={() => onSpeak(displayContent, m.id)}
+                  className={cn(
+                    "p-1 rounded hover:bg-white/10 transition-colors opacity-0 group-hover/user-msg:opacity-100 focus:opacity-100",
+                    isSpeakingThisMessage
+                      ? "opacity-100 text-primary animate-pulse"
+                      : "text-slate-400 hover:text-white",
+                  )}
+                  title={
+                    isSpeakingThisMessage
+                      ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
+                      : t("apps.chatbotReadAloud", undefined, "Read aloud")
+                  }
+                  aria-label={
+                    isSpeakingThisMessage
+                      ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
+                      : t("apps.chatbotReadAloud", undefined, "Read aloud")
+                  }
+                >
+                  <Mic className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <p className="text-slate-400 text-xs font-display">User</p>
+            </div>
             <div className="glass-panel px-5 py-4 rounded-xl rounded-tr-sm text-[15px] leading-[1.6]">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -386,10 +707,48 @@ const ChatMessage = React.memo(
           </div>
         </div>
         <div className="flex flex-col gap-2 max-w-[85%] w-full">
-          <p className="text-white text-sm font-display font-medium ml-1">
-            Chatbot
-          </p>
+          <div className="flex items-center justify-between w-full pr-1">
+            <p className="text-white text-sm font-display font-medium ml-1">
+              Chatbot
+            </p>
+          </div>
           <div className="w-full">
+            {m.usedFallback && (
+              <div className="w-full max-w-full rounded-lg border border-amber-500/30 bg-amber-500/10 mb-3 px-4 py-2 flex items-center gap-2 text-xs font-mono text-amber-300">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>
+                  {m.fallbackReason === "auth_required"
+                    ? t(
+                        "apps.pollinations401FallbackNotice",
+                        {
+                          model:
+                            m.fallbackModel ||
+                            "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+                        },
+                        `Generated via AI Horde (${m.fallbackModel || "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"}) fallback due to Pollinations API key requirement (401).`,
+                      )
+                    : m.fallbackReason === "not_found"
+                    ? t(
+                        "apps.pollinations404FallbackNotice",
+                        {
+                          model:
+                            m.fallbackModel ||
+                            "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+                        },
+                        `Generated via AI Horde (${m.fallbackModel || "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"}) fallback due to Pollinations 404 error.`,
+                      )
+                    : t(
+                        "apps.defaultModelFallbackNotice",
+                        {
+                          model:
+                            m.fallbackModel ||
+                            "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+                        },
+                        `Generated via AI Horde (${m.fallbackModel || "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"}) fallback due to main default model unavailability.`,
+                      )}
+                </span>
+              </div>
+            )}
             {m.is_web_search && (
               <div className="w-full max-w-full rounded-lg border border-white/10 bg-white/5 mb-3 px-4 py-2 flex items-center gap-2 text-xs font-mono text-slate-400">
                 <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
@@ -658,58 +1017,70 @@ const ChatMessage = React.memo(
                 </div>
               </div>
             )}
-            {siblings.length > 0 && (
+            {(siblings.length > 0 || (onSpeak && displayContent && !m.is_image_gen)) && (
               <div className="flex items-center gap-2 mt-2 ml-1 text-slate-400 text-xs">
-                <button
-                  onClick={() => onNavigate?.(activeSiblingIndex - 1)}
-                  disabled={activeSiblingIndex === 0}
-                  className="hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 p-1 flex items-center justify-center transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="font-mono select-none">
-                  {activeSiblingIndex + 1} / {siblings.length}
-                </span>
-                <button
-                  onClick={() => {
-                    if (activeSiblingIndex < siblings.length - 1) {
-                      onNavigate?.(activeSiblingIndex + 1);
-                    } else {
-                      onRegenerate?.();
+                {siblings.length > 0 && (
+                  <>
+                    <button
+                      onClick={() => onNavigate?.(activeSiblingIndex - 1)}
+                      disabled={activeSiblingIndex === 0}
+                      className="hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 p-1 flex items-center justify-center transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="font-mono select-none">
+                      {activeSiblingIndex + 1} / {siblings.length}
+                    </span>
+                    <button
+                      onClick={() => {
+                        if (activeSiblingIndex < siblings.length - 1) {
+                          onNavigate?.(activeSiblingIndex + 1);
+                        } else {
+                          onRegenerate?.();
+                        }
+                      }}
+                      className="hover:text-white p-1 flex items-center justify-center transition-colors"
+                      title={
+                        activeSiblingIndex < siblings.length - 1
+                          ? "Next"
+                          : "Regenerate"
+                      }
+                    >
+                      {activeSiblingIndex < siblings.length - 1 ? (
+                        <ChevronRight className="w-4 h-4" />
+                      ) : (
+                        <RotateCw className="w-4 h-4" />
+                      )}
+                    </button>
+                  </>
+                )}
+                {onSpeak && displayContent && !m.is_image_gen && (
+                  <button
+                    type="button"
+                    onClick={() => onSpeak(displayContent, m.id)}
+                    className={cn(
+                      "p-1 rounded hover:bg-white/10 transition-colors flex items-center justify-center",
+                      isSpeakingThisMessage
+                        ? "text-primary bg-primary/10 animate-pulse"
+                        : "text-slate-400 hover:text-white",
+                    )}
+                    title={
+                      isSpeakingThisMessage
+                        ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
+                        : t("apps.chatbotReadAloud", undefined, "Read aloud")
                     }
-                  }}
-                  className="hover:text-white p-1 flex items-center justify-center transition-colors"
-                  title={
-                    activeSiblingIndex < siblings.length - 1
-                      ? "Next"
-                      : "Regenerate"
-                  }
-                >
-                  {activeSiblingIndex < siblings.length - 1 ? (
-                    <ChevronRight className="w-4 h-4" />
-                  ) : (
-                    <RotateCw className="w-4 h-4" />
-                  )}
-                </button>
+                    aria-label={
+                      isSpeakingThisMessage
+                        ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
+                        : t("apps.chatbotReadAloud", undefined, "Read aloud")
+                    }
+                  >
+                    <Mic className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             )}
           </div>
-          {artifacts.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {artifacts.map((art) => (
-                <button
-                  key={art.id}
-                  onClick={() => setActiveArtifact(art)}
-                  aria-label={`View artifact ${art.filename}`}
-                  title={`View artifact ${art.filename}`}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:border-cyan-500/50 transition-colors text-xs text-slate-300 focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none"
-                >
-                  <Code className="w-3 h-3 text-cyan-400" />
-                  {art.filename}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     );
@@ -741,22 +1112,21 @@ export function ChatbotApp() {
   const { session } = useAuth();
   const {
     models,
-    selectedModel,
-    selectedProvider,
-    setSelection,
-    hordeStatus,
     refreshModels,
+    pollinationsApiKey,
+    isPollinationsConfigured,
+    isKeyLoading,
+    setPollinationsApiKey,
+    isPollinationsSupporter,
+    setIsPollinationsSupporter,
     chatbotDefaultModel,
-    chatbotDefaultProvider,
+    setChatbotDefault,
     researchAgentDefaultModel,
-    researchAgentDefaultProvider,
-    researchSummarizerDefaultModel,
-    researchSummarizerDefaultProvider,
-    getDecryptedApiKey,
-    isProviderConfigured,
-    encryptedKeys,
-    isMasterKeyActive,
   } = useAiModels();
+  const [gateKeyInput, setGateKeyInput] = useState("");
+  const [showGateKey, setShowGateKey] = useState(false);
+  const [isSavingGateKey, setIsSavingGateKey] = useState(false);
+  const [isConnectingGate, setIsConnectingGate] = useState(false);
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [allMessages, setAllMessages] = useState<Message[]>([]);
@@ -766,6 +1136,12 @@ export function ChatbotApp() {
   const [encryptionLocked, setEncryptionLocked] = useState(() =>
     isCategoryLocked("chatbot"),
   );
+
+  useEffect(() => {
+    if (pollinationsApiKey) {
+      setGateKeyInput(pollinationsApiKey);
+    }
+  }, [pollinationsApiKey]);
 
   useEffect(() => {
     setEncryptionLocked(isCategoryLocked("chatbot"));
@@ -863,11 +1239,46 @@ export function ChatbotApp() {
   >(null);
   const [selectedUniverse, setSelectedUniverse] = useState<string | null>(null);
 
-  const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
-  const lastParsedLengthRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { t } = useTranslation();
+  const { t, languageCode } = useTranslation();
+  const isVoiceInputRef = useRef(false);
+
+  const handleSendMessageRef = useRef<(textOverride?: string, fromVoice?: boolean) => Promise<void>>(async () => {});
+  const handleStopRef = useRef<() => void>(() => {});
+
+  const liveVoice = useLiveVoice({
+    languageCode,
+    apiKey: pollinationsApiKey,
+    onSendSpeech: (transcript) => {
+      if (transcript && transcript.trim()) {
+        isVoiceInputRef.current = true;
+        handleSendMessageRef.current(transcript, true);
+      }
+    },
+    onInterrupt: () => {
+      handleStopRef.current();
+    },
+  });
+
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+
+  const handleSpeakMessage = useCallback(
+    (text: string, messageId?: string) => {
+      if (!text || !text.trim()) return;
+      if (liveVoice.isSpeaking && speakingMessageId === messageId) {
+        liveVoice.stopSpeaking();
+        setSpeakingMessageId(null);
+      } else {
+        setSpeakingMessageId(messageId || null);
+        liveVoice.speakText(text, () => {
+          setSpeakingMessageId(null);
+        });
+      }
+    },
+    [liveVoice, speakingMessageId],
+  );
+
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [isWebSearchEnabled, setIsWebSearchEnabled] = useState(false);
   const [isImageGenEnabled, setIsImageGenEnabled] = useState(false);
@@ -968,83 +1379,30 @@ export function ChatbotApp() {
     }, 300);
   }, []);
 
-  /**
-   * ⚡ Bolt Performance Optimization:
-   * Replaced multiple separate O(N) Array.filter() calls with a single O(N) pass.
-   * Memoized the result to prevent recalculation on every render.
-   */
-  const {
-    hordeModels,
-    localModels,
-    customModels,
-    otherModels,
-  } = useMemo(() => {
-    const horde: Model[] = [];
-    const local: Model[] = [];
-    const custom: Model[] = [];
-    const other: Model[] = [];
-    let hasOpenRouter = false;
+  const [userSelectedModel, setUserSelectedModel] = useState<string | null>(null);
+  const selectedModel =
+    userSelectedModel || chatbotDefaultModel || "inclusionai/ling-3.1-flash";
+  const setSelectedModel = useCallback((modelId: string) => {
+    setUserSelectedModel(modelId);
+  }, []);
+  const selectedProvider = "pollinations";
 
-    for (const m of models) {
-      if (m.provider === "horde") {
-        horde.push(m);
-      } else if (m.provider.startsWith("local-")) {
-        local.push(m);
-      } else if (m.isCustom || m.provider === "custom") {
-        custom.push(m);
-        if (m.provider === "openrouter") {
-          hasOpenRouter = true;
-        }
-      } else if (m.provider === "openrouter") {
-        hasOpenRouter = true;
-        if (!(
-          m.provider === "openrouter" && m.model_id === "openrouter/free"
-        )) {
-          other.push(m);
-        }
-      } else if (m.provider !== "cloudflare") {
-        other.push(m);
-      }
-    }
+  const formatModelLabel = useCallback(
+    (_provider: string, modelId: string) => {
+      const found = models.find((m) => m.model_id === modelId);
+      if (found?.name) return `${found.name} - ${modelId}`;
+      return modelId;
+    },
+    [models],
+  );
 
-    const finalCustom = session?.user?.id ? [...custom] : [];
-    const openRouterAvailable = isProviderConfigured("openrouter");
-    if (
-      session?.user?.id &&
-      openRouterAvailable &&
-      !finalCustom.some(
-        (m) => m.provider === "openrouter" && m.model_id === "openrouter/free",
-      )
-    ) {
-      finalCustom.push({
-        provider: "openrouter",
-        model_id: "openrouter/free",
-        name: "Auto Select - Free Model",
-        isCustom: true,
-      });
-    }
+  const standardModels = useMemo(() => {
+    return models.filter((m) => !m.isCustom);
+  }, [models]);
 
-    return {
-      hordeModels: horde,
-      localModels: local,
-      customModels: finalCustom,
-      otherModels: session?.user?.id ? other : [],
-    };
-  }, [models, session?.user?.id, isProviderConfigured]);
-  const hasHordeModels = hordeModels.length > 0;
-  const hasLocalModels = localModels.length > 0;
-  const hasCustomModels = !session?.user?.id ? false : customModels.length > 0;
-
-  useEffect(() => {
-    if (
-      !session?.user?.id &&
-      selectedProvider !== "horde" &&
-      !selectedProvider.startsWith("local-") &&
-      hordeModels.length > 0
-    ) {
-      setSelection(hordeModels[0].model_id, "horde");
-    }
-  }, [session?.user?.id, selectedProvider, hordeModels, setSelection]);
+  const customModels = useMemo(() => {
+    return models.filter((m) => m.isCustom);
+  }, [models]);
 
   // Click outside listener for dropdowns
   const optionsDropdownRef = useRef<HTMLDivElement>(null);
@@ -1215,37 +1573,102 @@ export function ChatbotApp() {
   };
 
   const generateChatTitle = async (chatId: string, firstMsg: string) => {
-    // We prompt the "TitleGen" model to generate a title
-    const titleModel = { provider: "horde", model_id: "TitleGen" };
-
     try {
-      const response = await fetch("/api/ai/proxy", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
-          provider: titleModel.provider,
-          model: titleModel.model_id,
-          messages: [
-            {
-              role: "user",
-              content: `Generate a short 3-5 word title for a chat that starts with this message: "${firstMsg}". Output ONLY the title, no quotes or prefix.`,
-            },
-          ],
-          stream: false,
-          apiKey: "0000000000",
-        }),
-      });
-
-      if (!response.ok) return;
-      const data = await response.json();
       let title = "New Chat";
-      if (data.choices?.[0]?.message?.content) {
-        title = data.choices[0].message.content
-          .trim()
-          .replace(/^["']|["']$/g, "");
+      const isDirectKey = Boolean(
+        pollinationsApiKey &&
+          (pollinationsApiKey.startsWith("pk_") || pollinationsApiKey.startsWith("sk_")) &&
+          !pollinationsApiKey.includes("...") &&
+          pollinationsApiKey.length > 20,
+      );
+
+      if (session?.access_token) {
+        try {
+          const res = await fetch("/api/ai/proxy", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              provider: "pollinations",
+              model: "inclusionai/ling-3.1-flash",
+              messages: [
+                {
+                  role: "user",
+                  content: `Generate a short 3-5 word title for a chat that starts with this message: "${firstMsg}". Output ONLY the title, no quotes or prefix.`,
+                },
+              ],
+              stream: false,
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const text =
+              data?.choices?.[0]?.message?.content || data?.content || "";
+            if (text) {
+              title = text.trim().replace(/^["']|["']$/g, "");
+            }
+          }
+        } catch {}
+      } else if (isDirectKey) {
+        try {
+          const directTitle = await fetchPollinationsClient({
+            model: "inclusionai/ling-3.1-flash",
+            messages: [
+              {
+                role: "user",
+                content: `Generate a short 3-5 word title for a chat that starts with this message: "${firstMsg}". Output ONLY the title, no quotes or prefix.`,
+              },
+            ],
+            apiKey: pollinationsApiKey || undefined,
+          });
+          if (directTitle) {
+            title = directTitle.trim().replace(/^["']|["']$/g, "");
+          }
+        } catch {}
+      }
+
+      if (title === "New Chat") {
+        try {
+          const fetchTitleViaProxy = async (hordeModel: string) => {
+            return await fetch("/api/ai/proxy", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session?.access_token}`,
+              },
+              body: JSON.stringify({
+                provider: "horde",
+                model: hordeModel,
+                messages: [
+                  {
+                    role: "user",
+                    content: `Generate a short 3-5 word title for a chat that starts with this message: "${firstMsg}". Output ONLY the title, no quotes or prefix.`,
+                  },
+                ],
+                stream: false,
+                apiKey: "0000000000",
+              }),
+            });
+          };
+
+          let response = await fetchTitleViaProxy(HORDE_FALLBACK_FAST_MODEL);
+          if (!response.ok) {
+            response = await fetchTitleViaProxy(HORDE_FALLBACK_SMART_MODEL);
+          }
+
+          if (response.ok) {
+            const data = await response.json();
+            const hordeTitle =
+              data.choices?.[0]?.message?.content?.trim() || "";
+            if (hordeTitle) {
+              title = hordeTitle.replace(/^["']|["']$/g, "");
+            }
+          }
+        } catch (hordeErr) {
+          console.warn("Horde title fallback failed:", hordeErr);
+        }
       }
 
       if (session?.user?.id) {
@@ -1277,8 +1700,289 @@ export function ChatbotApp() {
     msgs: Message[],
     signal: AbortSignal,
     streamCallback: (content: string, reasoning?: string) => void,
-  ) => {
-    const apiKey = getDecryptedApiKey(provider);
+    onFallback?: (modelUsed?: string) => void,
+  ): Promise<string> => {
+    const apiKey = pollinationsApiKey;
+
+    const streamResponseData = async (
+      response: Response,
+      streamProvider: string,
+    ): Promise<string> => {
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = "";
+
+      const toolSearch = response.headers.get("X-Tool-Search");
+      if (toolSearch) {
+        const query = decodeURIComponent(toolSearch);
+        fullContent += `<tool_call>{"name":"Web Search", "args":{"query":"${query}"}}</tool_call>\n\n`;
+        streamCallback(fullContent);
+      }
+
+      let streamBuffer = "";
+      const translator = createSseDeltaTranslator();
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          streamBuffer += decoder.decode(value, { stream: true });
+          const lines = streamBuffer.split("\n");
+          streamBuffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.trim() || !line.startsWith("data: ")) continue;
+            const dataStr = line.replace("data: ", "");
+            if (dataStr === "[DONE]") break;
+
+            try {
+              const data = JSON.parse(dataStr);
+              if (data.error) throw new Error(data.error);
+              if (data.queue_info) setQueueStatus(data.queue_info);
+
+              let delta = "";
+              if (streamProvider === "google") {
+                delta =
+                  data.delta?.content ||
+                  data.message?.content?.text ||
+                  data.candidates?.[0]?.content?.parts?.[0]?.text ||
+                  "";
+                const fc =
+                  data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
+                if (fc) {
+                  delta += `<tool_call>\n{"name": ${JSON.stringify(fc.name)}, "args": ${JSON.stringify(fc.args)}}\n</tool_call>`;
+                }
+              } else if (streamProvider === "ollama") {
+                delta = data.message?.content || data.response || "";
+              } else {
+                delta = translator.translate(data);
+              }
+
+              if (delta) {
+                setQueueStatus(null);
+                fullContent += delta;
+                streamCallback(fullContent);
+              }
+            } catch (e: any) {
+              if (
+                e.message &&
+                e.message !== "Unexpected end of JSON input" &&
+                !e.message.includes("JSON")
+              ) {
+                toast.error(e.message);
+              }
+            }
+          }
+        }
+
+        const flushed = translator.flush();
+        if (flushed) {
+          fullContent += flushed;
+          streamCallback(fullContent);
+        }
+      }
+      return fullContent;
+    };
+
+    const runHordeFallback = async (
+      fallbackModelId: string,
+      reason: "rate_limit" | "not_found" | "auth_required" = "rate_limit",
+    ): Promise<string> => {
+      onFallback?.(fallbackModelId);
+      setAllMessages((prevAll) =>
+        prevAll.map((m) =>
+          m.id === "temp-streaming"
+            ? {
+                ...m,
+                usedFallback: true,
+                fallbackModel: fallbackModelId,
+                fallbackReason: reason,
+              }
+            : m,
+        ),
+      );
+      if (reason === "auth_required") {
+        toast.warning(
+          t(
+            "apps.pollinations401FallbackWarning",
+            { model: fallbackModelId },
+            `Pollinations requires an API key (HTTP 401). Falling back to AI Horde backup (${fallbackModelId}). You can add a key from enter.pollinations.ai in Models settings.`,
+          ),
+        );
+      } else if (reason === "not_found") {
+        toast.warning(
+          t(
+            "apps.pollinations404FallbackWarning",
+            { model: fallbackModelId },
+            `Pollinations returned a 404 (Not Found) error. Falling back to AI Horde backup (${fallbackModelId}). Quality may be decreased.`,
+          ),
+        );
+      } else {
+        toast.warning(
+          t(
+            "apps.defaultModelFallbackWarning",
+            { model: fallbackModelId },
+            `The main default model (Ling 3.1 Flash) is currently unavailable (rate limited). Falling back to AI Horde (${fallbackModelId}). Quality may be decreased.`,
+          ),
+        );
+      }
+
+      const fetchOptions: RequestInit = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        signal,
+        body: JSON.stringify({
+          provider: "horde",
+          model: fallbackModelId,
+          messages: msgs,
+          stream: true,
+        }),
+      };
+
+      const res = await fetch("/api/ai/proxy", fetchOptions);
+      if (!res.ok) {
+        throw new Error(await parseAiProxyError(res));
+      }
+      return await streamResponseData(res, "horde");
+    };
+
+    if (provider === "pollinations") {
+      const isDirectKey = Boolean(
+        apiKey &&
+          (apiKey.startsWith("pk_") || apiKey.startsWith("sk_")) &&
+          !apiKey.includes("...") &&
+          apiKey.length > 20,
+      );
+      if (!isDirectKey && session?.access_token) {
+        try {
+          const fetchOptions: RequestInit = {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            signal,
+            body: JSON.stringify({
+              provider: "pollinations",
+              model: model || "inclusionai/ling-3.1-flash",
+              messages: msgs,
+              stream: true,
+            }),
+          };
+          const res = await fetch("/api/ai/proxy", fetchOptions);
+          if (!res.ok) {
+            const errStatus = res.status;
+            const errMsg = await parseAiProxyError(res);
+            const is401 =
+              errStatus === 401 ||
+              errStatus === 403 ||
+              errMsg.includes("401") ||
+              errMsg.includes("403") ||
+              errMsg.toLowerCase().includes("unauthorized") ||
+              errMsg.toLowerCase().includes("api key");
+            const is404 = errStatus === 404 || errMsg.includes("404");
+            const fallbackReason: "rate_limit" | "not_found" | "auth_required" =
+              is401 ? "auth_required" : is404 ? "not_found" : "rate_limit";
+
+            try {
+              return await runHordeFallback(
+                HORDE_FALLBACK_FAST_MODEL,
+                fallbackReason,
+              );
+            } catch (fastErr: any) {
+              return await runHordeFallback(
+                HORDE_FALLBACK_SMART_MODEL,
+                fallbackReason,
+              );
+            }
+          }
+          return await streamResponseData(res, "pollinations");
+        } catch (err: any) {
+          if (signal.aborted) throw err;
+          console.warn(
+            "Pollinations proxy stream failed, falling back to Horde:",
+            err,
+          );
+          try {
+            return await runHordeFallback(
+              HORDE_FALLBACK_FAST_MODEL,
+              "rate_limit",
+            );
+          } catch (fastErr: any) {
+            return await runHordeFallback(
+              HORDE_FALLBACK_SMART_MODEL,
+              "rate_limit",
+            );
+          }
+        }
+      }
+
+      try {
+        let directContent = "";
+        await streamPollinationsClient({
+          model: model || "inclusionai/ling-3.1-flash",
+          messages: msgs.map((m) => ({
+            role: (m.role || "user") as "system" | "user" | "assistant",
+            content: m.content || "",
+          })),
+          signal,
+          apiKey: isDirectKey ? apiKey : undefined,
+          onChunk: (delta) => {
+            directContent += delta;
+            streamCallback(directContent);
+          },
+          onQueueInfo: (q) => setQueueStatus(q),
+        });
+        return directContent;
+      } catch (err: any) {
+        if (signal.aborted) throw err;
+        const is401 =
+          err instanceof PollinationsAuthError ||
+          err?.statusCode === 401 ||
+          err?.statusCode === 403 ||
+          err?.message?.includes("401") ||
+          err?.message?.includes("403");
+        const is404 =
+          err instanceof PollinationsNotFoundError ||
+          err?.statusCode === 404 ||
+          err?.message?.includes("404");
+        const isRateLimit =
+          err instanceof PollinationsRateLimitError ||
+          err?.statusCode === 429;
+        const is402 =
+          err?.statusCode === 402 ||
+          err?.message?.includes("402");
+
+        if (is401 || is404 || isRateLimit || is402) {
+          const fallbackReason: "rate_limit" | "not_found" | "auth_required" = is401
+            ? "auth_required"
+            : is404
+            ? "not_found"
+            : "rate_limit";
+          try {
+            return await runHordeFallback(
+              HORDE_FALLBACK_FAST_MODEL,
+              fallbackReason,
+            );
+          } catch (fastErr: any) {
+            console.warn(
+              "Horde Fast fallback failed, attempting Smart fallback:",
+              fastErr,
+            );
+            return await runHordeFallback(
+              HORDE_FALLBACK_SMART_MODEL,
+              fallbackReason,
+            );
+          }
+        } else {
+          throw err;
+        }
+      }
+    }
 
     let url = "/api/ai/proxy";
     let fetchOptions: RequestInit = {
@@ -1336,178 +2040,10 @@ export function ChatbotApp() {
 
     if (!response.ok) {
       const errText = await parseAiProxyError(response);
-      if (errText.includes("Provider not configured")) {
-        const cleanProv = provider.toLowerCase().trim();
-        const hasEncrypted = Boolean(encryptedKeys[cleanProv]);
-        if (hasEncrypted && !isMasterKeyActive) {
-          throw new Error(
-            t(
-              "apps.chatbotMasterKeyLocked",
-              undefined,
-              "Your Master Key is locked. Please unlock it in Account or Models settings to use configured API keys.",
-            ),
-          );
-        }
-        throw new Error(
-          t(
-            "apps.chatbotProviderNotConfigured",
-            { provider },
-            `Provider "${provider}" is not configured with an API key. Please add an API key in Models or Account settings.`,
-          ),
-        );
-      }
       throw new Error(errText);
     }
 
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    let fullContent = "";
-
-    const toolSearch = response.headers.get("X-Tool-Search");
-    if (toolSearch) {
-      const query = decodeURIComponent(toolSearch);
-      fullContent += `<tool_call>{"name":"Web Search", "args":{"query":"${query}"}}</tool_call>\n\n`;
-      streamCallback(fullContent);
-    }
-
-    let streamBuffer = "";
-    const openAnthropicToolBlocks = new Map<number, { hasArgs: boolean }>();
-
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        streamBuffer += decoder.decode(value, { stream: true });
-        const lines = streamBuffer.split("\n");
-        streamBuffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.trim() || !line.startsWith("data: ")) continue;
-          const dataStr = line.replace("data: ", "");
-          if (dataStr === "[DONE]") break;
-
-          try {
-            const data = JSON.parse(dataStr);
-            if (data.error) throw new Error(data.error);
-            if (data.queue_info) setQueueStatus(data.queue_info);
-
-            let delta = "";
-            if (provider === "anthropic") {
-              if (
-                data.type === "content_block_start" &&
-                data.content_block?.type === "tool_use"
-              ) {
-                const idx = data.index ?? openAnthropicToolBlocks.size;
-                openAnthropicToolBlocks.set(idx, { hasArgs: false });
-                delta += `<tool_call>\n{"name": "${data.content_block.name}", "args": `;
-              } else if (
-                data.type === "content_block_delta" &&
-                data.delta?.type === "input_json_delta"
-              ) {
-                const idx = data.index ?? openAnthropicToolBlocks.size - 1;
-                if (openAnthropicToolBlocks.has(idx)) {
-                  openAnthropicToolBlocks.get(idx)!.hasArgs = true;
-                }
-                delta += data.delta.partial_json || "";
-              } else if (
-                data.type === "content_block_delta" &&
-                data.delta?.type === "text_delta"
-              ) {
-                delta += data.delta.text || "";
-              } else if (data.type === "content_block_stop") {
-                const idx = data.index ?? openAnthropicToolBlocks.size - 1;
-                if (openAnthropicToolBlocks.has(idx)) {
-                  const block = openAnthropicToolBlocks.get(idx)!;
-                  if (!block.hasArgs) {
-                    delta += "{}";
-                  }
-                  delta += `\n}</tool_call>`;
-                  openAnthropicToolBlocks.delete(idx);
-                }
-              } else if (
-                data.type === "message_stop" ||
-                data.type === "message_delta"
-              ) {
-                if (openAnthropicToolBlocks.size > 0) {
-                  for (const [, block] of openAnthropicToolBlocks.entries()) {
-                    if (!block.hasArgs) delta += "{}";
-                    delta += `\n}</tool_call>`;
-                  }
-                  openAnthropicToolBlocks.clear();
-                }
-              } else {
-                delta = data.delta?.text || "";
-              }
-            } else if (
-              [
-                "openai",
-                "openrouter",
-                "grok",
-                "custom",
-                "lmstudio",
-                "koboldcpp",
-                "kobold",
-                "horde",
-              ].includes(provider) ||
-              provider.startsWith("local-")
-            ) {
-              delta = data.choices?.[0]?.delta?.content || data.response || "";
-              const tc = data.choices?.[0]?.delta?.tool_calls?.[0];
-              if (tc) {
-                if (tc.function?.name)
-                  delta += `<tool_call>\n{"name": "${tc.function.name}", "args": `;
-                if (tc.function?.arguments) delta += tc.function.arguments;
-              }
-              if (data.choices?.[0]?.finish_reason === "tool_calls") {
-                delta += `\n}</tool_call>`;
-              }
-            } else if (provider === "ollama") {
-              delta = data.message?.content || data.response || "";
-            } else if (provider === "google") {
-              delta =
-                data.delta?.content ||
-                data.message?.content?.text ||
-                data.candidates?.[0]?.content?.parts?.[0]?.text ||
-                "";
-              const fc =
-                data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
-              if (fc) {
-                delta += `<tool_call>\n{"name": "${fc.name}", "args": ${JSON.stringify(fc.args)}}\n</tool_call>`;
-              }
-            }
-
-            if (delta) {
-              setQueueStatus(null);
-              fullContent += delta;
-              streamCallback(fullContent);
-            }
-          } catch (e: any) {
-            if (
-              e.message &&
-              e.message !== "Unexpected end of JSON input" &&
-              !e.message.includes("JSON")
-            ) {
-              toast.error(e.message);
-            }
-          }
-        }
-      }
-
-      if (openAnthropicToolBlocks.size > 0) {
-        let unclosedDelta = "";
-        for (const [, block] of openAnthropicToolBlocks.entries()) {
-          if (!block.hasArgs) unclosedDelta += "{}";
-          unclosedDelta += `\n}</tool_call>`;
-        }
-        openAnthropicToolBlocks.clear();
-        if (unclosedDelta) {
-          fullContent += unclosedDelta;
-          streamCallback(fullContent);
-        }
-      }
-    }
-    return fullContent;
+    return await streamResponseData(response, provider);
   };
 
   const getInjectedSystemPrompt = (): string => {
@@ -1548,6 +2084,8 @@ export function ChatbotApp() {
         if (char.appearance) injected += `Appearance: ${char.appearance}\n`;
         if (char.personality) injected += `Personality: ${char.personality}\n`;
         if (char.backstory) injected += `Backstory: ${char.backstory}\n`;
+        if (char.situation)
+          injected += `Current Situation & Abilities: ${char.situation}\n`;
         if (
           char.stats_enabled &&
           char.stats &&
@@ -1597,6 +2135,8 @@ export function ChatbotApp() {
         if (char.appearance) injected += `Appearance: ${char.appearance}\n`;
         if (char.personality) injected += `Personality: ${char.personality}\n`;
         if (char.backstory) injected += `Backstory: ${char.backstory}\n`;
+        if (char.situation)
+          injected += `Current Situation & Abilities: ${char.situation}\n`;
         if (
           char.stats_enabled &&
           char.stats &&
@@ -1645,9 +2185,13 @@ export function ChatbotApp() {
     finalContent: string;
     reasoningContent: string;
     isWebSearch: boolean;
+    usedFallback?: boolean;
+    fallbackModel?: string;
   }> => {
     let finalContent = "";
     let reasoningContent = "";
+    const effectiveProvider = selectedProvider;
+    const effectiveModel = selectedModel;
 
     const injectedSystemPrompt = getInjectedSystemPrompt();
     const getApiMessages = (baseMessages: Message[]): Message[] => {
@@ -1687,8 +2231,8 @@ export function ChatbotApp() {
 
       let searchPlanningText = "";
       const planOutput = await callAiStream(
-        selectedProvider,
-        selectedModel,
+        effectiveProvider,
+        effectiveModel,
         getApiMessages(searchPlanMessages.length > 0 ? searchPlanMessages : [{ role: "user", content: planPrompt } as Message]),
         signal,
         (content) => {
@@ -1715,40 +2259,15 @@ export function ChatbotApp() {
         }
       } catch {}
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      const token = session?.access_token || (await supabase.auth.getSession()).data?.session?.access_token;
       if (!token) {
         throw new Error("Please sign in to use Web Search.");
       }
 
-      const searchTargetProvider =
-        selectedProvider || researchAgentDefaultProvider || "horde";
-      const agentApiKey = getDecryptedApiKey(searchTargetProvider);
-
-      const isSearchProviderKeyless =
-        searchTargetProvider === "horde" ||
-        searchTargetProvider === "pollinations" ||
-        searchTargetProvider.startsWith("local-");
-
-      const finalResearchProvider =
-        agentApiKey || isSearchProviderKeyless
-          ? searchTargetProvider
-          : researchAgentDefaultProvider &&
-              (isProviderConfigured(researchAgentDefaultProvider) ||
-                researchAgentDefaultProvider === "horde" ||
-                researchAgentDefaultProvider === "pollinations")
-            ? researchAgentDefaultProvider
-            : "horde";
-
+      const finalResearchProvider = "pollinations";
       const finalResearchModel =
-        (finalResearchProvider === searchTargetProvider
-          ? selectedModel || researchAgentDefaultModel
-          : researchAgentDefaultModel) || "Fast";
-
-      const finalApiKey =
-        finalResearchProvider === searchTargetProvider
-          ? agentApiKey || undefined
-          : getDecryptedApiKey(finalResearchProvider) || undefined;
+        selectedModel || researchAgentDefaultModel || "inclusionai/ling-3.1-flash";
+      const finalApiKey = pollinationsApiKey || undefined;
 
       const agentRes = await fetch("/api/ai/agent-search", {
         method: "POST",
@@ -1772,29 +2291,6 @@ export function ChatbotApp() {
 
       if (!agentRes.ok) {
         const errText = await parseAiProxyError(agentRes);
-        if (
-          errText.includes("Provider not configured") ||
-          errText.includes("is not configured")
-        ) {
-          const cleanProv = (finalResearchProvider || "").toLowerCase().trim();
-          const hasEncrypted = Boolean(encryptedKeys[cleanProv]);
-          if (hasEncrypted && !isMasterKeyActive) {
-            throw new Error(
-              t(
-                "apps.chatbotMasterKeyLocked",
-                undefined,
-                "Your Master Key is locked. Please unlock it in Account or Models settings to use configured API keys.",
-              ),
-            );
-          }
-          throw new Error(
-            t(
-              "apps.chatbotProviderNotConfigured",
-              { provider: finalResearchProvider },
-              `Provider "${finalResearchProvider}" is not configured with an API key. Please add an API key in Models or Account settings.`,
-            ),
-          );
-        }
         throw new Error(errText);
       }
 
@@ -1843,6 +2339,13 @@ export function ChatbotApp() {
         ),
       );
 
+      let hadFallback = false;
+      let fallbackModelUsed: string | undefined = undefined;
+      const onFallback = (modelUsed?: string) => {
+        hadFallback = true;
+        if (modelUsed) fallbackModelUsed = modelUsed;
+      };
+
       // Perform synthesis with the selected chatbot model
       const searchContextPrefix = `Web Search Findings:\n${searchFindings || "No search findings gathered."}\n\nInstructions: Answer the user's request accurately, factually, and comprehensively using the verified web search findings above. Cite relevant source URLs where applicable.`;
 
@@ -1856,8 +2359,8 @@ export function ChatbotApp() {
         ];
 
         reasoningContent = await callAiStream(
-          selectedProvider,
-          selectedModel,
+          effectiveProvider,
+          effectiveModel,
           getApiMessages(reasoningMessages),
           signal,
           (content) => {
@@ -1867,6 +2370,7 @@ export function ChatbotApp() {
               ),
             );
           },
+          onFallback,
         );
 
         const finalMessages = [
@@ -1883,8 +2387,8 @@ export function ChatbotApp() {
         ];
 
         finalContent = await callAiStream(
-          selectedProvider,
-          selectedModel,
+          effectiveProvider,
+          effectiveModel,
           getApiMessages(finalMessages),
           signal,
           (content) => {
@@ -1893,16 +2397,8 @@ export function ChatbotApp() {
                 m.id === "temp-streaming" ? { ...m, content } : m,
               ),
             );
-
-            if (
-              content.length - lastParsedLengthRef.current > 50 ||
-              content.includes("\\\\")
-            ) {
-              const arts = parseArtifacts(content);
-              if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-              lastParsedLengthRef.current = content.length;
-            }
           },
+          onFallback,
         );
       } else {
         const synthesisMessages = [
@@ -1914,8 +2410,8 @@ export function ChatbotApp() {
         ];
 
         finalContent = await callAiStream(
-          selectedProvider,
-          selectedModel,
+          effectiveProvider,
+          effectiveModel,
           getApiMessages(synthesisMessages),
           signal,
           (content) => {
@@ -1924,112 +2420,125 @@ export function ChatbotApp() {
                 m.id === "temp-streaming" ? { ...m, content } : m,
               ),
             );
-
-            if (
-              content.length - lastParsedLengthRef.current > 50 ||
-              content.includes("\\\\")
-            ) {
-              const arts = parseArtifacts(content);
-              if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-              lastParsedLengthRef.current = content.length;
-            }
           },
+          onFallback,
         );
       }
+
+      return {
+        finalContent,
+        reasoningContent: reasoningContent || null,
+        isWebSearch: true,
+        usedFallback: hadFallback,
+        fallbackModel: fallbackModelUsed,
+      };
     } else if (isReasoningEnabled) {
-      // Reasoning only (no web search)
-      const reasoningMessages = [
-        ...baseChatMessages,
-        {
-          role: "user",
-          content:
-            "Please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
-        } as Message,
-      ];
+    let hadFallback = false;
+    let fallbackModelUsed: string | undefined = undefined;
+    const onFallback = (modelUsed?: string) => {
+      hadFallback = true;
+      if (modelUsed) fallbackModelUsed = modelUsed;
+    };
 
-      reasoningContent = await callAiStream(
-        selectedProvider,
-        selectedModel,
-        getApiMessages(reasoningMessages),
-        signal,
-        (content) => {
-          setAllMessages((prevAll) =>
-            prevAll.map((m) =>
-              m.id === "temp-streaming" ? { ...m, reasoning: content } : m,
-            ),
-          );
-        },
-      );
+    // Reasoning only (no web search)
+    const reasoningMessages = [
+      ...baseChatMessages,
+      {
+        role: "user",
+        content:
+          "Please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
+      } as Message,
+    ];
 
-      const finalMessages = [
-        ...baseChatMessages,
-        {
-          role: "assistant",
-          content: `My internal reasoning: \n${reasoningContent}`,
-        } as Message,
-        {
-          role: "user",
-          content:
-            "Great. Now based on your reasoning, provide the final response.",
-        } as Message,
-      ];
-      finalContent = await callAiStream(
-        selectedProvider,
-        selectedModel,
-        getApiMessages(finalMessages),
-        signal,
-        (content) => {
-          setAllMessages((prevAll) =>
-            prevAll.map((m) =>
-              m.id === "temp-streaming" ? { ...m, content } : m,
-            ),
-          );
+    reasoningContent = await callAiStream(
+      effectiveProvider,
+      effectiveModel,
+      getApiMessages(reasoningMessages),
+      signal,
+      (content) => {
+        setAllMessages((prevAll) =>
+          prevAll.map((m) =>
+            m.id === "temp-streaming" ? { ...m, reasoning: content } : m,
+          ),
+        );
+      },
+      onFallback,
+    );
 
-          if (
-            content.length - lastParsedLengthRef.current > 50 ||
-            content.includes("\\\\")
-          ) {
-            const arts = parseArtifacts(content);
-            if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-            lastParsedLengthRef.current = content.length;
-          }
-        },
-      );
-    } else {
-      // Direct completion
-      finalContent = await callAiStream(
-        selectedProvider,
-        selectedModel,
-        getApiMessages(baseChatMessages),
-        signal,
-        (content) => {
-          setAllMessages((prevAll) =>
-            prevAll.map((m) =>
-              m.id === "temp-streaming" ? { ...m, content } : m,
-            ),
-          );
-
-          if (
-            content.length - lastParsedLengthRef.current > 50 ||
-            content.includes("\\\\")
-          ) {
-            const arts = parseArtifacts(content);
-            if (arts.length > 0) setActiveArtifact(arts[arts.length - 1]);
-            lastParsedLengthRef.current = content.length;
-          }
-        },
-      );
-    }
+    const finalMessages = [
+      ...baseChatMessages,
+      {
+        role: "assistant",
+        content: `My internal reasoning: \n${reasoningContent}`,
+      } as Message,
+      {
+        role: "user",
+        content:
+          "Great. Now based on your reasoning, provide the final response.",
+      } as Message,
+    ];
+    finalContent = await callAiStream(
+      effectiveProvider,
+      effectiveModel,
+      getApiMessages(finalMessages),
+      signal,
+      (content) => {
+        setAllMessages((prevAll) =>
+          prevAll.map((m) =>
+            m.id === "temp-streaming" ? { ...m, content } : m,
+          ),
+        );
+      },
+      onFallback,
+    );
 
     return {
       finalContent,
       reasoningContent,
-      isWebSearch: isWebSearchEnabled,
+      isWebSearch: false,
+      usedFallback: hadFallback,
+      fallbackModel: fallbackModelUsed,
     };
+  } else {
+    let hadFallback = false;
+    let fallbackModelUsed: string | undefined = undefined;
+    const onFallback = (modelUsed?: string) => {
+      hadFallback = true;
+      if (modelUsed) fallbackModelUsed = modelUsed;
+    };
+
+    // Direct completion
+    finalContent = await callAiStream(
+      effectiveProvider,
+      effectiveModel,
+      getApiMessages(baseChatMessages),
+      signal,
+      (content) => {
+        setAllMessages((prevAll) =>
+          prevAll.map((m) =>
+            m.id === "temp-streaming" ? { ...m, content } : m,
+          ),
+        );
+      },
+      onFallback,
+    );
+
+    return {
+      finalContent,
+      reasoningContent: "",
+      isWebSearch: false,
+      usedFallback: hadFallback,
+      fallbackModel: fallbackModelUsed,
+    };
+  }
   };
 
-  const handleSendMessage = async () => {
-    if (!input.trim() || isTyping) return;
+  const handleSendMessage = async (textOverride?: string, fromVoice: boolean = false) => {
+    if (fromVoice) {
+      isVoiceInputRef.current = true;
+    }
+    const rawInput = typeof textOverride === "string" ? textOverride : input;
+    if (!rawInput.trim() || isTyping) return;
 
     const isGuest = !session?.user?.id;
     let activeChatId = currentChatId;
@@ -2088,14 +2597,14 @@ export function ChatbotApp() {
     const controller = new AbortController();
     setAbortController(controller);
 
-    const originalInput = input;
+    const originalInput = rawInput;
     const lastMessageId =
       messages.length > 0 ? messages[messages.length - 1].id : null;
     const userMessage: Message = {
       id: "temp-user",
       parent_id: lastMessageId,
       role: "user",
-      content: input,
+      content: rawInput,
     };
     const isFirstMessage = messages.length === 0;
 
@@ -2117,22 +2626,15 @@ export function ChatbotApp() {
       "temp-user": "temp-streaming",
     };
     setActiveChildren(activeChildrenRef.current);
-    setInput("");
+    if (!textOverride) setInput("");
     setIsTyping(true);
     isTypingRef.current = true;
-    lastParsedLengthRef.current = 0;
     setQueueStatus(null);
 
     try {
       // 1. Title generation on first message
-      let titlePromise = null;
       if (isFirstMessage) {
-        titlePromise = generateChatTitle(activeChatId, originalInput);
-        // If the user's primary selection is also horde, we should await the title generation
-        // to prevent queuing conflicts with AI Horde's rate limiting.
-        if (selectedProvider === "horde") {
-          await titlePromise;
-        }
+        generateChatTitle(activeChatId, originalInput);
       }
 
       // 2. Save User Message
@@ -2277,10 +2779,13 @@ export function ChatbotApp() {
 
         setAllMessages((prev) =>
           prev.map((m) =>
-            m.id === "temp-streaming"
+            m.id === "temp-user"
+              ? { ...m, id: userMsgData.id }
+              : m.id === "temp-streaming"
               ? {
                   ...m,
                   id: assistantMsgData.id,
+                  parent_id: userMsgData.id,
                   content: originalInput,
                   is_image_gen: true,
                   image_url: imgResult.url,
@@ -2292,8 +2797,10 @@ export function ChatbotApp() {
 
         activeChildrenRef.current = {
           ...activeChildrenRef.current,
+          [lastMessageId || "root"]: userMsgData.id,
           [userMsgData.id]: assistantMsgData.id,
         };
+        delete activeChildrenRef.current["temp-user"];
         setActiveChildren(activeChildrenRef.current);
 
         if (!isGuest) {
@@ -2301,6 +2808,11 @@ export function ChatbotApp() {
             .from("chats")
             .update({ updated_at: new Date().toISOString() })
             .eq("id", activeChatId);
+        }
+
+        if (fromVoice || isVoiceInputRef.current) {
+          isVoiceInputRef.current = false;
+          liveVoice.speakText("I have generated the image for you.");
         }
 
         return;
@@ -2314,8 +2826,13 @@ export function ChatbotApp() {
         iterations++;
         shouldContinue = false;
 
-        const { finalContent, reasoningContent, isWebSearch } =
-          await executeAiGeneration(currentMessages, controller.signal);
+        const {
+          finalContent,
+          reasoningContent,
+          isWebSearch,
+          usedFallback,
+          fallbackModel,
+        } = await executeAiGeneration(currentMessages, controller.signal);
 
         let insertData: any = {
           parent_id: userMsgData.id,
@@ -2324,6 +2841,8 @@ export function ChatbotApp() {
           content: finalContent,
           reasoning: reasoningContent || null,
           is_web_search: isWebSearch || false,
+          usedFallback: usedFallback || false,
+          fallbackModel: fallbackModel || null,
         };
 
         let assistantMsgData = {
@@ -2364,6 +2883,20 @@ export function ChatbotApp() {
               delete retryPayload.is_web_search;
               hasAdjusted = true;
             }
+            if (
+              assistantInsertError.message?.includes("usedFallback") ||
+              assistantInsertError.details?.includes("usedFallback")
+            ) {
+              delete retryPayload.usedFallback;
+              hasAdjusted = true;
+            }
+            if (
+              assistantInsertError.message?.includes("fallbackModel") ||
+              assistantInsertError.details?.includes("fallbackModel")
+            ) {
+              delete retryPayload.fallbackModel;
+              hasAdjusted = true;
+            }
             if (hasAdjusted) {
               const { data: retryData, error: retryError } = await supabase
                 .from("chatbot_messages")
@@ -2383,22 +2916,29 @@ export function ChatbotApp() {
         // Update active state
         setAllMessages((prev) =>
           prev.map((m) =>
-            m.id === "temp-streaming"
+            m.id === "temp-user"
+              ? { ...m, id: userMsgData.id }
+              : m.id === "temp-streaming"
               ? {
                   ...m,
                   id: assistantMsgData.id,
+                  parent_id: userMsgData.id,
                   content: finalContent,
                   reasoning: reasoningContent || undefined,
                   is_web_search: isWebSearch || false,
                   web_search_status: undefined,
+                  usedFallback: usedFallback || false,
+                  fallbackModel: fallbackModel || undefined,
                 }
               : m,
           ),
         );
         activeChildrenRef.current = {
           ...activeChildrenRef.current,
+          [lastMessageId || "root"]: userMsgData.id,
           [userMsgData.id]: assistantMsgData.id,
         };
+        delete activeChildrenRef.current["temp-user"];
         setActiveChildren(activeChildrenRef.current);
 
         if (!isGuest) {
@@ -2408,10 +2948,25 @@ export function ChatbotApp() {
             .eq("id", activeChatId);
           if (chatUpdateError) throw chatUpdateError;
         }
+
+        if (fromVoice || isVoiceInputRef.current) {
+          isVoiceInputRef.current = false;
+          if (finalContent && finalContent.trim()) {
+            liveVoice.speakText(finalContent);
+          } else {
+            liveVoice.speakText("I didn't receive a response.");
+          }
+        }
       }
     } catch (e: any) {
       toast.error(e.message);
       if (input === "") setInput(originalInput);
+      if (fromVoice || isVoiceInputRef.current) {
+        isVoiceInputRef.current = false;
+        liveVoice.speakText(
+          `Sorry, an error occurred: ${e?.message || "Failed to generate response"}`,
+        );
+      }
       setAllMessages((prev) =>
         prev.filter((m) => m.id !== "temp-streaming" && m.id !== "temp-user"),
       );
@@ -2459,7 +3014,6 @@ export function ChatbotApp() {
     setActiveChildren(activeChildrenRef.current);
     setIsTyping(true);
     isTypingRef.current = true;
-    lastParsedLengthRef.current = 0;
     setQueueStatus(null);
 
     try {
@@ -2468,8 +3022,13 @@ export function ChatbotApp() {
       );
       let currentMessages = messages.slice(0, lastUserMessageIndex + 1);
 
-      const { finalContent, reasoningContent, isWebSearch } =
-        await executeAiGeneration(currentMessages, controller.signal);
+      const {
+        finalContent,
+        reasoningContent,
+        isWebSearch,
+        usedFallback,
+        fallbackModel,
+      } = await executeAiGeneration(currentMessages, controller.signal);
 
       let insertData: any = {
         chat_id: currentChatId,
@@ -2478,6 +3037,8 @@ export function ChatbotApp() {
         content: finalContent,
         reasoning: reasoningContent || null,
         is_web_search: isWebSearch || false,
+        usedFallback: usedFallback || false,
+        fallbackModel: fallbackModel || null,
       };
 
       let assistantMsgData = {
@@ -2519,6 +3080,20 @@ export function ChatbotApp() {
             delete retryPayload.is_web_search;
             hasAdjusted = true;
           }
+          if (
+            assistantInsertError.message?.includes("usedFallback") ||
+            assistantInsertError.details?.includes("usedFallback")
+          ) {
+            delete retryPayload.usedFallback;
+            hasAdjusted = true;
+          }
+          if (
+            assistantInsertError.message?.includes("fallbackModel") ||
+            assistantInsertError.details?.includes("fallbackModel")
+          ) {
+            delete retryPayload.fallbackModel;
+            hasAdjusted = true;
+          }
           if (hasAdjusted) {
             const { data: retryData, error: retryError } = await supabase
               .from("chatbot_messages")
@@ -2545,6 +3120,8 @@ export function ChatbotApp() {
                 reasoning: reasoningContent || undefined,
                 is_web_search: isWebSearch || false,
                 web_search_status: undefined,
+                usedFallback: usedFallback || false,
+                fallbackModel: fallbackModel || undefined,
               }
             : m,
         ),
@@ -2584,7 +3161,16 @@ export function ChatbotApp() {
     if (abortController) {
       abortController.abort();
     }
+    liveVoice.stopSpeaking();
+    liveVoice.cancelRecording();
+    setSpeakingMessageId(null);
+    isVoiceInputRef.current = false;
   };
+
+  useEffect(() => {
+    handleSendMessageRef.current = handleSendMessage;
+    handleStopRef.current = handleStop;
+  });
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -2640,6 +3226,253 @@ export function ChatbotApp() {
           onUnlocked={() => setEncryptionLocked(false)}
           categoryLabel="Chatbot Chats"
         />
+      </div>
+    );
+  }
+
+  if (isKeyLoading) {
+    return (
+      <div className="relative min-h-[calc(100vh-61px)] sm:min-h-[calc(100vh-73px)] w-full flex items-center justify-center p-4 bg-slate-950 text-white overflow-hidden">
+        <InteractiveBackground />
+        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+      </div>
+    );
+  }
+
+  const isConfigured =
+    isPollinationsConfigured ||
+    (!!pollinationsApiKey && pollinationsApiKey.trim().length > 0);
+
+  if (!isConfigured) {
+    return (
+      <div className="relative min-h-[calc(100vh-61px)] sm:min-h-[calc(100vh-73px)] w-full flex items-center justify-center p-4 bg-slate-950 text-white overflow-hidden">
+        <InteractiveBackground />
+        <div className="relative z-10 w-full max-w-lg p-6 sm:p-8 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-xl space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 shadow-lg shadow-cyan-500/10">
+              <Bot className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white font-display">
+                {t(
+                  "chatbot.pollinationsRequiredTitle",
+                  undefined,
+                  "Pollinations AI Setup Required",
+                )}
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {t(
+                  "chatbot.pollinationsRequiredSubtitle",
+                  undefined,
+                  "Connect your API key to access Chatbot",
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-cyan-950/40 border border-cyan-800/50 space-y-2 text-slate-200">
+            <div className="flex items-center gap-2 text-cyan-300 font-semibold text-sm">
+              <Sparkles className="w-4 h-4" />
+              <span>
+                {t(
+                  "chatbot.freeTierInfoTitle",
+                  undefined,
+                  "100% Free Models",
+                )}
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {t(
+                "chatbot.freeTierInfoText",
+                undefined,
+                "Most models on Pollinations are completely free to use! Pollinations provides official free models and support for your own custom or private models.",
+              )}
+            </p>
+          </div>
+
+          {/* Supporter Toggle */}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950/80 border border-slate-800 gap-3">
+            <div className="flex items-start gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-center shrink-0 mt-0.5">
+                <Heart className="w-4 h-4 fill-pink-400/20" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-200">
+                  {t(
+                    "account.supporterToggleTitle",
+                    undefined,
+                    "Support Oxygen Low's Software (+25% Pollen)",
+                  )}
+                </p>
+                <p className="text-[11px] text-slate-400 leading-tight">
+                  {t(
+                    "account.supporterToggleDescShort",
+                    undefined,
+                    "+25% pollen cost. 20% goes to dev for high-power models (GPT Astra, Sol) to improve the platform.",
+                  )}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={isPollinationsSupporter}
+              onCheckedChange={setIsPollinationsSupporter}
+              aria-label="Supporter mode toggle"
+            />
+          </div>
+
+          {/* 1-Click Connect Button */}
+          <Button
+            onClick={async () => {
+              setIsConnectingGate(true);
+              try {
+                const result = await initiatePollinationsOAuth({
+                  isSupporter: isPollinationsSupporter,
+                });
+                if (result?.apiKey) {
+                  await setPollinationsApiKey(result.apiKey);
+                  setIsPollinationsSupporter(result.isSupporter);
+                  toast.success(
+                    t(
+                      "account.authSuccessToast",
+                      undefined,
+                      "Pollinations connected successfully!",
+                    ),
+                  );
+                }
+              } catch (err: any) {
+                if (err?.message && !err.message.includes("closed")) {
+                  toast.error(
+                    err?.message ||
+                      t(
+                        "account.authFailedToast",
+                        undefined,
+                        "Failed to connect",
+                      ),
+                  );
+                }
+              } finally {
+                setIsConnectingGate(false);
+              }
+            }}
+            disabled={isConnectingGate}
+            className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-semibold h-10 shadow-lg shadow-cyan-950/50 gap-2"
+          >
+            {isConnectingGate ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {t(
+                  "account.connectingPollinations",
+                  undefined,
+                  "Connecting...",
+                )}
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                {t(
+                  "account.connectPollinations",
+                  undefined,
+                  "Connect with Pollinations (1-Click)",
+                )}
+              </>
+            )}
+          </Button>
+
+          <div className="relative flex py-1 items-center">
+            <div className="flex-grow border-t border-slate-800"></div>
+            <span className="flex-shrink mx-3 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+              {t("common.or", undefined, "Or")}
+            </span>
+            <div className="flex-grow border-t border-slate-800"></div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-xs font-medium text-slate-300">
+              {t(
+                "chatbot.enterApiKeyLabel",
+                undefined,
+                "Enter Pollinations API Key Manually",
+              )}
+            </label>
+            <div className="relative">
+              <Input
+                type={showGateKey ? "text" : "password"}
+                value={gateKeyInput}
+                onChange={(e) => setGateKeyInput(e.target.value)}
+                placeholder="pk_... or sk_... from enter.pollinations.ai"
+                className="bg-slate-950 border-slate-800 text-xs text-white font-mono pr-10 h-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowGateKey((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                title={showGateKey ? "Hide key" : "Show key"}
+              >
+                {showGateKey ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <Button
+                onClick={async () => {
+                  if (!gateKeyInput.trim()) return;
+                  setIsSavingGateKey(true);
+                  try {
+                    await setPollinationsApiKey(gateKeyInput.trim());
+                    toast.success(
+                      t(
+                        "chatbot.keySavedSuccess",
+                        undefined,
+                        "Pollinations key connected!",
+                      ),
+                    );
+                  } catch {
+                    toast.error(
+                      t("common.error", undefined, "Failed to save key"),
+                    );
+                  } finally {
+                    setIsSavingGateKey(false);
+                  }
+                }}
+                disabled={!gateKeyInput.trim() || isSavingGateKey}
+                className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs h-10 font-semibold gap-2"
+              >
+                {isSavingGateKey ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                {t("chatbot.saveAndStart", undefined, "Save & Start Chatting")}
+              </Button>
+
+              <Link
+                to="/account"
+                className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors text-center"
+              >
+                {t("chatbot.openAccountSettings", undefined, "Account Settings")}
+              </Link>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+            <span>
+              {t("chatbot.needKeyText", undefined, "Need an API key?")}
+            </span>
+            <a
+              href="https://enter.pollinations.ai/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-400 hover:underline inline-flex items-center gap-1"
+            >
+              enter.pollinations.ai/keys
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        </div>
       </div>
     );
   }
@@ -2746,7 +3579,7 @@ export function ChatbotApp() {
 
       {/* Click / hover trigger zone along right edge */}
       <div
-        className="fixed top-0 right-0 w-[18px] md:w-[18px] h-[100vh] z-[49] cursor-pointer"
+        className="fixed top-[61px] sm:top-[73px] right-0 w-[18px] md:w-[18px] h-[calc(100vh-61px)] sm:h-[calc(100vh-73px)] z-[49] cursor-pointer"
         onMouseEnter={openSidebar}
         onMouseLeave={scheduleSidebarClose}
         onClick={openSidebar}
@@ -2761,7 +3594,7 @@ export function ChatbotApp() {
       {/* Sidebar Backdrop – click to close */}
       <div
         className={cn(
-          "fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 z-[50]",
+          "fixed top-[61px] sm:top-[73px] bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 z-[50]",
           sidebarOpen
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none",
@@ -2772,7 +3605,7 @@ export function ChatbotApp() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 right-0 h-[100vh] w-[280px] transition-transform duration-300 ease-out bg-black/90 md:bg-black/80 backdrop-blur-xl pointer-events-auto flex flex-col p-4 justify-between shadow-2xl z-[51]",
+          "fixed top-[61px] sm:top-[73px] right-0 h-[calc(100vh-61px)] sm:h-[calc(100vh-73px)] w-[280px] transition-transform duration-300 ease-out bg-black/90 md:bg-black/80 backdrop-blur-xl pointer-events-auto flex flex-col p-4 justify-between shadow-2xl z-[51]",
           sidebarOpen ? "translate-x-0" : "translate-x-full",
         )}
         onMouseEnter={openSidebar}
@@ -2846,47 +3679,6 @@ export function ChatbotApp() {
           respondingClass,
         )}
       >
-        <header className="h-[60px] sm:h-[72px] shrink-0 flex items-center justify-between px-3 sm:px-6 bg-black/50 backdrop-blur-xl absolute top-0 w-full z-20 border-b border-white/5">
-          <div className="flex items-center gap-2 min-w-0">
-            <a
-              href="/apps"
-              aria-label="Back to apps"
-              title="Back to apps"
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0 flex items-center justify-center"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </a>
-            <h2
-              className={cn(
-                "font-display font-medium text-sm sm:text-base md:text-lg text-white/90 truncate transition-opacity duration-300",
-                !currentChatId ? "opacity-0" : "opacity-100",
-              )}
-            >
-              {chats.find((c) => c.id === currentChatId)?.title ||
-                "New Conversation"}
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleNewChatClick}
-              aria-label="New chat"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">New Chat</span>
-            </button>
-            <button
-              onClick={() => setSidebarOpen((prev) => !prev)}
-              aria-label="Chat sessions"
-              title="Chat sessions"
-              className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <MessageSquare className="w-5 h-5" />
-            </button>
-          </div>
-        </header>
-
         {/* Subtle edge hint when sidebar is closed */}
         <div
           role="button"
@@ -2908,7 +3700,7 @@ export function ChatbotApp() {
         {/* Chat Scrolling Area */}
         <div
           className={cn(
-            "flex-1 overflow-y-auto pt-[88px] pb-[160px] px-6 w-full max-w-[848px] mx-auto scroll-smooth absolute inset-0 z-10 transition-all duration-500",
+            "flex-1 overflow-y-auto pt-6 pb-[160px] px-6 w-full max-w-[848px] mx-auto scroll-smooth absolute inset-0 z-10 transition-all duration-500",
             !currentChatId && messages.length === 0
               ? "opacity-0 pointer-events-none translate-y-5"
               : "opacity-100 pointer-events-auto translate-y-0",
@@ -2989,7 +3781,10 @@ export function ChatbotApp() {
                     }
                   }}
                   onRegenerate={handleRegenerate}
-                  setActiveArtifact={setActiveArtifact}
+                  onSpeak={handleSpeakMessage}
+                  isSpeakingThisMessage={
+                    liveVoice.isSpeaking && speakingMessageId === m.id
+                  }
                 />
               );
             })}
@@ -3319,6 +4114,7 @@ export function ChatbotApp() {
                     ref={modelDropdownRef}
                   >
                     <button
+                    data-testid="chatbot-model-dropdown-btn"
                     onClick={() => {
                       if (!modelDropdownOpen) {
                         refreshModels?.();
@@ -3348,185 +4144,87 @@ export function ChatbotApp() {
                         : "opacity-0 scale-95 pointer-events-none",
                     )}
                   >
-                    <div className="max-h-[300px] overflow-y-auto no-scrollbar pb-2">
-                      {hasHordeModels && (
+                    <div className="max-h-[360px] overflow-y-auto no-scrollbar pb-2">
+                      {standardModels.length > 0 && (
                         <>
                           <div className="px-3 pt-3 pb-1">
                             <p className="text-[10px] uppercase tracking-wider text-slate-400 font-display font-medium">
-                              Default Models
+                              {t("account.standardModels", undefined, "Standard Models")}
+                            </p>
+                            <p className="text-[10px] text-cyan-400/90 mt-0.5 leading-snug">
+                              {t(
+                                "account.questPollenNotice",
+                                undefined,
+                                "All models in this section use quest pollen, not paid pollen.",
+                              )}
                             </p>
                           </div>
-                          <div className="px-3 pb-1">
-                            <p className="text-[11px] text-slate-400 font-display font-medium">
-                              AI Horde
-                            </p>
-                          </div>
-                          <div className="px-2 pl-3 border-l border-white/5 ml-3">
-                            {hordeModels.map((m) => (
+                          <div className="px-2">
+                            {standardModels.map((m) => (
                               <button
                                 key={`${m.provider}-${m.model_id}`}
                                 onClick={() => {
-                                  setSelection(m.model_id, m.provider);
+                                  setSelectedModel(m.model_id);
                                   setModelDropdownOpen(false);
                                 }}
                                 className={cn(
                                   "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
-                                  selectedModel === m.model_id &&
-                                    selectedProvider === m.provider
+                                  selectedModel === m.model_id
                                     ? "bg-white/5"
                                     : "",
                                 )}
                               >
                                 <div className="text-sm text-white font-medium">
-                                  {
-                                    formatModelLabel(
-                                      m.provider,
-                                      m.model_id,
-                                    ).split(" - ")[0]
-                                  }
+                                  {m.name || m.model_id}
                                 </div>
                                 <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
                                   <span>
-                                    {formatModelLabel(
-                                      m.provider,
-                                      m.model_id,
-                                    ).split(" - ")[1] || ""}
+                                    {m.model_id}
+                                    {m.rate ? ` • ${m.rate}` : ""}
                                   </span>
-                                  {hordeStatus?.[m.model_id]?.eta > 0 && (
-                                    <span className="text-cyan-500/70 ml-2 whitespace-nowrap">
-                                      ETA:{" "}
-                                      {formatHordeEta(
-                                        hordeStatus[m.model_id].eta,
-                                      )}
-                                    </span>
-                                  )}
                                 </div>
-                                {selectedModel === m.model_id &&
-                                  selectedProvider === m.provider && (
-                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
-                                  )}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
-
-                      {hasLocalModels && (
-                        <>
-                          <div className="px-3 pb-1 pt-3">
-                            <p className="text-[11px] text-slate-400 font-display font-medium">
-                              Local Running Apps
-                            </p>
-                          </div>
-                          <div className="px-2 pl-3 border-l border-white/5 ml-3">
-                            {localModels.map((m) => (
-                              <button
-                                key={`${m.provider}-${m.model_id}`}
-                                onClick={() => {
-                                  setSelection(m.model_id, m.provider);
-                                  setModelDropdownOpen(false);
-                                }}
-                                className={cn(
-                                  "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
-                                  selectedModel === m.model_id &&
-                                    selectedProvider === m.provider
-                                    ? "bg-white/5"
-                                    : "",
+                                {selectedModel === m.model_id && (
+                                  <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
                                 )}
-                              >
-                                <div className="text-sm text-white font-medium">
-                                  {m.model_id}
-                                </div>
-                                <div className="text-[11px] text-slate-400 truncate w-full capitalize">
-                                  {m.provider.replace("local-", "")}
-                                </div>
-                                {selectedModel === m.model_id &&
-                                  selectedProvider === m.provider && (
-                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
-                                  )}
                               </button>
                             ))}
                           </div>
                         </>
                       )}
 
-                      {hasCustomModels && (
+
+
+                      {customModels.length > 0 && (
                         <>
                           <div className="px-3 pb-1 pt-3 flex justify-between items-center">
-                            <p className="text-[11px] text-slate-400 font-display font-medium">
-                              Custom
+                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-display font-medium">
+                              {t("account.customModels", undefined, "Custom Models")}
                             </p>
                           </div>
-                          <div className="px-2 pl-3 border-l border-white/5 ml-3">
+                          <div className="px-2">
                             {customModels.map((m) => (
                               <button
                                 key={`${m.provider}-${m.model_id}`}
                                 onClick={() => {
-                                  setSelection(m.model_id, m.provider);
+                                  setSelectedModel(m.model_id);
                                   setModelDropdownOpen(false);
                                 }}
                                 className={cn(
                                   "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
-                                  selectedModel === m.model_id &&
-                                    selectedProvider === m.provider
+                                  selectedModel === m.model_id
                                     ? "bg-white/5"
                                     : "",
                                 )}
                               >
                                 <div className="text-sm text-white font-medium">
-                                  {
-                                    formatModelLabel(
-                                      m.provider,
-                                      m.model_id,
-                                    ).split(" - ")[0]
-                                  }
+                                  {m.name || m.model_id}
                                 </div>
                                 <div className="text-[11px] text-slate-400 truncate w-full pr-4">
-                                  {formatModelLabel(
-                                    m.provider,
-                                    m.model_id,
-                                  ).split(" - ")[1] || ""}
+                                  {m.model_id}
                                 </div>
-                                {selectedModel === m.model_id &&
-                                  selectedProvider === m.provider && (
-                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
-                                  )}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
-
-                      {otherModels.length > 0 && (
-                        <>
-                          <div className="px-3 pt-3 pb-1">
-                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-display font-medium">
-                              Other Models
-                            </p>
-                          </div>
-                          <div className="px-2">
-                            {otherModels.map((m) => (
-                              <button
-                                key={`${m.provider}-${m.model_id}`}
-                                onClick={() => {
-                                  setSelection(m.model_id, m.provider);
-                                  setModelDropdownOpen(false);
-                                }}
-                                className={cn(
-                                  "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
-                                  selectedModel === m.model_id &&
-                                    selectedProvider === m.provider
-                                    ? "bg-white/5"
-                                    : "",
+                                {selectedModel === m.model_id && (
+                                  <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
                                 )}
-                              >
-                                <div className="text-sm text-white font-medium truncate pr-4">
-                                  {formatModelLabel(m.provider, m.model_id)}
-                                </div>
-                                {selectedModel === m.model_id &&
-                                  selectedProvider === m.provider && (
-                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
-                                  )}
                               </button>
                             ))}
                           </div>
@@ -3536,6 +4234,61 @@ export function ChatbotApp() {
                   </div>
                 </div>
                 )}
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (liveVoice.isSpeaking) {
+                      liveVoice.stopSpeaking();
+                      return;
+                    }
+                    if (liveVoice.isRecording) {
+                      await liveVoice.stopRecording();
+                    } else if (!liveVoice.isTranscribing) {
+                      await liveVoice.startRecording();
+                    }
+                  }}
+                  disabled={liveVoice.isTranscribing}
+                  className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 mr-1 flex-shrink-0 relative",
+                    liveVoice.isRecording
+                      ? "bg-red-500/20 text-red-400 hover:bg-red-500/30 animate-pulse ring-2 ring-red-500/50"
+                      : liveVoice.isSpeaking
+                      ? "bg-primary/20 text-primary hover:bg-primary/30 animate-pulse"
+                      : liveVoice.isTranscribing
+                      ? "bg-white/5 text-primary"
+                      : "bg-transparent hover:bg-white/5 text-white/70 hover:text-white",
+                  )}
+                  title={
+                    liveVoice.isRecording
+                      ? t("apps.chatbotStopRecording", undefined, "Stop recording (Speech to text)")
+                      : liveVoice.isSpeaking
+                      ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
+                      : liveVoice.isTranscribing
+                      ? t("apps.chatbotTranscribing", undefined, "Transcribing...")
+                      : t("apps.chatbotSpeechToText", undefined, "Speech to text")
+                  }
+                  aria-label={
+                    liveVoice.isRecording
+                      ? t("apps.chatbotStopRecording", undefined, "Stop recording (Speech to text)")
+                      : liveVoice.isSpeaking
+                      ? t("apps.chatbotStopSpeaking", undefined, "Stop speaking")
+                      : liveVoice.isTranscribing
+                      ? t("apps.chatbotTranscribing", undefined, "Transcribing...")
+                      : t("apps.chatbotSpeechToText", undefined, "Speech to text")
+                  }
+                >
+                  {liveVoice.isTranscribing ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : liveVoice.isRecording ? (
+                    <span className="relative flex h-3.5 w-3.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500"></span>
+                    </span>
+                  ) : (
+                    <Mic className="w-5 h-5" />
+                  )}
+                </button>
 
                 {isTyping ? (
                   <button
@@ -3547,7 +4300,7 @@ export function ChatbotApp() {
                   </button>
                 ) : (
                   <button
-                    onClick={handleSendMessage}
+                    onClick={() => handleSendMessage()}
                     disabled={!input.trim()}
                     className="w-10 h-10 rounded-full bg-transparent hover:bg-white/5 flex items-center justify-center text-white transition-colors duration-200 mr-2 flex-shrink-0 disabled:opacity-50"
                     aria-label="Send message"
@@ -3560,13 +4313,6 @@ export function ChatbotApp() {
           </div>
         </div>
       </main>
-
-      {activeArtifact && (
-        <ArtifactSidebar
-          artifact={activeArtifact}
-          onClose={() => setActiveArtifact(null)}
-        />
-      )}
     </div>
   );
 }

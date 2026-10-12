@@ -20,7 +20,10 @@ import {
   Users,
   Search,
   ArrowUpDown,
+  Copy,
 } from "lucide-react";
+import { copyEntityAsMarkdown } from "@/utils/characterExport";
+import { useTranslation } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -57,6 +60,7 @@ interface PublicCharacter {
   personality: string | null;
   hidden_description: string | null;
   backstory: string | null;
+  situation?: string | null;
   is_universe: boolean;
   is_race?: boolean;
   race_id?: string | null;
@@ -83,6 +87,7 @@ interface LocalCharacter {
   appearance: string | null;
   personality: string | null;
   backstory: string | null;
+  situation?: string | null;
   hidden_description: string | null;
   image_path: string | null;
   stats_enabled?: boolean;
@@ -94,6 +99,7 @@ type SortOption = "most_liked" | "most_recent" | "most_downloaded";
 export function PublicCharactersApp() {
   const { session } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<
     "characters" | "universes" | "races"
@@ -280,6 +286,7 @@ export function PublicCharactersApp() {
         appearance: item.appearance,
         personality: item.personality,
         backstory: item.backstory,
+        situation: item.situation,
         hidden_description: item.hidden_description,
         image_path: item.image_path,
         is_universe: item.is_universe || false,
@@ -350,6 +357,7 @@ export function PublicCharactersApp() {
         appearance: charToUpload.appearance,
         personality: charToUpload.personality,
         backstory: charToUpload.backstory,
+        situation: charToUpload.situation,
         hidden_description: charToUpload.hidden_description,
         image_path: charToUpload.image_path,
         is_universe: charToUpload.is_universe || false,
@@ -765,6 +773,16 @@ export function PublicCharactersApp() {
                       </p>
                     </div>
                   )}
+                  {selectedItem.situation && (
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-400 mb-1">
+                        Current Situation & Abilities
+                      </h4>
+                      <p className="text-slate-200 whitespace-pre-wrap">
+                        {selectedItem.situation}
+                      </p>
+                    </div>
+                  )}
                   {selectedItem.stats_enabled &&
                     selectedItem.stats &&
                     typeof selectedItem.stats === "object" && (
@@ -845,6 +863,36 @@ export function PublicCharactersApp() {
                   </span>
                 </div>
                 <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      copyEntityAsMarkdown(selectedItem, {
+                        toast: (msg, opts) =>
+                          toast({
+                            title: msg,
+                            variant: opts?.variant,
+                          }),
+                        successMessage: t(
+                          "characters.importableTextCopied",
+                          undefined,
+                          "Importable text copied to clipboard!",
+                        ),
+                        errorMessage: t(
+                          "characters.copyImportableTextFailed",
+                          undefined,
+                          "Failed to copy text to clipboard",
+                        ),
+                      })
+                    }
+                    className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    {t(
+                      "characters.copyImportableText",
+                      undefined,
+                      "Copy Importable Text",
+                    )}
+                  </Button>
                   <Button
                     variant="outline"
                     onClick={() => setDetailsDialogOpen(false)}

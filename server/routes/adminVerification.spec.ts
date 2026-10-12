@@ -32,7 +32,8 @@ vi.mock("../lib/auth.ts", () => ({
   }),
 }));
 
-vi.mock("../lib/storage.ts", () => ({
+vi.mock("../lib/storage.ts", async original => ({
+  ...(await original<any>()),
   serverStorage: {
     download: vi.fn(async () => ({ data: Buffer.from("test"), error: null })),
     upload: vi.fn(async () => ({ data: {}, error: null })),
@@ -172,6 +173,16 @@ describe("Admin Verification Routes", () => {
     expect(body.success).toBe(true);
     expect(body.verification.status).toBe("rejected");
     expect(body.verification.rejection_reason).toBe("Violates terms");
+  });
+
+  it("rejects a queued request referencing another user's private file", async () => {
+    mockVerifications = [{ id: "v-forged", user_id: "user-123", asset_type: "file", target_type: "public_asset", original_file_path: "victim/private.txt" }];
+    const response = await app.request("/v-forged/approve", {
+      method: "POST", headers: { Authorization: "Bearer admin-token" },
+    });
+    expect(response.status).toBe(400);
+    expect(serverStorage.move).not.toHaveBeenCalled();
+    expect(serverStorage.download).not.toHaveBeenCalled();
   });
 
   it("successfully approves a submission", async () => {

@@ -229,7 +229,7 @@ size_t vfs_read(VFSNode* node, size_t offset, size_t size, uint8_t* buffer) {
     if (offset >= node->size) return 0;
 
     size_t to_read = size;
-    if (offset + to_read > node->size) {
+    if (to_read > node->size - offset) {
         to_read = node->size - offset;
     }
 
@@ -242,7 +242,10 @@ size_t vfs_read(VFSNode* node, size_t offset, size_t size, uint8_t* buffer) {
 size_t vfs_write(VFSNode* node, size_t offset, size_t size, const uint8_t* buffer) {
     if (!node || node->type != VFS_TYPE_FILE || !buffer) return 0;
 
+    const size_t max_size = static_cast<size_t>(-1);
+    if (size >= max_size || offset > max_size - size - 1) return 0;
     size_t required_capacity = offset + size + 1;
+    if (required_capacity > (max_size - 255) / 2) return 0;
     if (required_capacity > node->capacity) {
         size_t new_cap = ALIGN_UP(required_capacity * 2, 256);
         uint8_t* new_data = (uint8_t*)krealloc(node->data, new_cap);

@@ -1,3 +1,4 @@
+import { fetchPublicUrl } from "../lib/publicFetch.ts";
 import { Hono } from "hono";
 import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
@@ -9,6 +10,7 @@ import {
   fetchHordeNonStreamWithContinuation,
 } from "../lib/hordeContinuation.ts";
 import { safeParseJson } from "../../shared/jsonRepair.ts";
+import { getUserApiKey } from "../lib/userApiKeys.ts";
 
 export const agentSearchRouter = new Hono();
 
@@ -24,7 +26,7 @@ export const HORDE_MODELS_MAP: Record<string, string[]> = {
   Fast: [
     "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
   ],
-  Smart: ["aphrodite/DeepSeek-V4.1-Flash"],
+  Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
   Writing: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
 };
 
@@ -376,14 +378,9 @@ async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
   } catch {
     // If robots.txt check itself fails, proceed cautiously
   }
-
   try {
-    const res = await fetch(cleanUrl, {
-      headers: {
-        "User-Agent": BROWSER_USER_AGENT,
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-      },
+    const res = await fetchPublicUrl(cleanUrl, {
+      headers: AI_SEARCH_HEADERS,
       signal: AbortSignal.timeout(6000),
     });
 
@@ -411,7 +408,7 @@ async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
           try {
             const wikiContent = await Promise.any(
               apiEndpoints.map(async (endpoint) => {
-                const apiRes = await fetch(endpoint, {
+                const apiRes = await fetchPublicUrl(endpoint, {
                   headers: {
                     "User-Agent": AI_SEARCH_USER_AGENT,
                     From: AI_SEARCH_CONTACT_EMAIL,
@@ -701,7 +698,7 @@ async function callModelProvider({
     headers["HTTP-Referer"] = "https://oxygenlow.com";
     headers["X-Title"] = "Oxygen Low's Software";
   } else if (provider === "pollinations") {
-    targetUrl = "https://text.pollinations.ai/openai/chat/completions";
+    targetUrl = "https://gen.pollinations.ai/v1/chat/completions";
     requestBody = { ...requestBody, model, messages };
     if (apiKey) {
       headers["Authorization"] = `Bearer ${apiKey}`;
@@ -886,10 +883,29 @@ agentSearchRouter.post(
         return "";
       };
 
+      const isInvalidOrMaskedApiKey = (k?: unknown): boolean => {
+        if (!k || typeof k !== "string") return true;
+        const trimmed = k.trim();
+        if (trimmed.length === 0 || trimmed.includes("...") || trimmed.toLowerCase() === "configured") return true;
+        return false;
+      };
+
+      let resolvedResearchApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
+      let resolvedSummarizerApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
+
+      if (!resolvedResearchApiKey && user?.id) {
+        resolvedResearchApiKey =
+          (await getUserApiKey(user.id, effectiveResearchProvider)) || "";
+      }
+      if (!resolvedSummarizerApiKey && user?.id) {
+        resolvedSummarizerApiKey =
+          (await getUserApiKey(user.id, effectiveSummarizerProvider)) || "";
+      }
+
       const effectiveResearchApiKey =
-        apiKey || resolveEnvKey(effectiveResearchProvider);
+        resolvedResearchApiKey || resolveEnvKey(effectiveResearchProvider);
       const effectiveSummarizerApiKey =
-        apiKey || resolveEnvKey(effectiveSummarizerProvider);
+        resolvedSummarizerApiKey || resolveEnvKey(effectiveSummarizerProvider);
 
       if (
         !effectiveResearchApiKey &&
@@ -928,7 +944,7 @@ agentSearchRouter.post(
         const imagePromises = images.map(async (img: any) => {
           if (img.data.startsWith("https://")) {
             try {
-              const imgRes = await fetch(img.data, {
+              const imgRes = await fetchPublicUrl(img.data, {
                 signal: AbortSignal.timeout(8000),
               });
               if (imgRes.ok) {

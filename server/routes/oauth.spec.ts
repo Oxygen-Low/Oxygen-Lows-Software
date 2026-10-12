@@ -210,6 +210,17 @@ describe("OAuth & Developer Auth Router", () => {
       testApiKey = data.apiKey;
     });
 
+    it("rejects case-changed callback paths at both authorization endpoints", async () => {
+      const uri = "http://localhost:5173/Auth/callback";
+      const details = await app.request(`/api/oauth/authorize-details?client_id=${testApp.client_id}&redirect_uri=${encodeURIComponent(uri)}`);
+      expect(details.status).toBe(400);
+      const authorize = await app.request("/api/oauth/authorize", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${endUserToken}` },
+        body: JSON.stringify({ client_id: testApp.client_id, redirect_uri: uri, action: "allow" }),
+      });
+      expect(authorize.status).toBe(400);
+    });
+
     it("fetches authorization details for consent screen", async () => {
       const res = await app.request(
         `/api/oauth/authorize-details?client_id=${testApp.client_id}&redirect_uri=${encodeURIComponent(

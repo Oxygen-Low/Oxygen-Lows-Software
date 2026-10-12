@@ -255,16 +255,9 @@ authRouter.post("/login", async (c) => {
       return c.json({ error: "Invalid username or password" }, 400);
     }
 
-    // Check if account has wiped credentials and needs migration
-    if (!user.auth_verifier) {
-      return c.json({
-        needsMigration: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          username: user.username,
-        },
-      });
+    // Accounts without a verifier require independently verified recovery.
+    if (!user.auth_verifier || user.suspended || user.status === "suspended") {
+      return c.json({ error: "Invalid username or password" }, 400);
     }
 
     const tokenInput = authToken || password;
@@ -309,63 +302,7 @@ authRouter.post("/login", async (c) => {
 /**
  * Migrate account credentials: sets new zero-knowledge auth verifier
  */
-authRouter.post("/migrate-account", async (c) => {
-  try {
-    const body = await c.req.json().catch(() => ({}));
-    const { login, authToken, password } = body;
-    const tokenInput = authToken || password;
-
-    if (!login || !tokenInput) {
-      return c.json(
-        { error: "Username/email and new password are required" },
-        400,
-      );
-    }
-
-    const user = getUserByUsernameOrEmail(login);
-    if (!user) {
-      return c.json({ error: "User not found" }, 404);
-    }
-
-    const authSalt = generateSalt();
-    const authVerifier = hashAuthVerifier(tokenInput, authSalt);
-    const updated = updateUserAuthVerifier(user.id, authVerifier, authSalt);
-    if (!updated) {
-      return c.json({ error: "Failed to update user credentials" }, 500);
-    }
-
-    const token = generateToken({
-      id: String(updated.id),
-      username: String(updated.username),
-      email: String(updated.email),
-      role: updated.role,
-    });
-    const session = {
-      access_token: token,
-      token_type: "bearer",
-      user: {
-        id: updated.id,
-        email: updated.email,
-        username: updated.username,
-        role: String(updated.id) === "1" ? "admin" : updated.role || "user",
-        user_metadata: {
-          username: updated.username,
-          full_name: updated.username,
-          role: String(updated.id) === "1" ? "admin" : updated.role || "user",
-        },
-      },
-    };
-
-    return c.json({
-      user: session.user,
-      token,
-      session,
-      error: null,
-    });
-  } catch (err: any) {
-    return c.json({ error: err.message || "Migration failed" }, 500);
-  }
-});
+authRouter.post("/migrate-account", (c) => c.json({ error: "Unauthorized" }, 401));
 
 /**
  * Change password for authenticated users

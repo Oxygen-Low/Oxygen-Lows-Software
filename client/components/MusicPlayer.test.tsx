@@ -6,11 +6,11 @@ import {
   fireEvent,
   waitFor,
   cleanup,
+  within,
 } from "@testing-library/react";
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { MusicPlayer } from "./MusicPlayer";
-import { SidebarMusicPlayer } from "./SidebarMusicPlayer";
 import { TopbarMusicPlayer } from "./TopbarMusicPlayer";
 import { MusicProvider, useMusicContext } from "@/contexts/MusicContext";
 
@@ -57,7 +57,7 @@ vi.mock("@/hooks/useAuth", () => ({
   }),
 }));
 
-describe("MusicPlayer & SidebarMusicPlayer & TopbarMusicPlayer components", () => {
+describe("MusicPlayer & TopbarMusicPlayer components", () => {
   const defaultContext = {
     currentTrack: { name: "Test Song", fileName: "test.mp3" },
     currentPosition: 15000,
@@ -66,6 +66,8 @@ describe("MusicPlayer & SidebarMusicPlayer & TopbarMusicPlayer components", () =
     shuffle: false,
     loop: false,
     volume: 1,
+    playlistSessionVolume: 1,
+    setPlaylistSessionVolume: vi.fn(),
     isMuted: false,
     audioRef: { current: { duration: 180 } },
     play: vi.fn(),
@@ -108,33 +110,6 @@ describe("MusicPlayer & SidebarMusicPlayer & TopbarMusicPlayer components", () =
     });
 
     render(<MusicPlayer />);
-
-    const loopButton = screen.getByTitle("Toggle loop");
-    expect(loopButton).not.toBeNull();
-    expect(loopButton.getAttribute("aria-pressed")).toBe("true");
-
-    fireEvent.click(loopButton);
-    expect(defaultContext.toggleLoop).toHaveBeenCalledWith(false);
-  });
-
-  it("renders loop button and triggers toggleLoop in SidebarMusicPlayer", () => {
-    render(<SidebarMusicPlayer />);
-
-    const loopButton = screen.getByTitle("Toggle loop");
-    expect(loopButton).not.toBeNull();
-    expect(loopButton.getAttribute("aria-pressed")).toBe("false");
-
-    fireEvent.click(loopButton);
-    expect(defaultContext.toggleLoop).toHaveBeenCalledWith(true);
-  });
-
-  it("renders active loop button in SidebarMusicPlayer when loop is true", () => {
-    mockUseMusic.mockReturnValue({
-      ...defaultContext,
-      loop: true,
-    });
-
-    render(<SidebarMusicPlayer />);
 
     const loopButton = screen.getByTitle("Toggle loop");
     expect(loopButton).not.toBeNull();
@@ -212,22 +187,40 @@ describe("MusicPlayer & SidebarMusicPlayer & TopbarMusicPlayer components", () =
     expect(screen.getByTitle("No track playing")).not.toBeNull();
   });
 
-  it("toggles and interacts with the playlist in SidebarMusicPlayer", () => {
+  it("provides full playback controls inside the playlist popover and selects a track", () => {
     render(
       <MemoryRouter>
-        <SidebarMusicPlayer />
+        <TopbarMusicPlayer />
       </MemoryRouter>,
     );
 
-    const togglePlaylistBtn = screen.getByTitle("Current Playlist");
-    expect(togglePlaylistBtn).not.toBeNull();
-    fireEvent.click(togglePlaylistBtn);
+    fireEvent.click(screen.getByTitle("Current Playlist"));
+    const popup = within(screen.getByRole("dialog"));
+    fireEvent.click(popup.getByRole("button", { name: "Previous track" }));
+    fireEvent.click(popup.getByRole("button", { name: "Next track" }));
+    fireEvent.click(popup.getByRole("button", { name: "Pause track" }));
+    fireEvent.click(popup.getByRole("button", { name: "Toggle shuffle" }));
+    fireEvent.click(popup.getByRole("button", { name: "Toggle loop" }));
+    fireEvent.click(popup.getByRole("button", { name: "Mute" }));
+    fireEvent.change(popup.getByRole("slider", { name: "Seek track position" }), {
+      target: { value: "45000" },
+    });
+    fireEvent.change(popup.getByRole("slider", { name: "Volume" }), {
+      target: { value: "0.5" },
+    });
 
-    const trackMatches = screen.getAllByText("Test Song");
-    expect(trackMatches.length).toBeGreaterThanOrEqual(2);
-    // Click the playlist track item
-    fireEvent.click(trackMatches[1]);
+    expect(defaultContext.playPrev).toHaveBeenCalledOnce();
+    expect(defaultContext.playNext).toHaveBeenCalledOnce();
+    expect(defaultContext.pause).toHaveBeenCalledOnce();
+    expect(defaultContext.toggleShuffle).toHaveBeenCalledWith(true);
+    expect(defaultContext.toggleLoop).toHaveBeenCalledWith(true);
+    expect(defaultContext.toggleMute).toHaveBeenCalledOnce();
+    expect(defaultContext.seek).toHaveBeenCalledWith(45000);
+    expect(defaultContext.setVolume).toHaveBeenCalledWith(0.5);
+
+    fireEvent.click(popup.getByRole("button", { name: /Test Song/ }));
     expect(defaultContext.playTrack).toHaveBeenCalledWith(defaultContext.playlist[0]);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("renders playlist popover trigger with track count badge in TopbarMusicPlayer", () => {
@@ -239,6 +232,69 @@ describe("MusicPlayer & SidebarMusicPlayer & TopbarMusicPlayer components", () =
 
     const playlistBtn = screen.getByTitle("Current Playlist");
     expect(playlistBtn).not.toBeNull();
+  });
+
+  it("renders session volume slider in TopbarMusicPlayer popover and updates volume", () => {
+    const mockSetPlaylistSessionVolume = vi.fn();
+    mockUseMusic.mockReturnValue({
+      ...defaultContext,
+      playlistSessionVolume: 0.7,
+      setPlaylistSessionVolume: mockSetPlaylistSessionVolume,
+    });
+
+    render(
+      <MemoryRouter>
+        <TopbarMusicPlayer />
+      </MemoryRouter>,
+    );
+
+    // Open playlist popover
+    fireEvent.click(screen.getByTitle("Current Playlist"));
+    const popup = within(screen.getByRole("dialog"));
+
+    expect(popup.getByText("Session Playlist Volume")).not.toBeNull();
+    expect(popup.getByText("70%")).not.toBeNull();
+
+    const sessionSlider = popup.getByLabelText("Session Playlist Volume");
+    fireEvent.change(sessionSlider, { target: { value: "0.5" } });
+    expect(mockSetPlaylistSessionVolume).toHaveBeenCalledWith(0.5);
+
+    const resetBtn = popup.getByRole("button", { name: "Reset session volume" });
+    fireEvent.click(resetBtn);
+    expect(mockSetPlaylistSessionVolume).toHaveBeenCalledWith(1);
+  });
+
+  it("renders topbar mute/volume button as session volume control and toggles popover", () => {
+    const mockSetPlaylistSessionVolume = vi.fn();
+    mockUseMusic.mockReturnValue({
+      ...defaultContext,
+      playlistSessionVolume: 0.8,
+      setPlaylistSessionVolume: mockSetPlaylistSessionVolume,
+    });
+
+    render(
+      <MemoryRouter>
+        <TopbarMusicPlayer />
+      </MemoryRouter>,
+    );
+
+    // Click topbar volume button
+    const volBtn = screen.getByRole("button", { name: "Session Playlist Volume" });
+    expect(volBtn).not.toBeNull();
+    fireEvent.click(volBtn);
+
+    const popup = within(screen.getByRole("dialog"));
+    expect(popup.getByText("80%")).not.toBeNull();
+
+    // Adjust volume slider in topbar popover
+    const slider = popup.getByLabelText("Session Playlist Volume");
+    fireEvent.change(slider, { target: { value: "0.4" } });
+    expect(mockSetPlaylistSessionVolume).toHaveBeenCalledWith(0.4);
+
+    // Click Mute in popover
+    const muteBtn = popup.getByRole("button", { name: "Mute" });
+    fireEvent.click(muteBtn);
+    expect(defaultContext.toggleMute).toHaveBeenCalled();
   });
 });
 
@@ -979,6 +1035,76 @@ describe("MusicContext playlist management and playback features", () => {
 
     await waitFor(() => {
       expect(audioElement?.src).toContain("songC.mp3");
+    });
+  });
+
+  it("applies playlistSessionVolume scaling across tracks in MusicProvider", async () => {
+    mockSupabase.from.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: {
+              music_playlist: [
+                { name: "Song 1", fileName: "song1.mp3", volume: 1.0 },
+                { name: "Song 2", fileName: "song2.mp3", volume: 0.8 },
+              ],
+              current_music_track: "song1.mp3",
+              current_music_position: 0,
+            },
+            error: null,
+          }),
+        }),
+      }),
+      upsert: vi.fn().mockResolvedValue({ error: null }),
+    });
+
+    const VolumeConsumer = () => {
+      const { playlistSessionVolume, setPlaylistSessionVolume, audioRef, playNext } =
+        useMusicContext();
+      return (
+        <div>
+          <span data-testid="session-vol">{playlistSessionVolume}</span>
+          <button
+            data-testid="set-session-vol"
+            onClick={() => setPlaylistSessionVolume(0.5)}
+          >
+            Set 50%
+          </button>
+          <button data-testid="play-next-track" onClick={() => playNext()}>
+            Next
+          </button>
+        </div>
+      );
+    };
+
+    render(
+      <MusicProvider>
+        <VolumeConsumer />
+      </MusicProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("session-vol").textContent).toBe("1");
+    });
+
+    const audioElement = document.querySelector("audio");
+    expect(audioElement).not.toBeNull();
+
+    // Change session volume to 50% (0.5)
+    fireEvent.click(screen.getByTestId("set-session-vol"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("session-vol").textContent).toBe("0.5");
+      // Song 1 track volume (1.0) * master volume (1.0) * session volume (0.5) = 0.5
+      expect(audioElement?.volume).toBeCloseTo(0.5);
+    });
+
+    // Advance to next song (Song 2 with track volume 0.8)
+    fireEvent.click(screen.getByTestId("play-next-track"));
+
+    await waitFor(() => {
+      // 0.8 (track volume) * 1.0 (master) * 0.5 (session volume) = 0.4
+      expect(audioElement?.volume).toBeCloseTo(0.4);
     });
   });
 });
