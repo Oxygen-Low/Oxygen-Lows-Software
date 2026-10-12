@@ -1675,10 +1675,13 @@ export function ChatbotApp() {
         ),
       );
 
-      const planPrompt = `Formulate a targeted web search query and response format to research and answer my request.\nRespond ONLY with a valid JSON object in this exact structure:\n{\n  "query": "<search query to look up on the web>",\n  "responseFormat": "<conclusion | summary | analysis | description | comparison>"\n}`;
+      const lastUserMsg = baseChatMessages.filter((m) => m.role === "user").pop();
+      const lastUserText = lastUserMsg?.content || baseChatMessages[baseChatMessages.length - 1]?.content || "";
+
+      const planPrompt = `Formulate a targeted web search query and response format to research and answer this request: "${lastUserText}".\nRespond ONLY with a valid JSON object in this exact structure:\n{\n  "query": "<search query to look up on the web>",\n  "responseFormat": "<conclusion | summary | analysis | description | comparison>"\n}`;
 
       const searchPlanMessages = [
-        ...baseChatMessages,
+        ...baseChatMessages.slice(0, -1),
         { role: "user", content: planPrompt } as Message,
       ];
 
@@ -1686,15 +1689,14 @@ export function ChatbotApp() {
       const planOutput = await callAiStream(
         selectedProvider,
         selectedModel,
-        getApiMessages(searchPlanMessages),
+        getApiMessages(searchPlanMessages.length > 0 ? searchPlanMessages : [{ role: "user", content: planPrompt } as Message]),
         signal,
         (content) => {
           searchPlanningText = content;
         },
       );
 
-      let parsedQuery =
-        baseChatMessages[baseChatMessages.length - 1]?.content || "";
+      let parsedQuery = lastUserText;
       let parsedFormat = "conclusion";
 
       try {
@@ -1842,17 +1844,14 @@ export function ChatbotApp() {
       );
 
       // Perform synthesis with the selected chatbot model
+      const searchContextPrefix = `Web Search Findings:\n${searchFindings || "No search findings gathered."}\n\nInstructions: Answer the user's request accurately, factually, and comprehensively using the verified web search findings above. Cite relevant source URLs where applicable.`;
+
       if (isReasoningEnabled) {
         const reasoningMessages = [
-          ...baseChatMessages,
-          {
-            role: "assistant",
-            content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}`,
-          } as Message,
+          ...baseChatMessages.slice(0, -1),
           {
             role: "user",
-            content:
-              "Based on the web search findings above, please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
+            content: `${lastUserText}\n\n${searchContextPrefix}\n\nBased on the web search findings above, please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.`,
           } as Message,
         ];
 
@@ -1871,7 +1870,7 @@ export function ChatbotApp() {
         );
 
         const finalMessages = [
-          ...baseChatMessages,
+          ...baseChatMessages.slice(0, -1),
           {
             role: "assistant",
             content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}\n\nMy internal reasoning:\n${reasoningContent}`,
@@ -1907,15 +1906,10 @@ export function ChatbotApp() {
         );
       } else {
         const synthesisMessages = [
-          ...baseChatMessages,
-          {
-            role: "assistant",
-            content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}`,
-          } as Message,
+          ...baseChatMessages.slice(0, -1),
           {
             role: "user",
-            content:
-              "Based on the web search findings above, synthesize a high-quality, comprehensive, and well-structured response to answer my request. Cite sources where relevant.",
+            content: `${lastUserText}\n\n${searchContextPrefix}`,
           } as Message,
         ];
 
