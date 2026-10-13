@@ -1,9 +1,8 @@
 /** @vitest-environment jsdom */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { renderHook, act, waitFor, cleanup } from "@testing-library/react";
 import React from "react";
 import { useAiModels, BUILTIN_MODELS, SUPPORTED_PROVIDERS } from "./useAiModels";
-import { ThemeProvider } from "@/contexts/ThemeContext";
 
 vi.mock("@/lib/db", () => {
   const mockClient = {
@@ -38,9 +37,6 @@ vi.mock("@/services/pollinationsClient", () => ({
     return 0;
   }),
 }));
-
-const wrapper = ({ children }: { children: React.ReactNode }) =>
-  React.createElement(ThemeProvider, null, children);
 
 describe("useAiModels Hook (Pollinations Exclusive)", () => {
   const originalFetch = global.fetch;
@@ -77,12 +73,13 @@ describe("useAiModels Hook (Pollinations Exclusive)", () => {
   });
 
   afterEach(() => {
+    cleanup();
     localStorage.clear();
     global.fetch = originalFetch;
   });
 
   it("loads only Pollinations in supported providers and contains built-in models", async () => {
-    const { result } = renderHook(() => useAiModels(), { wrapper });
+    const { result } = renderHook(() => useAiModels());
 
     expect(SUPPORTED_PROVIDERS.length).toBe(1);
     expect(SUPPORTED_PROVIDERS[0].id).toBe("pollinations");
@@ -94,7 +91,7 @@ describe("useAiModels Hook (Pollinations Exclusive)", () => {
   });
 
   it("manages Pollinations API key server-side and queries Pollen balance", async () => {
-    const { result } = renderHook(() => useAiModels(), { wrapper });
+    const { result } = renderHook(() => useAiModels());
 
     expect(result.current.pollinationsApiKey).toBe("");
     expect(result.current.pollenBalance).toBe(0);
@@ -111,7 +108,7 @@ describe("useAiModels Hook (Pollinations Exclusive)", () => {
   });
 
   it("allows adding and removing custom Pollinations models", async () => {
-    const { result } = renderHook(() => useAiModels(), { wrapper });
+    const { result } = renderHook(() => useAiModels());
 
     await act(async () => {
       await result.current.addCustomModel({
@@ -137,7 +134,7 @@ describe("useAiModels Hook (Pollinations Exclusive)", () => {
   });
 
   it("updates chatbot and feature default models", async () => {
-    const { result } = renderHook(() => useAiModels(), { wrapper });
+    const { result } = renderHook(() => useAiModels());
 
     await act(async () => {
       await result.current.setChatbotDefault("deepseek-r1");
@@ -147,7 +144,7 @@ describe("useAiModels Hook (Pollinations Exclusive)", () => {
   });
 
   it("toggles and persists pollinations supporter mode", async () => {
-    const { result } = renderHook(() => useAiModels(), { wrapper });
+    const { result } = renderHook(() => useAiModels());
 
     expect(result.current.isPollinationsSupporter).toBe(false);
 

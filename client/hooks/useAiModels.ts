@@ -135,6 +135,15 @@ export function useAiModels() {
   const [pollenBalance, setPollenBalance] = useState<number>(0);
   const [isMasterKeyActive, setIsMasterKeyActive] = useState(false);
   const loadIdRef = useRef<number>(0);
+  const isMountedRef = useRef<boolean>(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      loadIdRef.current++;
+    };
+  }, []);
 
   // Feature Defaults
   const [chatbotDefaultModel, setChatbotDefaultModelState] = useState<string>(
@@ -268,7 +277,7 @@ export function useAiModels() {
       console.warn("Failed to load pollinations api key status", e);
     }
 
-    if (currentLoadId !== loadIdRef.current) return;
+    if (currentLoadId !== loadIdRef.current || !isMountedRef.current) return;
 
     setIsPollinationsConfigured(configured);
     setPollinationsApiKeyState(displayPrefix);
@@ -277,12 +286,14 @@ export function useAiModels() {
     if (configured && sessionToken) {
       try {
         const bal = await fetchPollinationsBalance(sessionToken);
-        if (currentLoadId === loadIdRef.current) {
+        if (currentLoadId === loadIdRef.current && isMountedRef.current) {
           setPollenBalance(bal);
         }
       } catch {}
     } else {
-      setPollenBalance(0);
+      if (isMountedRef.current) {
+        setPollenBalance(0);
+      }
     }
   }, []);
 
@@ -313,14 +324,14 @@ export function useAiModels() {
           token = data?.session?.access_token;
         }
         if (!token) {
-          setPollenBalance(0);
+          if (isMountedRef.current) setPollenBalance(0);
           return 0;
         }
         const bal = await fetchPollinationsBalance(token);
-        setPollenBalance(bal);
+        if (isMountedRef.current) setPollenBalance(bal);
         return bal;
       } catch {
-        setPollenBalance(0);
+        if (isMountedRef.current) setPollenBalance(0);
         return 0;
       }
     },
@@ -514,12 +525,15 @@ export function useAiModels() {
   }, []);
 
   const refreshModels = useCallback(async () => {
+    if (!isMountedRef.current) return;
     setIsLoading(true);
     try {
       loadCustomModels();
       await refreshPollenBalance();
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [loadCustomModels, refreshPollenBalance]);
 
