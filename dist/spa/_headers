@@ -1,0 +1,2 @@
+/*
+  Link: </.well-known/api-catalog>; rel="api-catalog", </api/openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json;version=3.0", </api/docs>; rel="service-doc"; type="text/html", </llms.txt>; rel="describedby"; type="text/plain", </auth.md>; rel="describedby"; type="text/markdown"
