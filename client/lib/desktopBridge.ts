@@ -164,10 +164,27 @@ export async function openExternalBrowser(url: string): Promise<boolean> {
   }
 
   if (typeof window !== "undefined") {
+    const ALLOWED_HOSTS: string[] = []; // ACTION REQUIRED: Add your allowed hosts before merging
+    if (!isSafeExternalUrl(url, ALLOWED_HOSTS)) {
+      return false;
+    }
     window.open(url, "_blank");
     return true;
   }
   return false;
+}
+
+function isSafeExternalUrl(url: string, allowedHosts: string[]): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(String(url).replace(/[\t\n\r]/g, ""));
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    return allowedHosts.some(function (h) {
+      return parsed.hostname === h || parsed.hostname.endsWith("." + h);
+    });
+  } catch (e) {
+    return false;
+  }
 }
 
 export function callDesktopBridge<T = any>(
