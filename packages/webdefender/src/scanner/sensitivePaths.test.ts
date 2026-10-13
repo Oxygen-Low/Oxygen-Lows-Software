@@ -203,4 +203,53 @@ describe("detectSensitivePath", () => {
     expect(detectSensitivePath("/user_secrets.yml")?.category).toBe("credentials");
     expect(detectSensitivePath("/storage/logs/laravel.log")?.category).toBe("debug");
   });
+
+  // ── Frontend runtime config, env, Vite manifest, and UCP probes ────────────
+  it("should detect all frontend runtime config, env, Vite manifest, and UCP probe paths", () => {
+    // Image 1: Vite manifest probes
+    expect(detectSensitivePath("/.vite/manifest.json")?.category).toBe("config");
+    expect(detectSensitivePath("/.vite/manifest.js")?.category).toBe("config");
+    expect(detectSensitivePath("/.vite/deps/chunk.js")?.category).toBe("config");
+
+    // Image 2: env & runtime config probes
+    expect(detectSensitivePath("/env.json")?.category).toBe("credentials");
+    expect(detectSensitivePath("/runtime-config.js")?.category).toBe("config");
+    expect(detectSensitivePath("/runtime-config.json")?.category).toBe("config");
+    expect(detectSensitivePath("/__env.js")?.category).toBe("credentials");
+    expect(detectSensitivePath("/env.js")?.category).toBe("credentials");
+
+    // Image 3: global, window, asset/static configs & envs, api settings/env
+    expect(detectSensitivePath("/globalConfig.js")?.category).toBe("config");
+    expect(detectSensitivePath("/global-config.js")?.category).toBe("config");
+    expect(detectSensitivePath("/window-config.js")?.category).toBe("config");
+    expect(detectSensitivePath("/assets/config.js")?.category).toBe("config");
+    expect(detectSensitivePath("/assets/env.js")?.category).toBe("credentials");
+    expect(detectSensitivePath("/static/config.js")?.category).toBe("config");
+    expect(detectSensitivePath("/static/env.js")?.category).toBe("credentials");
+    expect(detectSensitivePath("/build/config.js")?.category).toBe("config");
+    expect(detectSensitivePath("/js/config.js")?.category).toBe("config");
+    expect(detectSensitivePath("/src/config.js")?.category).toBe("config");
+    expect(detectSensitivePath("/config/runtime.js")?.category).toBe("config");
+    expect(detectSensitivePath("/config/runtime.json")?.category).toBe("config");
+    expect(detectSensitivePath("/api/env")?.category).toBe("credentials");
+    expect(detectSensitivePath("/api/settings")?.category).toBe("config");
+
+    // Image 4: nested config env, api config, app-config
+    expect(detectSensitivePath("/config/env.json")?.category).toBe("credentials");
+    expect(detectSensitivePath("/api/config")?.category).toBe("config");
+    expect(detectSensitivePath("/app-config.js")?.category).toBe("config");
+    expect(detectSensitivePath("/app-config.json")?.category).toBe("config");
+
+    // Image 5: api config js, server-config, version.json
+    expect(detectSensitivePath("/api/config.js")?.category).toBe("config");
+    expect(detectSensitivePath("/server-config.json")?.category).toBe("config");
+    expect(detectSensitivePath("/version.json")?.category).toBe("config");
+
+    // Explicit user addition: /.well-known/ucp
+    expect(detectSensitivePath("/.well-known/ucp")?.category).toBe("config");
+    expect(detectSensitivePath("/.well-known/ucp/profile")?.category).toBe("config");
+
+    // Verify legitimate standard well-known endpoints are NOT blocked
+    expect(detectSensitivePath("/.well-known/security.txt")).toBeNull();
+  });
 });

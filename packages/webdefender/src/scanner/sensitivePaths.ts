@@ -118,13 +118,45 @@ const RULES: SensitivePathRule[] = [
       "/_vti_pvt/users.pwd",
       "/_vti_pvt/service.grp",
       "/_vti_pvt/writeto.cnf",
+      "/env.json",
+      "/env.js",
+      "/__env.js",
+      "/__env.json",
+      "/_env.js",
+      "/_env.json",
+      "/api/env",
+      "/api/env.json",
+      "/api/env.js",
+      "/config/env.json",
+      "/config/env.js",
+      "/assets/env.js",
+      "/assets/env.json",
+      "/static/env.js",
+      "/static/env.json",
+      "/build/env.js",
+      "/build/env.json",
+      "/js/env.js",
+      "/js/env.json",
+      "/src/env.js",
+      "/src/env.json",
+      "/dist/env.js",
+      "/dist/env.json",
+      "/public/env.js",
+      "/public/env.json",
     ],
   },
 
   // ── Application config files ───────────────────────────────────────────────
   {
     category: "config",
+    prefix: [
+      "/.vite/",
+      "/.well-known/ucp/",
+    ],
     exact: [
+      "/.well-known/ucp",
+      "/.vite/manifest.json",
+      "/.vite/manifest.js",
       "/config.php",
       "/config.py",
       "/config.rb",
@@ -176,6 +208,63 @@ const RULES: SensitivePathRule[] = [
       "/server-info",
       "/status",
       "/.htaccess",
+      "/runtime-config.js",
+      "/runtime-config.json",
+      "/runtime_config.js",
+      "/runtime_config.json",
+      "/runtimeconfig.js",
+      "/runtimeconfig.json",
+      "/globalconfig.js",
+      "/globalconfig.json",
+      "/global-config.js",
+      "/global-config.json",
+      "/global_config.js",
+      "/global_config.json",
+      "/windowconfig.js",
+      "/windowconfig.json",
+      "/window-config.js",
+      "/window-config.json",
+      "/window_config.js",
+      "/window_config.json",
+      "/app-config.js",
+      "/app-config.json",
+      "/app_config.js",
+      "/app_config.json",
+      "/appconfig.js",
+      "/appconfig.json",
+      "/server-config.json",
+      "/server-config.js",
+      "/server_config.json",
+      "/server_config.js",
+      "/serverconfig.json",
+      "/serverconfig.js",
+      "/config/runtime.js",
+      "/config/runtime.json",
+      "/config/runtime-config.js",
+      "/config/runtime-config.json",
+      "/assets/config.js",
+      "/assets/config.json",
+      "/static/config.js",
+      "/static/config.json",
+      "/build/config.js",
+      "/build/config.json",
+      "/js/config.js",
+      "/js/config.json",
+      "/src/config.js",
+      "/src/config.json",
+      "/dist/config.js",
+      "/dist/config.json",
+      "/public/config.js",
+      "/public/config.json",
+      "/api/config",
+      "/api/config.js",
+      "/api/config.json",
+      "/api/configuration",
+      "/api/settings",
+      "/api/settings.json",
+      "/api/settings.js",
+      "/version.json",
+      "/version.js",
     ],
   },
 
@@ -422,7 +511,7 @@ export function detectSensitivePath(rawPath: string): SensitivePathMatch | null 
     return { path, category: "canary" };
   }
 
-  // 4. Dotenv & Vault Key detection on final segment (e.g. /api/.env, /Data/.server_vault_key)
+  // 4. Dotenv & Vault Key & Environment files detection on final segment (e.g. /api/.env, /data/env.json)
   const lastSegment = path.split("/").pop() ?? "";
   if (
     lastSegment === ".env" ||
@@ -430,12 +519,66 @@ export function detectSensitivePath(rawPath: string): SensitivePathMatch | null 
     lastSegment.endsWith(".env") ||
     lastSegment === ".server_vault_key" ||
     lastSegment === "server_vault.key" ||
-    lastSegment.includes("server_vault_key")
+    lastSegment.includes("server_vault_key") ||
+    lastSegment === "env.json" ||
+    lastSegment === "env.js" ||
+    lastSegment === "__env.js" ||
+    lastSegment === "__env.json" ||
+    lastSegment === "_env.js" ||
+    lastSegment === "_env.json"
   ) {
     return { path, category: "credentials" };
   }
 
-  // 5. Suffix match — applies to the final path segment only to avoid false
+  // 5. Common frontend / runtime config probes on final segment
+  if (
+    lastSegment === "runtime-config.js" ||
+    lastSegment === "runtime-config.json" ||
+    lastSegment === "runtime_config.js" ||
+    lastSegment === "runtime_config.json" ||
+    lastSegment === "runtimeconfig.js" ||
+    lastSegment === "runtimeconfig.json" ||
+    lastSegment === "app-config.js" ||
+    lastSegment === "app-config.json" ||
+    lastSegment === "app_config.js" ||
+    lastSegment === "app_config.json" ||
+    lastSegment === "appconfig.js" ||
+    lastSegment === "appconfig.json" ||
+    lastSegment === "global-config.js" ||
+    lastSegment === "global-config.json" ||
+    lastSegment === "global_config.js" ||
+    lastSegment === "global_config.json" ||
+    lastSegment === "globalconfig.js" ||
+    lastSegment === "globalconfig.json" ||
+    lastSegment === "window-config.js" ||
+    lastSegment === "window-config.json" ||
+    lastSegment === "window_config.js" ||
+    lastSegment === "window_config.json" ||
+    lastSegment === "windowconfig.js" ||
+    lastSegment === "windowconfig.json" ||
+    lastSegment === "server-config.json" ||
+    lastSegment === "server-config.js" ||
+    lastSegment === "server_config.json" ||
+    lastSegment === "server_config.js" ||
+    lastSegment === "serverconfig.json" ||
+    lastSegment === "serverconfig.js" ||
+    lastSegment === "version.json" ||
+    ((lastSegment === "config.js" || lastSegment === "config.json" || lastSegment === "runtime.js" || lastSegment === "runtime.json") &&
+      (path.startsWith("/assets/") ||
+        path.startsWith("/static/") ||
+        path.startsWith("/build/") ||
+        path.startsWith("/js/") ||
+        path.startsWith("/src/") ||
+        path.startsWith("/dist/") ||
+        path.startsWith("/public/") ||
+        path.startsWith("/config/") ||
+        path.startsWith("/app/") ||
+        path.startsWith("/api/")))
+  ) {
+    return { path, category: "config" };
+  }
+
+  // 6. Suffix match — applies to the final path segment only to avoid false
   //    positives on legitimate paths like `/api/backup-plan`.
   if (lastSegment.length > 0) {
     for (let i = 0; i < suffixList.length; i++) {

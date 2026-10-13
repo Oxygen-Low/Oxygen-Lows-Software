@@ -94,6 +94,37 @@ describe("False Sensitive Files (Decoy Honeypots)", () => {
     expect(wpRes.decoyContent).toContain("DB_PASSWORD");
     expect(wpRes.decoyContentType).toContain("php");
 
+    // 5. Runtime JS config probe
+    const runtimeJsRes = await client.handleRequest({
+      ip: "192.0.2.1",
+      method: "GET",
+      path: "/runtime-config.js",
+      query: {},
+      body: "",
+      headers: {},
+      userAgent: "curl/7.68.0",
+    });
+
+    expect(runtimeJsRes.blocked).toBe(false);
+    expect(runtimeJsRes.isDecoy).toBe(true);
+    expect(runtimeJsRes.decoyContentType).toContain("javascript");
+    expect(runtimeJsRes.decoyContent).toContain("window.__ENV__");
+
+    // 6. env.json probe
+    const envJsonRes = await client.handleRequest({
+      ip: "192.0.2.1",
+      method: "GET",
+      path: "/env.json",
+      query: {},
+      body: "",
+      headers: {},
+      userAgent: "curl/7.68.0",
+    });
+
+    expect(envJsonRes.blocked).toBe(false);
+    expect(envJsonRes.isDecoy).toBe(true);
+    expect(envJsonRes.decoyContentType).toContain("json");
+
     client.destroy();
   });
 
