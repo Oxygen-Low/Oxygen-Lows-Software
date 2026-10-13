@@ -18,9 +18,29 @@ export function useCustomFonts() {
       if (typeof window === "undefined" || !("fonts" in document)) return;
 
       // Check if already registered
-      for (const f of document.fonts.values()) {
-        if (f.family === font.name) return;
+      let isAlreadyRegistered = false;
+      const targetFamily = font.name.replace(/^["']|["']$/g, "").trim().toLowerCase();
+
+      if (typeof document.fonts.forEach === "function") {
+        document.fonts.forEach((f: FontFace) => {
+          const registeredFamily = f.family?.replace(/^["']|["']$/g, "").trim().toLowerCase();
+          if (registeredFamily === targetFamily) {
+            isAlreadyRegistered = true;
+          }
+        });
+      } else {
+        try {
+          const fontsArr = Array.from(document.fonts as unknown as Iterable<FontFace>);
+          isAlreadyRegistered = fontsArr.some((f) => {
+            const registeredFamily = f.family?.replace(/^["']|["']$/g, "").trim().toLowerCase();
+            return registeredFamily === targetFamily;
+          });
+        } catch {
+          // Fall through if iteration is not supported
+        }
       }
+
+      if (isAlreadyRegistered) return;
 
       const fontFace = new FontFace(font.name, `url(${font.url})`);
       const loaded = await fontFace.load();
