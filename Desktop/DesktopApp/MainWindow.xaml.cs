@@ -915,7 +915,10 @@ public partial class MainWindow : Window
     private static void OpenExternalUrl(string url)
     {
         if (!NativeSecurity.IsWebUrl(url)) return;
-        try { Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true }); }
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return;
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) return;
+        // It is recommended to further restrict allowed hosts using a whitelist of known-safe domains.
+        try { Process.Start(new ProcessStartInfo { FileName = uri.AbsoluteUri, UseShellExecute = true }); }
         catch (Exception ex) { Debug.WriteLine("Could not open browser: " + ex.Message); }
     }
 
