@@ -85,6 +85,49 @@ export const UploadsPanel: React.FC<UploadsPanelProps> = ({
     } catch {}
   };
 
+  // Auto-refresh stale/broken storage URLs from local storage
+  React.useEffect(() => {
+    if (!userId) return;
+    const staleAssets = assets.filter(
+      (a) =>
+        a.storagePath &&
+        (a.url.includes("/api/storage/public/Storage") ||
+          a.url.startsWith("blob:")),
+    );
+    if (staleAssets.length === 0) return;
+
+    let isMounted = true;
+    (async () => {
+      let changed = false;
+      const updated = await Promise.all(
+        assets.map(async (asset) => {
+          if (
+            asset.storagePath &&
+            (asset.url.includes("/api/storage/public/Storage") ||
+              asset.url.startsWith("blob:"))
+          ) {
+            try {
+              const { data } = await storage
+                .from("Storage")
+                .createSignedUrl(asset.storagePath, 60 * 60 * 24 * 7);
+              if (data?.signedUrl) {
+                changed = true;
+                return { ...asset, url: data.signedUrl };
+              }
+            } catch {}
+          }
+          return asset;
+        }),
+      );
+      if (isMounted && changed) {
+        saveAssets(updated);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [userId]);
+
   const processImageFile = async (file: File) => {
     setIsUploading(true);
     try {
@@ -114,9 +157,12 @@ export const UploadsPanel: React.FC<UploadsPanelProps> = ({
         });
 
         if (!uploadResult.error) {
-          const publicUrl = storage.from("Storage").getPublicUrl(path).data
-            .publicUrl;
-          finalUrl = publicUrl;
+          const { data: signedData } = await storage
+            .from("Storage")
+            .createSignedUrl(path, 60 * 60 * 24 * 7);
+          if (signedData?.signedUrl) {
+            finalUrl = signedData.signedUrl;
+          }
           storagePath = path;
           toast.success(
             t("imageStudio.fileUploaded", undefined, "File saved to your Storage!"),
@@ -127,6 +173,17 @@ export const UploadsPanel: React.FC<UploadsPanelProps> = ({
             uploadResult.error,
           );
         }
+      } else if (file.size < 2 * 1024 * 1024) {
+        // For unauthenticated users, convert small files to data URL to survive page reloads
+        try {
+          const reader = new FileReader();
+          const dataUrl = await new Promise<string>((resolve) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => resolve(localUrl);
+            reader.readAsDataURL(file);
+          });
+          finalUrl = dataUrl;
+        } catch {}
       }
 
       const newAsset: UploadedAsset = {
@@ -173,21 +230,28 @@ export const UploadsPanel: React.FC<UploadsPanelProps> = ({
 
   const handleSelectFromStorage = async (file: any) => {
     try {
-      const publicUrl = storage.from("Storage").getPublicUrl(file.name).data
-        .publicUrl;
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const width = img.naturalWidth || 800;
-        const height = img.naturalHeight || 600;
+      const { data: signedData } = await storage
+        .from("Storage")
+        .createSignedUrl(file.name, 60 * 60 * 24 * 7);
+      const targetUrl =
+        signedData?.signedUrl ||
+        storage.from("Storage").getPublicUrl(file.name).data.publicUrl;
 
+      const img = new Image();
+      const isBlobOrData =
+        targetUrl.startsWith("blob:") || targetUrl.startsWith("data:");
+      if (!isBlobOrData) {
+        img.crossOrigin = "anonymous";
+      }
+
+      const applyAsset = (w: number, h: number) => {
         const asset: UploadedAsset = {
           id: Date.now().toString(),
           name: file.name.split("/").pop() || "storage-image",
-          url: publicUrl,
+          url: targetUrl,
           storagePath: file.name,
-          width,
-          height,
+          width: w,
+          height: h,
         };
 
         const updated = [
@@ -195,9 +259,43 @@ export const UploadsPanel: React.FC<UploadsPanelProps> = ({
           ...assets.filter((a) => a.storagePath !== file.name),
         ];
         saveAssets(updated);
-        onAddImageToCanvas(publicUrl, width, height, file.name);
+        onAddImageToCanvas(targetUrl, w, h, file.name);
       };
-      img.src = publicUrl;
+
+      img.onload = () => {
+        const width = img.naturalWidth || 800;
+        const height = img.naturalHeight || 600;
+        applyAsset(width, height);
+      };
+      img.onerror = () => {
+        if (img.crossOrigin && !isBlobOrData) {
+          const fallback = new Image();
+          fallback.onload = () => {
+            const width = fallback.naturalWidth || 800;
+            const height = fallback.naturalHeight || 600;
+            applyAsset(width, height);
+          };
+          fallback.onerror = () => {
+            toast.error(
+              t(
+                "imageStudio.storageLoadError",
+                undefined,
+                "Error loading file from Storage",
+              ),
+            );
+          };
+          fallback.src = targetUrl;
+          return;
+        }
+        toast.error(
+          t(
+            "imageStudio.storageLoadError",
+            undefined,
+            "Error loading file from Storage",
+          ),
+        );
+      };
+      img.src = targetUrl;
     } catch {
       toast.error(
         t(

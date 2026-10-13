@@ -243,6 +243,54 @@ export function ImageStudioApp() {
     }));
   };
 
+  // Auto-heal stale or broken storage URLs in active project
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const staleLayers = project.layers.filter(
+      (l): l is ImageLayer =>
+        l.type === "image" &&
+        Boolean(l.storagePath) &&
+        (l.src.includes("/api/storage/public/Storage") ||
+          l.src.startsWith("blob:")),
+    );
+    if (staleLayers.length === 0) return;
+
+    let isMounted = true;
+    (async () => {
+      let changed = false;
+      const updatedLayers = await Promise.all(
+        project.layers.map(async (layer) => {
+          if (
+            layer.type === "image" &&
+            layer.storagePath &&
+            (layer.src.includes("/api/storage/public/Storage") ||
+              layer.src.startsWith("blob:"))
+          ) {
+            try {
+              const { data } = await storage
+                .from("Storage")
+                .createSignedUrl(layer.storagePath, 60 * 60 * 24 * 7);
+              if (data?.signedUrl) {
+                changed = true;
+                return { ...layer, src: data.signedUrl };
+              }
+            } catch {}
+          }
+          return layer;
+        }),
+      );
+      if (isMounted && changed) {
+        setProject((prev) => ({
+          ...prev,
+          layers: updatedLayers,
+        }), false);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [session?.user?.id]);
+
   useEffect(() => {
     try {
       const pending = sessionStorage.getItem("image_studio_pending_image");
@@ -255,6 +303,9 @@ export function ImageStudioApp() {
             img.naturalWidth || 512,
             img.naturalHeight || 512,
           );
+        };
+        img.onerror = () => {
+          handleAddImageToCanvas(pending, 512, 512);
         };
         img.src = pending;
       }

@@ -19,6 +19,10 @@ vi.mock("@/lib/storage", () => ({
       }),
       remove: vi.fn().mockResolvedValue({ data: [], error: null }),
       getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: "/api/storage/test.png" } }),
+      createSignedUrl: vi.fn().mockResolvedValue({
+        data: { signedUrl: "/api/storage/download/Storage/test.png?token=mock" },
+        error: null,
+      }),
     }),
   },
 }));
@@ -29,6 +33,14 @@ global.ResizeObserver = class {
   unobserve() {}
   disconnect() {}
 };
+
+// Mock URL createObjectURL / revokeObjectURL
+if (!global.URL.createObjectURL) {
+  global.URL.createObjectURL = vi.fn().mockReturnValue("blob:http://localhost:5173/test-blob");
+}
+if (!global.URL.revokeObjectURL) {
+  global.URL.revokeObjectURL = vi.fn();
+}
 
 // Mock canvas getContext
 HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
@@ -486,6 +498,57 @@ describe("ImageStudioApp", () => {
     };
 
     expect(() => drawText(ctx, textLayerWithCharColors)).not.toThrow();
+  });
+
+  it("renders image layers on canvas and supports uploaded images without endless loading", async () => {
+    render(
+      <BrowserRouter>
+        <ImageStudioApp />
+      </BrowserRouter>,
+    );
+
+    // Upload an image via the hidden file input
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(fileInput).toBeDefined();
+
+    const file = new File(["fake-image-data"], "banner.png", { type: "image/png" });
+    // Mock image load
+    const origImage = window.Image;
+    try {
+      (window as any).Image = class {
+        private _src = "";
+        crossOrigin = "";
+        naturalWidth = 800;
+        naturalHeight = 600;
+        onload: any = null;
+        onerror: any = null;
+        get src() {
+          return this._src;
+        }
+        set src(val: string) {
+          this._src = val;
+          setTimeout(() => {
+            if (this.onload) this.onload();
+          }, 0);
+        }
+      };
+
+      Object.defineProperty(fileInput, "files", {
+        value: [file],
+        writable: true,
+      });
+      fireEvent.change(fileInput);
+
+      // Switch to layers once
+      fireEvent.click(screen.getByText("Layers"));
+
+      // Verify image layer added
+      await waitFor(() => {
+        expect(screen.getByText(/Image 3/i)).toBeDefined();
+      });
+    } finally {
+      window.Image = origImage;
+    }
   });
 });
 

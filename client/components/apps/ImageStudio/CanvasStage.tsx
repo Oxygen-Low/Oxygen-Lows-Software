@@ -104,7 +104,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
     y: number;
     layer: CanvasLayer;
   } | null>(null);
-  const [, setRerenderTrigger] = useState(0);
+  const [rerenderTrigger, setRerenderTrigger] = useState(0);
 
   const selectedLayer = project.layers.find(
     (l) => l.id === project.selectedLayerId,
@@ -137,7 +137,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
 
   useEffect(() => {
     render();
-  }, [render]);
+  }, [render, rerenderTrigger]);
 
   // Spacebar tracking for Pan mode
   useEffect(() => {

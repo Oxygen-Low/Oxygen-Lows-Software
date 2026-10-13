@@ -130,6 +130,26 @@ export const ProjectsDialog: React.FC<ProjectsDialogProps> = ({
 
       const text = await res.data.text();
       const proj: CanvasProject = JSON.parse(text);
+
+      // Refresh signed URLs for any image layers with storagePath
+      if (Array.isArray(proj.layers)) {
+        proj.layers = await Promise.all(
+          proj.layers.map(async (layer) => {
+            if (layer.type === "image" && layer.storagePath) {
+              try {
+                const { data } = await storage
+                  .from("Storage")
+                  .createSignedUrl(layer.storagePath, 60 * 60 * 24 * 7);
+                if (data?.signedUrl) {
+                  return { ...layer, src: data.signedUrl };
+                }
+              } catch {}
+            }
+            return layer;
+          }),
+        );
+      }
+
       onLoadProject(proj);
       toast.success(t("imageStudio.projectLoaded", undefined, "Project loaded!"));
       onOpenChange(false);
