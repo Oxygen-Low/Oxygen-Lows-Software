@@ -7,6 +7,19 @@ export interface ModerationErrorData {
   redirectUrl?: string;
 }
 
+function isSafeExternalUrl(url: any, allowedHosts: string[]): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(String(url).replace(/[\t\n\r]/g, ""));
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    return allowedHosts.some(function (h) {
+      return parsed.hostname === h || parsed.hostname.endsWith("." + h);
+    });
+  } catch (e) {
+    return false;
+  }
+}
+
 /**
  * Global client-side interceptor for safety and moderation API responses.
  * Detects self-harm violations and automatically opens https://findahelpline.com/ in a new tab.
@@ -21,7 +34,10 @@ export function handleSafetyModeration(
 
   // 1. Self-Harm Violation -> open crisis helpline in new browser tab
   if (data.code === "SELF_HARM_DETECTED" || data.redirectUrl) {
-    const url = data.redirectUrl || "https://findahelpline.com/";
+    const ALLOWED_HOSTS = ["findahelpline.com"];
+    const url = isSafeExternalUrl(data.redirectUrl, ALLOWED_HOSTS)
+      ? data.redirectUrl
+      : "https://findahelpline.com/";
     try {
       window.open(url, "_blank", "noopener,noreferrer");
     } catch {
