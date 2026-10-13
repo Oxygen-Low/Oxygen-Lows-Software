@@ -924,7 +924,11 @@ oauthRouter.post("/revoke", authLimiter, async (c) => {
   }
 
   const allTokens = getTableRows("oauth_tokens");
-  const tokenRecord = allTokens.find((t: any) => t.token === token);
+  const tokenRecord = allTokens.find((t: any) => {
+    const actual = createHash('sha256').update(token).digest();
+    const expected = createHash('sha256').update(t.token).digest();
+    return timingSafeEqual(actual, expected);
+  });
 
   if (tokenRecord) {
     updateTable(
