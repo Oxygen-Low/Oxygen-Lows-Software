@@ -28,6 +28,12 @@ const MIME_MAP: Record<string, string> = {
   bmp: "image/bmp",
   ico: "image/x-icon",
   avif: "image/avif",
+  // Fonts
+  otf: "font/otf",
+  ttf: "font/ttf",
+  woff: "font/woff",
+  woff2: "font/woff2",
+  eot: "application/vnd.ms-fontobject",
   // Audio
   mp3: "audio/mpeg",
   wav: "audio/wav",

@@ -27,6 +27,7 @@ import { ExportDialog } from "./ExportDialog";
 import { ProjectsDialog } from "./ProjectsDialog";
 import { CropDialog } from "./CropDialog";
 import { toast } from "sonner";
+import { storage } from "@/lib/storage";
 
 const LOCAL_ACTIVE_PROJECT_KEY = "image_studio_active_project";
 

@@ -49,21 +49,46 @@ export const TextPanel: React.FC<TextPanelProps> = ({
       let url = URL.createObjectURL(file);
       let storagePath: string | undefined;
 
+      const ext = file.name.split(".").pop()?.toLowerCase() || "";
+      const fontMimes: Record<string, string> = {
+        otf: "font/otf",
+        ttf: "font/ttf",
+        woff: "font/woff",
+        woff2: "font/woff2",
+        eot: "application/vnd.ms-fontobject",
+      };
+      const contentType = file.type || fontMimes[ext] || "application/octet-stream";
+
       // Upload to Storage if logged in
       if (userId) {
         const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const path = `${userId}/image-studio/fonts/${Date.now()}_${cleanFileName}`;
 
         const uploadResult = await storage.from("Storage").upload(path, file, {
-          contentType: file.type || "application/octet-stream",
+          contentType,
           upsert: true,
         });
 
         if (!uploadResult.error) {
-          url = storage.from("Storage").getPublicUrl(path).data.publicUrl;
+          const { data: signedData } = await storage
+            .from("Storage")
+            .createSignedUrl(path, 60 * 60 * 24 * 7);
+          if (signedData?.signedUrl) {
+            url = signedData.signedUrl;
+          }
           storagePath = path;
           toast.success(t("imageStudio.fontUploaded", undefined, "Custom font saved to Storage!"));
         }
+      } else if (file.size < 5 * 1024 * 1024) {
+        try {
+          const reader = new FileReader();
+          const dataUrl = await new Promise<string>((resolve) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => resolve(url);
+            reader.readAsDataURL(file);
+          });
+          url = dataUrl;
+        } catch {}
       }
 
       await onAddCustomFont(fontName, url, storagePath);
@@ -89,8 +114,14 @@ export const TextPanel: React.FC<TextPanelProps> = ({
   const handleSelectFontFromStorage = async (file: any) => {
     try {
       const fontName = file.name.split("/").pop()?.replace(/\.[^/.]+$/, "") || "CustomFont";
-      const publicUrl = storage.from("Storage").getPublicUrl(file.name).data.publicUrl;
-      await onAddCustomFont(fontName, publicUrl, file.name);
+      const { data: signedData } = await storage
+        .from("Storage")
+        .createSignedUrl(file.name, 60 * 60 * 24 * 7);
+      const fontUrl = signedData?.signedUrl;
+      if (!fontUrl) {
+        throw new Error("Failed to get signed URL for font");
+      }
+      await onAddCustomFont(fontName, fontUrl, file.name);
       toast.success(`${fontName} ${t("imageStudio.fontLoaded", undefined, "loaded successfully!")}`);
     } catch {
       toast.error(t("imageStudio.fontLoadFailed", undefined, "Failed to load font file."));

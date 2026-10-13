@@ -151,7 +151,7 @@ app.use(
       workerSrc: ["'self'", "blob:"],
       childSrc: ["'self'", "blob:"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "blob:", "data:"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],
       mediaSrc: ["'self'", "blob:", "data:", "https:"],
       connectSrc: [
