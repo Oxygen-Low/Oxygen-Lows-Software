@@ -4,7 +4,11 @@ import { rateLimiter } from "../lib/rateLimiter.ts";
 import { resolveUserFromToken } from "../lib/auth.ts";
 import { queryTable } from "../lib/dataStore.ts";
 import { validateAiUrl } from "../lib/safeAiUrl.ts";
-import { getRobotsRules, isPathAllowed, searchOxylowIndex } from "../lib/oxylowCrawler.ts";
+import {
+  getRobotsRules,
+  isPathAllowed,
+  searchOxylowIndex,
+} from "../lib/oxylowCrawler.ts";
 import {
   streamHordeWithContinuation,
   fetchHordeNonStreamWithContinuation,
@@ -23,9 +27,7 @@ export const HORDE_MODELS_MAP: Record<string, string[]> = {
     "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M",
     "meta-llama/Llama-3.2-3B-Instruct",
   ],
-  Fast: [
-    "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
-  ],
+  Fast: ["koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"],
   Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
   Writing: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
 };
@@ -58,8 +60,7 @@ export const BROWSER_USER_AGENT =
 
 const AI_SEARCH_HEADERS = {
   "User-Agent": BROWSER_USER_AGENT,
-  Accept:
-    "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   "Accept-Language": "en-US,en;q=0.5",
 };
 
@@ -189,7 +190,11 @@ export async function performWebSearch(query: string) {
   const addResult = (snippet: string, rawUrl?: string | null) => {
     const cleanSnippet = stripHtmlTags(snippet).replace(/\s+/g, " ").trim();
     const normalizedUrl = rawUrl ? normalizeUrl(rawUrl) : null;
-    if (cleanSnippet && cleanSnippet.length > 5 && !snippets.includes(cleanSnippet)) {
+    if (
+      cleanSnippet &&
+      cleanSnippet.length > 5 &&
+      !snippets.includes(cleanSnippet)
+    ) {
       snippets.push(cleanSnippet);
       if (normalizedUrl && !urls.includes(normalizedUrl)) {
         urls.push(normalizedUrl);
@@ -205,7 +210,8 @@ export async function performWebSearch(query: string) {
       headers: {
         "User-Agent": BROWSER_USER_AGENT,
         "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
       },
       body: `q=${encodeURIComponent(cleanQuery)}&b=`,
@@ -220,7 +226,8 @@ export async function performWebSearch(query: string) {
         {
           headers: {
             "User-Agent": BROWSER_USER_AGENT,
-            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            Accept:
+              "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.5",
           },
           signal: AbortSignal.timeout(4000),
@@ -231,11 +238,18 @@ export async function performWebSearch(query: string) {
       }
     }
 
-    if (html && !html.includes('class="badge--ad"') && (html.includes("result__snippet") || html.includes("result__url"))) {
+    if (
+      html &&
+      !html.includes('class="badge--ad"') &&
+      (html.includes("result__snippet") || html.includes("result__url"))
+    ) {
       const snippetRegex =
         /class="result__snippet[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
       let match;
-      while ((match = snippetRegex.exec(html)) !== null && snippets.length < 8) {
+      while (
+        (match = snippetRegex.exec(html)) !== null &&
+        snippets.length < 8
+      ) {
         let href = match[1];
         if (href.includes("uddg=")) {
           try {
@@ -258,7 +272,10 @@ export async function performWebSearch(query: string) {
       if (snippets.length === 0) {
         const genericSnippetRegex =
           /class="result__snippet[^>]*>([\s\S]*?)<\/a>/g;
-        while ((match = genericSnippetRegex.exec(html)) !== null && snippets.length < 8) {
+        while (
+          (match = genericSnippetRegex.exec(html)) !== null &&
+          snippets.length < 8
+        ) {
           addResult(match[1]);
         }
       }
@@ -270,7 +287,10 @@ export async function performWebSearch(query: string) {
     const wikiSearchRes = await fetch(
       `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(cleanQuery)}&utf8=1&format=json&srlimit=4`,
       {
-        headers: { "User-Agent": "OxygenLowSoftware/1.0 (https://oxygenlow.com; support@oxygenlow.com)" },
+        headers: {
+          "User-Agent":
+            "OxygenLowSoftware/1.0 (https://oxygenlow.com; support@oxygenlow.com)",
+        },
         signal: AbortSignal.timeout(4000),
       },
     ).catch(() => null);
@@ -283,7 +303,10 @@ export async function performWebSearch(query: string) {
         const extractRes = await fetch(
           `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&titles=${encodeURIComponent(titles)}&format=json`,
           {
-            headers: { "User-Agent": "OxygenLowSoftware/1.0 (https://oxygenlow.com; support@oxygenlow.com)" },
+            headers: {
+              "User-Agent":
+                "OxygenLowSoftware/1.0 (https://oxygenlow.com; support@oxygenlow.com)",
+            },
             signal: AbortSignal.timeout(4000),
           },
         ).catch(() => null);
@@ -292,7 +315,11 @@ export async function performWebSearch(query: string) {
           const extractData: any = await extractRes.json().catch(() => null);
           const pages = Object.values(extractData?.query?.pages || {}) as any[];
           for (const page of pages) {
-            if (page?.extract && typeof page.extract === "string" && page.extract.trim()) {
+            if (
+              page?.extract &&
+              typeof page.extract === "string" &&
+              page.extract.trim()
+            ) {
               const cleanExtract = page.extract.slice(0, 600).trim();
               const pageUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title.replace(/ /g, "_"))}`;
               addResult(`[Wikipedia: ${page.title}] ${cleanExtract}`, pageUrl);
@@ -317,7 +344,10 @@ export async function performWebSearch(query: string) {
       const newsRes = await fetch(
         `https://en.wikinews.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(cleanQuery)}&utf8=1&format=json&srlimit=2`,
         {
-          headers: { "User-Agent": "OxygenLowSoftware/1.0 (https://oxygenlow.com; support@oxygenlow.com)" },
+          headers: {
+            "User-Agent":
+              "OxygenLowSoftware/1.0 (https://oxygenlow.com; support@oxygenlow.com)",
+          },
           signal: AbortSignal.timeout(3000),
         },
       ).catch(() => null);
@@ -339,8 +369,11 @@ export async function performWebSearch(query: string) {
       const localResults = searchOxylowIndex(cleanQuery, 1, 3);
       if (localResults?.results && Array.isArray(localResults.results)) {
         for (const r of localResults.results) {
-          if (r.snippet || r.title) {
-            addResult(`[Indexed: ${r.title || r.url}] ${r.snippet || r.description || ""}`, r.url);
+          if (r.description || r.bodyPreview || r.title) {
+            addResult(
+              `[Indexed: ${r.title || r.url}] ${r.description || r.bodyPreview || ""}`,
+              r.url,
+            );
           }
         }
       }
@@ -437,7 +470,7 @@ async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
                 }
 
                 throw new Error("No valid extract found from this endpoint");
-              })
+              }),
             );
 
             if (wikiContent) {
@@ -455,7 +488,6 @@ async function fetchPageContent(rawUrl: string, maxChars: number = 6000) {
     return `Error: Failed to fetch page content from ${cleanUrl} (${err.message || "network failed"}).`;
   }
 }
-
 
 function sseEvent(data: string): string {
   return `data: ${data}\n\n`;
@@ -481,7 +513,9 @@ function getTotalResearchChars(
   return total;
 }
 
-export function parseHordeAction(data: any): { tool: string; args: any } | null {
+export function parseHordeAction(
+  data: any,
+): { tool: string; args: any } | null {
   if (!data) return null;
   const msg = data.result || data.choices?.[0]?.message;
 
@@ -599,9 +633,7 @@ async function callModelProvider({
     !provider.includes("horde") &&
     provider !== "pollinations"
   ) {
-    throw new Error(
-      `Provider '${provider}' is not configured.`,
-    );
+    throw new Error(`Provider '${provider}' is not configured.`);
   }
 
   let targetUrl = "";
@@ -886,12 +918,21 @@ agentSearchRouter.post(
       const isInvalidOrMaskedApiKey = (k?: unknown): boolean => {
         if (!k || typeof k !== "string") return true;
         const trimmed = k.trim();
-        if (trimmed.length === 0 || trimmed.includes("...") || trimmed.toLowerCase() === "configured") return true;
+        if (
+          trimmed.length === 0 ||
+          trimmed.includes("...") ||
+          trimmed.toLowerCase() === "configured"
+        )
+          return true;
         return false;
       };
 
-      let resolvedResearchApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
-      let resolvedSummarizerApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
+      let resolvedResearchApiKey = isInvalidOrMaskedApiKey(apiKey)
+        ? ""
+        : apiKey.trim();
+      let resolvedSummarizerApiKey = isInvalidOrMaskedApiKey(apiKey)
+        ? ""
+        : apiKey.trim();
 
       if (!resolvedResearchApiKey && user?.id) {
         resolvedResearchApiKey =
