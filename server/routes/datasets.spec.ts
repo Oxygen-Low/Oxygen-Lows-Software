@@ -229,4 +229,57 @@ describe("Datasets API Routes & Parquet Storage", () => {
     expect((qa.rows[0] as any).instruction).toBe("Capital of France?");
     expect((qa.rows[0] as any).output).toBe("Paris");
   });
+
+  it("generates dataset rows with contextLimit and prior entries anti-repetition memory", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify([
+                  {
+                    instruction: "Calculate derivative of x^2",
+                    input: "with respect to x",
+                    output: "2x",
+                  },
+                ]),
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const genRes = await app.request("/api/datasets/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${TEST_TOKEN}`,
+      },
+      body: JSON.stringify({
+        prompt: "Generate math calculus problems",
+        model: "inclusionai/ling-3.1-flash",
+        targetTokens: 1000,
+        contextLimit: 5,
+        existingRows: [
+          { instruction: "What is 2 + 2?", input: "", output: "4" },
+        ],
+      }),
+    });
+
+    expect(genRes.status).toBe(200);
+    const genData = await genRes.json();
+    expect(genData.success).toBe(true);
+    expect(genData.rows).toHaveLength(1);
+
+    // Verify LLM request body included the anti-repetition requirement
+    expect(fetchSpy).toHaveBeenCalled();
+    const lastCallBody = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string);
+    const userPrompt = lastCallBody.messages[0].content;
+    expect(userPrompt).toContain("CRITICAL ANTI-REPETITION REQUIREMENT");
+    expect(userPrompt).toContain("What is 2 + 2?");
+    fetchSpy.mockRestore();
+  });
 });

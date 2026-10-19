@@ -782,8 +782,21 @@ datasetsRouter.post("/generate", async (c) => {
       targetRowCount,
       datasetType,
       apiKey,
+      contextLimit: rawContextLimit,
+      existingRows,
     } = body;
     const isPostTraining = datasetType === "post-training";
+
+    const parsedContextLimit =
+      typeof rawContextLimit === "number"
+        ? rawContextLimit
+        : typeof rawContextLimit === "string" && rawContextLimit.trim().length > 0
+          ? parseInt(rawContextLimit.trim(), 10)
+          : 5;
+    const effectiveContextLimit = Math.max(
+      0,
+      Math.min(50, isNaN(parsedContextLimit) ? 5 : parsedContextLimit),
+    );
 
     const effectiveInstructions =
       typeof instructions === "string" && instructions.trim()
@@ -939,17 +952,38 @@ Return ONLY valid JSON, no markdown, no explanation. Example format:
             );
           };
 
+          const priorBaseRows: Array<DatasetRow | PostTrainingRow> =
+            Array.isArray(existingRows) ? existingRows : [];
           const collectedRows: Array<DatasetRow | PostTrainingRow> = [];
 
           for (let rowIdx = 0; rowIdx < totalRows; rowIdx++) {
             let rowParsed: DatasetRow | PostTrainingRow | null = null;
+
+            let promptForThisRow = individualPrompt;
+            const historyPool = [...priorBaseRows, ...collectedRows];
+            if (effectiveContextLimit > 0 && historyPool.length > 0) {
+              const recentEntries = historyPool.slice(-effectiveContextLimit);
+              const summaryList = recentEntries
+                .map((r, i) => {
+                  if (isPostTraining) {
+                    const pt = r as PostTrainingRow;
+                    return `[${i + 1}] Prompt: "${pt.prompt.slice(0, 160)}" | Chosen: "${pt.chosen.slice(0, 160)}"`;
+                  }
+                  const st = r as DatasetRow;
+                  const inp = st.input ? ` | Input: "${st.input.slice(0, 100)}"` : "";
+                  return `[${i + 1}] Instruction: "${st.instruction.slice(0, 160)}"${inp}`;
+                })
+                .join("\n");
+
+              promptForThisRow = `${individualPrompt}\n\nCRITICAL ANTI-REPETITION REQUIREMENT:\nDo NOT duplicate, rephrase, or repeat the concepts, prompts, or tasks from the following previously generated entries. Generate a fresh, novel, and diverse entry covering a different perspective or topic:\n${summaryList}`;
+            }
 
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
               let responseText = "";
               try {
                 responseText = await completeWithLlm(
                   userKey,
-                  [{ role: "user", content: individualPrompt }],
+                  [{ role: "user", content: promptForThisRow }],
                   {
                     provider,
                     model: model.trim(),
@@ -1112,6 +1146,28 @@ Return ONLY valid JSON, no markdown, no explanation. Example format:
   {"instruction": "...", "input": "...", "output": "..."}
 ]`;
 
+    let batchPromptForExecution = prompt;
+    if (
+      effectiveContextLimit > 0 &&
+      Array.isArray(existingRows) &&
+      existingRows.length > 0
+    ) {
+      const recentEntries = existingRows.slice(-effectiveContextLimit);
+      const summaryList = recentEntries
+        .map((r, i) => {
+          if (isPostTraining) {
+            const pt = r as PostTrainingRow;
+            return `[${i + 1}] Prompt: "${pt.prompt.slice(0, 160)}" | Chosen: "${pt.chosen.slice(0, 160)}"`;
+          }
+          const st = r as DatasetRow;
+          const inp = st.input ? ` | Input: "${st.input.slice(0, 100)}"` : "";
+          return `[${i + 1}] Instruction: "${st.instruction.slice(0, 160)}"${inp}`;
+        })
+        .join("\n");
+
+      batchPromptForExecution = `${prompt}\n\nCRITICAL ANTI-REPETITION REQUIREMENT:\nDo NOT duplicate or repeat the concepts from the following existing entries:\n${summaryList}`;
+    }
+
     const llmMaxTokens = tokenCount + LLM_TOKEN_BUFFER;
     const maxAttempts = retryOnFail ? MAX_DATASET_RETRIES + 1 : 1;
     let lastError = "";
@@ -1125,7 +1181,7 @@ Return ONLY valid JSON, no markdown, no explanation. Example format:
       try {
         responseText = await completeWithLlm(
           userKey,
-          [{ role: "user", content: prompt }],
+          [{ role: "user", content: batchPromptForExecution }],
           {
             provider,
             model: model.trim(),

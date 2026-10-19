@@ -3338,6 +3338,8 @@ export const es = {
     targetTokensHint: "100 – 100.000 tokens. La IA generará filas hasta producir aproximadamente esta cantidad de tokens.",
     targetRowCount: "Número de Filas",
     targetRowCountHint: "1 – 500 filas. Cada fila se genera en una solicitud de IA separada para máxima calidad.",
+    contextLimit: "Límite de contexto (entradas anteriores)",
+    contextLimitHint: "Cantidad de entradas generadas recientemente para incluir como memoria antirrepetitiva (0 a 50, por defecto: 5). Establezca en 0 para generación aislada.",
     retryOnFail: "Reintentar al Fallar",
     retryOnFailHint: "Reintentar automáticamente las generaciones de filas fallidas (hasta 5 intentos por fila).",
     generatingDataset: "Generando Conjunto de Datos...",

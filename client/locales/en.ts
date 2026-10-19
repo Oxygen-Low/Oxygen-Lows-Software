@@ -3356,6 +3356,8 @@ export const en = {
     targetTokensHint: "100 – 100,000 tokens. The AI will generate rows until approximately this many tokens are produced.",
     targetRowCount: "Number of Rows",
     targetRowCountHint: "1 – 500 rows. Each row is generated in a separate AI request for maximum quality.",
+    contextLimit: "Context Limit (Prior Entries)",
+    contextLimitHint: "Number of recently generated entries to include as anti-repetition memory (0 – 50, default: 5). Set to 0 for isolated generation.",
     retryOnFail: "Retry on Fail",
     retryOnFailHint: "Automatically retry failed row generations (up to 5 attempts per row) instead of skipping them.",
     generatingDataset: "Generating Dataset...",

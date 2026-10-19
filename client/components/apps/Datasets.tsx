@@ -65,6 +65,7 @@ export interface DatasetQueueItem {
   generationMode: GenerationMode;
   targetTokens: number;
   targetRowCount: number;
+  contextLimit?: number;
   retryOnFail: boolean;
   status: "queued" | "generating" | "saving" | "completed" | "failed";
   error?: string;
@@ -146,6 +147,7 @@ export function DatasetsApp() {
   const [generationPrompt, setGenerationPrompt] = useState<string>("");
   const [targetTokens, setTargetTokens] = useState<number>(2000);
   const [targetRowCount, setTargetRowCount] = useState<number>(20);
+  const [contextLimit, setContextLimit] = useState<number>(5);
   const [retryOnFail, setRetryOnFail] = useState<boolean>(true);
   const [generating, setGenerating] = useState<boolean>(false);
   const [progressCurrent, setProgressCurrent] = useState<number>(0);
@@ -461,6 +463,7 @@ export function DatasetsApp() {
     generationMode: GenerationMode;
     targetTokens: number;
     targetRowCount: number;
+    contextLimit?: number;
     retryOnFail: boolean;
     onProgress?: (current: number, total: number, row: DatasetRow) => void;
   }): Promise<{ rows: DatasetRow[]; tokenCount: number }> => {
@@ -472,6 +475,7 @@ export function DatasetsApp() {
       generationMode: params.generationMode,
       targetTokens: params.targetTokens,
       targetRowCount: params.targetRowCount,
+      contextLimit: params.contextLimit,
       retryOnFail: params.retryOnFail,
       apiKey: pollinationsApiKey || undefined,
       isSupporter: isPollinationsSupporter,
@@ -562,6 +566,7 @@ export function DatasetsApp() {
         generationMode,
         targetTokens,
         targetRowCount,
+        contextLimit,
         retryOnFail,
         onProgress: (current, total, row) => {
           setProgressCurrent(current);
@@ -624,6 +629,7 @@ export function DatasetsApp() {
       generationMode,
       targetTokens,
       targetRowCount,
+      contextLimit,
       retryOnFail,
       status: "queued",
     };
@@ -698,6 +704,7 @@ export function DatasetsApp() {
           generationMode: nextItem.generationMode,
           targetTokens: nextItem.targetTokens,
           targetRowCount: nextItem.targetRowCount,
+          contextLimit: nextItem.contextLimit,
           retryOnFail: nextItem.retryOnFail,
           onProgress: (current, total) => {
             updateItem({ progressCurrent: current, progressTotal: total });
@@ -1596,6 +1603,30 @@ export function DatasetsApp() {
                     />
                     <p className="text-xs text-muted-foreground">
                       {t("datasets.targetRowCountHint")}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">
+                      {t("datasets.contextLimit")}
+                    </label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={50}
+                      step={1}
+                      value={contextLimit}
+                      onChange={(e) =>
+                        setContextLimit(
+                          Math.max(
+                            0,
+                            Math.min(50, parseInt(e.target.value, 10) || 0),
+                          ),
+                        )
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t("datasets.contextLimitHint")}
                     </p>
                   </div>
 
