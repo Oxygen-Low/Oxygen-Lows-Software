@@ -783,19 +783,22 @@ datasetsRouter.post("/generate", async (c) => {
       datasetType,
       apiKey,
       contextLimit: rawContextLimit,
+      contextTokens: rawContextTokens,
       existingRows,
     } = body;
     const isPostTraining = datasetType === "post-training";
 
-    const parsedContextLimit =
-      typeof rawContextLimit === "number"
-        ? rawContextLimit
-        : typeof rawContextLimit === "string" && rawContextLimit.trim().length > 0
-          ? parseInt(rawContextLimit.trim(), 10)
-          : 5;
-    const effectiveContextLimit = Math.max(
+    const rawTokensOrLimit = rawContextTokens ?? rawContextLimit;
+    const parsedContextTokens =
+      typeof rawTokensOrLimit === "number"
+        ? rawTokensOrLimit
+        : typeof rawTokensOrLimit === "string" &&
+            rawTokensOrLimit.trim().length > 0
+          ? parseInt(rawTokensOrLimit.trim(), 10)
+          : 2000;
+    const effectiveContextTokens = Math.max(
       0,
-      Math.min(50, isNaN(parsedContextLimit) ? 5 : parsedContextLimit),
+      Math.min(128000, isNaN(parsedContextTokens) ? 2000 : parsedContextTokens),
     );
 
     const effectiveInstructions =
@@ -961,21 +964,44 @@ Return ONLY valid JSON, no markdown, no explanation. Example format:
 
             let promptForThisRow = individualPrompt;
             const historyPool = [...priorBaseRows, ...collectedRows];
-            if (effectiveContextLimit > 0 && historyPool.length > 0) {
-              const recentEntries = historyPool.slice(-effectiveContextLimit);
-              const summaryList = recentEntries
-                .map((r, i) => {
-                  if (isPostTraining) {
-                    const pt = r as PostTrainingRow;
-                    return `[${i + 1}] Prompt: "${pt.prompt.slice(0, 160)}" | Chosen: "${pt.chosen.slice(0, 160)}"`;
-                  }
-                  const st = r as DatasetRow;
-                  const inp = st.input ? ` | Input: "${st.input.slice(0, 100)}"` : "";
-                  return `[${i + 1}] Instruction: "${st.instruction.slice(0, 160)}"${inp}`;
-                })
-                .join("\n");
+            if (effectiveContextTokens > 0 && historyPool.length > 0) {
+              const selectedEntries: Array<DatasetRow | PostTrainingRow> = [];
+              let currentTokens = 0;
+              for (let i = historyPool.length - 1; i >= 0; i--) {
+                const entry = historyPool[i];
+                const entryTokens = isPostTraining
+                  ? estimateTokenCount((entry as PostTrainingRow).prompt) +
+                    estimateTokenCount((entry as PostTrainingRow).chosen) +
+                    estimateTokenCount((entry as PostTrainingRow).rejected)
+                  : estimateTokenCount((entry as DatasetRow).instruction) +
+                    estimateTokenCount((entry as DatasetRow).input || "") +
+                    estimateTokenCount((entry as DatasetRow).output);
 
-              promptForThisRow = `${individualPrompt}\n\nCRITICAL ANTI-REPETITION REQUIREMENT:\nDo NOT duplicate, rephrase, or repeat the concepts, prompts, or tasks from the following previously generated entries. Generate a fresh, novel, and diverse entry covering a different perspective or topic:\n${summaryList}`;
+                if (
+                  currentTokens + entryTokens > effectiveContextTokens &&
+                  selectedEntries.length > 0
+                ) {
+                  break;
+                }
+                selectedEntries.unshift(entry);
+                currentTokens += entryTokens;
+              }
+
+              if (selectedEntries.length > 0) {
+                const summaryList = selectedEntries
+                  .map((r, i) => {
+                    if (isPostTraining) {
+                      const pt = r as PostTrainingRow;
+                      return `[Entry ${i + 1}]\nPrompt: ${pt.prompt}\nChosen: ${pt.chosen}\nRejected: ${pt.rejected}`;
+                    }
+                    const st = r as DatasetRow;
+                    const inp = st.input ? `\nInput: ${st.input}` : "";
+                    return `[Entry ${i + 1}]\nInstruction: ${st.instruction}${inp}\nOutput: ${st.output}`;
+                  })
+                  .join("\n\n");
+
+                promptForThisRow = `${individualPrompt}\n\nCRITICAL ANTI-REPETITION REQUIREMENT:\nDo NOT duplicate, rephrase, or repeat the concepts, prompts, or tasks from the following previously generated entries (~${currentTokens} tokens of context). Generate a fresh, novel, and diverse entry covering a different perspective, problem, or topic:\n\n${summaryList}`;
+              }
             }
 
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -1148,24 +1174,47 @@ Return ONLY valid JSON, no markdown, no explanation. Example format:
 
     let batchPromptForExecution = prompt;
     if (
-      effectiveContextLimit > 0 &&
+      effectiveContextTokens > 0 &&
       Array.isArray(existingRows) &&
       existingRows.length > 0
     ) {
-      const recentEntries = existingRows.slice(-effectiveContextLimit);
-      const summaryList = recentEntries
-        .map((r, i) => {
-          if (isPostTraining) {
-            const pt = r as PostTrainingRow;
-            return `[${i + 1}] Prompt: "${pt.prompt.slice(0, 160)}" | Chosen: "${pt.chosen.slice(0, 160)}"`;
-          }
-          const st = r as DatasetRow;
-          const inp = st.input ? ` | Input: "${st.input.slice(0, 100)}"` : "";
-          return `[${i + 1}] Instruction: "${st.instruction.slice(0, 160)}"${inp}`;
-        })
-        .join("\n");
+      const selectedEntries: Array<DatasetRow | PostTrainingRow> = [];
+      let currentTokens = 0;
+      for (let i = existingRows.length - 1; i >= 0; i--) {
+        const entry = existingRows[i];
+        const entryTokens = isPostTraining
+          ? estimateTokenCount((entry as PostTrainingRow).prompt) +
+            estimateTokenCount((entry as PostTrainingRow).chosen) +
+            estimateTokenCount((entry as PostTrainingRow).rejected)
+          : estimateTokenCount((entry as DatasetRow).instruction) +
+            estimateTokenCount((entry as DatasetRow).input || "") +
+            estimateTokenCount((entry as DatasetRow).output);
 
-      batchPromptForExecution = `${prompt}\n\nCRITICAL ANTI-REPETITION REQUIREMENT:\nDo NOT duplicate or repeat the concepts from the following existing entries:\n${summaryList}`;
+        if (
+          currentTokens + entryTokens > effectiveContextTokens &&
+          selectedEntries.length > 0
+        ) {
+          break;
+        }
+        selectedEntries.unshift(entry);
+        currentTokens += entryTokens;
+      }
+
+      if (selectedEntries.length > 0) {
+        const summaryList = selectedEntries
+          .map((r, i) => {
+            if (isPostTraining) {
+              const pt = r as PostTrainingRow;
+              return `[Entry ${i + 1}]\nPrompt: ${pt.prompt}\nChosen: ${pt.chosen}\nRejected: ${pt.rejected}`;
+            }
+            const st = r as DatasetRow;
+            const inp = st.input ? `\nInput: ${st.input}` : "";
+            return `[Entry ${i + 1}]\nInstruction: ${st.instruction}${inp}\nOutput: ${st.output}`;
+          })
+          .join("\n\n");
+
+        batchPromptForExecution = `${prompt}\n\nCRITICAL ANTI-REPETITION REQUIREMENT:\nDo NOT duplicate or repeat the concepts from the following existing entries (~${currentTokens} tokens of context):\n\n${summaryList}`;
+      }
     }
 
     const llmMaxTokens = tokenCount + LLM_TOKEN_BUFFER;

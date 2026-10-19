@@ -262,7 +262,7 @@ describe("Datasets API Routes & Parquet Storage", () => {
         prompt: "Generate math calculus problems",
         model: "inclusionai/ling-3.1-flash",
         targetTokens: 1000,
-        contextLimit: 5,
+        contextTokens: 2000,
         existingRows: [
           { instruction: "What is 2 + 2?", input: "", output: "4" },
         ],

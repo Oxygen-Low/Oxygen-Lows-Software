@@ -147,7 +147,7 @@ export function DatasetsApp() {
   const [generationPrompt, setGenerationPrompt] = useState<string>("");
   const [targetTokens, setTargetTokens] = useState<number>(2000);
   const [targetRowCount, setTargetRowCount] = useState<number>(20);
-  const [contextLimit, setContextLimit] = useState<number>(5);
+  const [contextLimit, setContextLimit] = useState<number>(2000);
   const [retryOnFail, setRetryOnFail] = useState<boolean>(true);
   const [generating, setGenerating] = useState<boolean>(false);
   const [progressCurrent, setProgressCurrent] = useState<number>(0);
@@ -1613,14 +1613,14 @@ export function DatasetsApp() {
                     <Input
                       type="number"
                       min={0}
-                      max={50}
-                      step={1}
+                      max={64000}
+                      step={500}
                       value={contextLimit}
                       onChange={(e) =>
                         setContextLimit(
                           Math.max(
                             0,
-                            Math.min(50, parseInt(e.target.value, 10) || 0),
+                            Math.min(64000, parseInt(e.target.value, 10) || 0),
                           ),
                         )
                       }
