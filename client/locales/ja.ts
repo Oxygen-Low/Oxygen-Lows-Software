@@ -423,6 +423,10 @@ export const ja = {
       "メインのデフォルトモデル（Pollinations Ling 3.1 Flash）は現在利用できません（レート制限）。AI Horde（{model}）にフォールバックします。品質が低下する可能性があります。",
     defaultModelFallbackNotice:
       "メインモデルの利用不可により、AI Horde（{model}）フォールバック経由で生成されました。",
+    customModelFallbackWarning:
+      "選択されたモデル（{sourceModel}）は現在利用できません。AI Horde（{model}）にフォールバックします。品質が低下する可能性があります。",
+    customModelFallbackNotice:
+      "{sourceModel}が利用できないため、AI Horde（{model}）フォールバック経由で生成されました。",
     pollinations404FallbackWarning:
       "Pollinationsが404エラー（未検出）を返しました。AI Horde（{model}）バックアップに切り替えます。品質が低下する場合があります。",
     pollinations404FallbackNotice:

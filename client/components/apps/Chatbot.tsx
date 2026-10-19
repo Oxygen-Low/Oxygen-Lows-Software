@@ -514,6 +514,7 @@ interface Message {
   usedFallback?: boolean;
   fallbackModel?: string;
   fallbackReason?: string;
+  fallbackSourceModel?: string;
 }
 
 interface Chat {
@@ -736,6 +737,18 @@ const ChatMessage = React.memo(
                             "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
                         },
                         `Generated via AI Horde (${m.fallbackModel || "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"}) fallback due to Pollinations 404 error.`,
+                      )
+                    : m.fallbackSourceModel &&
+                      m.fallbackSourceModel !== "inclusionai/ling-3.1-flash"
+                    ? t(
+                        "apps.customModelFallbackNotice",
+                        {
+                          sourceModel: m.fallbackSourceModel,
+                          model:
+                            m.fallbackModel ||
+                            "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+                        },
+                        `Generated via AI Horde (${m.fallbackModel || "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"}) fallback because ${m.fallbackSourceModel} was unavailable.`,
                       )
                     : t(
                         "apps.defaultModelFallbackNotice",
@@ -1703,6 +1716,10 @@ export function ChatbotApp() {
     onFallback?: (modelUsed?: string) => void,
   ): Promise<string> => {
     const apiKey = pollinationsApiKey;
+    const sanitizedMsgs = msgs.map((m) => ({
+      role: (m.role || "user") as "system" | "user" | "assistant",
+      content: m.content || "",
+    }));
 
     const streamResponseData = async (
       response: Response,
@@ -1720,66 +1737,96 @@ export function ChatbotApp() {
       }
 
       let streamBuffer = "";
+      let rawStreamText = "";
       const translator = createSseDeltaTranslator();
+
+      const processSseLine = (line: string) => {
+        if (!line.trim() || !line.startsWith("data: ")) return;
+        const dataStr = line.replace("data: ", "");
+        if (dataStr === "[DONE]") return;
+
+        try {
+          const data = JSON.parse(dataStr);
+          if (data.error) throw new Error(data.error);
+          if (data.queue_info) setQueueStatus(data.queue_info);
+
+          let delta = "";
+          if (streamProvider === "google") {
+            delta =
+              data.delta?.content ||
+              data.message?.content?.text ||
+              data.candidates?.[0]?.content?.parts?.[0]?.text ||
+              "";
+            const fc =
+              data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
+            if (fc) {
+              delta += `<tool_call>\n{"name": ${JSON.stringify(fc.name)}, "args": ${JSON.stringify(fc.args)}}\n</tool_call>`;
+            }
+          } else if (streamProvider === "ollama") {
+            delta = data.message?.content || data.response || "";
+          } else {
+            delta = translator.translate(data);
+          }
+
+          if (delta) {
+            setQueueStatus(null);
+            fullContent += delta;
+            streamCallback(fullContent);
+          }
+        } catch (e: any) {
+          if (
+            e.message &&
+            e.message !== "Unexpected end of JSON input" &&
+            !e.message.includes("JSON")
+          ) {
+            toast.error(e.message);
+          }
+        }
+      };
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          streamBuffer += decoder.decode(value, { stream: true });
+          const chunkText = decoder.decode(value, { stream: true });
+          rawStreamText += chunkText;
+          streamBuffer += chunkText;
           const lines = streamBuffer.split("\n");
           streamBuffer = lines.pop() || "";
 
           for (const line of lines) {
-            if (!line.trim() || !line.startsWith("data: ")) continue;
-            const dataStr = line.replace("data: ", "");
-            if (dataStr === "[DONE]") break;
-
-            try {
-              const data = JSON.parse(dataStr);
-              if (data.error) throw new Error(data.error);
-              if (data.queue_info) setQueueStatus(data.queue_info);
-
-              let delta = "";
-              if (streamProvider === "google") {
-                delta =
-                  data.delta?.content ||
-                  data.message?.content?.text ||
-                  data.candidates?.[0]?.content?.parts?.[0]?.text ||
-                  "";
-                const fc =
-                  data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
-                if (fc) {
-                  delta += `<tool_call>\n{"name": ${JSON.stringify(fc.name)}, "args": ${JSON.stringify(fc.args)}}\n</tool_call>`;
-                }
-              } else if (streamProvider === "ollama") {
-                delta = data.message?.content || data.response || "";
-              } else {
-                delta = translator.translate(data);
-              }
-
-              if (delta) {
-                setQueueStatus(null);
-                fullContent += delta;
-                streamCallback(fullContent);
-              }
-            } catch (e: any) {
-              if (
-                e.message &&
-                e.message !== "Unexpected end of JSON input" &&
-                !e.message.includes("JSON")
-              ) {
-                toast.error(e.message);
-              }
-            }
+            processSseLine(line);
           }
+        }
+
+        if (streamBuffer.trim()) {
+          processSseLine(streamBuffer);
         }
 
         const flushed = translator.flush();
         if (flushed) {
           fullContent += flushed;
           streamCallback(fullContent);
+        }
+
+        // Fallback if upstream returned a non-SSE JSON completion object
+        if (!fullContent && rawStreamText.trim().startsWith("{")) {
+          try {
+            const parsedJson = JSON.parse(rawStreamText.trim());
+            const fallbackDelta =
+              parsedJson?.choices?.[0]?.message?.content ||
+              parsedJson?.choices?.[0]?.delta?.content ||
+              parsedJson?.choices?.[0]?.text ||
+              parsedJson?.content?.[0]?.text ||
+              "";
+            if (fallbackDelta) {
+              fullContent += fallbackDelta;
+              streamCallback(fullContent);
+            }
+          } catch {
+            // ignore non-JSON
+          }
         }
       }
       return fullContent;
@@ -1789,6 +1836,25 @@ export function ChatbotApp() {
       fallbackModelId: string,
       reason: "rate_limit" | "not_found" | "auth_required" = "rate_limit",
     ): Promise<string> => {
+      const effectiveSourceModel = model || "inclusionai/ling-3.1-flash";
+      const isDefaultPollinationsModel =
+        !model || model === "inclusionai/ling-3.1-flash";
+      const matchedModelObj =
+        customModels.find(
+          (m) =>
+            m.model_id === effectiveSourceModel ||
+            m.id === effectiveSourceModel,
+        ) ||
+        standardModels.find(
+          (m) =>
+            m.model_id === effectiveSourceModel ||
+            m.id === effectiveSourceModel,
+        );
+      const sourceModelDisplay =
+        matchedModelObj?.name && matchedModelObj.name !== effectiveSourceModel
+          ? `${matchedModelObj.name} (${effectiveSourceModel})`
+          : effectiveSourceModel;
+
       onFallback?.(fallbackModelId);
       setAllMessages((prevAll) =>
         prevAll.map((m) =>
@@ -1798,6 +1864,9 @@ export function ChatbotApp() {
                 usedFallback: true,
                 fallbackModel: fallbackModelId,
                 fallbackReason: reason,
+                fallbackSourceModel: isDefaultPollinationsModel
+                  ? undefined
+                  : sourceModelDisplay,
               }
             : m,
         ),
@@ -1816,6 +1885,14 @@ export function ChatbotApp() {
             "apps.pollinations404FallbackWarning",
             { model: fallbackModelId },
             `Pollinations returned a 404 (Not Found) error. Falling back to AI Horde backup (${fallbackModelId}). Quality may be decreased.`,
+          ),
+        );
+      } else if (!isDefaultPollinationsModel) {
+        toast.warning(
+          t(
+            "apps.customModelFallbackWarning",
+            { sourceModel: sourceModelDisplay, model: fallbackModelId },
+            `The selected model (${sourceModelDisplay}) is currently unavailable. Falling back to AI Horde (${fallbackModelId}). Quality may be decreased.`,
           ),
         );
       } else {
@@ -1838,7 +1915,7 @@ export function ChatbotApp() {
         body: JSON.stringify({
           provider: "horde",
           model: fallbackModelId,
-          messages: msgs,
+          messages: sanitizedMsgs,
           stream: true,
         }),
       };
@@ -1869,7 +1946,7 @@ export function ChatbotApp() {
             body: JSON.stringify({
               provider: "pollinations",
               model: model || "inclusionai/ling-3.1-flash",
-              messages: msgs,
+              messages: sanitizedMsgs,
               stream: true,
             }),
           };
@@ -1877,14 +1954,20 @@ export function ChatbotApp() {
           if (!res.ok) {
             const errStatus = res.status;
             const errMsg = await parseAiProxyError(res);
+            const lowerErr = errMsg.toLowerCase();
             const is401 =
               errStatus === 401 ||
               errStatus === 403 ||
               errMsg.includes("401") ||
               errMsg.includes("403") ||
-              errMsg.toLowerCase().includes("unauthorized") ||
-              errMsg.toLowerCase().includes("api key");
-            const is404 = errStatus === 404 || errMsg.includes("404");
+              lowerErr.includes("unauthorized") ||
+              lowerErr.includes("api key");
+            const is404 =
+              errStatus === 404 ||
+              errMsg.includes("404") ||
+              lowerErr.includes("not found") ||
+              lowerErr.includes("invalid model") ||
+              lowerErr.includes("unknown model");
             const fallbackReason: "rate_limit" | "not_found" | "auth_required" =
               is401 ? "auth_required" : is404 ? "not_found" : "rate_limit";
 
@@ -1925,10 +2008,7 @@ export function ChatbotApp() {
         let directContent = "";
         await streamPollinationsClient({
           model: model || "inclusionai/ling-3.1-flash",
-          messages: msgs.map((m) => ({
-            role: (m.role || "user") as "system" | "user" | "assistant",
-            content: m.content || "",
-          })),
+          messages: sanitizedMsgs,
           signal,
           apiKey: isDirectKey ? apiKey : undefined,
           onChunk: (delta) => {
@@ -1940,6 +2020,7 @@ export function ChatbotApp() {
         return directContent;
       } catch (err: any) {
         if (signal.aborted) throw err;
+        const lowerErrMsg = String(err?.message || "").toLowerCase();
         const is401 =
           err instanceof PollinationsAuthError ||
           err?.statusCode === 401 ||
@@ -1949,15 +2030,19 @@ export function ChatbotApp() {
         const is404 =
           err instanceof PollinationsNotFoundError ||
           err?.statusCode === 404 ||
-          err?.message?.includes("404");
+          err?.message?.includes("404") ||
+          lowerErrMsg.includes("not found") ||
+          lowerErrMsg.includes("invalid model") ||
+          lowerErrMsg.includes("unknown model");
         const isRateLimit =
           err instanceof PollinationsRateLimitError ||
           err?.statusCode === 429;
         const is402 =
           err?.statusCode === 402 ||
           err?.message?.includes("402");
+        const is400 = err?.statusCode === 400;
 
-        if (is401 || is404 || isRateLimit || is402) {
+        if (is401 || is404 || isRateLimit || is402 || is400) {
           const fallbackReason: "rate_limit" | "not_found" | "auth_required" = is401
             ? "auth_required"
             : is404
@@ -1995,7 +2080,7 @@ export function ChatbotApp() {
       body: JSON.stringify({
         provider: provider,
         model: model,
-        messages: msgs,
+        messages: sanitizedMsgs,
         stream: true,
         apiKey: apiKey || undefined,
       }),

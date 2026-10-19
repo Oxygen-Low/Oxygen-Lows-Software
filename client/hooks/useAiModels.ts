@@ -164,6 +164,7 @@ export function useAiModels() {
         const stored = localStorage.getItem(LOCAL_STORAGE_DEFAULTS);
         if (stored) {
           const parsed = JSON.parse(stored);
+          if (parsed?.research) return parsed.research;
           if (parsed?.researchAgent) return parsed.researchAgent;
         }
       } catch {}
@@ -177,6 +178,7 @@ export function useAiModels() {
       const stored = localStorage.getItem(LOCAL_STORAGE_DEFAULTS);
       if (stored) {
         const parsed = JSON.parse(stored);
+        if (parsed?.summarizer) return parsed.summarizer;
         if (parsed?.researchSummarizer) return parsed.researchSummarizer;
       }
     } catch {}
@@ -214,9 +216,14 @@ export function useAiModels() {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed.chatbot) setChatbotDefaultModelState(parsed.chatbot);
-        if (parsed.research) setResearchAgentDefaultModelState(parsed.research);
-        if (parsed.summarizer)
-          setResearchSummarizerDefaultModelState(parsed.summarizer);
+        if (parsed.research || parsed.researchAgent)
+          setResearchAgentDefaultModelState(
+            parsed.research || parsed.researchAgent,
+          );
+        if (parsed.summarizer || parsed.researchSummarizer)
+          setResearchSummarizerDefaultModelState(
+            parsed.summarizer || parsed.researchSummarizer,
+          );
       }
     } catch {}
   }, []);

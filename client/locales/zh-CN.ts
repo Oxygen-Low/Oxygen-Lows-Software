@@ -403,6 +403,10 @@ export const zhCN = {
       "默认主要模型（Pollinations Ling 3.1 Flash）当前不可用（超出速率限制）。正在回退至 AI Horde（{model}），质量可能会有所下降。",
     defaultModelFallbackNotice:
       "由于默认主要模型不可用，已通过 AI Horde（{model}）回退模型生成。",
+    customModelFallbackWarning:
+      "所选模型（{sourceModel}）当前不可用。正在回退至 AI Horde（{model}），质量可能会有所下降。",
+    customModelFallbackNotice:
+      "由于模型 {sourceModel} 不可用，已通过 AI Horde（{model}）回退模型生成。",
     pollinations404FallbackWarning:
       "Pollinations 返回 404 (未找到) 错误。正在回退到 AI Horde ({model}) 备用模型，质量可能会有所下降。",
     pollinations404FallbackNotice:

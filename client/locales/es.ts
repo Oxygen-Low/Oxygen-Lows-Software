@@ -432,6 +432,10 @@ export const es = {
       "El modelo predeterminado principal (Pollinations Ling 3.1 Flash) no está disponible actualmente (límite de velocidad). Recurriendo a AI Horde ({model}). La calidad puede verse reducida.",
     defaultModelFallbackNotice:
       "Generado a través del respaldo AI Horde ({model}) debido a la indisponibilidad del modelo principal.",
+    customModelFallbackWarning:
+      "El modelo seleccionado ({sourceModel}) no está disponible actualmente. Recurriendo a AI Horde ({model}). La calidad puede verse reducida.",
+    customModelFallbackNotice:
+      "Generado a través del respaldo AI Horde ({model}) porque {sourceModel} no estaba disponible.",
     pollinations404FallbackWarning:
       "Pollinations devolvió un error 404 (No encontrado). Cambiando a la copia de seguridad de AI Horde ({model}). La calidad puede verse reducida.",
     pollinations404FallbackNotice:

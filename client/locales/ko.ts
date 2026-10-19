@@ -418,6 +418,10 @@ export const ko = {
       "기본 모델(Pollinations Ling 3.1 Flash)을 현재 사용할 수 없습니다(요청 한도 초과). AI Horde({model}) 모델로 대체됩니다. 품질이 저하될 수 있습니다.",
     defaultModelFallbackNotice:
       "메인 기본 모델 사용 불가로 인해 AI Horde({model}) 대체 모델을 통해 생성되었습니다.",
+    customModelFallbackWarning:
+      "선택한 모델({sourceModel})을 현재 사용할 수 없습니다. AI Horde({model}) 모델로 대체됩니다. 품질이 저하될 수 있습니다.",
+    customModelFallbackNotice:
+      "{sourceModel} 모델 사용 불가로 인해 AI Horde({model}) 대체 모델을 통해 생성되었습니다.",
     pollinations404FallbackWarning:
       "Pollinations에서 404(찾을 수 없음) 오류가 발생했습니다. AI Horde({model}) 백업 모델로 대체됩니다. 품질이 저하될 수 있습니다.",
     pollinations404FallbackNotice:

@@ -420,6 +420,10 @@ export const en = {
       "The main default model (Pollinations Ling 3.1 Flash) is currently unavailable (rate limited). Falling back to AI Horde ({model}). Quality may be decreased.",
     defaultModelFallbackNotice:
       "Generated via AI Horde ({model}) fallback due to main default model unavailability.",
+    customModelFallbackWarning:
+      "The selected model ({sourceModel}) is currently unavailable. Falling back to AI Horde ({model}). Quality may be decreased.",
+    customModelFallbackNotice:
+      "Generated via AI Horde ({model}) fallback because {sourceModel} was unavailable.",
     pollinations404FallbackWarning:
       "Pollinations returned a 404 (Not Found) error. Falling back to AI Horde backup ({model}). Quality may be decreased.",
     pollinations404FallbackNotice:

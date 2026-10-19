@@ -427,6 +427,10 @@ export const ru = {
       "Основная модель по умолчанию (Pollinations Ling 3.1 Flash) временно недоступна (лимит запросов). Выполняется переключение на AI Horde ({model}). Качество может снизиться.",
     defaultModelFallbackNotice:
       "Сгенерировано с использованием резервной модели AI Horde ({model}) из-за недоступности основной модели.",
+    customModelFallbackWarning:
+      "Выбранная модель ({sourceModel}) временно недоступна. Выполняется переключение на AI Horde ({model}). Качество может снизиться.",
+    customModelFallbackNotice:
+      "Сгенерировано с использованием резервной модели AI Horde ({model}) из-за недоступности модели {sourceModel}.",
     pollinations404FallbackWarning:
       "Pollinations вернул ошибку 404 (Не найдено). Выполняется переключение на резервную модель AI Horde ({model}). Качество может снизиться.",
     pollinations404FallbackNotice:
