@@ -3,6 +3,7 @@ import path from "path";
 import { HIDDEN_STORAGE_DIR } from "../../shared/trackBackgrounds.ts";
 
 export const STORAGE_DIR = path.join(process.cwd(), "uploads");
+export const DATASETS_STORAGE_DIR = path.join(process.cwd(), "Data", "datasets");
 export const MAX_USER_QUOTA = 500 * 1024 * 1024; // 500 MB
 
 /**
@@ -50,6 +51,8 @@ const MIME_MAP: Record<string, string> = {
   mov: "video/quicktime",
   // Documents & Data
   json: "application/json",
+  jsonl: "application/x-ndjson",
+  parquet: "application/octet-stream",
   txt: "text/plain",
   csv: "text/csv",
   pdf: "application/pdf",
@@ -141,6 +144,24 @@ export function getFolderSize(folderPath: string): number {
   return size;
 }
 
+export function getUserDatasetsSize(userId: string): number {
+  if (!userId) return 0;
+  const baseDatasets = path.resolve(DATASETS_STORAGE_DIR);
+  const rawTarget = path.resolve(baseDatasets, String(userId));
+  const rawRel = path.relative(baseDatasets, rawTarget);
+  if (rawRel.startsWith("..") || path.isAbsolute(rawRel)) {
+    throw new Error("Invalid user ID");
+  }
+  const safeUser = String(userId).replace(/[^a-zA-Z0-9._-]/g, "_");
+  if (!safeUser) return 0;
+  const targetDatasets = path.resolve(baseDatasets, safeUser);
+  const relativeDatasets = path.relative(baseDatasets, targetDatasets);
+  if (relativeDatasets.startsWith("..") || path.isAbsolute(relativeDatasets)) {
+    throw new Error("Invalid user ID");
+  }
+  return getFolderSize(targetDatasets);
+}
+
 export function getUserTotalSize(userId: string): number {
   if (!userId) return 0;
   const baseStorage = path.resolve(STORAGE_DIR, "Storage");
@@ -157,7 +178,8 @@ export function getUserTotalSize(userId: string): number {
   }
   const sizeStorage = getFolderSize(targetStorage);
   const sizePublic = getFolderSize(targetPublic);
-  return sizeStorage + sizePublic;
+  const sizeDatasets = getUserDatasetsSize(userId);
+  return sizeStorage + sizePublic + sizeDatasets;
 }
 
 export interface StorageListItem {

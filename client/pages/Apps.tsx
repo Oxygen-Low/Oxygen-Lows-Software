@@ -38,6 +38,7 @@ import {
   X,
   Cpu,
   Headphones,
+  Database,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -165,6 +166,11 @@ const ChatApp = lazy(() =>
 const AgentsManagerApp = lazy(() =>
   import("@/components/apps/AgentsManager").then((m) => ({
     default: m.AgentsManagerApp,
+  })),
+);
+const DatasetsApp = lazy(() =>
+  import("@/components/apps/Datasets").then((m) => ({
+    default: m.DatasetsApp,
   })),
 );
 
@@ -548,6 +554,19 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
     component: WebmasterApp,
+    authRequired: true,
+  },
+  {
+    id: "datasets",
+    nameKey: "apps.datasetsTitle",
+    defaultName: "Datasets",
+    descKey: "apps.datasetsDesc",
+    defaultDesc:
+      "Create, refine, and import datasets for AI training with Parquet and JSONL support.",
+    categories: ["All", "LLM/AI", "Development"],
+    availability: "web-and-desktop",
+    icon: <Database className="w-8 h-8 text-cyan-500" />,
+    component: DatasetsApp,
     authRequired: true,
   },
 ];

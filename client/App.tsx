@@ -308,6 +308,10 @@ const App = () => (
                       path="/password-manager"
                       element={<Navigate to="/apps/password-manager" replace />}
                     />
+                    <Route
+                      path="/datasets"
+                      element={<Navigate to="/apps/datasets" replace />}
+                    />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

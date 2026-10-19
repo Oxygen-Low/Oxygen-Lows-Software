@@ -33,6 +33,7 @@ import { v1Router } from "./routes/v1.ts";
 import { contentTestRouter } from "./routes/contentTest.ts";
 import { partnersRouter } from "./routes/partners.ts";
 import { agentsRouter } from "./routes/agents.ts";
+import { datasetsRouter } from "./routes/datasets.ts";
 import { resumeInterruptedCrawls } from "./lib/oxylowCrawler.ts";
 import {
   getActiveDefenderBannedIps,
@@ -100,7 +101,8 @@ app.use("*", async (c, next) => {
     c.req.path.startsWith("/api/webmaster") ||
     c.req.path.startsWith("/api/chat") ||
     c.req.path.startsWith("/api/chess") ||
-    c.req.path.startsWith("/api/agents")
+    c.req.path.startsWith("/api/agents") ||
+    c.req.path.startsWith("/api/datasets")
   ) {
     return next();
   }
@@ -113,6 +115,7 @@ app.use("*", async (c, next) => {
           "/api/ai",
           "/api/data",
           "/api/storage",
+          "/api/datasets",
           "/api/v1",
           "/v1",
         ],
@@ -184,6 +187,8 @@ app.use(
         "https://image.pollinations.ai",
         "https://pollinations.ai",
         "https://*.pollinations.ai",
+        "https://datasets-server.huggingface.co",
+        "https://huggingface.co",
       ],
       frameSrc: ["'self'", "blob:"],
       frameAncestors: ["'self'"],
@@ -403,6 +408,12 @@ app.get("/sitemap.xml", (c) => {
       loc: `${baseUrl}/apps/vpn`,
       changefreq: "weekly",
       priority: "0.7",
+      lastmod: today,
+    },
+    {
+      loc: `${baseUrl}/apps/datasets`,
+      changefreq: "weekly",
+      priority: "0.8",
       lastmod: today,
     },
     {
@@ -1263,6 +1274,7 @@ app.route("/api/chess", chessRouter);
 app.route("/api/models", modelsRouter);
 app.route("/api/partners", partnersRouter);
 app.route("/api/agents", agentsRouter);
+app.route("/api/datasets", datasetsRouter);
 app.route("/v1", v1Router);
 app.route("/api/v1", v1Router);
 app.route("/api/contenttest", contentTestRouter);
