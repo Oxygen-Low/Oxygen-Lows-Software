@@ -524,6 +524,30 @@ export function parseImageSize(size?: string): { width: number; height: number }
   return { width, height };
 }
 
+function buildValidatedUrl(baseUrl: string): string {
+  try {
+    // Minimal path validation (done before new URL(), which resolves dot-segments)
+    if (baseUrl.includes("/../") || /\/%2e%2e\//i.test(baseUrl)) {
+      throw new Error("Invalid path");
+    }
+
+    const url = new URL(baseUrl);
+
+    const allowedDomains = ["stablehorde.net", "oai.stablehorde.net"];
+    if (!allowedDomains.includes(url.hostname)) {
+      throw new Error("Invalid host");
+    }
+
+    if (!["http:", "https:"].includes(url.protocol)) {
+      throw new Error("Invalid protocol");
+    }
+
+    return url.href;
+  } catch {
+    throw new Error("Invalid URL");
+  }
+}
+
 /**
  * POST /images/generations
  * OpenAI-compatible image generation with transparent server-side polling to AI Horde
@@ -977,7 +1001,7 @@ v1Router.post("/images/generations", async (c) => {
       let b64 = rawImg;
       if (rawImg.startsWith("http")) {
         // Download remote image and convert to base64
-        const imgRes = await fetch(rawImg);
+        const imgRes = await fetch(buildValidatedUrl(rawImg));
         if (!imgRes.ok) {
           return c.json(
             {
