@@ -160,6 +160,7 @@ export const ProjectsDialog: React.FC<ProjectsDialogProps> = ({
   const handleLoadFromCloud = async (item: SavedCloudFile) => {
     setLoadingCloud(true);
     try {
+      if (item.fullPath.includes('..')) throw new Error("Invalid path");
       const res = await storage.from("Storage").download(item.fullPath);
       if (res.error || !res.data) throw res.error || new Error("Failed to download");
 
@@ -182,6 +183,9 @@ export const ProjectsDialog: React.FC<ProjectsDialogProps> = ({
   const handleDeleteCloud = async (item: SavedCloudFile, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
+      if (item.fullPath.includes('..')) {
+        throw new Error('Invalid path');
+      }
       await storage.from("Storage").remove([item.fullPath]);
       toast.success(t("deletedCloudSuccess"));
       fetchCloudProjects();
