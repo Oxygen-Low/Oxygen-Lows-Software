@@ -1845,7 +1845,7 @@ export default function Account() {
                       {t(
                         "account.freeModelsNotice",
                         undefined,
-                        "No Pollinations account needed. Daily token limit applies per user and splits between accounts sharing an IP.",
+                        "No Pollinations account needed. Daily 25 points usage limit applies per user and splits between accounts sharing an IP.",
                       )}
                     </span>
                   </div>
@@ -1877,20 +1877,21 @@ export default function Account() {
                             <div className="pt-1.5 border-t border-slate-800/50 space-y-1">
                               <div className="flex items-center justify-between text-[10px]">
                                 <span className="text-slate-400">
-                                  {t("account.tokensRemainingLabel", undefined, "Tokens")}
+                                  {t("account.pointsRemainingLabel", undefined, "Points")}
                                 </span>
                                 <span className="font-mono text-blue-300 font-medium">
-                                  {info.remainingTokens.toLocaleString()} /{" "}
-                                  {info.effectiveLimit.toLocaleString()}
+                                  {Number((freeUsage?.remainingPoints ?? info.remainingTokens).toFixed(1))} /{" "}
+                                  {freeUsage?.effectiveLimitPoints ?? info.effectiveLimit} pts
                                 </span>
                               </div>
                               <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-800/60">
                                 <div
                                   className={cn(
                                     "h-full rounded-full transition-all duration-300",
-                                    info.remainingTokens / info.effectiveLimit > 0.25
+                                    (freeUsage?.remainingPoints ?? info.remainingTokens) /
+                                      (freeUsage?.effectiveLimitPoints ?? info.effectiveLimit) > 0.25
                                       ? "bg-blue-500"
-                                      : info.remainingTokens > 0
+                                      : (freeUsage?.remainingPoints ?? info.remainingTokens) > 0
                                         ? "bg-amber-500"
                                         : "bg-rose-500",
                                   )}
@@ -1899,7 +1900,8 @@ export default function Account() {
                                       100,
                                       Math.max(
                                         0,
-                                        (info.remainingTokens / info.effectiveLimit) * 100,
+                                        ((freeUsage?.remainingPoints ?? info.remainingTokens) /
+                                          (freeUsage?.effectiveLimitPoints ?? info.effectiveLimit)) * 100,
                                       ),
                                     )}%`,
                                   }}

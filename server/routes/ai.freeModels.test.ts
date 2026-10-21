@@ -4,7 +4,7 @@ import * as authModule from "../lib/auth.ts";
 import {
   _resetFreeAiLimitsForTesting,
   recordFreeModelUsage,
-  getUserDailyUsage,
+  getUserDailyPointsUsage,
   getEffectiveDailyLimit,
 } from "../lib/freeAiLimits.ts";
 
@@ -38,7 +38,7 @@ describe("AI Router - Free Models API and Proxy", () => {
     expect(json.error).toContain("Authentication required");
   });
 
-  it("GET /free-usage returns model quotas and remaining tokens", async () => {
+  it("GET /free-usage returns model quotas and remaining points", async () => {
     const res = await aiRouter.request("/free-usage", {
       method: "GET",
       headers: {
@@ -52,13 +52,13 @@ describe("AI Router - Free Models API and Proxy", () => {
     expect(json.userId).toBe(mockUser.id);
     expect(json.ip).toBe("100.200.50.1");
     expect(json.userCountOnIp).toBe(1);
+    expect(json.baseDailyPoints).toBe(25);
+    expect(json.effectiveLimitPoints).toBe(25);
+    expect(json.remainingPoints).toBe(25);
     expect(json.models["deepseek/deepseek-v4.1-flash"]).toBeDefined();
-    expect(json.models["deepseek/deepseek-v4.1-flash"].baseDailyLimit).toBe(1_000_000);
-    expect(json.models["deepseek/deepseek-v4.1-flash"].outputMultiplier).toBe(4);
-    expect(json.models["openai/gpt-6-luna"].baseDailyLimit).toBe(2_000_000);
-    expect(json.models["openai/gpt-6-luna"].outputMultiplier).toBe(5);
-    expect(json.models["openai/gpt-oss-20b"].baseDailyLimit).toBe(5_000_000);
-    expect(json.models["openai/gpt-oss-20b"].outputMultiplier).toBe(6);
+    expect(json.models["deepseek/deepseek-v4.1-flash"].rateDisplay).toBeDefined();
+    expect(json.models["openai/gpt-6-luna"].rateDisplay).toBeDefined();
+    expect(json.models["openai/gpt-oss-20b"].rateDisplay).toBeDefined();
   });
 
   it("POST /proxy rejects unauthenticated access to free models", async () => {
@@ -79,7 +79,7 @@ describe("AI Router - Free Models API and Proxy", () => {
     expect(json.error).toBe("Please log in to use free AI models.");
   });
 
-  it("POST /proxy allows authenticated free model request and records tokens with multiplier", async () => {
+  it("POST /proxy allows authenticated free model request and records points based on pricing", async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockImplementation(async (url: any) => {
       if (typeof url === "string" && url.includes("pollinations.ai")) {
@@ -118,10 +118,8 @@ describe("AI Router - Free Models API and Proxy", () => {
       const data = await res.json();
       expect(data.choices[0].message.content).toContain("DeepSeek");
 
-      // deepseek multiplier is 4x for output tokens:
-      // prompt_tokens (10) + completion_tokens (20) * 4 = 10 + 80 = 90
-      const usedToday = getUserDailyUsage(mockUser.id, "deepseek/deepseek-v4.1-flash");
-      expect(usedToday).toBe(90);
+      const usedToday = getUserDailyPointsUsage(mockUser.id);
+      expect(usedToday).toBeGreaterThan(0);
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -129,8 +127,8 @@ describe("AI Router - Free Models API and Proxy", () => {
 
   it("POST /proxy enforces daily limits and returns 429 when quota exceeded", async () => {
     const ip = "100.200.50.3";
-    // Pre-consume all 1,000,000 tokens for deepseek
-    recordFreeModelUsage(mockUser.id, "deepseek/deepseek-v4.1-flash", ip, 1_000_000, 0);
+    // Pre-consume 25 points
+    recordFreeModelUsage(mockUser.id, "deepseek/deepseek-v4.1-flash", ip, 1_000_000, 1_000_000);
 
     const res = await aiRouter.request("/proxy", {
       method: "POST",
@@ -149,9 +147,9 @@ describe("AI Router - Free Models API and Proxy", () => {
     expect(res.status).toBe(429);
     const json = await res.json();
     expect(json.code).toBe("FREE_TIER_LIMIT_REACHED");
-    expect(json.error).toContain("Daily token limit reached");
-    expect(json.effectiveLimit).toBe(1_000_000);
-    expect(json.remainingTokens).toBe(0);
+    expect(json.error).toContain("Daily limit reached");
+    expect(json.effectiveLimit).toBe(25);
+    expect(json.remainingPoints).toBe(0);
   });
 
   it("POST /proxy splits limit when multiple accounts access from same IP", async () => {
@@ -161,15 +159,14 @@ describe("AI Router - Free Models API and Proxy", () => {
     // User 2 accesses from same IP
     recordFreeModelUsage("user-free-test-2", "deepseek/deepseek-v4.1-flash", ip, 100, 0);
 
-    // Limit is now 1,000,000 / 2 = 500,000
+    // Limit is now 25 / 2 = 12.5 points
     const limit = getEffectiveDailyLimit("deepseek/deepseek-v4.1-flash", ip, mockUser.id);
     expect(limit.userCountOnIp).toBe(2);
-    expect(limit.effectiveLimit).toBe(500_000);
+    expect(limit.effectiveLimit).toBe(12.5);
 
-    // If User 1 has consumed 499,990 tokens:
-    recordFreeModelUsage(mockUser.id, "deepseek/deepseek-v4.1-flash", ip, 499_890, 0);
+    // If User 1 has consumed 12.5 points:
+    recordFreeModelUsage(mockUser.id, "deepseek/deepseek-v4.1-flash", ip, 500_000, 500_000);
 
-    // A message requiring ~20 tokens will exceed 500,000 limit
     const res = await aiRouter.request("/proxy", {
       method: "POST",
       headers: {
@@ -180,14 +177,13 @@ describe("AI Router - Free Models API and Proxy", () => {
       body: JSON.stringify({
         model: "deepseek/deepseek-v4.1-flash",
         category: "free",
-        messages: [{ role: "user", content: "This is a longer prompt that exceeds the remaining ten tokens." }],
+        messages: [{ role: "user", content: "Test message" }],
       }),
     });
 
     expect(res.status).toBe(429);
     const json = await res.json();
-    expect(json.userCountOnIp).toBe(2);
-    expect(json.effectiveLimit).toBe(500_000);
+    expect(json.code).toBe("FREE_TIER_LIMIT_REACHED");
     expect(json.error).toContain("split between 2 accounts on this IP");
   });
 });

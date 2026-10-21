@@ -26,11 +26,14 @@ export interface FreeModelUsageItem {
   id: string;
   name: string;
   tierName: string;
-  baseDailyLimit: number;
-  effectiveLimit: number;
-  outputMultiplier: number;
-  usedTokens: number;
-  remainingTokens: number;
+  rateDisplay?: string;
+  promptPointsPer1k?: number;
+  completionPointsPer1k?: number;
+  baseDailyLimit?: number;
+  effectiveLimit?: number;
+  outputMultiplier?: number;
+  usedTokens?: number;
+  remainingTokens?: number;
 }
 
 export interface FreeUsageData {
@@ -38,6 +41,10 @@ export interface FreeUsageData {
   ip: string;
   date: string;
   userCountOnIp: number;
+  baseDailyPoints?: number;
+  effectiveLimitPoints?: number;
+  usedPoints?: number;
+  remainingPoints?: number;
   models: Record<string, FreeModelUsageItem>;
 }
 
@@ -75,7 +82,7 @@ export const BUILTIN_MODELS: Model[] = [
     provider: "pollinations",
     model_id: "deepseek/deepseek-v4.1-flash",
     name: "Best",
-    rate: "1M/day (4x out)",
+    rate: "~0.04 pts / 1k",
     category: "free",
   },
   {
@@ -83,7 +90,7 @@ export const BUILTIN_MODELS: Model[] = [
     provider: "pollinations",
     model_id: "openai/gpt-6-luna",
     name: "Standard",
-    rate: "2M/day (5x out)",
+    rate: "~0.03 pts / 1k",
     category: "free",
   },
   {
@@ -91,7 +98,7 @@ export const BUILTIN_MODELS: Model[] = [
     provider: "pollinations",
     model_id: "openai/gpt-oss-20b",
     name: "Cheap",
-    rate: "5M/day (6x out)",
+    rate: "~0.01 pts / 1k",
     category: "free",
   },
   {

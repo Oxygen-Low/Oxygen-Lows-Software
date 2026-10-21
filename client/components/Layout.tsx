@@ -30,6 +30,7 @@ import {
   MessageSquare,
   Handshake,
   Sparkles,
+  Zap,
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { TopbarMusicPlayer } from "./TopbarMusicPlayer";
@@ -153,11 +154,42 @@ const MOBILE_MENU_BUTTON_CLASSES =
 export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
   const { session, signOut } = useAuth();
   const { unreadCount } = useNotifications();
-  const { pollenBalance, pollinationsApiKey } = useAiModels();
+  const { pollenBalance, pollinationsApiKey, freeUsage } = useAiModels();
   const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [resetCountdown, setResetCountdown] = useState<string>(() => {
+    const now = new Date();
+    const nextMidnightUtc = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + 1,
+      0, 0, 0, 0
+    );
+    const diffMs = Math.max(0, nextMidnightUtc - now.getTime());
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${mins}m`;
+  });
+
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      const nextMidnightUtc = Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + 1,
+        0, 0, 0, 0
+      );
+      const diffMs = Math.max(0, nextMidnightUtc - now.getTime());
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      setResetCountdown(`${hours}h ${mins}m`);
+    };
+    const interval = setInterval(update, 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   // ── Touch handling for mobile edge-swipe and tap ──
   const touchStartX = useRef<number | null>(null);
@@ -439,6 +471,36 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
 
           {/* Navigation Links */}
           <nav className="p-3 sm:p-4 space-y-1 sm:space-y-2 flex-1 overflow-y-auto pt-2">
+            {/* Daily Usage Points Card (Above Pollen Wallet) */}
+            <div className="pb-1.5 mb-1 border-b border-border/40">
+              <div
+                data-testid="sidebar-usage-card"
+                className="flex items-center justify-between px-3.5 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 select-none"
+                title={t(
+                  "nav.usageTooltip",
+                  undefined,
+                  "Daily app usage points (resets daily at midnight UTC)",
+                )}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-6 h-6 rounded-md bg-blue-400/20 text-blue-300 flex items-center justify-center shrink-0">
+                    <Zap className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[10px] text-blue-300/70 font-semibold uppercase tracking-wider">
+                      {t("nav.usage", undefined, "Usage")}
+                    </span>
+                    <span className="text-xs font-bold text-blue-200 truncate font-mono">
+                      {Number((freeUsage?.remainingPoints ?? 25).toFixed(1))} / {freeUsage?.effectiveLimitPoints ?? 25} pts
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[10px] text-blue-300/60 font-mono shrink-0 pl-1">
+                  {resetCountdown}
+                </span>
+              </div>
+            </div>
+
             {/* Pollinations Pollen Wallet Button (Above Apps) */}
             <div className="pb-1.5 mb-1 border-b border-border/40">
               <a

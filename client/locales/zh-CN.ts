@@ -68,6 +68,9 @@ export const zhCN = {
     closeSidebar: "å…³é—­ä¾§è¾¹æ ",
     pollenWallet: "Pollinations",
     pollenWalletTooltip: "Pollinations 钱包 - 点击查看与管理 Pollen",
+    usage: "用量",
+    usageTooltip: "每日应用使用积分（每天UTC零点重置）",
+    resetsIn: "{time}后重置",
   },
   auth: {
     title: "Oxygen Low's Software",
@@ -266,7 +269,10 @@ export const zhCN = {
     registeredModelsDesc:
       "所有可用的 Pollinations 模型，包括官方预设和自定义注册模型。",
     freeModels: "免费模型",
-    freeModelsNotice: "无需连接 Pollinations 账户。每日代币限额按用户计算，共享 IP 的账户将平分限额。",
+    freeModelsNotice: "无需连接 Pollinations 账户。每日25点使用积分按用户计算，共享 IP 的账户将平分额度。",
+    freePointsRemaining: "今日剩余 {remaining} / {total} 点积分",
+    pointsRemainingLabel: "积分",
+    ratePer1k: "~{rate} pts / 1k 代币",
     freeTokensRemaining: "今日剩余 {remaining} / {total} 代币",
     ipSplitNotice: "在您 IP 上的 {count} 个账户间平分",
     freeTierBadge: "每日限额",

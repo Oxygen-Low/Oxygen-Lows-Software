@@ -69,6 +69,9 @@ export const en = {
     closeSidebar: "Close sidebar",
     pollenWallet: "Pollinations",
     pollenWalletTooltip: "Pollinations Wallet - Click to view/manage Pollen",
+    usage: "Usage",
+    usageTooltip: "Daily app usage points (resets daily at midnight UTC)",
+    resetsIn: "Resets in {time}",
   },
   auth: {
     title: "Oxygen Low's Software",
@@ -272,7 +275,10 @@ export const en = {
     registeredModelsDesc:
       "All available Pollinations models, including official presets and custom registered models.",
     freeModels: "Free Models",
-    freeModelsNotice: "No Pollinations account needed. Daily token limit applies per user and splits between accounts sharing an IP.",
+    freeModelsNotice: "No Pollinations account needed. Daily 25 points usage limit applies per user and splits between accounts sharing an IP.",
+    freePointsRemaining: "{remaining} of {total} points left today",
+    pointsRemainingLabel: "Points",
+    ratePer1k: "~{rate} pts / 1k tokens",
     freeTokensRemaining: "{remaining} of {total} tokens left today",
     ipSplitNotice: "Split between {count} accounts on your IP",
     freeTierBadge: "Daily Limits",

@@ -829,13 +829,15 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     if (!allowance.allowed) {
       return c.json(
         {
-          error: `Daily token limit reached for this free model. Your daily limit is ${allowance.effectiveLimit.toLocaleString()} tokens${
+          error: `Daily limit reached for free models. Your daily limit is ${allowance.effectiveLimit} points${
             allowance.userCountOnIp > 1
               ? ` (split between ${allowance.userCountOnIp} accounts on this IP)`
               : ""
           }. Resets at midnight UTC.`,
           code: "FREE_TIER_LIMIT_REACHED",
           effectiveLimit: allowance.effectiveLimit,
+          usedPoints: allowance.usedPoints,
+          remainingPoints: allowance.remainingPoints,
           usedTokens: allowance.usedTokens,
           remainingTokens: allowance.remainingTokens,
           userCountOnIp: allowance.userCountOnIp,

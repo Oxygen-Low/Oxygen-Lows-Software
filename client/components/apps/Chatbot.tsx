@@ -1988,6 +1988,7 @@ export function ChatbotApp() {
             const lowerErr = errMsg.toLowerCase();
             const isFreeDailyLimit =
               errMsg.includes("Daily token limit reached") ||
+              errMsg.includes("Daily limit reached") ||
               lowerErr.includes("free_tier_limit_reached");
             if (
               isFreeDailyLimit ||
@@ -2035,6 +2036,7 @@ export function ChatbotApp() {
           if (signal.aborted) throw err;
           if (
             err?.message?.includes("Daily token limit reached") ||
+            err?.message?.includes("Daily limit reached") ||
             err?.message?.includes("free AI models")
           ) {
             throw err;
@@ -4298,7 +4300,7 @@ export function ChatbotApp() {
                               {t(
                                 "account.freeModelsNotice",
                                 undefined,
-                                "No Pollinations account needed. Daily token limit applies per user and splits between accounts sharing an IP.",
+                                "No Pollinations account needed. Daily 25 points usage limit applies per user and splits between accounts sharing an IP.",
                               )}
                             </p>
                           </div>
@@ -4327,8 +4329,8 @@ export function ChatbotApp() {
                                     </div>
                                     {usageInfo && (
                                       <span className="text-[10px] text-blue-300 font-mono">
-                                        {usageInfo.remainingTokens.toLocaleString()} /{" "}
-                                        {usageInfo.effectiveLimit.toLocaleString()}
+                                        {Number((freeUsage?.remainingPoints ?? usageInfo.remainingTokens).toFixed(1))} /{" "}
+                                        {freeUsage?.effectiveLimitPoints ?? usageInfo.effectiveLimit} pts
                                       </span>
                                     )}
                                   </div>
@@ -4337,9 +4339,10 @@ export function ChatbotApp() {
                                       <div
                                         className={cn(
                                           "h-full rounded-full transition-all duration-300",
-                                          usageInfo.remainingTokens / usageInfo.effectiveLimit > 0.25
+                                          (freeUsage?.remainingPoints ?? usageInfo.remainingTokens) /
+                                            (freeUsage?.effectiveLimitPoints ?? usageInfo.effectiveLimit) > 0.25
                                             ? "bg-blue-500"
-                                            : usageInfo.remainingTokens > 0
+                                            : (freeUsage?.remainingPoints ?? usageInfo.remainingTokens) > 0
                                               ? "bg-amber-500"
                                               : "bg-rose-500",
                                         )}
@@ -4348,8 +4351,8 @@ export function ChatbotApp() {
                                             100,
                                             Math.max(
                                               0,
-                                              (usageInfo.remainingTokens /
-                                                usageInfo.effectiveLimit) *
+                                              ((freeUsage?.remainingPoints ?? usageInfo.remainingTokens) /
+                                                (freeUsage?.effectiveLimitPoints ?? usageInfo.effectiveLimit)) *
                                                 100,
                                             ),
                                           )}%`,
@@ -4360,7 +4363,7 @@ export function ChatbotApp() {
                                   <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
                                     <span>
                                       {m.model_id}
-                                      {m.rate ? ` • ${m.rate}` : ""}
+                                      {usageInfo?.rateDisplay || m.rate ? ` • ${usageInfo?.rateDisplay || m.rate}` : ""}
                                     </span>
                                   </div>
                                   {isCurrentSelected && (

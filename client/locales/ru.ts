@@ -69,6 +69,9 @@ export const ru = {
     closeSidebar: "Ð—Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ Ð±Ð¾ÐºÐ¾Ð²ÑƒÑŽ Ð¿Ð°Ð½ÐµÐ»ÑŒ",
     pollenWallet: "Pollinations",
     pollenWalletTooltip: "Кошелек Pollinations - нажмите для просмотра и управления Pollen",
+    usage: "Использование",
+    usageTooltip: "Ежедневные баллы использования (сброс в полночь по UTC)",
+    resetsIn: "Сброс через {time}",
   },
   auth: {
     title: "Oxygen Low's Software",
@@ -277,7 +280,10 @@ export const ru = {
     registeredModelsDesc:
       "Все доступные модели Pollinations, включая официальные предустановки и пользовательские модели.",
     freeModels: "Бесплатные модели",
-    freeModelsNotice: "Аккаунт Pollinations не требуется. Дневной лимит токенов действует на пользователя и делится между аккаунтами с одного IP.",
+    freeModelsNotice: "Аккаунт Pollinations не требуется. Дневной лимит 25 баллов действует на пользователя и делится между аккаунтами с одного IP.",
+    freePointsRemaining: "{remaining} из {total} баллов осталось сегодня",
+    pointsRemainingLabel: "Баллы",
+    ratePer1k: "~{rate} баллов / 1k токенов",
     freeTokensRemaining: "Осталось {remaining} из {total} токенов сегодня",
     ipSplitNotice: "Разделено между {count} аккаунтами на вашем IP",
     freeTierBadge: "Дневные лимиты",

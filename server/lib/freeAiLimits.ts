@@ -1,38 +1,47 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DATA_DIR } from "./dataStore.ts";
+import {
+  calculatePointsCost,
+  getModelPricing,
+  type ModelPricing,
+} from "./pollinationsPricing.ts";
 
 export interface FreeModelConfig {
   id: string;
   name: string;
-  baseDailyLimit: number;
-  outputMultiplier: number;
   tierName: "Best" | "Standard" | "Cheap";
+  // Backward compatibility
+  baseDailyLimit?: number;
+  outputMultiplier?: number;
 }
 
 export const FREE_MODELS: Record<string, FreeModelConfig> = {
   "deepseek/deepseek-v4.1-flash": {
     id: "deepseek/deepseek-v4.1-flash",
     name: "Best",
-    baseDailyLimit: 1_000_000,
-    outputMultiplier: 4,
     tierName: "Best",
+    baseDailyLimit: 25,
+    outputMultiplier: 1,
   },
   "openai/gpt-6-luna": {
     id: "openai/gpt-6-luna",
     name: "Standard",
-    baseDailyLimit: 2_000_000,
-    outputMultiplier: 5,
     tierName: "Standard",
+    baseDailyLimit: 25,
+    outputMultiplier: 1,
   },
   "openai/gpt-oss-20b": {
     id: "openai/gpt-oss-20b",
     name: "Cheap",
-    baseDailyLimit: 5_000_000,
-    outputMultiplier: 6,
     tierName: "Cheap",
+    baseDailyLimit: 25,
+    outputMultiplier: 1,
   },
 };
+
+/** Default daily points budget ($0.25 USD = 25 points = 25 cents = 0.25 Pollen) */
+export const DEFAULT_BASE_DAILY_POINTS = 25;
 
 export const FREE_AI_DIR = path.join(DATA_DIR, "free_ai");
 const IP_ACCESS_FILE = path.join(FREE_AI_DIR, "ip_access.json");
@@ -47,7 +56,7 @@ export interface IpAccessRecord {
 }
 
 export interface UserDailyUsageRecord {
-  [key: string]: number; // key: `${dateStr}:${userId}:${modelId}` -> used tokens
+  [key: string]: number; // key: `${dateStr}:${userId}:points` -> used points
 }
 
 function ensureDirExists() {
@@ -79,7 +88,6 @@ function writeJsonAtomic(filePath: string, data: any): void {
     try {
       if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
     } catch {}
-    // If rename failed (e.g. cross-volume in some environments), fallback to direct write
     try {
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
     } catch (writeErr) {
@@ -120,7 +128,6 @@ export function recordUserIpAccess(
   const cutoff = nowTimestamp - SEVEN_DAYS_MS;
 
   const records = readJsonFile<IpAccessRecord[]>(IP_ACCESS_FILE, []);
-  // Filter out expired records and deduplicate recent accesses within the last 60 seconds
   const validRecords = records.filter(
     (r) =>
       r &&
@@ -160,9 +167,9 @@ export function getDistinctUsersOnIpInLastWeek(
 }
 
 /**
- * Calculates the effective daily limit for a model given an IP and optional current user.
- * If multiple users accessed from this IP in the past 7 days, the base daily limit
- * is divided evenly among them (floored).
+ * Calculates the effective daily Points limit for an IP and optional current user.
+ * If multiple users accessed from this IP in the past 7 days, the base daily points limit (25)
+ * is divided evenly among them (floored to 1 decimal place, minimum 1 point).
  */
 export function getEffectiveDailyLimit(
   modelId: string,
@@ -174,17 +181,9 @@ export function getEffectiveDailyLimit(
   userCountOnIp: number;
   effectiveLimit: number;
   outputMultiplier: number;
+  baseDailyPoints: number;
+  effectiveLimitPoints: number;
 } {
-  const config = FREE_MODELS[modelId];
-  if (!config) {
-    return {
-      baseLimit: 0,
-      userCountOnIp: 1,
-      effectiveLimit: 0,
-      outputMultiplier: 1,
-    };
-  }
-
   const distinctUsers = getDistinctUsersOnIpInLastWeek(ip, nowTimestamp);
   if (userId !== undefined && userId !== null) {
     const cleanUserId = String(userId);
@@ -194,32 +193,48 @@ export function getEffectiveDailyLimit(
   }
 
   const userCountOnIp = Math.max(1, distinctUsers.length);
-  const effectiveLimit = Math.floor(config.baseDailyLimit / userCountOnIp);
+  // Divide 25 points evenly, rounded to 1 decimal place, min 1 pt
+  const effectivePoints =
+    userCountOnIp === 1
+      ? DEFAULT_BASE_DAILY_POINTS
+      : Math.max(1, Math.floor((DEFAULT_BASE_DAILY_POINTS / userCountOnIp) * 10) / 10);
 
   return {
-    baseLimit: config.baseDailyLimit,
+    baseLimit: DEFAULT_BASE_DAILY_POINTS,
     userCountOnIp,
-    effectiveLimit,
-    outputMultiplier: config.outputMultiplier,
+    effectiveLimit: effectivePoints,
+    outputMultiplier: 1,
+    baseDailyPoints: DEFAULT_BASE_DAILY_POINTS,
+    effectiveLimitPoints: effectivePoints,
   };
 }
 
 /**
- * Returns the used tokens today (UTC) for a given user and model.
+ * Returns used points today (UTC) for a given user.
  */
-export function getUserDailyUsage(
+export function getUserDailyPointsUsage(
   userId: string | number,
-  modelId: string,
   dateStr: string = getUtcDateString(),
 ): number {
   const cleanUserId = String(userId);
   const usageMap = readJsonFile<UserDailyUsageRecord>(DAILY_USAGE_FILE, {});
-  const key = `${dateStr}:${cleanUserId}:${modelId}`;
+  const key = `${dateStr}:${cleanUserId}:points`;
   return Number(usageMap[key]) || 0;
 }
 
 /**
- * Checks if a user has sufficient token budget remaining today for a free model.
+ * Backward compatibility alias for getUserDailyPointsUsage.
+ */
+export function getUserDailyUsage(
+  userId: string | number,
+  _modelId?: string,
+  dateStr: string = getUtcDateString(),
+): number {
+  return getUserDailyPointsUsage(userId, dateStr);
+}
+
+/**
+ * Checks if a user has sufficient points allowance remaining today.
  */
 export function checkFreeModelAllowance(
   userId: string | number,
@@ -229,36 +244,45 @@ export function checkFreeModelAllowance(
   nowTimestamp: number = Date.now(),
 ): {
   allowed: boolean;
-  usedTokens: number;
-  remainingTokens: number;
+  usedPoints: number;
+  remainingPoints: number;
   effectiveLimit: number;
   baseLimit: number;
   userCountOnIp: number;
+  // Backwards compatibility fields
+  usedTokens: number;
+  remainingTokens: number;
   outputMultiplier: number;
 } {
   const cleanUserId = String(userId);
   const dateStr = getUtcDateString(new Date(nowTimestamp));
-  const { baseLimit, userCountOnIp, effectiveLimit, outputMultiplier } =
-    getEffectiveDailyLimit(modelId, ip, cleanUserId, nowTimestamp);
+  const { baseLimit, userCountOnIp, effectiveLimit } = getEffectiveDailyLimit(
+    modelId,
+    ip,
+    cleanUserId,
+    nowTimestamp,
+  );
 
-  const usedTokens = getUserDailyUsage(cleanUserId, modelId, dateStr);
-  const remainingTokens = Math.max(0, effectiveLimit - usedTokens);
-  const allowed = usedTokens + estimatedPromptTokens <= effectiveLimit;
+  const estimatedPromptCost = calculatePointsCost(modelId, estimatedPromptTokens, 0);
+  const usedPoints = getUserDailyPointsUsage(cleanUserId, dateStr);
+  const remainingPoints = Math.max(0, Math.round((effectiveLimit - usedPoints) * 1000) / 1000);
+  const allowed = usedPoints + estimatedPromptCost <= effectiveLimit;
 
   return {
     allowed,
-    usedTokens,
-    remainingTokens,
+    usedPoints,
+    remainingPoints,
     effectiveLimit,
     baseLimit,
     userCountOnIp,
-    outputMultiplier,
+    usedTokens: usedPoints,
+    remainingTokens: remainingPoints,
+    outputMultiplier: 1,
   };
 }
 
 /**
- * Records token consumption for a user on a free model.
- * Output tokens are multiplied by the model's multiplier.
+ * Records points consumption for a user on a free model based on actual token counts.
  */
 export function recordFreeModelUsage(
   userId: string | number,
@@ -268,29 +292,29 @@ export function recordFreeModelUsage(
   outputTokens: number,
   nowTimestamp: number = Date.now(),
 ): {
-  weightedAddedTokens: number;
+  addedPoints: number;
   newTotalUsed: number;
   effectiveLimit: number;
+  remainingPoints: number;
+  // Backwards compatibility
+  weightedAddedTokens: number;
   remainingTokens: number;
 } {
   const cleanUserId = String(userId);
   const dateStr = getUtcDateString(new Date(nowTimestamp));
-  const config = FREE_MODELS[modelId];
-  const multiplier = config?.outputMultiplier ?? 1;
-
-  const weightedAdded = Math.max(0, Math.round(inputTokens + outputTokens * multiplier));
+  const addedPoints = calculatePointsCost(modelId, inputTokens, outputTokens);
 
   // 1. Record IP access
   recordUserIpAccess(cleanUserId, ip, nowTimestamp);
 
   // 2. Update daily usage
   const usageMap = readJsonFile<UserDailyUsageRecord>(DAILY_USAGE_FILE, {});
-  const key = `${dateStr}:${cleanUserId}:${modelId}`;
+  const key = `${dateStr}:${cleanUserId}:points`;
   const prevUsed = Number(usageMap[key]) || 0;
-  const newTotalUsed = prevUsed + weightedAdded;
+  const newTotalUsed = Math.round((prevUsed + addedPoints) * 1_000_000) / 1_000_000;
   usageMap[key] = newTotalUsed;
 
-  // Prune entries older than 30 days to avoid unbounded growth
+  // Prune entries older than 30 days
   const pruneCutoffDate = new Date(nowTimestamp - 30 * 24 * 3600 * 1000)
     .toISOString()
     .split("T")[0];
@@ -309,18 +333,20 @@ export function recordFreeModelUsage(
     cleanUserId,
     nowTimestamp,
   );
-  const remainingTokens = Math.max(0, effectiveLimit - newTotalUsed);
+  const remainingPoints = Math.max(0, Math.round((effectiveLimit - newTotalUsed) * 1000) / 1000);
 
   return {
-    weightedAddedTokens: weightedAdded,
+    addedPoints,
     newTotalUsed,
     effectiveLimit,
-    remainingTokens,
+    remainingPoints,
+    weightedAddedTokens: addedPoints,
+    remainingTokens: remainingPoints,
   };
 }
 
 /**
- * Returns current status of all 3 free models for a user and IP.
+ * Returns current status of points usage and model rates for a user and IP.
  */
 export function getAllFreeModelsUsage(
   userId: string | number,
@@ -336,12 +362,23 @@ export function getAllFreeModelsUsage(
   }
   const userCountOnIp = Math.max(1, distinctUsers.length);
 
+  const effectiveLimit =
+    userCountOnIp === 1
+      ? DEFAULT_BASE_DAILY_POINTS
+      : Math.max(1, Math.floor((DEFAULT_BASE_DAILY_POINTS / userCountOnIp) * 10) / 10);
+
+  const usedPoints = getUserDailyPointsUsage(cleanUserId, dateStr);
+  const remainingPoints = Math.max(0, Math.round((effectiveLimit - usedPoints) * 1000) / 1000);
+
   const models: Record<
     string,
     {
       id: string;
       name: string;
       tierName: string;
+      rateDisplay: string;
+      promptPointsPer1k: number;
+      completionPointsPer1k: number;
       baseDailyLimit: number;
       effectiveLimit: number;
       outputMultiplier: number;
@@ -351,19 +388,20 @@ export function getAllFreeModelsUsage(
   > = {};
 
   for (const [id, config] of Object.entries(FREE_MODELS)) {
-    const effectiveLimit = Math.floor(config.baseDailyLimit / userCountOnIp);
-    const usedTokens = getUserDailyUsage(cleanUserId, id, dateStr);
-    const remainingTokens = Math.max(0, effectiveLimit - usedTokens);
+    const pricing = getModelPricing(id);
 
     models[id] = {
       id,
       name: config.name,
       tierName: config.tierName,
-      baseDailyLimit: config.baseDailyLimit,
+      rateDisplay: pricing.rateDisplay,
+      promptPointsPer1k: pricing.promptPointsPer1k,
+      completionPointsPer1k: pricing.completionPointsPer1k,
+      baseDailyLimit: effectiveLimit,
       effectiveLimit,
-      outputMultiplier: config.outputMultiplier,
-      usedTokens,
-      remainingTokens,
+      outputMultiplier: 1,
+      usedTokens: usedPoints,
+      remainingTokens: remainingPoints,
     };
   }
 
@@ -372,6 +410,12 @@ export function getAllFreeModelsUsage(
     ip: cleanIp,
     date: dateStr,
     userCountOnIp,
+    baseDailyPoints: DEFAULT_BASE_DAILY_POINTS,
+    effectiveLimitPoints: effectiveLimit,
+    usedPoints,
+    remainingPoints,
+    baseDailyLimit: DEFAULT_BASE_DAILY_POINTS,
+    effectiveLimit,
     models,
   };
 }

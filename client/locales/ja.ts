@@ -69,6 +69,9 @@ export const ja = {
     closeSidebar: "ã‚µã‚¤ãƒ‰ãƒãƒ¼ã‚’é–‰ã˜ã‚‹",
     pollenWallet: "Pollinations",
     pollenWalletTooltip: "Pollinationsウォレット - クリックしてPollenを表示・管理",
+    usage: "利用状況",
+    usageTooltip: "1日のアプリ利用ポイント（毎日UTC午前0時にリセット）",
+    resetsIn: "{time}後にリセット",
   },
   auth: {
     title: "Oxygen Low's Software",
@@ -274,7 +277,10 @@ export const ja = {
     registeredModelsDesc:
       "公式プリセットおよびカスタム登録モデルを含む、利用可能なすべてのPollinationsモデル。",
     freeModels: "無料モデル",
-    freeModelsNotice: "Pollinationsアカウントは不要です。ユーザーごとに1日のトークン制限が適用され、同一IPを共有するアカウント間で分割されます。",
+    freeModelsNotice: "Pollinationsアカウントは不要です。ユーザーごとに1日25ポイントの利用制限が適用され、同一IPを共有するアカウント間で分割されます。",
+    freePointsRemaining: "本日残り {remaining} / {total} ポイント",
+    pointsRemainingLabel: "ポイント",
+    ratePer1k: "~{rate} pts / 1k トークン",
     freeTokensRemaining: "本日残り {remaining} / {total} トークン",
     ipSplitNotice: "IPを共有する{count}アカウントで分割",
     freeTierBadge: "1日制限",

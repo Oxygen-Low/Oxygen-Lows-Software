@@ -290,14 +290,14 @@ describe("Account Component", () => {
     expect(screen.getByText("Free Models")).toBeDefined();
     expect(
       screen.getByText(
-        "No Pollinations account needed. Daily token limit applies per user and splits between accounts sharing an IP.",
+        "No Pollinations account needed. Daily 25 points usage limit applies per user and splits between accounts sharing an IP.",
       ),
     ).toBeDefined();
     expect(screen.getByText("deepseek/deepseek-v4.1-flash")).toBeDefined();
     expect(screen.getByText("openai/gpt-oss-20b")).toBeDefined();
-    expect(screen.getByText("1M/day (4x out)")).toBeDefined();
-    expect(screen.getByText("2M/day (5x out)")).toBeDefined();
-    expect(screen.getByText("5M/day (6x out)")).toBeDefined();
+    expect(screen.getByText("~0.04 pts / 1k")).toBeDefined();
+    expect(screen.getByText("~0.03 pts / 1k")).toBeDefined();
+    expect(screen.getByText("~0.01 pts / 1k")).toBeDefined();
     expect(screen.getByText("Standard Models")).toBeDefined();
     expect(
       screen.getByText(
