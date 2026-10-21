@@ -1046,14 +1046,25 @@ describe("ChatbotApp", () => {
     );
     fireEvent.click(modelDropdownButton);
 
+    // Verify "Free Models" header is visible
+    await screen.findByText("Free Models");
+    expect((await screen.findAllByText("Best")).length).toBeGreaterThan(0);
+    expect(
+      (await screen.findAllByText(/deepseek\/deepseek-v4\.1-flash/)).length,
+    ).toBeGreaterThan(0);
+
     // Verify "Standard Models" header is visible
     await screen.findByText("Standard Models");
     await screen.findByText("All models in this section use quest pollen, not paid pollen.");
     expect((await screen.findAllByText("Cheap")).length).toBeGreaterThan(0);
 
+    // Verify "Paid Models" header is visible
+    await screen.findByText("Paid Models");
+    await screen.findByText("All models in this section use paid pollen, not quest pollen.");
+
     // Select Smart model
-    const smartOption = screen.getByText("Smart");
-    fireEvent.click(smartOption);
+    const smartOptions = screen.getAllByText("Smart");
+    fireEvent.click(smartOptions[0]);
 
     // Verify the selected model is updated on the dropdown button
     await waitFor(() => {

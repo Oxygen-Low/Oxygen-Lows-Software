@@ -273,9 +273,17 @@ export const ja = {
     registeredModels: "アクティブ＆カスタムモデル",
     registeredModelsDesc:
       "公式プリセットおよびカスタム登録モデルを含む、利用可能なすべてのPollinationsモデル。",
+    freeModels: "無料モデル",
+    freeModelsNotice: "Pollinationsアカウントは不要です。ユーザーごとに1日のトークン制限が適用され、同一IPを共有するアカウント間で分割されます。",
+    freeTokensRemaining: "本日残り {remaining} / {total} トークン",
+    ipSplitNotice: "IPを共有する{count}アカウントで分割",
+    freeTierBadge: "1日制限",
     standardModels: "標準モデル",
     questPollenNotice:
       "このセクションのすべてのモデルは、有料の花粉ではなくクエスト花粉を使用します。",
+    paidModels: "有料モデル",
+    paidPollenNotice:
+      "このセクションのすべてのモデルは、クエスト花粉ではなく有料の花粉を使用します。",
     customModels: "カスタムモデル",
     configured: "接続済み",
     notConfigured: "APIキーが必要です",
@@ -2940,6 +2948,8 @@ notificationsTitle: "é€šçŸ¥",
       "æ³¨æ„: ã‚µãƒ¼ãƒãƒ¼ã§ OPENAI_API_KEY ãŒæ¤œå‡ºã•ã‚Œãªã‹ã£ãŸãŸã‚ã€OpenAI ã‚¯ãƒ©ã‚¦ãƒ‰ãƒ¢ãƒ‡ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³ã¯ã‚¹ã‚­ãƒƒãƒ—ã•ã‚Œã¾ã—ãŸã€‚ãƒ­ãƒ¼ã‚«ãƒ«ãƒã‚§ãƒƒã‚¯ã®ã¿è©•ä¾¡ã•ã‚Œã¾ã—ãŸã€‚",
   },
   chatbot: {
+    authRequiredForFree: "無料AIモデルを使用するにはログインしてください。",
+    freeLimitExceeded: "この無料モデルの1日あたりのトークン制限に達しました。UTC午前0時にリセットされます。",
     pollinationsRequiredTitle: "Pollinations AIの設定が必要です",
     pollinationsRequiredSubtitle: "APIキーを接続してChatbotにアクセスしてください",
     freeTierInfoTitle: "100%無料モデル",

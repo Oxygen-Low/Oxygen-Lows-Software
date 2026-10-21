@@ -233,6 +233,7 @@ export default function Account() {
     refreshPollenBalance,
     addCustomModel,
     removeCustomModel,
+    freeUsage,
     chatbotDefaultModel,
     chatbotDefaultProvider,
     setChatbotDefault,
@@ -260,14 +261,37 @@ export default function Account() {
     setPollinationsKeyInput(pollinationsApiKey || "");
   }, [pollinationsApiKey]);
 
+  const freeModelsList = useMemo(
+    () => models.filter((m) => m.category === "free"),
+    [models],
+  );
   const standardModels = useMemo(
-    () => models.filter((m) => !m.isCustom),
+    () =>
+      models.filter(
+        (m) =>
+          !m.isCustom &&
+          !m.isPaid &&
+          m.category !== "paid" &&
+          m.category !== "free",
+      ),
+    [models],
+  );
+  const paidModels = useMemo(
+    () => models.filter((m) => !m.isCustom && (m.isPaid || m.category === "paid")),
     [models],
   );
   const customModelsList = useMemo(
     () => models.filter((m) => m.isCustom),
     [models],
   );
+  const uniqueDefaultModels = useMemo(() => {
+    const seen = new Set<string>();
+    return models.filter((m) => {
+      if (!m.model_id || seen.has(m.model_id)) return false;
+      seen.add(m.model_id);
+      return true;
+    });
+  }, [models]);
 
   // Add Model Dialog State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -1597,7 +1621,7 @@ export default function Account() {
                         />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[260px]">
-                        {models.map((m) => (
+                        {uniqueDefaultModels.map((m) => (
                           <SelectItem
                             key={m.model_id}
                             value={m.model_id}
@@ -1663,7 +1687,7 @@ export default function Account() {
                         />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[260px]">
-                        {models.map((m) => (
+                        {uniqueDefaultModels.map((m) => (
                           <SelectItem
                             key={m.model_id}
                             value={m.model_id}
@@ -1729,7 +1753,7 @@ export default function Account() {
                         />
                       </SelectTrigger>
                       <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[260px]">
-                        {models.map((m) => (
+                        {uniqueDefaultModels.map((m) => (
                           <SelectItem
                             key={m.model_id}
                             value={m.model_id}
@@ -1796,7 +1820,79 @@ export default function Account() {
               </CardHeader>
 
               <CardContent className="space-y-6">
-                {/* 4a. Standard Models (Quest Pollen) */}
+                {/* 4a. Free Models (Server-Sponsored Daily Quotas) */}
+                <div className="space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                        {t("account.freeModels", undefined, "Free Models")}
+                      </h4>
+                      {freeUsage?.userCountOnIp && freeUsage.userCountOnIp > 1 && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-1.5 py-0 border-amber-500/40 text-amber-300 bg-amber-950/30"
+                        >
+                          {t(
+                            "account.ipSplitNotice",
+                            { count: freeUsage.userCountOnIp },
+                            `Split between ${freeUsage.userCountOnIp} accounts on your IP`,
+                          )}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-blue-400 font-medium">
+                      {t(
+                        "account.freeModelsNotice",
+                        undefined,
+                        "No Pollinations account needed. Daily token limit applies per user and splits between accounts sharing an IP.",
+                      )}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    {freeModelsList.map((m) => {
+                      const info = freeUsage?.models?.[m.model_id];
+                      return (
+                        <div
+                          key={`free-${m.model_id}`}
+                          className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-semibold text-white truncate">
+                              {m.name || m.model_id}
+                            </p>
+                            {m.rate && (
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] px-1.5 py-0 border-blue-800/60 bg-blue-950/40 text-blue-300 shrink-0 font-normal"
+                              >
+                                {m.rate}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400 truncate font-mono">
+                            {m.model_id}
+                          </p>
+                          {info && (
+                            <div className="pt-1 border-t border-slate-800/50 flex items-center justify-between text-[10px] text-slate-400">
+                              <span>
+                                {t(
+                                  "account.freeTokensRemaining",
+                                  {
+                                    remaining: info.remainingTokens.toLocaleString(),
+                                    total: info.effectiveLimit.toLocaleString(),
+                                  },
+                                  `${info.remainingTokens.toLocaleString()} / ${info.effectiveLimit.toLocaleString()} tokens left today`,
+                                )}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 4b. Standard Models (Quest Pollen) */}
                 <div className="space-y-2.5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                     <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
@@ -1837,7 +1933,48 @@ export default function Account() {
                   </div>
                 </div>
 
-                {/* 4b. Custom Registered Models */}
+                {/* 4b. Paid Models (Paid Pollen) */}
+                <div className="space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                      {t("account.paidModels", undefined, "Paid Models")}
+                    </h4>
+                    <span className="text-[11px] text-emerald-400 font-medium">
+                      {t(
+                        "account.paidPollenNotice",
+                        undefined,
+                        "All models in this section use paid pollen, not quest pollen.",
+                      )}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    {paidModels.map((m) => (
+                      <div
+                        key={m.model_id}
+                        className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition space-y-1"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-white truncate">
+                            {m.name || m.model_id}
+                          </p>
+                          {m.rate && (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] px-1.5 py-0 border-emerald-800/60 bg-emerald-950/40 text-emerald-300 shrink-0 font-normal"
+                            >
+                              {m.rate}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400 truncate font-mono">
+                          {m.model_id}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4c. Custom Registered Models */}
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-300">

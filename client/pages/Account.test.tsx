@@ -287,6 +287,39 @@ describe("Account Component", () => {
       screen.getByTestId("research-summarizer-default-card"),
     ).toBeDefined();
     expect(screen.getByText("Active & Custom Models")).toBeDefined();
+    expect(screen.getByText("Free Models")).toBeDefined();
+    expect(
+      screen.getByText(
+        "No Pollinations account needed. Daily token limit applies per user and splits between accounts sharing an IP.",
+      ),
+    ).toBeDefined();
+    expect(screen.getByText("deepseek/deepseek-v4.1-flash")).toBeDefined();
+    expect(screen.getByText("openai/gpt-oss-20b")).toBeDefined();
+    expect(screen.getByText("1M/day (4x out)")).toBeDefined();
+    expect(screen.getByText("2M/day (5x out)")).toBeDefined();
+    expect(screen.getByText("5M/day (6x out)")).toBeDefined();
+    expect(screen.getByText("Standard Models")).toBeDefined();
+    expect(
+      screen.getByText(
+        "All models in this section use quest pollen, not paid pollen.",
+      ),
+    ).toBeDefined();
+    expect(screen.getByText("Paid Models")).toBeDefined();
+    expect(
+      screen.getByText(
+        "All models in this section use paid pollen, not quest pollen.",
+      ),
+    ).toBeDefined();
+    expect(screen.getByText("xiaomi/mimo-v2.5")).toBeDefined();
+    expect(screen.getByText("anthropic/claude-haiku-5.5")).toBeDefined();
+    expect(screen.getByText("google/gemini-3.8-flash")).toBeDefined();
+    expect(screen.getByText("google/gemini-4-argon")).toBeDefined();
+    expect(screen.getByText("anthropic/claude-fable-5.1")).toBeDefined();
+    expect(screen.getByText("58.8K/$1")).toBeDefined();
+    expect(screen.getByText("1.7K/$1")).toBeDefined();
+    expect(screen.getByText("300/$1")).toBeDefined();
+    expect(screen.getByText("45/$1")).toBeDefined();
+    expect(screen.getByText("7/$1")).toBeDefined();
   });
 
   it("opens Add Model dialog when clicking Add Model button", async () => {

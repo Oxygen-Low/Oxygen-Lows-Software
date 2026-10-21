@@ -1135,6 +1135,8 @@ export function ChatbotApp() {
     chatbotDefaultModel,
     setChatbotDefault,
     researchAgentDefaultModel,
+    freeUsage,
+    refreshFreeUsage,
   } = useAiModels();
   const [gateKeyInput, setGateKeyInput] = useState("");
   const [showGateKey, setShowGateKey] = useState(false);
@@ -1393,6 +1395,7 @@ export function ChatbotApp() {
   }, []);
 
   const [userSelectedModel, setUserSelectedModel] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("free");
   const selectedModel =
     userSelectedModel || chatbotDefaultModel || "openai/gpt-6-luna";
   const setSelectedModel = useCallback((modelId: string) => {
@@ -1409,8 +1412,22 @@ export function ChatbotApp() {
     [models],
   );
 
+  const freeModels = useMemo(() => {
+    return models.filter((m) => m.category === "free");
+  }, [models]);
+
   const standardModels = useMemo(() => {
-    return models.filter((m) => !m.isCustom);
+    return models.filter(
+      (m) =>
+        !m.isCustom &&
+        !m.isPaid &&
+        m.category !== "paid" &&
+        m.category !== "free",
+    );
+  }, [models]);
+
+  const paidModels = useMemo(() => {
+    return models.filter((m) => !m.isCustom && (m.isPaid || m.category === "paid"));
   }, [models]);
 
   const customModels = useMemo(() => {
@@ -1840,12 +1857,7 @@ export function ChatbotApp() {
       const isDefaultPollinationsModel =
         !model || model === "openai/gpt-6-luna";
       const matchedModelObj =
-        customModels.find(
-          (m) =>
-            m.model_id === effectiveSourceModel ||
-            m.id === effectiveSourceModel,
-        ) ||
-        standardModels.find(
+        models.find(
           (m) =>
             m.model_id === effectiveSourceModel ||
             m.id === effectiveSourceModel,
@@ -1934,6 +1946,20 @@ export function ChatbotApp() {
           !apiKey.includes("...") &&
           apiKey.length > 20,
       );
+      if (
+        selectedCategory === "free" ||
+        (!isDirectKey && freeModels.some((m) => m.model_id === model))
+      ) {
+        if (!session?.access_token) {
+          throw new Error(
+            t(
+              "chatbot.authRequiredForFree",
+              undefined,
+              "Please log in to use free AI models.",
+            ),
+          );
+        }
+      }
       if (!isDirectKey && session?.access_token) {
         try {
           const fetchOptions: RequestInit = {
@@ -1948,6 +1974,11 @@ export function ChatbotApp() {
               model: model || "openai/gpt-6-luna",
               messages: sanitizedMsgs,
               stream: true,
+              category:
+                selectedCategory ||
+                (freeModels.some((m) => m.model_id === model)
+                  ? "free"
+                  : undefined),
             }),
           };
           const res = await fetch("/api/ai/proxy", fetchOptions);
@@ -1955,6 +1986,15 @@ export function ChatbotApp() {
             const errStatus = res.status;
             const errMsg = await parseAiProxyError(res);
             const lowerErr = errMsg.toLowerCase();
+            const isFreeDailyLimit =
+              errMsg.includes("Daily token limit reached") ||
+              lowerErr.includes("free_tier_limit_reached");
+            if (
+              isFreeDailyLimit ||
+              (errStatus === 401 && selectedCategory === "free")
+            ) {
+              throw new Error(errMsg);
+            }
             const is401 =
               errStatus === 401 ||
               errStatus === 403 ||
@@ -1983,9 +2023,22 @@ export function ChatbotApp() {
               );
             }
           }
-          return await streamResponseData(res, "pollinations");
+          const streamRes = await streamResponseData(res, "pollinations");
+          if (
+            selectedCategory === "free" ||
+            freeModels.some((m) => m.model_id === model)
+          ) {
+            refreshFreeUsage().catch(() => {});
+          }
+          return streamRes;
         } catch (err: any) {
           if (signal.aborted) throw err;
+          if (
+            err?.message?.includes("Daily token limit reached") ||
+            err?.message?.includes("free AI models")
+          ) {
+            throw err;
+          }
           console.warn(
             "Pollinations proxy stream failed, falling back to Horde:",
             err,
@@ -4230,6 +4283,65 @@ export function ChatbotApp() {
                     )}
                   >
                     <div className="max-h-[360px] overflow-y-auto no-scrollbar pb-2">
+                      {freeModels.length > 0 && (
+                        <>
+                          <div className="px-3 pt-3 pb-1">
+                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-display font-medium">
+                              {t("account.freeModels", undefined, "Free Models")}
+                            </p>
+                            <p className="text-[10px] text-blue-400/90 mt-0.5 leading-snug">
+                              {t(
+                                "account.freeModelsNotice",
+                                undefined,
+                                "No Pollinations account needed. Daily token limit applies per user and splits between accounts sharing an IP.",
+                              )}
+                            </p>
+                          </div>
+                          <div className="px-2">
+                            {freeModels.map((m) => {
+                              const usageInfo = freeUsage?.models?.[m.model_id];
+                              const isCurrentSelected =
+                                selectedModel === m.model_id &&
+                                selectedCategory === "free";
+                              return (
+                                <button
+                                  key={`free-${m.model_id}`}
+                                  onClick={() => {
+                                    setSelectedModel(m.model_id);
+                                    setSelectedCategory("free");
+                                    setModelDropdownOpen(false);
+                                  }}
+                                  className={cn(
+                                    "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
+                                    isCurrentSelected ? "bg-white/5" : "",
+                                  )}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="text-sm text-white font-medium">
+                                      {m.name || m.model_id}
+                                    </div>
+                                    {usageInfo && (
+                                      <span className="text-[10px] text-blue-300/80 font-mono">
+                                        {usageInfo.remainingTokens.toLocaleString()} left
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
+                                    <span>
+                                      {m.model_id}
+                                      {m.rate ? ` • ${m.rate}` : ""}
+                                    </span>
+                                  </div>
+                                  {isCurrentSelected && (
+                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+
                       {standardModels.length > 0 && (
                         <>
                           <div className="px-3 pt-3 pb-1">
@@ -4245,39 +4357,92 @@ export function ChatbotApp() {
                             </p>
                           </div>
                           <div className="px-2">
-                            {standardModels.map((m) => (
-                              <button
-                                key={`${m.provider}-${m.model_id}`}
-                                onClick={() => {
-                                  setSelectedModel(m.model_id);
-                                  setModelDropdownOpen(false);
-                                }}
-                                className={cn(
-                                  "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
-                                  selectedModel === m.model_id
-                                    ? "bg-white/5"
-                                    : "",
-                                )}
-                              >
-                                <div className="text-sm text-white font-medium">
-                                  {m.name || m.model_id}
-                                </div>
-                                <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
-                                  <span>
-                                    {m.model_id}
-                                    {m.rate ? ` • ${m.rate}` : ""}
-                                  </span>
-                                </div>
-                                {selectedModel === m.model_id && (
-                                  <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
-                                )}
-                              </button>
-                            ))}
+                            {standardModels.map((m) => {
+                              const isCurrentSelected =
+                                selectedModel === m.model_id &&
+                                selectedCategory !== "free";
+                              return (
+                                <button
+                                  key={`standard-${m.model_id}`}
+                                  onClick={() => {
+                                    setSelectedModel(m.model_id);
+                                    setSelectedCategory("standard");
+                                    setModelDropdownOpen(false);
+                                  }}
+                                  className={cn(
+                                    "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
+                                    isCurrentSelected ? "bg-white/5" : "",
+                                  )}
+                                >
+                                  <div className="text-sm text-white font-medium">
+                                    {m.name || m.model_id}
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
+                                    <span>
+                                      {m.model_id}
+                                      {m.rate ? ` • ${m.rate}` : ""}
+                                    </span>
+                                  </div>
+                                  {isCurrentSelected && (
+                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
                         </>
                       )}
 
-
+                      {paidModels.length > 0 && (
+                        <>
+                          <div className="px-3 pt-3 pb-1">
+                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-display font-medium">
+                              {t("account.paidModels", undefined, "Paid Models")}
+                            </p>
+                            <p className="text-[10px] text-emerald-400/90 mt-0.5 leading-snug">
+                              {t(
+                                "account.paidPollenNotice",
+                                undefined,
+                                "All models in this section use paid pollen, not quest pollen.",
+                              )}
+                            </p>
+                          </div>
+                          <div className="px-2">
+                            {paidModels.map((m) => {
+                              const isCurrentSelected =
+                                selectedModel === m.model_id &&
+                                selectedCategory === "paid";
+                              return (
+                                <button
+                                  key={`paid-${m.model_id}`}
+                                  onClick={() => {
+                                    setSelectedModel(m.model_id);
+                                    setSelectedCategory("paid");
+                                    setModelDropdownOpen(false);
+                                  }}
+                                  className={cn(
+                                    "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
+                                    isCurrentSelected ? "bg-white/5" : "",
+                                  )}
+                                >
+                                  <div className="text-sm text-white font-medium">
+                                    {m.name || m.model_id}
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
+                                    <span>
+                                      {m.model_id}
+                                      {m.rate ? ` • ${m.rate}` : ""}
+                                    </span>
+                                  </div>
+                                  {isCurrentSelected && (
+                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
 
                       {customModels.length > 0 && (
                         <>
@@ -4292,6 +4457,7 @@ export function ChatbotApp() {
                                 key={`${m.provider}-${m.model_id}`}
                                 onClick={() => {
                                   setSelectedModel(m.model_id);
+                                  setSelectedCategory("custom");
                                   setModelDropdownOpen(false);
                                 }}
                                 className={cn(

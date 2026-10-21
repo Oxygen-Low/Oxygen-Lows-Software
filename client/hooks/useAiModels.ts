@@ -15,10 +15,30 @@ export interface Model {
   model_id: string;
   name?: string;
   rate?: string;
-  category?: "standard" | "custom";
+  category?: "free" | "standard" | "paid" | "custom";
+  isPaid?: boolean;
   isCustom?: boolean;
   isLocal?: boolean;
   isShared?: boolean;
+}
+
+export interface FreeModelUsageItem {
+  id: string;
+  name: string;
+  tierName: string;
+  baseDailyLimit: number;
+  effectiveLimit: number;
+  outputMultiplier: number;
+  usedTokens: number;
+  remainingTokens: number;
+}
+
+export interface FreeUsageData {
+  userId: string;
+  ip: string;
+  date: string;
+  userCountOnIp: number;
+  models: Record<string, FreeModelUsageItem>;
 }
 
 export interface LocalProviderStatus {
@@ -50,6 +70,30 @@ export const SUPPORTED_PROVIDERS: ProviderInfo[] = [
 ];
 
 export const BUILTIN_MODELS: Model[] = [
+  {
+    id: "free:deepseek/deepseek-v4.1-flash",
+    provider: "pollinations",
+    model_id: "deepseek/deepseek-v4.1-flash",
+    name: "Best",
+    rate: "1M/day (4x out)",
+    category: "free",
+  },
+  {
+    id: "free:openai/gpt-6-luna",
+    provider: "pollinations",
+    model_id: "openai/gpt-6-luna",
+    name: "Standard",
+    rate: "2M/day (5x out)",
+    category: "free",
+  },
+  {
+    id: "free:openai/gpt-oss-20b",
+    provider: "pollinations",
+    model_id: "openai/gpt-oss-20b",
+    name: "Cheap",
+    rate: "5M/day (6x out)",
+    category: "free",
+  },
   {
     provider: "pollinations",
     model_id: "amazon/nova-micro-v1",
@@ -85,6 +129,46 @@ export const BUILTIN_MODELS: Model[] = [
     rate: "around 20 requests/$1",
     category: "standard",
   },
+  {
+    provider: "pollinations",
+    model_id: "xiaomi/mimo-v2.5",
+    name: "Cheap",
+    rate: "58.8K/$1",
+    category: "paid",
+    isPaid: true,
+  },
+  {
+    provider: "pollinations",
+    model_id: "anthropic/claude-haiku-5.5",
+    name: "Fast",
+    rate: "1.7K/$1",
+    category: "paid",
+    isPaid: true,
+  },
+  {
+    provider: "pollinations",
+    model_id: "google/gemini-3.8-flash",
+    name: "Balanced",
+    rate: "300/$1",
+    category: "paid",
+    isPaid: true,
+  },
+  {
+    provider: "pollinations",
+    model_id: "google/gemini-4-argon",
+    name: "Smart",
+    rate: "45/$1",
+    category: "paid",
+    isPaid: true,
+  },
+  {
+    provider: "pollinations",
+    model_id: "anthropic/claude-fable-5.1",
+    name: "Smartest",
+    rate: "7/$1",
+    category: "paid",
+    isPaid: true,
+  },
 ];
 
 export const POPULAR_PRESETS: Record<
@@ -92,11 +176,18 @@ export const POPULAR_PRESETS: Record<
   Array<{ model_id: string; name: string }>
 > = {
   pollinations: [
+    { model_id: "deepseek/deepseek-v4.1-flash", name: "Best" },
     { model_id: "amazon/nova-micro-v1", name: "Cheap" },
     { model_id: "openai/gpt-6-luna", name: "Fast" },
     { model_id: "openai/gpt-5.6-terra", name: "Balanced" },
     { model_id: "openai/gpt-6.1-sol", name: "Smart" },
     { model_id: "openai/gpt-6-astra", name: "Smartest" },
+    { model_id: "openai/gpt-oss-20b", name: "Cheap" },
+    { model_id: "xiaomi/mimo-v2.5", name: "Cheap" },
+    { model_id: "anthropic/claude-haiku-5.5", name: "Fast" },
+    { model_id: "google/gemini-3.8-flash", name: "Balanced" },
+    { model_id: "google/gemini-4-argon", name: "Smart" },
+    { model_id: "anthropic/claude-fable-5.1", name: "Smartest" },
   ],
 };
 
@@ -125,6 +216,7 @@ export function useAiModels() {
       }
     });
   const [pollenBalance, setPollenBalance] = useState<number>(0);
+  const [freeUsage, setFreeUsage] = useState<FreeUsageData | null>(null);
   const [isMasterKeyActive, setIsMasterKeyActive] = useState(false);
   const loadIdRef = useRef<number>(0);
   const isMountedRef = useRef<boolean>(true);
@@ -282,6 +374,10 @@ export function useAiModels() {
     setPollinationsApiKeyState(displayPrefix);
     setIsKeyLoading(false);
 
+    if (sessionToken) {
+      refreshFreeUsage(sessionToken).catch(() => {});
+    }
+
     if (configured && sessionToken) {
       try {
         const bal = await fetchPollinationsBalance(sessionToken);
@@ -333,6 +429,32 @@ export function useAiModels() {
         if (isMountedRef.current) setPollenBalance(0);
         return 0;
       }
+    },
+    [],
+  );
+
+  const refreshFreeUsage = useCallback(
+    async (tokenToUse?: string) => {
+      try {
+        let token = tokenToUse || getLocalSession()?.access_token;
+        if (!token && supabase?.auth?.getSession) {
+          const { data } = await supabase.auth.getSession().catch(() => ({ data: null }));
+          token = data?.session?.access_token;
+        }
+        if (!token) {
+          if (isMountedRef.current) setFreeUsage(null);
+          return null;
+        }
+        const res = await fetch("/api/ai/free-usage", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMountedRef.current) setFreeUsage(data);
+          return data;
+        }
+      } catch {}
+      return null;
     },
     [],
   );
@@ -528,17 +650,42 @@ export function useAiModels() {
     setIsLoading(true);
     try {
       loadCustomModels();
-      await refreshPollenBalance();
+      await Promise.allSettled([refreshPollenBalance(), refreshFreeUsage()]);
     } finally {
       if (isMountedRef.current) {
         setIsLoading(false);
       }
     }
-  }, [loadCustomModels, refreshPollenBalance]);
+  }, [loadCustomModels, refreshPollenBalance, refreshFreeUsage]);
+
+  const freeModels = useMemo(
+    () => models.filter((m) => m.category === "free"),
+    [models],
+  );
+  const standardModels = useMemo(
+    () =>
+      models.filter(
+        (m) =>
+          !m.isCustom &&
+          !m.isPaid &&
+          m.category !== "paid" &&
+          m.category !== "free",
+      ),
+    [models],
+  );
+  const paidModels = useMemo(
+    () => models.filter((m) => !m.isCustom && (m.isPaid || m.category === "paid")),
+    [models],
+  );
 
   return {
     models,
+    freeModels,
+    standardModels,
+    paidModels,
     customModels,
+    freeUsage,
+    refreshFreeUsage,
     isLoading,
     isKeyLoading,
     refreshModels,

@@ -271,9 +271,17 @@ export const en = {
     registeredModels: "Active & Custom Models",
     registeredModelsDesc:
       "All available Pollinations models, including official presets and custom registered models.",
+    freeModels: "Free Models",
+    freeModelsNotice: "No Pollinations account needed. Daily token limit applies per user and splits between accounts sharing an IP.",
+    freeTokensRemaining: "{remaining} of {total} tokens left today",
+    ipSplitNotice: "Split between {count} accounts on your IP",
+    freeTierBadge: "Daily Limits",
     standardModels: "Standard Models",
     questPollenNotice:
       "All models in this section use quest pollen, not paid pollen.",
+    paidModels: "Paid Models",
+    paidPollenNotice:
+      "All models in this section use paid pollen, not quest pollen.",
     customModels: "Custom Models",
     configured: "Connected",
     notConfigured: "API Key Required",
@@ -2975,6 +2983,8 @@ export const en = {
     failedSearch: "Failed to fetch search results",
   },
   chatbot: {
+    authRequiredForFree: "Please log in to use free AI models.",
+    freeLimitExceeded: "Daily token limit reached for this free model. Resets at midnight UTC.",
     pollinationsRequiredTitle: "Pollinations AI Setup Required",
     pollinationsRequiredSubtitle: "Connect your API key to access Chatbot",
     freeTierInfoTitle: "100% Free Models",

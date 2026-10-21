@@ -279,9 +279,17 @@ export const es = {
     registeredModels: "Modelos activos y personalizados",
     registeredModelsDesc:
       "Todos los modelos de Pollinations disponibles, incluidos ajustes preestablecidos oficiales y modelos registrados personalizados.",
+    freeModels: "Modelos Gratuitos",
+    freeModelsNotice: "No se necesita cuenta de Pollinations. Se aplica un límite diario de tokens por usuario y se divide entre cuentas que comparten IP.",
+    freeTokensRemaining: "Quedan {remaining} de {total} tokens hoy",
+    ipSplitNotice: "Dividido entre {count} cuentas en tu IP",
+    freeTierBadge: "Límites Diarios",
     standardModels: "Modelos Estándar",
     questPollenNotice:
       "Todos los modelos de esta sección usan polen de misiones, no polen de pago.",
+    paidModels: "Modelos de Pago",
+    paidPollenNotice:
+      "Todos los modelos de esta sección usan polen de pago, no polen de misiones.",
     customModels: "Modelos Personalizados",
     configured: "Conectado",
     notConfigured: "Clave API Requerida",
@@ -2957,6 +2965,8 @@ export const es = {
       "Aviso: La moderaciÃ³n en la nube de OpenAI se omitiÃ³ porque el servidor no detectÃ³ OPENAI_API_KEY. Solo se evaluaron las comprobaciones locales.",
   },
   chatbot: {
+    authRequiredForFree: "Inicia sesión para usar los modelos de IA gratuitos.",
+    freeLimitExceeded: "Límite diario de tokens alcanzado para este modelo gratuito. Se restablece a medianoche UTC.",
     pollinationsRequiredTitle: "Configuración de Pollinations AI Requerida",
     pollinationsRequiredSubtitle: "Conecta tu clave API para acceder al Chatbot",
     freeTierInfoTitle: "Modelos 100% Gratuitos",

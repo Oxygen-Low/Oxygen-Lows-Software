@@ -88,6 +88,14 @@ describe("useAiModels Hook (Pollinations Exclusive)", () => {
     expect(
       result.current.models.every((m) => m.provider === "pollinations"),
     ).toBe(true);
+    expect(result.current.freeModels.length).toBe(3);
+    expect(result.current.freeModels.some((m) => m.model_id === "deepseek/deepseek-v4.1-flash")).toBe(true);
+    expect(result.current.freeModels.some((m) => m.model_id === "openai/gpt-6-luna")).toBe(true);
+    expect(result.current.freeModels.some((m) => m.model_id === "openai/gpt-oss-20b")).toBe(true);
+    expect(result.current.standardModels.length).toBe(5);
+    expect(result.current.paidModels.length).toBe(5);
+    expect(result.current.paidModels.some((m) => m.model_id === "xiaomi/mimo-v2.5")).toBe(true);
+    expect(result.current.paidModels.some((m) => m.model_id === "anthropic/claude-fable-5.1")).toBe(true);
   });
 
   it("manages Pollinations API key server-side and queries Pollen balance", async () => {

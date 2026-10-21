@@ -3,6 +3,12 @@ import { formatModelLabel } from "./aiUtils";
 
 describe("formatModelLabel", () => {
   it("should handle pollinations provider", () => {
+    expect(formatModelLabel("pollinations", "deepseek/deepseek-v4.1-flash")).toBe(
+      "Best",
+    );
+    expect(formatModelLabel("pollinations", "openai/gpt-oss-20b")).toBe(
+      "Cheap",
+    );
     expect(formatModelLabel("pollinations", "amazon/nova-micro-v1")).toBe(
       "Cheap",
     );
@@ -16,6 +22,21 @@ describe("formatModelLabel", () => {
       "Smart",
     );
     expect(formatModelLabel("pollinations", "openai/gpt-6-astra")).toBe(
+      "Smartest",
+    );
+    expect(formatModelLabel("pollinations", "xiaomi/mimo-v2.5")).toBe(
+      "Cheap",
+    );
+    expect(formatModelLabel("pollinations", "anthropic/claude-haiku-5.5")).toBe(
+      "Fast",
+    );
+    expect(formatModelLabel("pollinations", "google/gemini-3.8-flash")).toBe(
+      "Balanced",
+    );
+    expect(formatModelLabel("pollinations", "google/gemini-4-argon")).toBe(
+      "Smart",
+    );
+    expect(formatModelLabel("pollinations", "anthropic/claude-fable-5.1")).toBe(
       "Smartest",
     );
     expect(formatModelLabel("pollinations", "unknown-model")).toBe(

@@ -270,9 +270,17 @@ export const ko = {
     registeredModels: "활성 및 사용자 지정 모델",
     registeredModelsDesc:
       "공식 프리셋 및 사용자 지정 등록 모델을 포함한 모든 사용 가능한 Pollinations 모델입니다.",
+    freeModels: "무료 모델",
+    freeModelsNotice: "Pollinations 계정이 필요하지 않습니다. 사용자당 일일 토큰 한도가 적용되며 동일한 IP를 공유하는 계정 간에 분할됩니다.",
+    freeTokensRemaining: "오늘 남은 토큰: {remaining} / {total}",
+    ipSplitNotice: "동일 IP 내 {count}개 계정 간 분할",
+    freeTierBadge: "일일 한도",
     standardModels: "기본 모델",
     questPollenNotice:
       "이 섹션의 모든 모델은 유료 꽃가루가 아닌 퀘스트 꽃가루를 사용합니다.",
+    paidModels: "유료 모델",
+    paidPollenNotice:
+      "이 섹션의 모든 모델은 퀘스트 꽃가루가 아닌 유료 꽃가루를 사용합니다.",
     customModels: "커스텀 모델",
     configured: "연결됨",
     notConfigured: "API 키 필요",
@@ -2917,6 +2925,8 @@ notificationsTitle: "ì•Œë¦¼",
       "ì•Œë¦¼: ì„œë²„ì—ì„œ OPENAI_API_KEYê°€ ê°ì§€ë˜ì§€ ì•Šì•„ OpenAI í´ë¼ìš°ë“œ ê²€ìˆ˜ë¥¼ ê±´ë„ˆë›°ì—ˆìŠµë‹ˆë‹¤. ë¡œì»¬ ê²€ì‚¬ë§Œ í‰ê°€ë˜ì—ˆìŠµë‹ˆë‹¤.",
   },
   chatbot: {
+    authRequiredForFree: "무료 AI 모델을 사용하려면 로그인하세요.",
+    freeLimitExceeded: "이 무료 모델의 일일 토큰 한도에 도달했습니다. 자정 UTC에 재설정됩니다.",
     pollinationsRequiredTitle: "Pollinations AI 설정 필요",
     pollinationsRequiredSubtitle: "Chatbot에 액세스하려면 API 키를 연결하세요",
     freeTierInfoTitle: "100% 무료 모델",

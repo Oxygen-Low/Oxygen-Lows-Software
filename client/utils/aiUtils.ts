@@ -3,11 +3,18 @@ import { handleSafetyModeration } from "@/lib/safetyModeration";
 export const formatModelLabel = (provider: string, modelId: string) => {
   if (provider === "pollinations") {
     const labels: Record<string, string> = {
+      "deepseek/deepseek-v4.1-flash": "Best",
       "amazon/nova-micro-v1": "Cheap",
       "openai/gpt-6-luna": "Fast",
       "openai/gpt-5.6-terra": "Balanced",
       "openai/gpt-6.1-sol": "Smart",
       "openai/gpt-6-astra": "Smartest",
+      "openai/gpt-oss-20b": "Cheap",
+      "xiaomi/mimo-v2.5": "Cheap",
+      "anthropic/claude-haiku-5.5": "Fast",
+      "google/gemini-3.8-flash": "Balanced",
+      "google/gemini-4-argon": "Smart",
+      "anthropic/claude-fable-5.1": "Smartest",
     };
     return labels[modelId] || modelId;
   }

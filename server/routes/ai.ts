@@ -20,6 +20,13 @@ import {
   setUserApiKey,
   deleteUserApiKey,
 } from "../lib/userApiKeys.ts";
+import {
+  FREE_MODELS,
+  checkFreeModelAllowance,
+  recordFreeModelUsage,
+  getAllFreeModelsUsage,
+  createFreeAiTrackingStream,
+} from "../lib/freeAiLimits.ts";
 
 export const aiRouter = new Hono();
 
@@ -208,6 +215,27 @@ aiRouter.delete("/keys/:provider", apiLimiter, async (c) => {
 
   await deleteUserApiKey(user.id, provider);
   return c.json({ success: true, provider: provider.toLowerCase() });
+});
+
+aiRouter.get("/free-usage", apiLimiter, async (c) => {
+  const authHeader = c.req.header("authorization");
+  const token = extractBearerToken(authHeader);
+  let user = null;
+
+  if (token && token !== "undefined" && token !== "null") {
+    user = await resolveUserFromToken(token);
+  }
+
+  if (!user) {
+    return c.json(
+      { error: "Authentication required to view free model usage." },
+      401,
+    );
+  }
+
+  const ip = extractClientIp(c);
+  const data = getAllFreeModelsUsage(user.id, ip);
+  return c.json(data);
 });
 
 aiRouter.get("/horde-status", apiLimiter, async (c) => {
@@ -544,8 +572,18 @@ function createSseStreamFromCompletionJson(
 }
 
 aiRouter.post("/proxy", apiLimiter, async (c) => {
-  const { provider, model, messages, prompt, systemPrompt, stream, apiKey, baseUrl, tools } =
-    await c.req.json();
+  const {
+    provider,
+    model,
+    messages,
+    prompt,
+    systemPrompt,
+    stream,
+    apiKey,
+    baseUrl,
+    tools,
+    category,
+  } = await c.req.json();
   const authHeader = c.req.header("authorization");
   // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
   const token = extractBearerToken(authHeader);
@@ -555,7 +593,22 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     user = await resolveUserFromToken(token);
   }
 
-  if (!user && provider !== "horde" && provider !== "pollinations") {
+  const userPolliKey = user?.id
+    ? await getUserApiKey(user.id, "pollinations")
+    : null;
+  const isDirectPolliKey = !isInvalidOrMaskedApiKey(apiKey);
+  const isFreeModelRequest =
+    Boolean(FREE_MODELS[model]) &&
+    (category === "free" ||
+      (!isDirectPolliKey &&
+        !userPolliKey &&
+        (provider === "pollinations" || !provider)));
+
+  if (isFreeModelRequest) {
+    if (!user) {
+      return c.json({ error: "Please log in to use free AI models." }, 401);
+    }
+  } else if (!user && provider !== "horde" && provider !== "pollinations") {
     return c.json({ error: "Authentication required for this model." }, 401);
   }
 
@@ -572,9 +625,11 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     envKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY || "";
   }
 
+  const effectiveProvider =
+    provider || (isFreeModelRequest ? "pollinations" : "pollinations");
   let effectiveApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
-  if (!effectiveApiKey && user?.id) {
-    effectiveApiKey = (await getUserApiKey(user.id, provider)) || "";
+  if (!effectiveApiKey && user?.id && effectiveProvider) {
+    effectiveApiKey = (await getUserApiKey(user.id, effectiveProvider)) || "";
   }
   if (!effectiveApiKey) {
     effectiveApiKey = envKey;
@@ -612,6 +667,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
 
   if (
     !integration?.api_key &&
+    !isFreeModelRequest &&
     provider !== "horde" &&
     provider !== "pollinations" &&
     provider !== "shared-model"
@@ -751,6 +807,44 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     finalMessages = nonSystemFinal;
   }
 
+  const clientIp = extractClientIp(c);
+  const estimatedPromptTokens = Math.max(
+    1,
+    Math.ceil(
+      finalMessages.reduce(
+        (acc: number, m: any) =>
+          acc + (typeof m.content === "string" ? m.content.length : 0),
+        0,
+      ) / 4,
+    ),
+  );
+
+  if (isFreeModelRequest && user?.id) {
+    const allowance = checkFreeModelAllowance(
+      user.id,
+      model,
+      clientIp,
+      estimatedPromptTokens,
+    );
+    if (!allowance.allowed) {
+      return c.json(
+        {
+          error: `Daily token limit reached for this free model. Your daily limit is ${allowance.effectiveLimit.toLocaleString()} tokens${
+            allowance.userCountOnIp > 1
+              ? ` (split between ${allowance.userCountOnIp} accounts on this IP)`
+              : ""
+          }. Resets at midnight UTC.`,
+          code: "FREE_TIER_LIMIT_REACHED",
+          effectiveLimit: allowance.effectiveLimit,
+          usedTokens: allowance.usedTokens,
+          remainingTokens: allowance.remainingTokens,
+          userCountOnIp: allowance.userCountOnIp,
+        },
+        429,
+      );
+    }
+  }
+
   const fetchOptions: any = {
     method: "POST",
     headers: {
@@ -819,11 +913,19 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       targetUrl = "https://api.x.ai/v1/chat/completions";
       requestBody = { ...requestBody, model, messages: finalMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
-    } else if (provider === "pollinations") {
+    } else if (provider === "pollinations" || isFreeModelRequest) {
       targetUrl = "https://gen.pollinations.ai/v1/chat/completions";
-      requestBody = { ...requestBody, model, messages: finalMessages };
-      if (integration?.api_key) {
-        fetchOptions.headers["Authorization"] = `Bearer ${integration.api_key}`;
+      requestBody = {
+        ...requestBody,
+        model,
+        messages: finalMessages,
+        stream_options: stream ? { include_usage: true } : undefined,
+      };
+      const polliApiKey = isFreeModelRequest
+        ? process.env.POLLINATIONS_API_KEY || ""
+        : integration?.api_key || process.env.POLLINATIONS_API_KEY || "";
+      if (polliApiKey) {
+        fetchOptions.headers["Authorization"] = `Bearer ${polliApiKey}`;
       }
     } else if (provider === "horde") {
       let actualModel = resolveHordeModel(model);
@@ -1029,6 +1131,18 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         typeof upstreamResponse.json === "function"
       ) {
         const data = await upstreamResponse.json();
+        if (isFreeModelRequest && user?.id) {
+          const promptTokens = data?.usage?.prompt_tokens ?? estimatedPromptTokens;
+          const completionTokens =
+            data?.usage?.completion_tokens ??
+            Math.max(
+              1,
+              Math.ceil(
+                (data?.choices?.[0]?.message?.content?.length || 0) / 4,
+              ),
+            );
+          recordFreeModelUsage(user.id, model, clientIp, promptTokens, completionTokens);
+        }
         c.header("Content-Type", "text/event-stream");
         c.header("Cache-Control", "no-cache");
         c.header("Connection", "keep-alive");
@@ -1037,9 +1151,32 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       c.header("Content-Type", "text/event-stream");
       c.header("Cache-Control", "no-cache");
       c.header("Connection", "keep-alive");
-      return c.body(upstreamResponse.body as any);
+
+      let bodyStream = upstreamResponse.body as any;
+      if (isFreeModelRequest && user?.id) {
+        bodyStream = createFreeAiTrackingStream(
+          bodyStream,
+          (inTok, outTok) => {
+            recordFreeModelUsage(user.id, model, clientIp, inTok, outTok);
+          },
+          estimatedPromptTokens,
+        );
+      }
+      return c.body(bodyStream);
     } else {
       const data = await upstreamResponse.json();
+      if (isFreeModelRequest && user?.id) {
+        const promptTokens = data?.usage?.prompt_tokens ?? estimatedPromptTokens;
+        const completionTokens =
+          data?.usage?.completion_tokens ??
+          Math.max(
+            1,
+            Math.ceil(
+              (data?.choices?.[0]?.message?.content?.length || 0) / 4,
+            ),
+          );
+        recordFreeModelUsage(user.id, model, clientIp, promptTokens, completionTokens);
+      }
       return c.json(data);
     }
   } catch (err: any) {
@@ -1137,6 +1274,11 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
           { id: "openai/gpt-5.6-terra", name: "Balanced" },
           { id: "openai/gpt-6.1-sol", name: "Smart" },
           { id: "openai/gpt-6-astra", name: "Smartest" },
+          { id: "xiaomi/mimo-v2.5", name: "Cheap" },
+          { id: "anthropic/claude-haiku-5.5", name: "Fast" },
+          { id: "google/gemini-3.8-flash", name: "Balanced" },
+          { id: "google/gemini-4-argon", name: "Smart" },
+          { id: "anthropic/claude-fable-5.1", name: "Smartest" },
         ],
       });
     }
