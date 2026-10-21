@@ -96,6 +96,9 @@ export function useCustomFonts() {
         // Fallback: If URL load failed and we have storagePath, download file binary and load from buffer
         if (effectiveStoragePath) {
           try {
+            if (effectiveStoragePath.includes('..')) {
+              throw new Error('Invalid storage path');
+            }
             const { data: blob, error: downloadErr } = await storage
               .from("Storage")
               .download(effectiveStoragePath);
@@ -139,6 +142,9 @@ export function useCustomFonts() {
 
       if (effectiveStoragePath && effectiveUrl.includes("/api/storage/public/Storage")) {
         try {
+          if (effectiveStoragePath.includes('..')) {
+            throw new Error('Invalid storage path');
+          }
           const { data } = await storage
             .from("Storage")
             .createSignedUrl(effectiveStoragePath, 60 * 60 * 24 * 7);
