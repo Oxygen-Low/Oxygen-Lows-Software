@@ -2264,12 +2264,14 @@ export function pruneExpiredGameSnapshots(userId?: string | number): {
         // Clean up physical file if present
         if (snap.storage_path) {
           try {
-            const userUploadsBase = path.resolve(
-              process.cwd(),
-              "uploads",
-              "Storage",
-              String(uid),
-            );
+            const storageRoot = path.resolve(process.cwd(), "uploads", "Storage");
+            const userUploadsBase = path.resolve(storageRoot, String(uid));
+            const baseRel = path.relative(storageRoot, userUploadsBase);
+            const baseInsideRoot =
+              baseRel !== "" &&
+              baseRel !== ".." &&
+              !baseRel.startsWith(`..${path.sep}`) &&
+              !path.isAbsolute(baseRel);
             const absPath = path.resolve(
               process.cwd(),
               "uploads",
@@ -2277,6 +2279,7 @@ export function pruneExpiredGameSnapshots(userId?: string | number): {
             );
             const rel = path.relative(userUploadsBase, absPath);
             if (
+              baseInsideRoot &&
               rel !== "" &&
               !rel.startsWith("..") &&
               !path.isAbsolute(rel) &&
