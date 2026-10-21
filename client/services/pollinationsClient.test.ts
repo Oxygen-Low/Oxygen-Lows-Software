@@ -30,7 +30,7 @@ describe("pollinationsClient", () => {
       const onChunk = vi.fn();
       await expect(
         streamPollinationsClient({
-          model: "amazon/nova-micro-v1",
+          model: "openai/gpt-6-luna",
           messages: [{ role: "user", content: "Hello" }],
           onChunk,
         }),
@@ -49,7 +49,7 @@ describe("pollinationsClient", () => {
       const onChunk = vi.fn();
       await expect(
         streamPollinationsClient({
-          model: "amazon/nova-micro-v1",
+          model: "openai/gpt-6-luna",
           messages: [{ role: "user", content: "Hello" }],
           onChunk,
         }),
@@ -68,7 +68,7 @@ describe("pollinationsClient", () => {
       const onChunk = vi.fn();
       await expect(
         streamPollinationsClient({
-          model: "amazon/nova-micro-v1",
+          model: "openai/gpt-6-luna",
           messages: [{ role: "user", content: "Hello" }],
           onChunk,
         }),
@@ -105,7 +105,7 @@ describe("pollinationsClient", () => {
 
       const chunks: string[] = [];
       const result = await streamPollinationsClient({
-        model: "amazon/nova-micro-v1",
+        model: "openai/gpt-6-luna",
         messages: [{ role: "user", content: "Hi" }],
         apiKey: "test-api-key",
         onChunk: (delta) => chunks.push(delta),
@@ -135,7 +135,7 @@ describe("pollinationsClient", () => {
 
       await expect(
         streamPollinationsClient({
-          model: "amazon/nova-micro-v1",
+          model: "openai/gpt-6-luna",
           messages: [{ role: "user", content: "Hi" }],
           onChunk: vi.fn(),
         }),
@@ -153,7 +153,7 @@ describe("pollinationsClient", () => {
 
       await expect(
         fetchPollinationsClient({
-          model: "amazon/nova-micro-v1",
+          model: "openai/gpt-6-luna",
           messages: [{ role: "user", content: "Hello" }],
         }),
       ).rejects.toThrow(PollinationsRateLimitError);
@@ -168,7 +168,7 @@ describe("pollinationsClient", () => {
 
       await expect(
         fetchPollinationsClient({
-          model: "amazon/nova-micro-v1",
+          model: "openai/gpt-6-luna",
           messages: [{ role: "user", content: "Hello" }],
         }),
       ).rejects.toThrow(PollinationsAuthError);
@@ -183,7 +183,7 @@ describe("pollinationsClient", () => {
 
       await expect(
         fetchPollinationsClient({
-          model: "amazon/nova-micro-v1",
+          model: "openai/gpt-6-luna",
           messages: [{ role: "user", content: "Hello" }],
         }),
       ).rejects.toThrow(PollinationsNotFoundError);
@@ -199,7 +199,7 @@ describe("pollinationsClient", () => {
       });
 
       const result = await fetchPollinationsClient({
-        model: "amazon/nova-micro-v1",
+        model: "openai/gpt-6-luna",
         messages: [{ role: "user", content: "Title prompt" }],
       });
 

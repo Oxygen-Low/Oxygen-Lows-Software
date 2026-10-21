@@ -476,7 +476,7 @@ async function completeWithLlm(
   },
 ): Promise<string> {
   const provider = (options.provider || "pollinations").toLowerCase();
-  const model = options.model || "amazon/nova-micro-v1";
+  const model = options.model || "openai/gpt-6-luna";
 
   let effectiveApiKey = isInvalidOrMaskedApiKey(options.apiKey)
     ? ""

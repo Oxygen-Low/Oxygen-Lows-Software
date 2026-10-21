@@ -417,7 +417,7 @@ export const en = {
     chatbotMasterKeyLocked:
       "Your Master Key is locked. Please unlock it in Account or Models settings to use configured API keys.",
     defaultModelFallbackWarning:
-      "The main default model (Pollinations Nova Micro v1) is currently unavailable (rate limited). Falling back to AI Horde ({model}). Quality may be decreased.",
+      "The main default model (Pollinations GPT-6 Luna) is currently unavailable (rate limited). Falling back to AI Horde ({model}). Quality may be decreased.",
     defaultModelFallbackNotice:
       "Generated via AI Horde ({model}) fallback due to main default model unavailability.",
     customModelFallbackWarning:

@@ -1319,7 +1319,7 @@ describe("ChatbotApp", () => {
       language: "English",
       sub_language: "GB",
       last_provider: "pollinations",
-      last_model_id: "amazon/nova-micro-v1",
+      last_model_id: "openai/gpt-6-luna",
     };
     mockUserModels = [];
     mockChats = [];

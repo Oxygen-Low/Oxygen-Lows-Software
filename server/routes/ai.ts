@@ -24,7 +24,7 @@ import {
 export const aiRouter = new Hono();
 
 const DEFAULT_MODELS = [
-  { provider: "pollinations", model_id: "amazon/nova-micro-v1" },
+  { provider: "pollinations", model_id: "openai/gpt-6-luna" },
 ];
 
 export const HORDE_MODELS_MAP: Record<string, string[]> = {

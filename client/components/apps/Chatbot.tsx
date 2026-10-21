@@ -739,7 +739,7 @@ const ChatMessage = React.memo(
                         `Generated via AI Horde (${m.fallbackModel || "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"}) fallback due to Pollinations 404 error.`,
                       )
                     : m.fallbackSourceModel &&
-                      m.fallbackSourceModel !== "amazon/nova-micro-v1"
+                      m.fallbackSourceModel !== "openai/gpt-6-luna"
                     ? t(
                         "apps.customModelFallbackNotice",
                         {
@@ -1394,7 +1394,7 @@ export function ChatbotApp() {
 
   const [userSelectedModel, setUserSelectedModel] = useState<string | null>(null);
   const selectedModel =
-    userSelectedModel || chatbotDefaultModel || "amazon/nova-micro-v1";
+    userSelectedModel || chatbotDefaultModel || "openai/gpt-6-luna";
   const setSelectedModel = useCallback((modelId: string) => {
     setUserSelectedModel(modelId);
   }, []);
@@ -1605,7 +1605,7 @@ export function ChatbotApp() {
             },
             body: JSON.stringify({
               provider: "pollinations",
-              model: "amazon/nova-micro-v1",
+              model: "openai/gpt-6-luna",
               messages: [
                 {
                   role: "user",
@@ -1627,7 +1627,7 @@ export function ChatbotApp() {
       } else if (isDirectKey) {
         try {
           const directTitle = await fetchPollinationsClient({
-            model: "amazon/nova-micro-v1",
+            model: "openai/gpt-6-luna",
             messages: [
               {
                 role: "user",
@@ -1836,9 +1836,9 @@ export function ChatbotApp() {
       fallbackModelId: string,
       reason: "rate_limit" | "not_found" | "auth_required" = "rate_limit",
     ): Promise<string> => {
-      const effectiveSourceModel = model || "amazon/nova-micro-v1";
+      const effectiveSourceModel = model || "openai/gpt-6-luna";
       const isDefaultPollinationsModel =
-        !model || model === "amazon/nova-micro-v1";
+        !model || model === "openai/gpt-6-luna";
       const matchedModelObj =
         customModels.find(
           (m) =>
@@ -1900,7 +1900,7 @@ export function ChatbotApp() {
           t(
             "apps.defaultModelFallbackWarning",
             { model: fallbackModelId },
-            `The main default model (Nova Micro v1) is currently unavailable (rate limited). Falling back to AI Horde (${fallbackModelId}). Quality may be decreased.`,
+            `The main default model (GPT-6 Luna) is currently unavailable (rate limited). Falling back to AI Horde (${fallbackModelId}). Quality may be decreased.`,
           ),
         );
       }
@@ -1945,7 +1945,7 @@ export function ChatbotApp() {
             signal,
             body: JSON.stringify({
               provider: "pollinations",
-              model: model || "amazon/nova-micro-v1",
+              model: model || "openai/gpt-6-luna",
               messages: sanitizedMsgs,
               stream: true,
             }),
@@ -2007,7 +2007,7 @@ export function ChatbotApp() {
       try {
         let directContent = "";
         await streamPollinationsClient({
-          model: model || "amazon/nova-micro-v1",
+          model: model || "openai/gpt-6-luna",
           messages: sanitizedMsgs,
           signal,
           apiKey: isDirectKey ? apiKey : undefined,
@@ -2351,7 +2351,7 @@ export function ChatbotApp() {
 
       const finalResearchProvider = "pollinations";
       const finalResearchModel =
-        selectedModel || researchAgentDefaultModel || "amazon/nova-micro-v1";
+        selectedModel || researchAgentDefaultModel || "openai/gpt-6-luna";
       const finalApiKey = pollinationsApiKey || undefined;
 
       const agentRes = await fetch("/api/ai/agent-search", {

@@ -100,9 +100,9 @@ export const POPULAR_PRESETS: Record<
   ],
 };
 
-const DEFAULT_CHATBOT_MODEL = "amazon/nova-micro-v1";
-const DEFAULT_RESEARCH_MODEL = "amazon/nova-micro-v1";
-const DEFAULT_SUMMARIZER_MODEL = "amazon/nova-micro-v1";
+const DEFAULT_CHATBOT_MODEL = "openai/gpt-6-luna";
+const DEFAULT_RESEARCH_MODEL = "openai/gpt-6-luna";
+const DEFAULT_SUMMARIZER_MODEL = "openai/gpt-6-luna";
 
 const LOCAL_STORAGE_KEY_POLLINATIONS = "pollinations_api_key";
 const LOCAL_STORAGE_CUSTOM_MODELS = "pollinations_custom_models";
