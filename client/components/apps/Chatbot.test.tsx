@@ -359,6 +359,17 @@ describe("ChatbotApp", () => {
     expect(screen.queryByText("How can I help you?")).not.toBeNull();
   });
 
+  it("renders delete chat button and deletes chat from sidebar", async () => {
+    renderChatbot();
+    await screen.findByText("Existing Chat");
+    const deleteButton = screen.getByRole("button", { name: "Delete chat" });
+    expect(deleteButton).toBeDefined();
+    fireEvent.click(deleteButton);
+    await waitFor(() => {
+      expect(screen.queryByText("Existing Chat")).toBeNull();
+    });
+  });
+
   it("creates a new chat and sends a message", async () => {
     renderChatbot();
 

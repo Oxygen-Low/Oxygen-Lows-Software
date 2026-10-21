@@ -3760,7 +3760,7 @@ export function ChatbotApp() {
                 New Chat
               </span>
             </button>
-            <ScrollArea className="flex-1 -mx-2 px-2">
+            <ScrollArea className="flex-1 -mx-2 px-2 [&_[data-radix-scroll-area-viewport]>div]:!block">
               <div className="flex flex-col gap-1 mt-2">
                 <p className="text-slate-400 text-[11px] font-display font-medium uppercase tracking-[0.05em] px-3 pb-2">
                   Chats
@@ -3769,7 +3769,7 @@ export function ChatbotApp() {
                   <div
                     key={c.id}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg group/chat text-left cursor-pointer transition-colors",
+                      "flex items-center gap-2.5 px-3 py-2 rounded-lg group/chat text-left cursor-pointer transition-colors w-full min-w-0",
                       currentChatId === c.id
                         ? "bg-white/10 text-white"
                         : "hover:bg-white/5 text-slate-400 hover:text-white",
@@ -3779,8 +3779,8 @@ export function ChatbotApp() {
                       setSidebarOpen(false);
                     }}
                   >
-                    <Bot className="w-5 h-5 opacity-70" />
-                    <span className="text-sm font-medium truncate flex-1 font-body">
+                    <Bot className="w-5 h-5 opacity-70 shrink-0" />
+                    <span className="text-sm font-medium truncate flex-1 min-w-0 font-body">
                       {c.title}
                     </span>
                     <button
@@ -3795,11 +3795,16 @@ export function ChatbotApp() {
                             if (currentChatId === c.id) setCurrentChatId(null);
                           });
                       }}
-                      className="md:opacity-0 md:group-hover/chat:opacity-100 opacity-100 hover:text-red-400 p-1 transition-opacity"
+                      className={cn(
+                        "shrink-0 p-1.5 rounded-md hover:bg-white/10 hover:text-red-400 transition-opacity",
+                        currentChatId === c.id
+                          ? "opacity-100 text-slate-300"
+                          : "opacity-100 md:opacity-0 md:group-hover/chat:opacity-100 text-slate-400",
+                      )}
                       aria-label="Delete chat"
                       title="Delete chat"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
