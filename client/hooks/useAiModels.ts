@@ -52,13 +52,6 @@ export const SUPPORTED_PROVIDERS: ProviderInfo[] = [
 export const BUILTIN_MODELS: Model[] = [
   {
     provider: "pollinations",
-    model_id: "inclusionai/ling-3.1-flash",
-    name: "Free",
-    rate: "infinite requests/$1",
-    category: "standard",
-  },
-  {
-    provider: "pollinations",
     model_id: "amazon/nova-micro-v1",
     name: "Cheap",
     rate: "around 10.2k requests/$1",
@@ -99,7 +92,6 @@ export const POPULAR_PRESETS: Record<
   Array<{ model_id: string; name: string }>
 > = {
   pollinations: [
-    { model_id: "inclusionai/ling-3.1-flash", name: "Free" },
     { model_id: "amazon/nova-micro-v1", name: "Cheap" },
     { model_id: "openai/gpt-6-luna", name: "Fast" },
     { model_id: "openai/gpt-5.6-terra", name: "Balanced" },
@@ -108,9 +100,9 @@ export const POPULAR_PRESETS: Record<
   ],
 };
 
-const DEFAULT_CHATBOT_MODEL = "inclusionai/ling-3.1-flash";
-const DEFAULT_RESEARCH_MODEL = "inclusionai/ling-3.1-flash";
-const DEFAULT_SUMMARIZER_MODEL = "inclusionai/ling-3.1-flash";
+const DEFAULT_CHATBOT_MODEL = "amazon/nova-micro-v1";
+const DEFAULT_RESEARCH_MODEL = "amazon/nova-micro-v1";
+const DEFAULT_SUMMARIZER_MODEL = "amazon/nova-micro-v1";
 
 const LOCAL_STORAGE_KEY_POLLINATIONS = "pollinations_api_key";
 const LOCAL_STORAGE_CUSTOM_MODELS = "pollinations_custom_models";

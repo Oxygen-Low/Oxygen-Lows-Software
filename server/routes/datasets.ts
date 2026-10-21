@@ -476,7 +476,7 @@ async function completeWithLlm(
   },
 ): Promise<string> {
   const provider = (options.provider || "pollinations").toLowerCase();
-  const model = options.model || "inclusionai/ling-3.1-flash";
+  const model = options.model || "amazon/nova-micro-v1";
 
   let effectiveApiKey = isInvalidOrMaskedApiKey(options.apiKey)
     ? ""

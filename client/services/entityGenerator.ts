@@ -343,7 +343,7 @@ export async function callModel(
   if (model.provider === "pollinations") {
     try {
       return await fetchPollinationsClient({
-        model: model.model_id || "inclusionai/ling-3.1-flash",
+        model: model.model_id || "amazon/nova-micro-v1",
         messages: messages.map((m) => ({
           role: (m.role || "user") as "system" | "user" | "assistant",
           content: m.content || "",

@@ -9,8 +9,8 @@ vi.mock("@/hooks/useAiModels", () => ({
     models: [
       {
         provider: "pollinations",
-        model_id: "inclusionai/ling-3.1-flash",
-        name: "Free",
+        model_id: "amazon/nova-micro-v1",
+        name: "Cheap",
       },
       {
         provider: "pollinations",
@@ -18,7 +18,7 @@ vi.mock("@/hooks/useAiModels", () => ({
         name: "Fast",
       },
     ],
-    chatbotDefaultModel: "inclusionai/ling-3.1-flash",
+    chatbotDefaultModel: "amazon/nova-micro-v1",
     pollinationsApiKey: "pk_test",
     isPollinationsSupporter: false,
   }),
@@ -96,7 +96,7 @@ describe("DatasetsApp", () => {
         updatedAt: "2026-10-19T12:00:00.000Z",
         rowCount: 1,
         tokenCount: 42,
-        model: "inclusionai/ling-3.1-flash",
+        model: "amazon/nova-micro-v1",
         prompt: "Test prompt",
         datasetType: "standard",
         archived: false,

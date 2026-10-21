@@ -3,7 +3,6 @@ import { handleSafetyModeration } from "@/lib/safetyModeration";
 export const formatModelLabel = (provider: string, modelId: string) => {
   if (provider === "pollinations") {
     const labels: Record<string, string> = {
-      "inclusionai/ling-3.1-flash": "Free",
       "amazon/nova-micro-v1": "Cheap",
       "openai/gpt-6-luna": "Fast",
       "openai/gpt-5.6-terra": "Balanced",

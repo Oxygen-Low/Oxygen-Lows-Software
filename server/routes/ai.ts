@@ -24,7 +24,7 @@ import {
 export const aiRouter = new Hono();
 
 const DEFAULT_MODELS = [
-  { provider: "pollinations", model_id: "inclusionai/ling-3.1-flash" },
+  { provider: "pollinations", model_id: "amazon/nova-micro-v1" },
 ];
 
 export const HORDE_MODELS_MAP: Record<string, string[]> = {
@@ -1132,7 +1132,6 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
       } catch {}
       return c.json({
         models: [
-          { id: "inclusionai/ling-3.1-flash", name: "Free" },
           { id: "amazon/nova-micro-v1", name: "Cheap" },
           { id: "openai/gpt-6-luna", name: "Fast" },
           { id: "openai/gpt-5.6-terra", name: "Balanced" },

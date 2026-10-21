@@ -1049,7 +1049,7 @@ describe("ChatbotApp", () => {
     // Verify "Standard Models" header is visible
     await screen.findByText("Standard Models");
     await screen.findByText("All models in this section use quest pollen, not paid pollen.");
-    expect((await screen.findAllByText("Free")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Cheap")).length).toBeGreaterThan(0);
 
     // Select Smart model
     const smartOption = screen.getByText("Smart");
@@ -1319,7 +1319,7 @@ describe("ChatbotApp", () => {
       language: "English",
       sub_language: "GB",
       last_provider: "pollinations",
-      last_model_id: "inclusionai/ling-3.1-flash",
+      last_model_id: "amazon/nova-micro-v1",
     };
     mockUserModels = [];
     mockChats = [];

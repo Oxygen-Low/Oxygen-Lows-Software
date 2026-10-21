@@ -429,7 +429,7 @@ export const es = {
     chatbotMasterKeyLocked:
       "Tu clave maestra estÃ¡ bloqueada. DesbloquÃ©ala en la configuraciÃ³n de Cuenta o Modelos para usar las claves API configuradas.",
     defaultModelFallbackWarning:
-      "El modelo predeterminado principal (Pollinations Ling 3.1 Flash) no está disponible actualmente (límite de velocidad). Recurriendo a AI Horde ({model}). La calidad puede verse reducida.",
+      "El modelo predeterminado principal (Pollinations Nova Micro v1) no está disponible actualmente (límite de velocidad). Recurriendo a AI Horde ({model}). La calidad puede verse reducida.",
     defaultModelFallbackNotice:
       "Generado a través del respaldo AI Horde ({model}) debido a la indisponibilidad del modelo principal.",
     customModelFallbackWarning:

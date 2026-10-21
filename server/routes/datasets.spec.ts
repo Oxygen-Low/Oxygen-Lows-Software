@@ -76,7 +76,7 @@ describe("Datasets API Routes & Parquet Storage", () => {
         name: "Python Basics",
         description: "Test dataset for Python",
         rows: initialRows,
-        model: "inclusionai/ling-3.1-flash",
+        model: "amazon/nova-micro-v1",
         prompt: "Generate Python questions",
         datasetType: "standard",
       }),
@@ -260,7 +260,7 @@ describe("Datasets API Routes & Parquet Storage", () => {
       },
       body: JSON.stringify({
         prompt: "Generate math calculus problems",
-        model: "inclusionai/ling-3.1-flash",
+        model: "amazon/nova-micro-v1",
         targetTokens: 1000,
         contextTokens: 2000,
         existingRows: [

@@ -3,9 +3,6 @@ import { formatModelLabel } from "./aiUtils";
 
 describe("formatModelLabel", () => {
   it("should handle pollinations provider", () => {
-    expect(
-      formatModelLabel("pollinations", "inclusionai/ling-3.1-flash"),
-    ).toBe("Free");
     expect(formatModelLabel("pollinations", "amazon/nova-micro-v1")).toBe(
       "Cheap",
     );

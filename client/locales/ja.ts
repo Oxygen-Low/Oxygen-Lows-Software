@@ -420,7 +420,7 @@ export const ja = {
     chatbotMasterKeyLocked:
       "ãƒžã‚¹ã‚¿ãƒ¼ã‚­ãƒ¼ãŒãƒ­ãƒƒã‚¯ã•ã‚Œã¦ã„ã¾ã™ã€‚è¨­å®šã•ã‚ŒãŸAPIã‚­ãƒ¼ã‚’ä½¿ç”¨ã™ã‚‹ã«ã¯ã€ã‚¢ã‚«ã‚¦ãƒ³ãƒˆã¾ãŸã¯ãƒ¢ãƒ‡ãƒ«è¨­å®šã§ãƒ­ãƒƒã‚¯ã‚’è§£é™¤ã—ã¦ãã ã•ã„ã€‚",
     defaultModelFallbackWarning:
-      "メインのデフォルトモデル（Pollinations Ling 3.1 Flash）は現在利用できません（レート制限）。AI Horde（{model}）にフォールバックします。品質が低下する可能性があります。",
+      "メインのデフォルトモデル（Pollinations Nova Micro v1）は現在利用できません（レート制限）。AI Horde（{model}）にフォールバックします。品質が低下する可能性があります。",
     defaultModelFallbackNotice:
       "メインモデルの利用不可により、AI Horde（{model}）フォールバック経由で生成されました。",
     customModelFallbackWarning:
