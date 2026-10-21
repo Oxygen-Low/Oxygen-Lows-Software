@@ -34,6 +34,7 @@ import { initiatePollinationsOAuth } from "@/services/pollinationsAuth";
 import { useToast } from "@/hooks/use-toast";
 import { db, supabase } from "@/lib/db";
 import { storage } from "@/lib/storage";
+import { cn } from "@/lib/utils";
 import Cropper, { Area } from "react-easy-crop";
 import {
   Card,
