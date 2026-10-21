@@ -114,6 +114,9 @@ export const TextPanel: React.FC<TextPanelProps> = ({
   const handleSelectFontFromStorage = async (file: any) => {
     try {
       const fontName = file.name.split("/").pop()?.replace(/\.[^/.]+$/, "") || "CustomFont";
+      if (file.name.includes('..')) {
+        throw new Error("Invalid file path");
+      }
       const { data: signedData } = await storage
         .from("Storage")
         .createSignedUrl(file.name, 60 * 60 * 24 * 7);
