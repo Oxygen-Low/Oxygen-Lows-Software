@@ -28,9 +28,7 @@
     /* Path mapping */
     "paths": {
       "@/*": ["./client/*"],
-      "@shared/*": ["./shared/*"],
-      "@oxygenlow/webdefender": ["./packages/webdefender/src/index.ts"],
-      "@oxygenlow/webdefender/*": ["./packages/webdefender/src/*.ts"]
+      "@shared/*": ["./shared/*"]
     }
   },
   "include": [
