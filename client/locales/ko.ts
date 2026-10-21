@@ -275,6 +275,7 @@ export const ko = {
     freeTokensRemaining: "오늘 남은 토큰: {remaining} / {total}",
     ipSplitNotice: "동일 IP 내 {count}개 계정 간 분할",
     freeTierBadge: "일일 한도",
+    tokensRemainingLabel: "토큰",
     standardModels: "기본 모델",
     questPollenNotice:
       "이 섹션의 모든 모델은 유료 꽃가루가 아닌 퀘스트 꽃가루를 사용합니다.",

@@ -4321,11 +4321,37 @@ export function ChatbotApp() {
                                       {m.name || m.model_id}
                                     </div>
                                     {usageInfo && (
-                                      <span className="text-[10px] text-blue-300/80 font-mono">
-                                        {usageInfo.remainingTokens.toLocaleString()} left
+                                      <span className="text-[10px] text-blue-300 font-mono">
+                                        {usageInfo.remainingTokens.toLocaleString()} /{" "}
+                                        {usageInfo.effectiveLimit.toLocaleString()}
                                       </span>
                                     )}
                                   </div>
+                                  {usageInfo && (
+                                    <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden my-1">
+                                      <div
+                                        className={cn(
+                                          "h-full rounded-full transition-all duration-300",
+                                          usageInfo.remainingTokens / usageInfo.effectiveLimit > 0.25
+                                            ? "bg-blue-500"
+                                            : usageInfo.remainingTokens > 0
+                                              ? "bg-amber-500"
+                                              : "bg-rose-500",
+                                        )}
+                                        style={{
+                                          width: `${Math.min(
+                                            100,
+                                            Math.max(
+                                              0,
+                                              (usageInfo.remainingTokens /
+                                                usageInfo.effectiveLimit) *
+                                                100,
+                                            ),
+                                          )}%`,
+                                        }}
+                                      />
+                                    </div>
+                                  )}
                                   <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
                                     <span>
                                       {m.model_id}

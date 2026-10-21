@@ -281,6 +281,7 @@ export const ru = {
     freeTokensRemaining: "Осталось {remaining} из {total} токенов сегодня",
     ipSplitNotice: "Разделено между {count} аккаунтами на вашем IP",
     freeTierBadge: "Дневные лимиты",
+    tokensRemainingLabel: "Токены",
     standardModels: "Стандартные модели",
     questPollenNotice:
       "Все модели в этом разделе используют пыльцу за задания, а не платную пыльцу.",

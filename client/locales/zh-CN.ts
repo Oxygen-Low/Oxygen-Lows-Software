@@ -270,6 +270,7 @@ export const zhCN = {
     freeTokensRemaining: "今日剩余 {remaining} / {total} 代币",
     ipSplitNotice: "在您 IP 上的 {count} 个账户间平分",
     freeTierBadge: "每日限额",
+    tokensRemainingLabel: "代币",
     standardModels: "标准模型",
     questPollenNotice: "此部分中的所有模型均使用任务花粉，而非付费花粉。",
     paidModels: "付费模型",

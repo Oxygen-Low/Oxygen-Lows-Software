@@ -1873,17 +1873,37 @@ export default function Account() {
                             {m.model_id}
                           </p>
                           {info && (
-                            <div className="pt-1 border-t border-slate-800/50 flex items-center justify-between text-[10px] text-slate-400">
-                              <span>
-                                {t(
-                                  "account.freeTokensRemaining",
-                                  {
-                                    remaining: info.remainingTokens.toLocaleString(),
-                                    total: info.effectiveLimit.toLocaleString(),
-                                  },
-                                  `${info.remainingTokens.toLocaleString()} / ${info.effectiveLimit.toLocaleString()} tokens left today`,
-                                )}
-                              </span>
+                            <div className="pt-1.5 border-t border-slate-800/50 space-y-1">
+                              <div className="flex items-center justify-between text-[10px]">
+                                <span className="text-slate-400">
+                                  {t("account.tokensRemainingLabel", undefined, "Tokens")}
+                                </span>
+                                <span className="font-mono text-blue-300 font-medium">
+                                  {info.remainingTokens.toLocaleString()} /{" "}
+                                  {info.effectiveLimit.toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-800/60">
+                                <div
+                                  className={cn(
+                                    "h-full rounded-full transition-all duration-300",
+                                    info.remainingTokens / info.effectiveLimit > 0.25
+                                      ? "bg-blue-500"
+                                      : info.remainingTokens > 0
+                                        ? "bg-amber-500"
+                                        : "bg-rose-500",
+                                  )}
+                                  style={{
+                                    width: `${Math.min(
+                                      100,
+                                      Math.max(
+                                        0,
+                                        (info.remainingTokens / info.effectiveLimit) * 100,
+                                      ),
+                                    )}%`,
+                                  }}
+                                />
+                              </div>
                             </div>
                           )}
                         </div>

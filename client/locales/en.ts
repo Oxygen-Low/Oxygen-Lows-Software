@@ -276,6 +276,7 @@ export const en = {
     freeTokensRemaining: "{remaining} of {total} tokens left today",
     ipSplitNotice: "Split between {count} accounts on your IP",
     freeTierBadge: "Daily Limits",
+    tokensRemainingLabel: "Tokens",
     standardModels: "Standard Models",
     questPollenNotice:
       "All models in this section use quest pollen, not paid pollen.",

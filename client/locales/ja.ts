@@ -278,6 +278,7 @@ export const ja = {
     freeTokensRemaining: "本日残り {remaining} / {total} トークン",
     ipSplitNotice: "IPを共有する{count}アカウントで分割",
     freeTierBadge: "1日制限",
+    tokensRemainingLabel: "トークン",
     standardModels: "標準モデル",
     questPollenNotice:
       "このセクションのすべてのモデルは、有料の花粉ではなくクエスト花粉を使用します。",

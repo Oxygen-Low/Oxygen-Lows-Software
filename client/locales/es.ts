@@ -284,6 +284,7 @@ export const es = {
     freeTokensRemaining: "Quedan {remaining} de {total} tokens hoy",
     ipSplitNotice: "Dividido entre {count} cuentas en tu IP",
     freeTierBadge: "Límites Diarios",
+    tokensRemainingLabel: "Tokens",
     standardModels: "Modelos Estándar",
     questPollenNotice:
       "Todos los modelos de esta sección usan polen de misiones, no polen de pago.",
