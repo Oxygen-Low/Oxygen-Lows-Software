@@ -268,6 +268,9 @@ export function ImageStudioApp() {
               layer.src.startsWith("blob:"))
           ) {
             try {
+              if (layer.storagePath.includes('..')) {
+                throw new Error('Invalid storage path');
+              }
               const { data } = await storage
                 .from("Storage")
                 .createSignedUrl(layer.storagePath, 60 * 60 * 24 * 7);
