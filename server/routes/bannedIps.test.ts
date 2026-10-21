@@ -3,8 +3,8 @@ import { Hono } from "hono";
 import { adminWebdefenderRouter } from "./adminWebdefender.ts";
 import { defenderRouter } from "./webdefender.ts";
 import { generateToken } from "../lib/auth.ts";
-import { getActiveDefenderBannedIps, publicDefenderBannedIp, DEFENDER_BANS_OWNER_ID } from "../lib/defenderBannedIps.ts";
-import { initUserFolder, saveTableRows } from "../lib/dataStore.ts";
+import { getActiveDefenderBannedIps, publicDefenderBannedIp } from "../lib/defenderBannedIps.ts";
+import { initUserFolder } from "../lib/dataStore.ts";
 
 const app = new Hono();
 app.route("/api/admin/webdefender", adminWebdefenderRouter);
@@ -22,7 +22,6 @@ describe("Banned IPs API and Admin Workflows", () => {
   let createdBanId = "";
 
   beforeAll(() => {
-    saveTableRows("defender_banned_ips", DEFENDER_BANS_OWNER_ID, []);
     initUserFolder("1", {
       username: "admin",
       email: "admin@example.com",

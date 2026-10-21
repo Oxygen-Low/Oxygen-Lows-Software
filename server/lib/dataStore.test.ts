@@ -717,7 +717,7 @@ describe("dataStore", () => {
 
       // Run cleanup
       const cleanedCount = cleanupExpiredClosedTickets();
-      expect(cleanedCount).toBeGreaterThanOrEqual(1);
+      expect(cleanedCount).toBe(1);
 
       const remainingTickets = getTableRows("support_tickets", testUserId);
       expect(remainingTickets.map((t) => t.id).sort()).toEqual(

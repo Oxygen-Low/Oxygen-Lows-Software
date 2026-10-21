@@ -72,6 +72,7 @@ ENV/
 env/
 /.agents
 
+package-lock.json
 .data/
 Data/
 
