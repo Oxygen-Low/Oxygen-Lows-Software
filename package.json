@@ -52,7 +52,7 @@
     "sudoku-gen": "^1.0.3",
     "undici": "^8.11.2",
     "ws": "^8.22.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@hookform/resolvers": "^5.9.1",
