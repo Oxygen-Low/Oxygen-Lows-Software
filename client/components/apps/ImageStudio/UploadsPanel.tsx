@@ -107,6 +107,9 @@ export const UploadsPanel: React.FC<UploadsPanelProps> = ({
               asset.url.startsWith("blob:"))
           ) {
             try {
+              if (asset.storagePath.includes('..')) {
+                throw new Error('Invalid storage path');
+              }
               const { data } = await storage
                 .from("Storage")
                 .createSignedUrl(asset.storagePath, 60 * 60 * 24 * 7);
@@ -230,6 +233,9 @@ export const UploadsPanel: React.FC<UploadsPanelProps> = ({
 
   const handleSelectFromStorage = async (file: any) => {
     try {
+      if (file.name.includes('..')) {
+        throw new Error('Invalid file name');
+      }
       const { data: signedData } = await storage
         .from("Storage")
         .createSignedUrl(file.name, 60 * 60 * 24 * 7);
