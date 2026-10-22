@@ -874,6 +874,73 @@ public partial class MainWindow : Window
 
                     SendWebMessage(new { id, success = true, data = new { runningGames } });
                 }
+                else if (cmd == "open_models_folder")
+                {
+                    try
+                    {
+                        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                        string modelsFolder = Path.Combine(localAppData, "OxygenLowsSoftware", "Models");
+                        if (!Directory.Exists(modelsFolder))
+                        {
+                            Directory.CreateDirectory(modelsFolder);
+                        }
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = "explorer.exe",
+                            Arguments = $"\"{modelsFolder}\"",
+                            UseShellExecute = true
+                        });
+                        SendWebMessage(new { id, success = true, data = new { path = modelsFolder } });
+                    }
+                    catch (Exception ex)
+                    {
+                        SendWebMessage(new { id, success = false, error = ex.Message });
+                    }
+                }
+                else if (cmd == "pick_model_file")
+                {
+                    object? fileResult = null;
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        using var dialog = new System.Windows.Forms.OpenFileDialog
+                        {
+                            Title = "Select LLM Model File",
+                            Filter = "LLM Models (*.gguf;*.safetensors)|*.gguf;*.safetensors|GGUF Models (*.gguf)|*.gguf|SafeTensors Models (*.safetensors)|*.safetensors|All Files (*.*)|*.*",
+                            Multiselect = false,
+                            CheckFileExists = true
+                        };
+
+                        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK && !string.IsNullOrEmpty(dialog.FileName))
+                        {
+                            fileResult = new
+                            {
+                                path = dialog.FileName,
+                                name = Path.GetFileName(dialog.FileName),
+                                extension = Path.GetExtension(dialog.FileName).ToLowerInvariant()
+                            };
+                        }
+                    });
+
+                    SendWebMessage(new { id, success = true, data = fileResult });
+                }
+                else if (cmd == "pick_model_folder")
+                {
+                    string? selectedFolder = null;
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        using var dialog = new System.Windows.Forms.FolderBrowserDialog
+                        {
+                            Description = "Select Model / Checkpoint Directory",
+                            UseDescriptionForTitle = true
+                        };
+                        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                        {
+                            selectedFolder = dialog.SelectedPath;
+                        }
+                    });
+
+                    SendWebMessage(new { id, success = true, data = selectedFolder != null ? new { path = selectedFolder, name = Path.GetFileName(selectedFolder) } : null });
+                }
             }
             catch (Exception ex)
             {

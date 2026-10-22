@@ -333,6 +333,11 @@ export const ja = {
     viewStorage: "å…±æœ‰ãƒ•ã‚¡ã‚¤ãƒ«ã‚’è¡¨ç¤º",
   },
   apps: {
+    llmRunnerTitle: "LLM Runner",
+    llmRunnerDesc: "デスクトップハードウェア上でローカルのGGUF、SafeTensors、および大規模AirLLMモデルを実行します。",
+    pythonManagerTitle: "Python Manager",
+    pythonManagerDesc: "Pythonサーバーの実行状態を監視し、AIパッケージを管理し、エラーと警告のログを表示します。",
+
     title: "ã‚¢ãƒ—ãƒª",
     subtitle: "ç´ æ™´ã‚‰ã—ã„ãƒ„ãƒ¼ãƒ«ã®ã‚³ãƒ¬ã‚¯ã‚·ãƒ§ãƒ³ã‚’æŽ¢ç´¢ã—ã¦è©¦ã—ã¦ã¿ã¾ã—ã‚‡ã†ï¼",
     availability: "åˆ©ç”¨å¯èƒ½æ€§",
@@ -2958,6 +2963,9 @@ notificationsTitle: "é€šçŸ¥",
       "通知: サーバーでPOLLINATIONS_API_KEYが検出されないため、クラウドモデレーションはバイパスされました。ローカルチェックのみが評価されました。",
   },
   chatbot: {
+    localModels: "ローカルLLM",
+    localRunningNotice: "LLM Runner経由でローカルモデルが実行中です。",
+
     authRequiredForFree: "無料AIモデルを使用するにはログインしてください。",
     freeLimitExceeded: "この無料モデルの1日あたりのトークン制限に達しました。UTC午前0時にリセットされます。",
     pollinationsRequiredTitle: "Pollinations AIの設定が必要です",

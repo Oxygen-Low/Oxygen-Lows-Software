@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/lib/db";
 import { getLocalSession } from "@/lib/localSession";
 import { fetchPollinationsBalance } from "@/services/pollinationsClient";
+import { llmRunnerService } from "@/services/llmRunnerService";
+import { isDesktopBridgeAvailable } from "@/lib/desktopBridge";
 import {
   encryptApiKey,
   decryptApiKey,
@@ -225,8 +227,50 @@ export function useAiModels() {
   const [pollenBalance, setPollenBalance] = useState<number>(0);
   const [freeUsage, setFreeUsage] = useState<FreeUsageData | null>(null);
   const [isMasterKeyActive, setIsMasterKeyActive] = useState(false);
+  const [localRunnerModel, setLocalRunnerModel] = useState<Model | null>(null);
   const loadIdRef = useRef<number>(0);
   const isMountedRef = useRef<boolean>(true);
+
+  const checkLocalRunner = useCallback(async () => {
+    if (!isDesktopBridgeAvailable()) {
+      if (isMountedRef.current) setLocalRunnerModel(null);
+      return null;
+    }
+    try {
+      const status = await llmRunnerService.getStatus();
+      if (status?.is_active && status.active_model?.name) {
+        const item: Model = {
+          id: `local:${status.active_model.name}`,
+          provider: "local-llm-runner",
+          model_id: status.active_model.name,
+          name: `${status.active_model.name} (${status.active_model.engine_type.toUpperCase()})`,
+          rate: "Local GPU/CPU",
+          category: "custom",
+          isLocal: true,
+        };
+        if (isMountedRef.current) {
+          setLocalRunnerModel(item);
+        }
+        return item;
+      } else {
+        if (isMountedRef.current) {
+          setLocalRunnerModel(null);
+        }
+        return null;
+      }
+    } catch {
+      if (isMountedRef.current) {
+        setLocalRunnerModel(null);
+      }
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    checkLocalRunner();
+    const interval = setInterval(checkLocalRunner, 3500);
+    return () => clearInterval(interval);
+  }, [checkLocalRunner]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -406,7 +450,7 @@ export function useAiModels() {
     setIsMasterKeyActive(!!getActiveMasterKey());
   }, [loadCustomModels, loadDefaults, loadApiKey]);
 
-  // Combine built-in models and custom models
+  // Combine built-in models, custom models, and active local runner model
   useEffect(() => {
     const combined = [...BUILTIN_MODELS];
     for (const cm of customModels) {
@@ -414,8 +458,11 @@ export function useAiModels() {
         combined.push(cm);
       }
     }
+    if (localRunnerModel && !combined.some((m) => m.model_id === localRunnerModel.model_id)) {
+      combined.unshift(localRunnerModel);
+    }
     setModels(combined);
-  }, [customModels]);
+  }, [customModels, localRunnerModel]);
 
   const refreshPollenBalance = useCallback(
     async (tokenToUse?: string) => {
@@ -719,12 +766,16 @@ export function useAiModels() {
     pollenBalance,
     refreshPollenBalance,
     isMasterKeyActive,
+    localRunnerModel,
+    localModels: localRunnerModel ? [localRunnerModel] : [],
+    isLocalRunnerActive: !!localRunnerModel,
+    checkLocalRunner,
     localStatus: {
       ollama: false,
       lmstudio: false,
       kobold: false,
-      desktopBridge: false,
-      totalLocal: 0,
+      desktopBridge: isDesktopBridgeAvailable(),
+      totalLocal: localRunnerModel ? 1 : 0,
     } as LocalProviderStatus,
     hordeStatus: {} as Record<string, any>,
   };

@@ -7,6 +7,8 @@ import argparse
 import threading
 import logging
 import hmac
+import inspect
+import traceback
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
 from urllib.parse import urlparse, unquote
@@ -23,6 +25,70 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s"
 )
 logger = logging.getLogger("PythonServer")
+
+class RingBufferLogHandler(logging.Handler):
+    """In-memory circular buffer to capture server logs for Python Manager UI."""
+    def __init__(self, capacity=1000):
+        super().__init__()
+        self.capacity = capacity
+        self.buffer = []
+        self._lock = threading.Lock()
+        self._id_counter = 0
+
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            exc = None
+            if record.exc_info:
+                exc = "".join(traceback.format_exception(*record.exc_info))
+            elif record.exc_text:
+                exc = str(record.exc_text)
+            with self._lock:
+                self._id_counter += 1
+                entry = {
+                    "id": self._id_counter,
+                    "timestamp": record.created,
+                    "time_str": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(record.created)),
+                    "level": record.levelname,
+                    "name": record.name,
+                    "message": record.getMessage(),
+                    "formatted": msg,
+                    "exception": exc
+                }
+                self.buffer.append(entry)
+                if len(self.buffer) > self.capacity:
+                    self.buffer.pop(0)
+        except Exception:
+            self.handleError(record)
+
+    def get_logs(self, level=None, query=None, limit=200):
+        with self._lock:
+            logs = list(self.buffer)
+        if level and level.upper() != "ALL":
+            logs = [e for e in logs if e["level"].upper() == level.upper()]
+        if query:
+            q = query.lower()
+            logs = [
+                e for e in logs
+                if q in e["message"].lower()
+                or (e["exception"] and q in e["exception"].lower())
+                or q in e["name"].lower()
+            ]
+        return logs[-limit:]
+
+    def clear(self):
+        with self._lock:
+            self.buffer.clear()
+
+LOG_BUFFER = RingBufferLogHandler(capacity=1000)
+LOG_BUFFER.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] [%(name)s] %(message)s"))
+logging.getLogger().addHandler(LOG_BUFFER)
+
+def get_buffered_logs(level=None, query=None, limit=200):
+    return LOG_BUFFER.get_logs(level=level, query=query, limit=limit)
+
+def clear_buffered_logs():
+    LOG_BUFFER.clear()
 
 START_TIME = time.time()
 HTTP_SERVER = None
@@ -74,7 +140,14 @@ class RequestHandler(BaseHTTPRequestHandler):
     server_version = "OxygenLowsPythonServer/1.0"
 
     MAX_BODY_BYTES = 1024 * 1024
-    ALLOWED_ORIGINS = {"https://oxygenlow.com", "https://www.oxygenlow.com"}
+    ALLOWED_ORIGINS = {
+        "https://oxygenlow.com",
+        "https://www.oxygenlow.com",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    }
 
     def setup(self):
         super().setup()
@@ -113,6 +186,32 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
         self.end_headers()
+
+    def _stream_sse_generator(self, generator):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        origin = self.headers.get("Origin")
+        if origin in self.ALLOWED_ORIGINS:
+            self.send_header("Access-Control-Allow-Origin", origin)
+        self.send_header("Vary", "Origin")
+        self.end_headers()
+        try:
+            for chunk in generator:
+                if isinstance(chunk, dict):
+                    line = f"data: {json.dumps(chunk)}\n\n".encode("utf-8")
+                elif isinstance(chunk, str):
+                    line = f"data: {chunk}\n\n".encode("utf-8")
+                else:
+                    line = chunk
+                self.wfile.write(line)
+                self.wfile.flush()
+            self.wfile.write(b"data: [DONE]\n\n")
+            self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, socket.timeout):
+            pass
 
     def do_OPTIONS(self):
         if self._authorize(preflight=True):
@@ -155,6 +254,17 @@ class RequestHandler(BaseHTTPRequestHandler):
                 "apps": registry.list_apps()
             }).encode("utf-8"))
             return
+
+        elif path == "/v1/models":
+            try:
+                res = registry.execute_action("llm_runner", "list_openai_models", {})
+                self._set_headers(200)
+                self.wfile.write(json.dumps(res).encode("utf-8"))
+                return
+            except Exception:
+                self._set_headers(200)
+                self.wfile.write(json.dumps({"object": "list", "data": []}).encode("utf-8"))
+                return
 
         self._set_headers(404)
         self.wfile.write(json.dumps({
@@ -199,6 +309,26 @@ class RequestHandler(BaseHTTPRequestHandler):
             threading.Thread(target=self._stop_server_delayed, daemon=True).start()
             return
 
+        # Route OpenAI-compatible /v1/chat/completions
+        if path == "/v1/chat/completions":
+            try:
+                res = registry.execute_action("llm_runner", "chat_completion", json_data)
+                if inspect.isgenerator(res):
+                    self._stream_sse_generator(res)
+                    return
+                self._set_headers(200)
+                self.wfile.write(json.dumps(res).encode("utf-8"))
+                return
+            except ValueError as ve:
+                self._set_headers(404)
+                self.wfile.write(json.dumps({"error": str(ve)}).encode("utf-8"))
+                return
+            except Exception as ex:
+                logger.error(f"Error executing chat completion: {ex}", exc_info=True)
+                self._set_headers(500)
+                self.wfile.write(json.dumps({"error": "Internal server error"}).encode("utf-8"))
+                return
+
         # Route /api/apps/<app_id>/<action>
         if path.startswith("/api/apps/"):
             parts = path.split("/")[3:]
@@ -207,6 +337,9 @@ class RequestHandler(BaseHTTPRequestHandler):
                 action = parts[1]
                 try:
                     res = registry.execute_action(app_id, action, json_data)
+                    if inspect.isgenerator(res):
+                        self._stream_sse_generator(res)
+                        return
                     self._set_headers(200)
                     self.wfile.write(json.dumps({"status": "ok", "data": res}).encode("utf-8"))
                     return

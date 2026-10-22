@@ -335,6 +335,11 @@ export const ru = {
     viewStorage: "ÐŸÐ¾ÑÐ¼Ð¾Ñ‚Ñ€ÐµÑ‚ÑŒ Ð¾Ð±Ñ‰Ð¸Ðµ Ñ„Ð°Ð¹Ð»Ñ‹",
   },
   apps: {
+    llmRunnerTitle: "LLM Runner",
+    llmRunnerDesc: "Запуск локальных моделей GGUF, SafeTensors и масштабных моделей AirLLM на оборудовании ПК.",
+    pythonManagerTitle: "Python Manager",
+    pythonManagerDesc: "Мониторинг сервера Python, управление пакетами ИИ и просмотр журналов ошибок и предупреждений.",
+
     title: "ÐŸÑ€Ð¸Ð»Ð¾Ð¶ÐµÐ½Ð¸Ñ",
     subtitle: "Ð˜Ð·ÑƒÑ‡Ð°Ð¹Ñ‚Ðµ Ð¸ Ð¿Ñ€Ð¾Ð±ÑƒÐ¹Ñ‚Ðµ Ð½Ð°ÑˆÑƒ ÐºÐ¾Ð»Ð»ÐµÐºÑ†Ð¸ÑŽ Ð¿Ð¾Ñ‚Ñ€ÑÑÐ°ÑŽÑ‰Ð¸Ñ… Ð¸Ð½ÑÑ‚Ñ€ÑƒÐ¼ÐµÐ½Ñ‚Ð¾Ð²!",
     availability: "Ð”Ð¾ÑÑ‚ÑƒÐ¿Ð½Ð¾ÑÑ‚ÑŒ",
@@ -2964,6 +2969,9 @@ notificationsTitle: "Ð£Ð²ÐµÐ´Ð¾Ð¼Ð»ÐµÐ½Ð¸Ñ",
       "Уведомление: облачная модерация была пропущена, поскольку POLLINATIONS_API_KEY не обнаружен сервером. Были оценены только локальные проверки.",
   },
   chatbot: {
+    localModels: "Локальные LLM",
+    localRunningNotice: "Локальная модель запущена через LLM Runner.",
+
     authRequiredForFree: "Пожалуйста, войдите в систему, чтобы использовать бесплатные модели ИИ.",
     freeLimitExceeded: "Дневной лимит токенов для этой бесплатной модели исчерпан. Сброс в полночь по UTC.",
     pollinationsRequiredTitle: "Требуется настройка Pollinations AI",

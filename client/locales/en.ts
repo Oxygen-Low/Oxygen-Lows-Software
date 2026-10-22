@@ -332,6 +332,11 @@ export const en = {
     viewStorage: "View Shared Files",
   },
   apps: {
+    llmRunnerTitle: "LLM Runner",
+    llmRunnerDesc: "Run local GGUF, SafeTensors, and massive AirLLM models right on your desktop hardware.",
+    pythonManagerTitle: "Python Manager",
+    pythonManagerDesc: "Inspect Python server runtime status, manage AI packages, and view live error and warning logs.",
+
     title: "Apps",
     subtitle: "Explore and try out our collection of awesome tools!",
     availability: "Availability",
@@ -2993,6 +2998,9 @@ export const en = {
     failedSearch: "Failed to fetch search results",
   },
   chatbot: {
+    localModels: "Local LLMs",
+    localRunningNotice: "Local desktop model running via LLM Runner.",
+
     authRequiredForFree: "Please log in to use free AI models.",
     freeLimitExceeded: "Daily token limit reached for this free model. Resets at midnight UTC.",
     pollinationsRequiredTitle: "Pollinations AI Setup Required",

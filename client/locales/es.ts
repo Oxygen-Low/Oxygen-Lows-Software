@@ -338,6 +338,11 @@ export const es = {
     viewStorage: "Ver archivos compartidos",
   },
   apps: {
+    llmRunnerTitle: "LLM Runner",
+    llmRunnerDesc: "Ejecute modelos locales GGUF, SafeTensors y AirLLM masivos en su hardware de escritorio.",
+    pythonManagerTitle: "Python Manager",
+    pythonManagerDesc: "Inspeccione el estado del servidor Python, gestione paquetes de IA y vea registros de errores y advertencias.",
+
     title: "Aplicaciones",
     subtitle: "Â¡Explora y prueba nuestra colecciÃ³n de increÃ­bles herramientas!",
     availability: "Disponibilidad",
@@ -2974,6 +2979,9 @@ export const es = {
       "Aviso: La moderación en la nube se omitió porque el servidor no detecta POLLINATIONS_API_KEY. Solo se evaluaron los controles locales.",
   },
   chatbot: {
+    localModels: "LLMs locales",
+    localRunningNotice: "Modelo de escritorio local ejecutándose a través de LLM Runner.",
+
     authRequiredForFree: "Inicia sesión para usar los modelos de IA gratuitos.",
     freeLimitExceeded: "Límite diario de tokens alcanzado para este modelo gratuito. Se restablece a medianoche UTC.",
     pollinationsRequiredTitle: "Configuración de Pollinations AI Requerida",

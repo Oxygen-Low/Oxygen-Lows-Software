@@ -68,7 +68,9 @@ describe("Apps", () => {
     expect(screen.getByText("LLM Agent")).toBeDefined();
     expect(screen.queryByText("Chatbot")).toBeNull();
     // Verify the badge counts updated
-    expect(screen.getByLabelText(/LLM\/AI \(1 apps\)/)).toBeDefined();
+    expect(screen.getByText("LLM Runner")).toBeDefined();
+    // Verify the badge counts updated
+    expect(screen.getByLabelText(/LLM\/AI \(2 apps\)/)).toBeDefined();
   });
 
   it("hides desktop-only apps (like Game Library) in the browser catalogue", () => {

@@ -37,6 +37,7 @@ import {
   EyeOff,
   ExternalLink,
   Heart,
+  Cpu,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
@@ -46,6 +47,7 @@ import {
   generateImage,
   ImageModelInfo,
 } from "@/services/imageGen";
+import { llmRunnerService } from "@/services/llmRunnerService";
 import {
   streamPollinationsClient,
   fetchPollinationsClient,
@@ -1431,7 +1433,11 @@ export function ChatbotApp() {
   }, [models]);
 
   const customModels = useMemo(() => {
-    return models.filter((m) => m.isCustom);
+    return models.filter((m) => m.isCustom && !m.isLocal);
+  }, [models]);
+
+  const localModels = useMemo(() => {
+    return models.filter((m) => m.isLocal);
   }, [models]);
 
   // Click outside listener for dropdowns
@@ -2142,6 +2148,17 @@ export function ChatbotApp() {
     };
 
     if (provider.startsWith("local-")) {
+      if (provider === "local-llm-runner") {
+        let accumulated = "";
+        return await llmRunnerService.chatStream(
+          msgs,
+          { signal },
+          (delta) => {
+            accumulated += delta;
+            streamCallback(accumulated);
+          },
+        );
+      }
       if (provider === "local-ollama")
         url = "http://127.0.0.1:11434/v1/chat/completions";
       else if (provider === "local-lmstudio")
@@ -2330,7 +2347,8 @@ export function ChatbotApp() {
   }> => {
     let finalContent = "";
     let reasoningContent = "";
-    const effectiveProvider = selectedProvider;
+    const effectiveProvider =
+      selectedCategory === "local" ? "local-llm-runner" : selectedProvider;
     const effectiveModel = selectedModel;
 
     const injectedSystemPrompt = getInjectedSystemPrompt();
@@ -4290,6 +4308,56 @@ export function ChatbotApp() {
                     )}
                   >
                     <div className="max-h-[360px] overflow-y-auto no-scrollbar pb-2">
+                      {localModels.length > 0 && (
+                        <>
+                          <div className="px-3 pt-3 pb-1 flex items-center justify-between">
+                            <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-display font-medium flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              {t("chatbot.localModels", undefined, "Local LLMs")}
+                            </p>
+                            <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              Running
+                            </span>
+                          </div>
+                          <div className="px-2">
+                            {localModels.map((m) => {
+                              const isCurrentSelected =
+                                selectedModel === m.model_id &&
+                                selectedCategory === "local";
+                              return (
+                                <button
+                                  key={`local-${m.model_id}`}
+                                  onClick={() => {
+                                    setSelectedModel(m.model_id);
+                                    setSelectedCategory("local");
+                                    setModelDropdownOpen(false);
+                                  }}
+                                  className={cn(
+                                    "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
+                                    isCurrentSelected
+                                      ? "bg-white/5 border border-emerald-500/30"
+                                      : "",
+                                  )}
+                                >
+                                  <div className="text-sm text-white font-medium flex items-center gap-2">
+                                    <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+                                    <span>{m.name || m.model_id}</span>
+                                  </div>
+                                  <div className="text-[11px] text-emerald-400/90 truncate flex items-center justify-between w-full">
+                                    <span>
+                                      Local Desktop GPU/CPU • {m.rate || "Offline"}
+                                    </span>
+                                  </div>
+                                  {isCurrentSelected && (
+                                    <Check className="w-4 h-4 text-emerald-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+
                       {freeModels.length > 0 && (
                         <>
                           <div className="px-3 pt-3 pb-1">

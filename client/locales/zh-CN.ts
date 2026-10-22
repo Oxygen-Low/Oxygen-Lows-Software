@@ -321,6 +321,11 @@ export const zhCN = {
     viewStorage: "æŸ¥çœ‹åˆ†äº«çš„æ–‡ä»¶",
   },
   apps: {
+    llmRunnerTitle: "LLM Runner",
+    llmRunnerDesc: "在桌面硬件上直接运行本地 GGUF、SafeTensors 以及超大规模 AirLLM 模型。",
+    pythonManagerTitle: "Python Manager",
+    pythonManagerDesc: "监控 Python 后台服务状态，管理 AI 依赖包，查看实时错误与警告日志。",
+
     title: "åº”ç”¨",
     subtitle: "æŽ¢ç´¢å¹¶è¯•ç”¨æˆ‘ä»¬æ”¶é›†çš„å‡ºè‰²å·¥å…·ï¼",
     availability: "å¯ç”¨æ€§",
@@ -2863,6 +2868,9 @@ notificationsTitle: "é€šçŸ¥",
       "提示：由于服务器未检测到 POLLINATIONS_API_KEY，已跳过云端审核。仅评估了本地检查。",
   },
   chatbot: {
+    localModels: "本地大语言模型",
+    localRunningNotice: "本地桌面大模型正通过 LLM Runner 运行。",
+
     authRequiredForFree: "请登录以使用免费 AI 模型。",
     freeLimitExceeded: "该免费模型今日代币额度已用尽。将于 UTC 午夜重置。",
     pollinationsRequiredTitle: "需要配置 Pollinations AI",

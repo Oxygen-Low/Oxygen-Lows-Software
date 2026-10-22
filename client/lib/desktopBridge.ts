@@ -276,3 +276,46 @@ export function setupGameBridgeListeners(
     }
   });
 }
+
+export interface PythonServerInfo {
+  isRunning: boolean;
+  port: number;
+  url: string;
+  token: string;
+  status: string;
+  error?: string;
+}
+
+export async function getPythonServerInfo(): Promise<PythonServerInfo> {
+  return callDesktopBridge<PythonServerInfo>("get_python_server");
+}
+
+export async function restartPythonServer(): Promise<PythonServerInfo> {
+  return callDesktopBridge<PythonServerInfo>("restart_python_server");
+}
+
+export async function openModelsFolder(): Promise<{ path: string }> {
+  return callDesktopBridge<{ path: string }>("open_models_folder");
+}
+
+export async function pickModelFile(): Promise<{
+  path: string;
+  name: string;
+  extension: string;
+} | null> {
+  return callDesktopBridge<{
+    path: string;
+    name: string;
+    extension: string;
+  } | null>("pick_model_file");
+}
+
+export async function pickModelFolder(): Promise<{
+  path: string;
+  name: string;
+} | null> {
+  return callDesktopBridge<{ path: string; name: string } | null>(
+    "pick_model_folder",
+  );
+}
+

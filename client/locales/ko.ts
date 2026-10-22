@@ -329,6 +329,11 @@ export const ko = {
     viewStorage: "ê³µìœ ëœ íŒŒì¼ ë³´ê¸°",
   },
   apps: {
+    llmRunnerTitle: "LLM Runner",
+    llmRunnerDesc: "데스크톱 하드웨어에서 로컬 GGUF, SafeTensors 및 대규모 AirLLM 모델을 직접 실행합니다.",
+    pythonManagerTitle: "Python Manager",
+    pythonManagerDesc: "Python 백그라운드 서버 상태를 모니터링하고, AI 패키지를 관리하며 실시간 로그를 확인합니다.",
+
     title: "ì•±",
     subtitle: "ë†€ë¼ìš´ ë„êµ¬ ëª¨ìŒì„ íƒìƒ‰í•˜ê³  ì‚¬ìš©í•´ ë³´ì„¸ìš”!",
     availability: "ì´ìš© ê°€ëŠ¥ ì—¬ë¶€",
@@ -2935,6 +2940,9 @@ notificationsTitle: "ì•Œë¦¼",
       "알림: 서버에서 POLLINATIONS_API_KEY가 감지되지 않아 클라우드 검수를 건너뛰었습니다. 로컬 검사만 평가되었습니다.",
   },
   chatbot: {
+    localModels: "로컬 LLM",
+    localRunningNotice: "LLM Runner를 통해 로컬 데스크톱 모델이 실행 중입니다.",
+
     authRequiredForFree: "무료 AI 모델을 사용하려면 로그인하세요.",
     freeLimitExceeded: "이 무료 모델의 일일 토큰 한도에 도달했습니다. 자정 UTC에 재설정됩니다.",
     pollinationsRequiredTitle: "Pollinations AI 설정 필요",
