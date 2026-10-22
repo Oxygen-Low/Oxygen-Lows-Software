@@ -83,4 +83,17 @@ describe("client safetyModeration", () => {
     expect(handled).toBe(true);
     expect(toast.error).toHaveBeenCalledWith("Hate speech blocked", expect.any(Object));
   });
+
+  it("handles moderation service unavailable response", () => {
+    const handled = handleSafetyModeration({
+      code: "MODERATION_SERVICE_UNAVAILABLE",
+      error: "Safety moderation service is temporarily unavailable. Please try again shortly.",
+    });
+
+    expect(handled).toBe(true);
+    expect(toast.error).toHaveBeenCalledWith(
+      "Safety moderation service is temporarily unavailable. Please try again shortly.",
+      expect.any(Object),
+    );
+  });
 });

@@ -142,7 +142,8 @@ export const zhCN = {
   },
   migration: {
     title: "è¿ç§»è‡³ç½‘ç«™æœ¬åœ°è´¦æˆ·",
-    subtitle: "å°†æ‚¨çš„æ‰€æœ‰æ•°æ®è½¬ç§»è‡³ç½‘ç«™æœ¬åœ°å­˜å‚¨",
+    subtitle:
+      "对照分层安全流程（CSAM Guard + AI 内容审核）测试文本提示和图像。",
     explanation:
       "æˆ‘ä»¬å·²å°†æ•°æ®å­˜å‚¨ç›´æŽ¥è¿ç§»è‡³ç½‘ç«™æœ¬åœ°ã€‚è¯·ä¸ºæ‚¨çš„è´¦æˆ·è®¾ç½®ç”¨æˆ·åå’Œå¯†ç ã€‚æ‚¨çš„æ‰€æœ‰èŠå¤©è®°å½•ã€å®‡å®™ã€æ•°æ®ä¿å­˜ã€å¯†ç å’Œå­˜å‚¨æ–‡ä»¶éƒ½å°†æ— ç¼è¿ç§»ã€‚",
     masterKeyLabel: "ä¸»å¯†é’¥ï¼ˆå¯é€‰ / ç”¨äºŽåŠ å¯†æ•°æ®ï¼‰",
@@ -2827,6 +2828,8 @@ notificationsTitle: "é€šçŸ¥",
       "å†…å®¹å› è¿åå®‰å…¨æ”¿ç­–å·²è¢«æ‹¦æˆªï¼ˆ{category}ï¼‰ã€‚",
     childSafetyBlocked:
       "å†…å®¹å› è¿åå„¿ç«¥å®‰å…¨ä¿æŠ¤æ”¿ç­–å·²è¢«æ°¸ä¹…æ‹¦æˆªã€‚",
+    serviceUnavailable:
+      "安全审核服务暂时不可用。请稍后重试。",
   },
   contentTest: {
     title: "å†…å®¹å®‰å…¨å®¡æ ¸æµ‹è¯•",
@@ -2849,15 +2852,15 @@ notificationsTitle: "é€šçŸ¥",
     categoryLabel: "è§¦å‘åˆ†ç±»",
     reasonLabel: "æ”¿ç­–åŽŸå› ",
     clear: "æ¸…ç©º",
-    cloudActive: "OpenAI äº‘ç«¯å®¡æ ¸ï¼šå·²è¿žæŽ¥å¹¶å¤„äºŽæ´»åŠ¨çŠ¶æ€ (omni-moderation-latest)",
-    cloudInactive: "æœªæ£€æµ‹åˆ° OpenAI å®¡æ ¸ API å¯†é’¥",
-    cloudInactiveHelp:
-      "Node.js æœåŠ¡å™¨æœªæ£€æµ‹åˆ° OPENAI_API_KEYã€‚å¦‚æžœæ‚¨åœ¨ Plesk Node.js ä¸­è¿›è¡Œäº†è®¾ç½®ï¼Œè¯·åœ¨ Plesk Node.js é¢æ¿ä¸­å•å‡»â€œé‡å¯åº”ç”¨â€ä»¥å°†çŽ¯å¢ƒå˜é‡é‡æ–°åŠ è½½åˆ°è¿è¡Œä¸­çš„è¿›ç¨‹ã€‚",
+        cloudActive: "AI 内容审核：已启用",
+        cloudInactive: "AI 内容审核：仅限本地",
+        cloudInactiveHelp:
+      "服务器无法检测到 POLLINATIONS_API_KEY。请在环境变量中进行配置或重启应用程序进程。",
     useTemporaryKey: "æˆ–è¾“å…¥ç”¨äºŽæµ‹è¯•çš„ä¸´æ—¶ OpenAI API å¯†é’¥ï¼š",
     temporaryKeyPlaceholder: "ç²˜è´´ OpenAI API å¯†é’¥ (sk-...)",
     keyActiveBadge: "æ­£åœ¨ä½¿ç”¨ä¼šè¯ API å¯†é’¥",
-    cloudBypassedNotice:
-      "æç¤ºï¼šç”±äºŽæœåŠ¡å™¨æœªæ£€æµ‹åˆ° OPENAI_API_KEYï¼Œå·²è·³è¿‡ OpenAI äº‘ç«¯å®¡æ ¸ã€‚ä»…è¯„ä¼°äº†æœ¬åœ°å®‰å…¨è§„åˆ™ã€‚",
+        cloudBypassedNotice:
+      "提示：由于服务器未检测到 POLLINATIONS_API_KEY，已跳过云端审核。仅评估了本地检查。",
   },
   chatbot: {
     authRequiredForFree: "请登录以使用免费 AI 模型。",

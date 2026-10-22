@@ -148,7 +148,7 @@ export const es = {
   migration: {
     title: "Migrar a Cuenta del Sitio Web",
     subtitle:
-      "Transfiere todos tus datos al almacenamiento local del sitio web",
+      "Pruebe mensajes de texto e imágenes contra la canalización de seguridad por niveles (CSAM Guard + Moderación de contenido por IA).",
     explanation:
       "Hemos migrado el almacenamiento de datos directamente al sitio web. Por favor, define un nombre de usuario y contraseÃ±a para tu cuenta. Todos tus chats, universos, guardados, contraseÃ±as y archivos se transferirÃ¡n sin problemas.",
     masterKeyLabel: "Clave maestra (Opcional / Para datos cifrados)",
@@ -2939,6 +2939,8 @@ export const es = {
       "Contenido bloqueado debido a una infracciÃ³n de la polÃ­tica de seguridad ({category}).",
     childSafetyBlocked:
       "Contenido bloqueado permanentemente debido a una infracciÃ³n de la polÃ­tica de seguridad infantil.",
+    serviceUnavailable:
+      "El servicio de moderación de seguridad no está disponible temporalmente. Por favor, inténtelo de nuevo en breve.",
   },
   contentTest: {
     title: "Prueba de ModeraciÃ³n de Contenido",
@@ -2961,15 +2963,15 @@ export const es = {
     categoryLabel: "CategorÃ­a Detectada",
     reasonLabel: "Motivo de la PolÃ­tica",
     clear: "Limpiar",
-    cloudActive: "ModeraciÃ³n en la nube de OpenAI: Conectada y activa (omni-moderation-latest)",
-    cloudInactive: "Clave de API de moderaciÃ³n de OpenAI no detectada",
+        cloudActive: "Moderación de contenido por IA: Activa",
+        cloudInactive: "Moderación de contenido por IA: Solo local",
     cloudInactiveHelp:
       "El servidor Node.js no puede detectar OPENAI_API_KEY. Si la configurÃ³ en Plesk Node.js, haga clic en 'Reiniciar aplicaciÃ³n' en el panel de Plesk Node.js para recargar las variables de entorno en el proceso en ejecuciÃ³n.",
     useTemporaryKey: "O ingrese una clave de API de OpenAI temporal para realizar pruebas:",
     temporaryKeyPlaceholder: "Pegar clave de API de OpenAI (sk-...)",
     keyActiveBadge: "Usando clave de API de sesiÃ³n",
-    cloudBypassedNotice:
-      "Aviso: La moderaciÃ³n en la nube de OpenAI se omitiÃ³ porque el servidor no detectÃ³ OPENAI_API_KEY. Solo se evaluaron las comprobaciones locales.",
+        cloudBypassedNotice:
+      "Aviso: La moderación en la nube se omitió porque el servidor no detecta POLLINATIONS_API_KEY. Solo se evaluaron los controles locales.",
   },
   chatbot: {
     authRequiredForFree: "Inicia sesión para usar los modelos de IA gratuitos.",

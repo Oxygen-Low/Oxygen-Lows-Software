@@ -143,7 +143,8 @@ export const en = {
   },
   migration: {
     title: "Migrate to Website Account",
-    subtitle: "Transfer all your data to the local website storage",
+    subtitle:
+      "Test text prompts and images against the tiered safety pipeline (CSAM Guard + AI Content Moderation).",
     explanation:
       "We have migrated data storage directly to the website. Please set a username and password for your account. All your chatbot chats, universes, data saves, passwords, and storage files will be seamlessly transferred.",
     masterKeyLabel: "Master Key (Optional / For Encrypted Data)",
@@ -2920,6 +2921,8 @@ export const en = {
     contentPolicyBlocked: "Content blocked due to safety policy violation ({category}).",
     childSafetyBlocked:
       "Content permanently blocked due to child safety policy violation.",
+    serviceUnavailable:
+      "Safety moderation service is temporarily unavailable. Please try again shortly.",
   },
   contentTest: {
     title: "Content Moderation Test",
@@ -2942,15 +2945,15 @@ export const en = {
     categoryLabel: "Flagged Category",
     reasonLabel: "Policy Reason",
     clear: "Clear",
-    cloudActive: "OpenAI Cloud Moderation: Connected & Active (omni-moderation-latest)",
-    cloudInactive: "OpenAI Moderation API Key Not Detected",
+        cloudActive: "AI Content Moderation: Active",
+        cloudInactive: "AI Content Moderation: Local Only",
     cloudInactiveHelp:
       "The Node.js server cannot detect OPENAI_API_KEY. If you set it in Plesk Node.js, click 'Restart App' in the Plesk Node.js panel to reload environment variables into the running process.",
     useTemporaryKey: "Or enter a temporary OpenAI API key for testing:",
     temporaryKeyPlaceholder: "Paste OpenAI API Key (sk-...)",
     keyActiveBadge: "Using Session API Key",
-    cloudBypassedNotice:
-      "Notice: OpenAI cloud moderation was bypassed because OPENAI_API_KEY is not detected by the server. Only local checks were evaluated.",
+        cloudBypassedNotice:
+      "Notice: Cloud moderation was bypassed because POLLINATIONS_API_KEY is not detected by the server. Only local checks were evaluated.",
   },
   browserApp: {
     newTab: "New Tab",

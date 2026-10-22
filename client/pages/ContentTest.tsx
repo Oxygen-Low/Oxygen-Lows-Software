@@ -172,14 +172,30 @@ export default function ContentTest() {
               <ShieldCheck className="w-7 h-7" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">
-                {t("contentTest.title", undefined, "Content Moderation Test")}
-              </h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-3xl font-bold tracking-tight">
+                  {t("contentTest.title", undefined, "Content Moderation Test")}
+                </h1>
+                {openAiConfigured !== null && (
+                  <Badge
+                    variant={openAiConfigured ? "default" : "secondary"}
+                    className={`text-xs font-medium px-2.5 py-0.5 ${
+                      openAiConfigured
+                        ? "bg-emerald-600/90 text-white hover:bg-emerald-600"
+                        : "bg-amber-600/90 text-white hover:bg-amber-600"
+                    }`}
+                  >
+                    {openAiConfigured
+                      ? t("contentTest.cloudActive", undefined, "AI Content Moderation: Active")
+                      : t("contentTest.cloudInactive", undefined, "AI Content Moderation: Local Only")}
+                  </Badge>
+                )}
+              </div>
               <p className="text-muted-foreground text-sm sm:text-base mt-1">
                 {t(
                   "contentTest.subtitle",
                   undefined,
-                  "Test text prompts and images against the tiered safety pipeline (CSAM Guard + OpenAI Multimodal Moderation).",
+                  "Test text prompts and images against the tiered safety pipeline (CSAM Guard + AI Content Moderation).",
                 )}
               </p>
             </div>

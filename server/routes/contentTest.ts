@@ -36,7 +36,7 @@ contentTestRouter.get("/status", async (c) => {
   const configured = isOpenAiConfigured();
   return c.json({
     openAiConfigured: configured,
-    model: "omni-moderation-latest",
+    model: "qwen/qwen3guard-gen-8b",
   });
 });
 
@@ -82,7 +82,7 @@ contentTestRouter.post("/", async (c) => {
   }
 
   const { text, image, imageBuffer: directBuffer, mimeType: directMime } = body;
-  const apiKeyOverride = c.req.header("x-openai-api-key") || body.apiKey;
+  const apiKeyOverride = c.req.header("x-pollinations-api-key") || c.req.header("x-openai-api-key") || body.apiKey;
   const isCloudActive = isOpenAiConfigured(apiKeyOverride);
 
   if (!text && !image && !directBuffer) {
@@ -218,8 +218,8 @@ contentTestRouter.post("/", async (c) => {
     apiError: detectedApiError,
     message: isCloudActive
       ? detectedApiError
-        ? `Content passed local checks, but OpenAI API reported: ${detectedApiError}`
-        : "Content passed all safety checks (CSAM Guard + OpenAI Multimodal Moderation)."
-      : "Content passed local safety check. Notice: OpenAI cloud moderation was bypassed because OPENAI_API_KEY is not detected by Node.",
+        ? `Content passed local checks, but moderation reported: ${detectedApiError}`
+        : "Content passed all safety checks (CSAM Guard + Qwen3Guard Moderation)."
+      : "Content passed local safety check. Notice: Cloud moderation was bypassed because POLLINATIONS_API_KEY is not detected by Node.",
   });
 });
