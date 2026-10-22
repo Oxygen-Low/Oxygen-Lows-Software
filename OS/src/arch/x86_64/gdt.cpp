@@ -75,9 +75,11 @@ void gdt_init(void) {
     g_gdtr.limit = sizeof(g_gdt) - 1;
     g_gdtr.base = (uint64_t)&g_gdt;
 
+    serial_printf("[BOOT] Loading GDTR...\n");
     // Load GDTR and reload CS/DS
     gdt_load(&g_gdtr, GDT_KERNEL_CODE_SELECTOR, GDT_KERNEL_DATA_SELECTOR);
 
+    serial_printf("[BOOT] Loading TR...\n");
     // Load Task Register (TR)
     tss_load(GDT_TSS_SELECTOR);
 

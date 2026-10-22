@@ -258,6 +258,7 @@ extern "C" void kmain(uint64_t multiboot_info_addr, uint64_t magic) {
     serial_printf("[BOOT] Oxygen Low's Software x86_64 kernel loaded\n");
 
     // 2. CPU Architecture Core Setup
+    serial_printf("[BOOT] Starting CPU architecture setup\n");
     gdt_init();
     idt_init();
     pic_init();
