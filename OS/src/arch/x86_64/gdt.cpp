@@ -4,8 +4,8 @@
 namespace {
 
 // Standard GDT entries are 8 bytes each.
-// 5 standard descriptors (0x00, 0x08, 0x10, 0x18, 0x20) + 1 TSS descriptor (16 bytes, spans 0x28 and 0x30) = 7 entries (56 bytes).
-alignas(16) GDTEntry g_gdt[7];
+// 5 standard descriptors (0x00, 0x08, 0x10, 0x18, 0x20) + 1 TSS descriptor (16 bytes, spans 0x28 and 0x30) + 1 safety null entry = 8 entries (64 bytes).
+alignas(16) GDTEntry g_gdt[8];
 alignas(16) TSS64 g_tss;
 GDTPointer g_gdtr;
 
@@ -42,17 +42,17 @@ void gdt_init(void) {
     // 0x00: Null Descriptor
     set_standard_entry(0, 0, 0, 0, 0);
 
-    // 0x08: Kernel 64-bit Code Segment (Access=0x9A: Present, Ring0, Exec/Read; Gran=0x20: Long Mode L=1)
-    set_standard_entry(1, 0, 0xFFFFF, 0x9A, 0x20);
+    // 0x08: Kernel 64-bit Code Segment (Access=0x9A: Present, Ring0, Exec/Read; Gran=0xA0: Long Mode L=1, G=1)
+    set_standard_entry(1, 0, 0xFFFFF, 0x9A, 0xA0);
 
-    // 0x10: Kernel 64-bit Data Segment (Access=0x92: Present, Ring0, Read/Write; Gran=0x00)
-    set_standard_entry(2, 0, 0xFFFFF, 0x92, 0x00);
+    // 0x10: Kernel 64-bit Data Segment (Access=0x92: Present, Ring0, Read/Write; Gran=0xC0: Big D/B=1, G=1)
+    set_standard_entry(2, 0, 0xFFFFF, 0x92, 0xC0);
 
-    // 0x18: User 64-bit Data Segment (Access=0xF2: Present, Ring3, Read/Write; Gran=0x00)
-    set_standard_entry(3, 0, 0xFFFFF, 0xF2, 0x00);
+    // 0x18: User 64-bit Data Segment (Access=0xF2: Present, Ring3, Read/Write; Gran=0xC0: Big D/B=1, G=1)
+    set_standard_entry(3, 0, 0xFFFFF, 0xF2, 0xC0);
 
-    // 0x20: User 64-bit Code Segment (Access=0xFA: Present, Ring3, Exec/Read; Gran=0x20: Long Mode L=1)
-    set_standard_entry(4, 0, 0xFFFFF, 0xFA, 0x20);
+    // 0x20: User 64-bit Code Segment (Access=0xFA: Present, Ring3, Exec/Read; Gran=0xA0: Long Mode L=1, G=1)
+    set_standard_entry(4, 0, 0xFFFFF, 0xFA, 0xA0);
 
     // Initialize TSS64 structure
     for (size_t i = 0; i < sizeof(TSS64); ++i) {
@@ -67,6 +67,9 @@ void gdt_init(void) {
 
     // 0x28: TSS 64-bit Descriptor (spans entries 5 and 6)
     set_tss_entry(5, (uint64_t)&g_tss, sizeof(TSS64) - 1);
+
+    // 0x38: Safety Null descriptor at end of GDT
+    set_standard_entry(7, 0, 0, 0, 0);
 
     // Prepare GDTR pointer
     g_gdtr.limit = sizeof(g_gdt) - 1;

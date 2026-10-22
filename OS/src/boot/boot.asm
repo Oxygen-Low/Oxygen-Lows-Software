@@ -62,21 +62,34 @@ header_end:
 section .text
 global _start
 extern kmain
+extern __bss_start
+extern __bss_end
 
 _start:
     cli                                     ; Disable hardware interrupts
     cld
 
-    ; Initialize temporary 32-bit stack
+    ; Preserve Multiboot2 boot registers
+    mov ebp, ebx                            ; EBP = Multiboot2 Info Physical Pointer
+    mov edx, eax                            ; EDX = Multiboot2 Magic (0x36D76289)
+
+    ; Initialize temporary 32-bit stack (allocated in .data)
     mov esp, stack_top_32
 
-    ; Save Multiboot2 boot registers
-    mov esi, ebx                            ; ESI = Multiboot2 Info Physical Pointer
-    mov edi, eax                            ; EDI = Multiboot2 Magic (0x36D76289)
-
     ; Verify Multiboot2 Magic
-    cmp edi, 0x36D76289
+    cmp edx, 0x36D76289
     jne error_no_multiboot
+
+    ; Zero out the entire .bss section
+    mov edi, __bss_start
+    mov ecx, __bss_end
+    sub ecx, edi
+    xor eax, eax
+    rep stosb
+
+    ; Set ESI and EDI for boot helper routines
+    mov esi, ebp                            ; ESI = Multiboot2 Info Physical Pointer
+    mov edi, edx                            ; EDI = Multiboot2 Magic
 
     ; Check CPUID availability
     call check_cpuid
@@ -164,36 +177,43 @@ setup_page_tables:
     mov eax, pdpt_table
     or eax, 0x03                            ; Present | Writable
     mov [pml4_table], eax
+    mov dword [pml4_table + 4], 0
 
     ; PML4[511] -> pdpt_high (Higher-half kernel map)
     mov eax, pdpt_high
     or eax, 0x03
     mov [pml4_table + 511 * 8], eax
+    mov dword [pml4_table + 511 * 8 + 4], 0
 
     ; PDPT[0] -> pd_table_0 (0 to 1GB)
     mov eax, pd_table_0
     or eax, 0x03
     mov [pdpt_table], eax
+    mov dword [pdpt_table + 4], 0
 
     ; PDPT[1] -> pd_table_1 (1 to 2GB)
     mov eax, pd_table_1
     or eax, 0x03
     mov [pdpt_table + 8], eax
+    mov dword [pdpt_table + 8 + 4], 0
 
     ; PDPT[2] -> pd_table_2 (2 to 3GB)
     mov eax, pd_table_2
     or eax, 0x03
     mov [pdpt_table + 16], eax
+    mov dword [pdpt_table + 16 + 4], 0
 
     ; PDPT[3] -> pd_table_3 (3 to 4GB)
     mov eax, pd_table_3
     or eax, 0x03
     mov [pdpt_table + 24], eax
+    mov dword [pdpt_table + 24 + 4], 0
 
     ; PDPT_HIGH[510] -> pd_table_0 (Higher-half maps to lower 1GB physical)
     mov eax, pd_table_0
     or eax, 0x03
     mov [pdpt_high + 510 * 8], eax
+    mov dword [pdpt_high + 510 * 8 + 4], 0
 
     ; Fill all 2048 PD entries (4 tables x 512) with 2MB huge pages
     ; pd_table_0..3 are contiguous in BSS, so iterate from pd_table_0
@@ -284,8 +304,9 @@ long_mode_entry:
     mov rsp, kernel_stack_top
 
     ; Pass Multiboot2 info address in RDI, magic in RSI (System V AMD64 ABI)
-    mov rdi, rsi                            ; RDI = Multiboot2 Info Physical Address
-    mov rsi, 0x36D76289                     ; RSI = Multiboot2 Magic Number
+    ; In x86_64, writing to 32-bit registers (EDI/ESI) zero-extends to 64-bit (RDI/RSI)
+    mov edi, esi                            ; RDI = Multiboot2 Info Physical Address (zero-extended)
+    mov esi, 0x36D76289                     ; RSI = Multiboot2 Magic Number (zero-extended)
 
     ; Call 64-bit C++ kernel entry point
     call kmain
@@ -334,11 +355,13 @@ pd_table_2:
 pd_table_3:
     resb 4096
 
+section .data
 align 16
 stack_bottom_32:
-    resb 4096
+    times 4096 db 0
 stack_top_32:
 
+section .bss
 align 16
 global kernel_stack_bottom
 global kernel_stack_top

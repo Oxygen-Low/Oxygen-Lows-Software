@@ -36,6 +36,11 @@ void mouse_wait_output(void) {
     }
 }
 
+uint8_t controller_read_data(void) {
+    mouse_wait_output();
+    return inb(0x60);
+}
+
 void mouse_write_command(uint8_t cmd) {
     mouse_wait_input();
     outb(0x64, 0xD4); // Tell controller next byte goes to mouse
@@ -193,7 +198,7 @@ void mouse_init(uint32_t screen_w, uint32_t screen_h) {
     // Read controller configuration byte
     mouse_wait_input();
     outb(0x64, 0x20);
-    uint8_t config = mouse_read_data();
+    uint8_t config = controller_read_data();
 
     // Enable IRQ12 (bit 1) and IRQ1 (bit 0), disable mouse clock inhibit (bit 5)
     config |= (1 << 1) | (1 << 0);

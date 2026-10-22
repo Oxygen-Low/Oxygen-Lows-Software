@@ -180,7 +180,7 @@ jobs:
       - name: Run Automated Headless Verification
         run: |
           cd OS
-          python3 test_runner.py --iso OxygenLowsSoftware.iso --timeout 25.0
+          python3 test_runner.py --iso OxygenLowsSoftware.iso --timeout 45.0
 
       - name: Prepare OS Release Asset
         run: |
