@@ -195,8 +195,8 @@ def action_install_dependency(params=None):
         CURRENT_INSTALL.update({
             "package": pkg_name,
             "status": "installing",
-            "percent": 10.0,
-            "stage": f"Starting installation of '{pkg_name}'...",
+            "percent": 12.0,
+            "stage": f"Resolving dependencies for '{pkg_name}'...",
             "error": None,
             "log": ""
         })
@@ -204,21 +204,42 @@ def action_install_dependency(params=None):
     def _worker():
         global CURRENT_INSTALL
         logger.info(f"Initiating installation of '{pkg_name}' into virtualenv...")
-        cmd = [sys.executable, "-m", "pip", "install", "--no-input", pkg_name]
+        cmd = [sys.executable, "-u", "-m", "pip", "install", "--no-input", pkg_name]
         output_lines = []
+        stop_ticker = threading.Event()
+
+        def _ticker():
+            while not stop_ticker.is_set():
+                stop_ticker.wait(1.0)
+                if stop_ticker.is_set():
+                    break
+                with INSTALL_LOCK:
+                    if CURRENT_INSTALL["status"] == "installing":
+                        cur = CURRENT_INSTALL["percent"]
+                        if cur < 92.0:
+                            CURRENT_INSTALL["percent"] = round(cur + max(0.4, (92.0 - cur) * 0.05), 1)
+
+        threading.Thread(target=_ticker, daemon=True).start()
+
         try:
             proc = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                bufsize=1,
-                universal_newlines=True
+                bufsize=1
             )
 
-            if proc.stdout:
-                for line in proc.stdout:
-                    clean = line.strip()
+            buffer = ""
+            while True:
+                char = proc.stdout.read(1)
+                if not char:
+                    if proc.poll() is not None:
+                        break
+                    continue
+                if char in ("\r", "\n"):
+                    clean = buffer.strip()
+                    buffer = ""
                     if not clean:
                         continue
                     output_lines.append(clean)
@@ -230,22 +251,25 @@ def action_install_dependency(params=None):
                             CURRENT_INSTALL["percent"] = max(CURRENT_INSTALL["percent"], 25.0)
                             CURRENT_INSTALL["stage"] = "Collecting packages..."
                         elif "downloading" in lower:
-                            CURRENT_INSTALL["percent"] = min(70.0, max(CURRENT_INSTALL["percent"], 35.0) + 4.0)
-                            CURRENT_INSTALL["stage"] = "Downloading package..."
+                            CURRENT_INSTALL["percent"] = min(75.0, max(CURRENT_INSTALL["percent"], 40.0) + 2.0)
+                            CURRENT_INSTALL["stage"] = "Downloading package wheels..."
                         elif "installing build dependencies" in lower or "getting requirements" in lower:
-                            CURRENT_INSTALL["percent"] = max(CURRENT_INSTALL["percent"], 72.0)
+                            CURRENT_INSTALL["percent"] = max(CURRENT_INSTALL["percent"], 78.0)
                             CURRENT_INSTALL["stage"] = "Preparing packages..."
                         elif "building wheel" in lower:
-                            CURRENT_INSTALL["percent"] = max(CURRENT_INSTALL["percent"], 80.0)
+                            CURRENT_INSTALL["percent"] = max(CURRENT_INSTALL["percent"], 82.0)
                             CURRENT_INSTALL["stage"] = "Building wheels..."
                         elif "installing collected packages" in lower:
                             CURRENT_INSTALL["percent"] = max(CURRENT_INSTALL["percent"], 88.0)
-                            CURRENT_INSTALL["stage"] = "Installing packages..."
+                            CURRENT_INSTALL["stage"] = "Installing packages into environment..."
                         elif "successfully installed" in lower:
                             CURRENT_INSTALL["percent"] = 100.0
                             CURRENT_INSTALL["stage"] = "Installed"
+                else:
+                    buffer += char
 
             proc.wait(timeout=300)
+            stop_ticker.set()
             success = (proc.returncode == 0)
 
             with INSTALL_LOCK:
@@ -260,11 +284,13 @@ def action_install_dependency(params=None):
                     CURRENT_INSTALL["error"] = err_msg
                     logger.warning(f"Failed to install '{pkg_name}': {err_msg[:300]}")
         except subprocess.TimeoutExpired:
+            stop_ticker.set()
             with INSTALL_LOCK:
                 CURRENT_INSTALL["status"] = "error"
                 CURRENT_INSTALL["error"] = "Installation timed out after 300 seconds."
             logger.error(f"Timed out installing package '{pkg_name}'")
         except Exception as e:
+            stop_ticker.set()
             with INSTALL_LOCK:
                 CURRENT_INSTALL["status"] = "error"
                 CURRENT_INSTALL["error"] = str(e)
