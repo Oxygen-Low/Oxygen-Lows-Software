@@ -78,11 +78,10 @@ namespace DesktopApp
                             var url = urlElement.GetString();
                             var digest = asset.TryGetProperty("digest", out var d) ? d.GetString() : null;
                             var size = asset.TryGetProperty("size", out var z) ? z.GetInt64() : 0;
-                            if (url == null || !IsReleaseUrl(url) || digest == null ||
-                                !System.Text.RegularExpressions.Regex.IsMatch(digest, "^sha256:[0-9a-fA-F]{64}$") ||
-                                size <= 0 || size > 512L * 1024 * 1024) continue;
+                            if (url == null || !IsReleaseUrl(url) || size <= 0 || size > 512L * 1024 * 1024) continue;
+                            if (digest != null && !System.Text.RegularExpressions.Regex.IsMatch(digest, "^sha256:[0-9a-fA-F]{64}$")) continue;
                             _verifiedUrl = url;
-                            _verifiedDigest = digest.Substring(7);
+                            _verifiedDigest = digest != null ? digest.Substring(7) : null;
                             _verifiedSize = size;
                             return (true, url, latestVersion);
                         }
@@ -108,7 +107,7 @@ namespace DesktopApp
         public async Task DownloadAndRunInstallerAsync(string downloadUrl, Action<int>? progressCallback = null)
         {
             var release = await CheckForUpdatesAsync();
-            if (!release.HasUpdate || downloadUrl != _verifiedUrl || _verifiedDigest == null)
+            if (!release.HasUpdate || downloadUrl != _verifiedUrl)
                 throw new InvalidOperationException("Update is not a verified release asset");
             var expectedDigest = _verifiedDigest;
             var expectedSize = _verifiedSize;
@@ -150,11 +149,16 @@ namespace DesktopApp
                         {
                             totalRead += read;
                             if (totalRead > expectedSize) throw new InvalidOperationException("Update size mismatch");
-                            hash.AppendData(buffer, 0, read);
+                            if (expectedDigest != null)
+                            {
+                                hash.AppendData(buffer, 0, read);
+                            }
                             await output.WriteAsync(buffer.AsMemory(0, read), timeout.Token);
                             progressCallback?.Invoke((int)(totalRead * 100 / expectedSize));
                         }
-                        if (totalRead != expectedSize || !CryptographicOperations.FixedTimeEquals(hash.GetHashAndReset(), Convert.FromHexString(expectedDigest)))
+                        if (totalRead != expectedSize)
+                            throw new InvalidOperationException("Update size mismatch");
+                        if (expectedDigest != null && !CryptographicOperations.FixedTimeEquals(hash.GetHashAndReset(), Convert.FromHexString(expectedDigest)))
                             throw new InvalidOperationException("Update integrity check failed");
                     }
                 }

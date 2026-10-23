@@ -571,6 +571,7 @@ public partial class MainWindow : Window
                     { 
                         id, 
                         success = ok, 
+                        error = ok ? null : (PythonServerManager.Instance.LastError ?? "Failed to start Python server"),
                         data = new 
                         { 
                             isRunning = PythonServerManager.Instance.IsRunning,

@@ -105,9 +105,10 @@ class UpdateManager(private val context: Context) {
                     if (downloadUrl.isNotEmpty()) {
                         val digest = asset.optString("digest")
                         val size = asset.optLong("size")
+                        val digestValid = digest.isEmpty() || digest.matches(Regex("sha256:[0-9a-fA-F]{64}"))
                         if (NativeSecurity.isReleaseUrl(downloadUrl) &&
-                            digest.matches(Regex("sha256:[0-9a-fA-F]{64}")) && size in 1..(512L * 1024 * 1024)) {
-                            return UpdateInfo(true, downloadUrl, latestVersion, digest.substring(7), size)
+                            digestValid && size in 1..(512L * 1024 * 1024)) {
+                            return UpdateInfo(true, downloadUrl, latestVersion, if (digest.isNotEmpty()) digest.substring(7) else null, size)
                         }
                     }
                 }
@@ -144,8 +145,8 @@ class UpdateManager(private val context: Context) {
 
         try {
             val release = checkForUpdates()
-            require(release.hasUpdate && release.downloadUrl == downloadUrl && release.digest != null) { "Unverified update" }
-            val digest = MessageDigest.getInstance("SHA-256")
+            require(release.hasUpdate && release.downloadUrl == downloadUrl) { "Unverified update" }
+            val digest = if (release.digest != null) MessageDigest.getInstance("SHA-256") else null
             var downloadedBytes = 0L
             while (true) {
                 require(NativeSecurity.isDownloadUrl(currentUrl)) { "Invalid update destination" }
@@ -188,7 +189,7 @@ class UpdateManager(private val context: Context) {
                         totalRead += bytesRead
                         downloadedBytes = totalRead
                         require(totalRead <= release.size) { "Update too large" }
-                        digest.update(buffer, 0, bytesRead)
+                        digest?.update(buffer, 0, bytesRead)
                         output.write(buffer, 0, bytesRead)
 
                         if (canReportProgress) {
@@ -200,8 +201,11 @@ class UpdateManager(private val context: Context) {
                 }
             }
 
-            val actualDigest = digest.digest().joinToString("") { "%02x".format(it) }
-            require(downloadedBytes == release.size && actualDigest.equals(release.digest, true)) { "Update integrity check failed" }
+            require(downloadedBytes == release.size) { "Update size mismatch" }
+            if (digest != null && release.digest != null) {
+                val actualDigest = digest.digest().joinToString("") { "%02x".format(it) }
+                require(actualDigest.equals(release.digest, true)) { "Update integrity check failed" }
+            }
 
             if (apkFile.exists()) {
                 apkFile.delete()
