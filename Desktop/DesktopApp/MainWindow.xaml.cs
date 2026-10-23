@@ -582,6 +582,22 @@ public partial class MainWindow : Window
                         } 
                     });
                 }
+                else if (cmd == "call_python_action")
+                {
+                    string appId = doc.RootElement.TryGetProperty("app", out var a) ? a.GetString() ?? "" : "";
+                    string action = doc.RootElement.TryGetProperty("action", out var act) ? act.GetString() ?? "" : "";
+                    string paramsJson = doc.RootElement.TryGetProperty("params", out var p) ? p.GetRawText() : "{}";
+
+                    var (callSuccess, callData, callError) = await PythonServerManager.Instance.CallActionAsync(appId, action, paramsJson);
+                    if (callSuccess)
+                    {
+                        SendWebMessage(new { id, success = true, data = callData });
+                    }
+                    else
+                    {
+                        SendWebMessage(new { id, success = false, error = callError ?? "Python action failed" });
+                    }
+                }
                 else if (cmd == "fetch_local_models")
                 {
                     var models = new System.Collections.Concurrent.ConcurrentBag<Dictionary<string, string>>();

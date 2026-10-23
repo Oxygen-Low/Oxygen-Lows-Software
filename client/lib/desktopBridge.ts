@@ -294,6 +294,14 @@ export async function restartPythonServer(): Promise<PythonServerInfo> {
   return callDesktopBridge<PythonServerInfo>("restart_python_server");
 }
 
+export async function callPythonAction<T = any>(
+  app: string,
+  action: string,
+  params: Record<string, any> = {},
+): Promise<T> {
+  return callDesktopBridge<T>("call_python_action", { app, action, params });
+}
+
 export async function openModelsFolder(): Promise<{ path: string }> {
   return callDesktopBridge<{ path: string }>("open_models_folder");
 }

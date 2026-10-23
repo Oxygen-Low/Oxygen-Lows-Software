@@ -221,6 +221,41 @@ public class PythonServerManager
         }
     }
 
+    public async Task<(bool Success, JsonElement Data, string? Error)> CallActionAsync(string appId, string action, string jsonParams)
+    {
+        if (!IsRunning)
+        {
+            return (false, default, $"Python server is not running (status: {Status})");
+        }
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{ServerUrl}/api/apps/{appId}/{action}");
+            request.Content = new StringContent(jsonParams, Encoding.UTF8, "application/json");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", AuthToken);
+
+            var res = await _httpClient.SendAsync(request);
+            string responseText = await res.Content.ReadAsStringAsync();
+
+            if (!res.IsSuccessStatusCode)
+            {
+                return (false, default, $"Python server returned {res.StatusCode}: {responseText}");
+            }
+
+            using var doc = JsonDocument.Parse(responseText);
+            var root = doc.RootElement.Clone();
+            if (root.TryGetProperty("data", out var dataEl))
+            {
+                return (true, dataEl.Clone(), null);
+            }
+            return (true, root, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, default, ex.Message);
+        }
+    }
+
     private async Task<bool> PollHealthCheckAsync(TimeSpan timeout)
     {
         var cts = new CancellationTokenSource(timeout);
@@ -302,7 +337,9 @@ public class PythonServerManager
         venvProcess.StartInfo.ArgumentList.Add(Path.GetFullPath(VenvPath));
 
         venvProcess.Start();
-        await venvProcess.WaitForExitAsync();
+        var venvOutTask = venvProcess.StandardOutput.ReadToEndAsync();
+        var venvErrTask = venvProcess.StandardError.ReadToEndAsync();
+        await Task.WhenAll(venvOutTask, venvErrTask, venvProcess.WaitForExitAsync());
 
         if (venvProcess.ExitCode == 0 && File.Exists(venvPython))
         {
@@ -366,9 +403,17 @@ public class PythonServerManager
         pipProcess.StartInfo.ArgumentList.Add("--disable-pip-version-check");
 
         pipProcess.Start();
-        await pipProcess.WaitForExitAsync();
+        var pipOutTask = pipProcess.StandardOutput.ReadToEndAsync();
+        var pipErrTask = pipProcess.StandardError.ReadToEndAsync();
+        var waitTask = pipProcess.WaitForExitAsync();
 
-        if (pipProcess.ExitCode == 0)
+        var completed = await Task.WhenAny(Task.WhenAll(pipOutTask, pipErrTask, waitTask), Task.Delay(TimeSpan.FromSeconds(60)));
+        if (completed != waitTask && !pipProcess.HasExited)
+        {
+            try { pipProcess.Kill(true); } catch { }
+            Debug.WriteLine("[PythonServerManager] Timed out installing requirements. Continuing server startup.");
+        }
+        else if (pipProcess.ExitCode == 0)
         {
             await File.WriteAllTextAsync(hashFile, currentHash);
         }

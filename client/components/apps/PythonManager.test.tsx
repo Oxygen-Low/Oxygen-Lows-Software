@@ -61,6 +61,13 @@ vi.mock("@/services/llmRunnerService", () => ({
     installPythonDependency: vi.fn().mockResolvedValue({ success: true, package: "airllm" }),
     clearPythonLogs: vi.fn().mockResolvedValue({ status: "ok", cleared: true }),
     restartServer: vi.fn().mockResolvedValue({ success: true }),
+    getDesktopServerInfo: vi.fn().mockResolvedValue({
+      isRunning: true,
+      port: 54123,
+      url: "http://127.0.0.1:54123",
+      token: "mock-token",
+      status: "Running",
+    }),
   },
 }));
 
@@ -106,6 +113,31 @@ describe("PythonManagerApp", () => {
       expect(
         screen.getByText("Server started successfully on port 54123"),
       ).toBeDefined();
+    });
+  });
+
+  it("handles offline state gracefully without displaying fake running status", async () => {
+    const { llmRunnerService } = await import("@/services/llmRunnerService");
+    vi.mocked(llmRunnerService.getPythonOverview).mockRejectedValueOnce(new Error("Connection refused"));
+    vi.mocked(llmRunnerService.getPythonDependencies).mockRejectedValueOnce(new Error("Connection refused"));
+    vi.mocked(llmRunnerService.getDesktopServerInfo).mockResolvedValueOnce({
+      isRunning: false,
+      port: 54123,
+      url: "http://127.0.0.1:54123",
+      token: "",
+      status: "Stopped",
+    });
+
+    render(
+      <LanguageProvider>
+        <PythonManagerApp />
+      </LanguageProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Stopped")).toBeDefined();
+      expect(screen.getByText("Python Background Server is Offline")).toBeDefined();
+      expect(screen.getByText("Dependencies Unavailable")).toBeDefined();
     });
   });
 });

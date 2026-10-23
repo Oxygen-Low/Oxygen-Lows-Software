@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "@/contexts/LanguageContext";
-import { isDesktopBridgeAvailable } from "@/lib/desktopBridge";
+import { isDesktopBridgeAvailable, PythonServerInfo } from "@/lib/desktopBridge";
 import {
   llmRunnerService,
   PythonOverview,
@@ -36,6 +36,7 @@ export function PythonManagerApp() {
   // Overview & Server State
   const [overview, setOverview] = useState<PythonOverview | null>(null);
   const [dependencies, setDependencies] = useState<PythonDependenciesStatus | null>(null);
+  const [serverInfo, setServerInfo] = useState<PythonServerInfo | null>(null);
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
   const [installingPackage, setInstallingPackage] = useState<string | null>(null);
@@ -45,18 +46,20 @@ export function PythonManagerApp() {
   const [selectedLogLevel, setSelectedLogLevel] = useState<string>("ALL");
   const [logSearchQuery, setLogSearchQuery] = useState("");
   const [autoScroll, setAutoScroll] = useState(true);
-  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const logsScrollRef = useRef<HTMLDivElement | null>(null);
 
   const fetchOverviewData = useCallback(async () => {
     setIsLoadingOverview(true);
     try {
+      const info = await llmRunnerService.getDesktopServerInfo().catch(() => null);
+      if (info) setServerInfo(info);
+
       const [ov, deps] = await Promise.all([
         llmRunnerService.getPythonOverview().catch(() => null),
         llmRunnerService.getPythonDependencies().catch(() => null),
       ]);
-      if (ov) setOverview(ov);
-      if (deps) setDependencies(deps);
+      setOverview(ov);
+      setDependencies(deps);
     } catch (e: any) {
       console.warn("Error fetching python overview:", e);
     } finally {
@@ -82,7 +85,7 @@ export function PythonManagerApp() {
     const interval = setInterval(() => {
       fetchLogs();
       if (activeTab === "overview") {
-        llmRunnerService.getPythonOverview().then((ov) => ov && setOverview(ov)).catch(() => {});
+        fetchOverviewData();
       }
     }, 3000);
 
@@ -115,15 +118,15 @@ export function PythonManagerApp() {
 
   const handleInstallPackage = async (pkgName: string) => {
     setInstallingPackage(pkgName);
-    toast.info(t("pythonManager.installStarted", undefined, `Installing '${pkgName}' into isolated venv...`));
+    toast.info(t("pythonManager.installStarted", { name: pkgName }, `Installing '${pkgName}' into isolated venv...`));
     try {
       const res = await llmRunnerService.installPythonDependency(pkgName);
       if (res.success) {
-        toast.success(t("pythonManager.installSuccess", undefined, `Successfully installed '${pkgName}'!`));
+        toast.success(t("pythonManager.installSuccess", { name: pkgName }, `Successfully installed '${pkgName}'!`));
         fetchOverviewData();
       } else {
         toast.error(
-          t("pythonManager.installFailed", undefined, `Failed to install '${pkgName}': `) +
+          t("pythonManager.installFailed", { name: pkgName }, `Failed to install '${pkgName}': `) +
             (res.error || res.stderr?.slice(0, 150) || "Check logs for details"),
         );
       }
@@ -192,6 +195,58 @@ export function PythonManagerApp() {
     return `${s}s`;
   }, [overview?.uptime_seconds]);
 
+  const isOnline = overview?.status === "running";
+
+  const serverStatusDisplay = useMemo(() => {
+    if (isOnline) {
+      return {
+        label: t("pythonManager.statusRunning", undefined, "Running"),
+        state: "running" as const,
+      };
+    }
+    if (isRestarting) {
+      return {
+        label: t("pythonManager.statusRestarting", undefined, "Restarting Server..."),
+        state: "starting" as const,
+      };
+    }
+    if (serverInfo) {
+      if (
+        serverInfo.status === "StartingServer" ||
+        serverInfo.status === "Initializing" ||
+        serverInfo.status === "CreatingVirtualEnv" ||
+        serverInfo.status === "InstallingDependencies"
+      ) {
+        return {
+          label: t("pythonManager.statusStarting", undefined, "Starting..."),
+          state: "starting" as const,
+        };
+      }
+      if (serverInfo.status === "Failed") {
+        return {
+          label: t("pythonManager.statusFailed", undefined, "Failed"),
+          state: "error" as const,
+        };
+      }
+      if (serverInfo.status === "Stopped" || !serverInfo.isRunning) {
+        return {
+          label: t("pythonManager.statusStopped", undefined, "Stopped"),
+          state: "stopped" as const,
+        };
+      }
+    }
+    if (isLoadingOverview) {
+      return {
+        label: t("pythonManager.statusConnecting", undefined, "Connecting..."),
+        state: "starting" as const,
+      };
+    }
+    return {
+      label: t("pythonManager.statusOffline", undefined, "Offline"),
+      state: "stopped" as const,
+    };
+  }, [isOnline, isRestarting, serverInfo, isLoadingOverview, t]);
+
   return (
     <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 space-y-6 text-slate-100">
       {/* Top Header & Server Telemetry */}
@@ -229,7 +284,9 @@ export function PythonManagerApp() {
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 text-xs font-semibold transition-all disabled:opacity-50"
             >
               <RotateCw className={`w-3.5 h-3.5 ${isRestarting ? "animate-spin" : ""}`} />
-              {isRestarting ? "Restarting Server..." : "Restart Python Server"}
+              {isRestarting
+                ? t("pythonManager.statusRestarting", undefined, "Restarting Server...")
+                : t("pythonManager.restartServer", undefined, "Restart Python Server")}
             </button>
 
             <button
@@ -250,34 +307,108 @@ export function PythonManagerApp() {
         {/* Live Metrics Grid */}
         <div className="mt-5 pt-4 border-t border-white/5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div className="bg-black/25 p-3 rounded-xl border border-white/5">
-            <span className="text-slate-400 block text-[10px] uppercase tracking-wider">Server Status</span>
+            <span className="text-slate-400 block text-[10px] uppercase tracking-wider">
+              {t("pythonManager.serverStatus", undefined, "Server Status")}
+            </span>
             <div className="flex items-center gap-1.5 mt-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span className="font-semibold text-emerald-400 capitalize">{overview?.status || "Running"}</span>
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  serverStatusDisplay.state === "running"
+                    ? "bg-emerald-400 animate-ping"
+                    : serverStatusDisplay.state === "starting"
+                    ? "bg-amber-400 animate-pulse"
+                    : "bg-red-400"
+                }`}
+              />
+              <span
+                className={`font-semibold capitalize ${
+                  serverStatusDisplay.state === "running"
+                    ? "text-emerald-400"
+                    : serverStatusDisplay.state === "starting"
+                    ? "text-amber-400"
+                    : "text-red-400"
+                }`}
+              >
+                {serverStatusDisplay.label}
+              </span>
             </div>
           </div>
 
           <div className="bg-black/25 p-3 rounded-xl border border-white/5">
-            <span className="text-slate-400 block text-[10px] uppercase tracking-wider">Process PID & Uptime</span>
+            <span className="text-slate-400 block text-[10px] uppercase tracking-wider">
+              {t("pythonManager.processPidUptime", undefined, "Process PID & Uptime")}
+            </span>
             <div className="font-semibold text-white mt-1">
-              PID {overview?.pid || "—"} • {formattedUptime}
+              {overview ? `PID ${overview.pid} • ${formattedUptime}` : "—"}
             </div>
           </div>
 
           <div className="bg-black/25 p-3 rounded-xl border border-white/5">
-            <span className="text-slate-400 block text-[10px] uppercase tracking-wider">Memory & CPU</span>
+            <span className="text-slate-400 block text-[10px] uppercase tracking-wider">
+              {t("pythonManager.memoryCpu", undefined, "Memory & CPU")}
+            </span>
             <div className="font-semibold text-cyan-400 mt-1">
-              {overview?.memory_mb || 0} MB • {overview?.cpu_percent || 0}% CPU
+              {overview ? `${overview.memory_mb} MB • ${overview.cpu_percent}% CPU` : "—"}
             </div>
           </div>
 
           <div className="bg-black/25 p-3 rounded-xl border border-white/5">
-            <span className="text-slate-400 block text-[10px] uppercase tracking-wider">Loaded Apps</span>
+            <span className="text-slate-400 block text-[10px] uppercase tracking-wider">
+              {t("pythonManager.loadedApps", undefined, "Loaded Apps")}
+            </span>
             <div className="font-semibold text-white mt-1">
-              {overview?.loaded_apps?.length || 0} modular apps
+              {overview ? `${overview.loaded_apps?.length || 0} modular apps` : "—"}
             </div>
           </div>
         </div>
+
+        {/* Offline / Error / Starting Banner */}
+        {!isOnline && (
+          <div
+            className={`mt-4 p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+              serverStatusDisplay.state === "error"
+                ? "bg-red-500/10 border-red-500/30 text-red-200"
+                : serverStatusDisplay.state === "starting"
+                ? "bg-amber-500/10 border-amber-500/30 text-amber-200"
+                : "bg-slate-800/80 border-white/10 text-slate-300"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              {serverStatusDisplay.state === "error" ? (
+                <ShieldAlert className="w-5 h-5 text-red-400 shrink-0" />
+              ) : serverStatusDisplay.state === "starting" ? (
+                <Loader2 className="w-5 h-5 text-amber-400 shrink-0 animate-spin" />
+              ) : (
+                <Info className="w-5 h-5 text-slate-400 shrink-0" />
+              )}
+              <div>
+                <p className="font-semibold">
+                  {serverStatusDisplay.state === "error"
+                    ? t("pythonManager.serverFailedTitle", undefined, "Python Server Error")
+                    : serverStatusDisplay.state === "starting"
+                    ? t("pythonManager.serverStartingTitle", undefined, "Starting Python Runtime...")
+                    : t("pythonManager.serverOfflineTitle", undefined, "Python Background Server is Offline")}
+                </p>
+                <p className="text-[11px] opacity-80 mt-0.5">
+                  {serverInfo?.error
+                    ? serverInfo.error
+                    : serverStatusDisplay.state === "starting"
+                    ? t("pythonManager.serverStartingDesc", undefined, "Initializing virtual environment and background worker...")
+                    : t("pythonManager.serverOfflineDesc", undefined, "Click 'Restart Python Server' to start the local runtime.")}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleRestartServer}
+              disabled={isRestarting}
+              className="px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-xs transition-all flex items-center justify-center gap-1.5 shrink-0 self-start sm:self-auto disabled:opacity-50"
+            >
+              <RotateCw className={`w-3.5 h-3.5 ${isRestarting ? "animate-spin" : ""}`} />
+              {t("pythonManager.startServer", undefined, "Start / Restart Server")}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -386,7 +517,7 @@ export function PythonManagerApp() {
               <button
                 type="button"
                 onClick={handleInstallAllMissing}
-                disabled={installingPackage !== null}
+                disabled={installingPackage !== null || !isOnline}
                 className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md disabled:opacity-50"
               >
                 <Download className="w-4 h-4" />
@@ -394,50 +525,75 @@ export function PythonManagerApp() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {dependencies?.dependencies?.map((dep) => (
-                <div
-                  key={dep.name}
-                  className="bg-black/30 border border-white/5 rounded-xl p-4 flex flex-col justify-between space-y-3"
-                >
-                  <div className="space-y-1.5">
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="font-semibold text-white text-xs font-mono">{dep.name}</span>
-                      {dep.installed ? (
-                        <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-semibold">
-                          <CheckCircle2 className="w-3 h-3" />
-                          v{dep.version}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full font-semibold">
-                          <AlertTriangle className="w-3 h-3" />
-                          Missing
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-400 leading-snug">{dep.description}</p>
-                  </div>
-
-                  <div className="pt-2 border-t border-white/5 flex items-center justify-between">
-                    <span className="text-[10px] text-slate-500 font-mono">Req: {dep.required}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleInstallPackage(dep.name)}
-                      disabled={installingPackage !== null}
-                      className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-cyan-400 text-[11px] font-semibold transition-all disabled:opacity-40"
-                    >
-                      {installingPackage === dep.name ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : dep.installed ? (
-                        "Update"
-                      ) : (
-                        "Install"
-                      )}
-                    </button>
-                  </div>
+            {!dependencies ? (
+              !isOnline ? (
+                <div className="bg-black/20 border border-white/5 rounded-xl p-8 text-center space-y-2">
+                  <Layers className="w-8 h-8 text-slate-500 mx-auto" />
+                  <p className="text-sm font-semibold text-slate-300">
+                    {t("pythonManager.depsUnavailableTitle", undefined, "Dependencies Unavailable")}
+                  </p>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    {t(
+                      "pythonManager.depsUnavailableDesc",
+                      undefined,
+                      "Start the Python background server to detect and manage installed AI inference libraries.",
+                    )}
+                  </p>
                 </div>
-              ))}
-            </div>
+              ) : (
+                <div className="flex items-center justify-center py-12 text-slate-400 gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
+                  <span className="text-xs">
+                    {t("pythonManager.loadingDependencies", undefined, "Querying installed packages...")}
+                  </span>
+                </div>
+              )
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {dependencies.dependencies.map((dep) => (
+                  <div
+                    key={dep.name}
+                    className="bg-black/30 border border-white/5 rounded-xl p-4 flex flex-col justify-between space-y-3"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-semibold text-white text-xs font-mono">{dep.name}</span>
+                        {dep.installed ? (
+                          <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-semibold">
+                            <CheckCircle2 className="w-3 h-3" />
+                            v{dep.version}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full font-semibold">
+                            <AlertTriangle className="w-3 h-3" />
+                            Missing
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-snug">{dep.description}</p>
+                    </div>
+
+                    <div className="pt-2 border-t border-white/5 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-500 font-mono">Req: {dep.required}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleInstallPackage(dep.name)}
+                        disabled={installingPackage !== null}
+                        className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-cyan-400 text-[11px] font-semibold transition-all disabled:opacity-40"
+                      >
+                        {installingPackage === dep.name ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : dep.installed ? (
+                          "Update"
+                        ) : (
+                          "Install"
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -521,7 +677,11 @@ export function PythonManagerApp() {
             {logs.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center text-slate-500 space-y-2">
                 <Terminal className="w-8 h-8 opacity-40" />
-                <p>No log records match the current filter.</p>
+                <p>
+                  {!isOnline
+                    ? t("pythonManager.serverOfflineDesc", undefined, "Start the Python background server to view logs.")
+                    : "No log records match the current filter."}
+                </p>
               </div>
             ) : (
               logs.map((log) => {

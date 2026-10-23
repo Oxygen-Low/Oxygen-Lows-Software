@@ -1,8 +1,10 @@
 import {
   getPythonServerInfo,
   restartPythonServer,
+  callPythonAction,
   addPushEventListener,
   isDesktopBridgeAvailable,
+  PythonServerInfo,
 } from "@/lib/desktopBridge";
 
 export interface LocalLlmModel {
@@ -131,8 +133,8 @@ class LLMRunnerService {
     });
   }
 
-  public async init(): Promise<void> {
-    if (this.initPromise) return this.initPromise;
+  public async init(force = false): Promise<void> {
+    if (this.initPromise && !force && this.authToken) return this.initPromise;
     this.initPromise = (async () => {
       if (!isDesktopBridgeAvailable()) return;
       try {
@@ -158,11 +160,28 @@ class LLMRunnerService {
     return this.authToken;
   }
 
+  public async getDesktopServerInfo(): Promise<PythonServerInfo | null> {
+    if (!isDesktopBridgeAvailable()) return null;
+    try {
+      return await getPythonServerInfo();
+    } catch {
+      return null;
+    }
+  }
+
   private async callAction<T = any>(
     appId: string,
     action: string,
     params: Record<string, any> = {},
   ): Promise<T> {
+    if (isDesktopBridgeAvailable()) {
+      try {
+        return await callPythonAction<T>(appId, action, params);
+      } catch (bridgeErr: any) {
+        console.warn(`[LLMRunnerService] Native IPC call failed for ${appId}.${action}:`, bridgeErr);
+      }
+    }
+
     await this.init();
     const endpoint = `${this.serverUrl}/api/apps/${appId}/${action}`;
     const headers: Record<string, string> = {
@@ -353,6 +372,8 @@ class LLMRunnerService {
   }
 
   public async restartServer(): Promise<any> {
+    this.initPromise = null;
+    this.authToken = "";
     const res = await restartPythonServer();
     if (res?.url) this.serverUrl = res.url;
     if (res?.token) this.authToken = res.token;
