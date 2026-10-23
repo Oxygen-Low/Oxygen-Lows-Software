@@ -1117,6 +1117,8 @@ export const es = {
     renameError: "Error al renombrar el archivo",
     invalidFileName: "Nombre de archivo no válido",
     destinationExists: "Ya existe un archivo con este nombre",
+    modelsCategory: "Modelos 3D",
+    preview3D: "Vista previa 3D",
   },
   customize: {
     title: "Personalizar",
@@ -1568,6 +1570,8 @@ export const es = {
       "Este recurso se enviÃ³ para ser publicado de forma anÃ³nima. El nombre de usuario del remitente solo es visible para los administradores.",
     unauthorizedEncrypted:
       "No se puede subir un personaje cifrado. DesbloquÃ©alo primero.",
+    categoryModel: "Modelo / Recurso 3D",
+    preview3D: "Vista previa 3D",
   },
   verification: {
     verifyForPublicUsage: "Verificar para Uso PÃºblico",

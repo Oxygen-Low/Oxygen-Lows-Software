@@ -1106,6 +1106,8 @@ export const en = {
     renameError: "Failed to rename file",
     invalidFileName: "Invalid file name",
     destinationExists: "A file with this name already exists",
+    modelsCategory: "3D Models",
+    preview3D: "3D Preview",
   },
   customize: {
     title: "Customize",
@@ -1548,6 +1550,8 @@ export const en = {
       "This asset was submitted to be published anonymously. The submitter username is visible only to administrators.",
     unauthorizedEncrypted:
       "Cannot upload an encrypted character. Please unlock first.",
+    categoryModel: "3D Model / Asset",
+    preview3D: "3D Preview",
   },
   verification: {
     verifyForPublicUsage: "Verify for Public Usage",

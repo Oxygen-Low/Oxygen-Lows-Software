@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   ExternalLink,
   UserX,
+  Box,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -67,6 +68,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AudioPlayerPreview } from "@/components/AudioPlayerPreview";
+import { Model3DPreview } from "@/components/Model3DPreview";
 
 interface PublicCharacter {
   id: string;
@@ -820,7 +822,17 @@ export function PublicAssetsApp() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
+  const isModelFile = (nameOrPath?: string | null, category?: string | null, mime?: string | null) => {
+    if (category === "model") return true;
+    if (mime?.startsWith("model/")) return true;
+    if (nameOrPath && /\.(glb|gltf|obj|stl|fbx)$/i.test(nameOrPath)) return true;
+    return false;
+  };
+
   const getFileCategoryIcon = (category: string, mime?: string | null) => {
+    if (category === "model" || mime?.startsWith("model/")) {
+      return <Box className="w-10 h-10 text-purple-400" />;
+    }
     if (category === "image" || mime?.startsWith("image/")) {
       return <ImageIcon className="w-10 h-10 text-orange-400" />;
     }
@@ -1043,6 +1055,14 @@ export function PublicAssetsApp() {
                         onValueChange={(val) => {
                           setSelectedStorageFileName(val);
                           if (!publishTitle) setPublishTitle(val);
+                          const matched = storageFiles.find((f) => f.name === val);
+                          if (matched) {
+                            const mime = matched.metadata?.mimetype || "";
+                            if (mime.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(val)) setPublishCategory("image");
+                            else if (mime.startsWith("audio/") || /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(val)) setPublishCategory("audio");
+                            else if (mime.startsWith("model/") || /\.(glb|gltf|obj|stl|fbx)$/i.test(val)) setPublishCategory("model");
+                            else if (mime.startsWith("application/json") || /\.json$/i.test(val)) setPublishCategory("data");
+                          }
                         }}
                       >
                         <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
@@ -1386,7 +1406,27 @@ export function PublicAssetsApp() {
                       />
                     </div>
                   ) : (
-                    getFileCategoryIcon(file.category, file.mime_type)
+                    isModelFile(file.name || file.file_path, file.category, file.mime_type) ? (
+                      <div
+                        className="w-full h-full relative"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Model3DPreview
+                          src={file.public_url}
+                          filePath={file.file_path}
+                          fileName={file.name}
+                          bucket="public-assets"
+                          variant="thumbnail"
+                          className="w-full h-full"
+                          onOpenFullscreen={() => {
+                            setSelectedFile(file);
+                            setDetailsDialogOpen(true);
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      getFileCategoryIcon(file.category, file.mime_type)
+                    )
                   )}
 
                   <div className="absolute top-3 right-3">
@@ -1798,7 +1838,7 @@ export function PublicAssetsApp() {
 
           {selectedFile && (
             <>
-              <div className="h-48 relative bg-slate-950 shrink-0 flex items-center justify-center border-b border-slate-800">
+              <div className="h-64 relative bg-slate-950 shrink-0 flex items-center justify-center border-b border-slate-800">
                 {(selectedFile.category === "image" ||
                   selectedFile.mime_type?.startsWith("image/") ||
                   /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(
@@ -1826,7 +1866,18 @@ export function PublicAssetsApp() {
                     />
                   </div>
                 ) : (
-                  getFileCategoryIcon(
+                  isModelFile(selectedFile.name || selectedFile.file_path, selectedFile.category, selectedFile.mime_type) ? (
+                    <div className="w-full h-full relative">
+                      <Model3DPreview
+                        src={selectedFile.public_url}
+                        filePath={selectedFile.file_path}
+                        fileName={selectedFile.name}
+                        bucket="public-assets"
+                        variant="detail"
+                        className="w-full h-full"
+                      />
+                    </div>
+                  ) : getFileCategoryIcon(
                     selectedFile.category,
                     selectedFile.mime_type,
                   )

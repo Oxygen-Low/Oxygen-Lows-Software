@@ -23,6 +23,8 @@ import {
   ListOrdered,
   Layers,
   Pencil,
+  Box,
+  Download,
 } from "lucide-react";
 import {
   Card,
@@ -75,6 +77,7 @@ import { fetchTrackBackgrounds } from "@/lib/trackBackgrounds";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AudioPlayerPreview } from "@/components/AudioPlayerPreview";
+import { Model3DPreview } from "@/components/Model3DPreview";
 import { useMusic } from "@/hooks/useMusic";
 
 interface FileVerificationInfo {
@@ -147,6 +150,7 @@ export default function Storage() {
   const [fileToRename, setFileToRename] = useState<any | null>(null);
   const [newFileName, setNewFileName] = useState("");
   const [renaming, setRenaming] = useState(false);
+  const [previewModelFile, setPreviewModelFile] = useState<any | null>(null);
 
   const fetchCloudFiles = async () => {
     if (!session?.user?.id) return;
@@ -530,6 +534,7 @@ export default function Storage() {
     const mime = file.metadata?.mimetype || "";
     if (mime.startsWith("image/")) setSubmitCategory("image");
     else if (mime.startsWith("audio/")) setSubmitCategory("audio");
+    else if (mime.startsWith("model/") || /\.(glb|gltf|obj|stl|fbx)$/i.test(file.name)) setSubmitCategory("model");
     else if (mime.startsWith("application/json")) setSubmitCategory("data");
     else setSubmitCategory("other");
   };
@@ -664,6 +669,13 @@ export default function Storage() {
         files: [] as any[],
         size: 0,
       },
+      model: {
+        color: "bg-purple-500",
+        label: t("storage.modelsCategory", undefined, "3D Models"),
+        icon: Box,
+        files: [] as any[],
+        size: 0,
+      },
       data: {
         color: "bg-black",
         label: "Data",
@@ -682,6 +694,9 @@ export default function Storage() {
       } else if (type.startsWith("audio/")) {
         cats.audio.files.push(f);
         cats.audio.size += size;
+      } else if (type.startsWith("model/") || /\.(glb|gltf|obj|stl|fbx)$/i.test(f.name)) {
+        cats.model.files.push(f);
+        cats.model.size += size;
       } else {
         cats.text.files.push(f);
         cats.text.size += size;
@@ -935,6 +950,9 @@ export default function Storage() {
                 const isImage =
                   file.metadata?.mimetype?.startsWith("image/") ||
                   /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(file.name);
+                const isModel =
+                  file.metadata?.mimetype?.startsWith("model/") ||
+                  /\.(glb|gltf|obj|stl|fbx)$/i.test(file.name);
 
                 const signedUrl =
                   cloudFileSignedUrls[file.id] ||
@@ -966,6 +984,21 @@ export default function Storage() {
                           </div>
                         ) : isImage ? (
                           <ImageIcon className="w-12 h-12 text-orange-500/70" />
+                        ) : isModel ? (
+                          <div
+                            className="w-full h-full relative"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Model3DPreview
+                              src={signedUrl}
+                              filePath={`${session?.user?.id}/${file.name}`}
+                              fileName={file.name}
+                              bucket={file.bucket || "Storage"}
+                              variant="thumbnail"
+                              className="w-full h-full"
+                              onOpenFullscreen={() => setPreviewModelFile(file)}
+                            />
+                          </div>
                         ) : (
                           <FileText className="w-12 h-12 text-slate-700" />
                         )}
@@ -1039,7 +1072,17 @@ export default function Storage() {
 
                     <CardContent className="p-4 pt-0 space-y-2">
                       <div className="flex gap-2">
-                        {signedUrl ? (
+                        {isModel ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="flex-1 bg-purple-900/40 hover:bg-purple-800/60 text-purple-200 border border-purple-700/50 text-xs"
+                            onClick={() => setPreviewModelFile(file)}
+                          >
+                            <Box className="w-3.5 h-3.5 mr-1.5" />{" "}
+                            {t("storage.preview3D", undefined, "3D Preview")}
+                          </Button>
+                        ) : signedUrl ? (
                           <Button
                             variant="secondary"
                             size="sm"
@@ -1699,6 +1742,74 @@ export default function Storage() {
           </form>
         </DialogContent>
       </Dialog>
+      {/* Interactive 3D Model Preview Modal */}
+      {previewModelFile && (
+        <Dialog
+          open={!!previewModelFile}
+          onOpenChange={(open) => {
+            if (!open) setPreviewModelFile(null);
+          }}
+        >
+          <DialogContent className="max-w-4xl bg-slate-950 border-slate-800 text-white p-6">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-lg text-white">
+                <Box className="w-5 h-5 text-purple-400" />
+                {previewModelFile.name}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-400">
+                {formatSize(previewModelFile.metadata?.size || 0)} • {t("storage.preview3DDesc", undefined, "Interactive 3D model viewport")}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="w-full h-[450px] rounded-lg overflow-hidden border border-slate-800 bg-slate-900/60 relative">
+              <Model3DPreview
+                src={
+                  cloudFileSignedUrls[previewModelFile.id] ||
+                  cloudFileSignedUrls[previewModelFile.name]
+                }
+                filePath={`${session?.user?.id}/${previewModelFile.name}`}
+                fileName={previewModelFile.name}
+                bucket={previewModelFile.bucket || "Storage"}
+                variant="detail"
+                className="w-full h-full"
+                allowFullscreen={false}
+              />
+            </div>
+
+            <DialogFooter className="flex justify-between items-center sm:justify-between">
+              {(cloudFileSignedUrls[previewModelFile.id] ||
+                cloudFileSignedUrls[previewModelFile.name]) ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-slate-700 text-slate-300 hover:text-white"
+                  asChild
+                >
+                  <a
+                    href={
+                      cloudFileSignedUrls[previewModelFile.id] ||
+                      cloudFileSignedUrls[previewModelFile.name]
+                    }
+                    download={previewModelFile.name}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Download className="w-4 h-4 mr-1.5" />
+                    {t("common.download", undefined, "Download")}
+                  </a>
+                </Button>
+              ) : <div />}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setPreviewModelFile(null)}
+              >
+                {t("common.close", undefined, "Close")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </Layout>
   );
 }

@@ -1108,6 +1108,8 @@ export const ja = {
     renameError: "ファイル名の変更に失敗しました",
     invalidFileName: "無効なファイル名です",
     destinationExists: "同名のファイルが既に存在します",
+    modelsCategory: "3Dモデル",
+    preview3D: "3Dプレビュー",
   },
   customize: {
     title: "ã‚«ã‚¹ã‚¿ãƒžã‚¤ã‚º",

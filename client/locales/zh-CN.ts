@@ -1070,6 +1070,8 @@ export const zhCN = {
     renameError: "重命名文件失败",
     invalidFileName: "无效的文件名",
     destinationExists: "已存在同名文件",
+    modelsCategory: "3D 模型",
+    preview3D: "3D 预览",
   },
   customize: {
     title: "ä¸ªæ€§åŒ–",
@@ -1488,6 +1490,8 @@ notificationsTitle: "é€šçŸ¥",
     anonymousNotice:
       "æ­¤èµ„äº§å·²æäº¤ä¸ºåŒ¿åå‘å¸ƒã€‚æäº¤è€…ç”¨æˆ·åä»…å¯¹ç®¡ç†å‘˜å¯è§ã€‚",
     unauthorizedEncrypted: "æ— æ³•ä¸Šä¼ åŠ å¯†è§’è‰²ã€‚è¯·å…ˆè§£é”ã€‚",
+    categoryModel: "3D 模型 / 资产",
+    preview3D: "3D 预览",
   },
   verification: {
     verifyForPublicUsage: "ç”³è¯·å…¬å¼€ä½¿ç”¨éªŒè¯",

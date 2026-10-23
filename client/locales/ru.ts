@@ -1113,6 +1113,8 @@ export const ru = {
     renameError: "Не удалось переименовать файл",
     invalidFileName: "Недопустимое имя файла",
     destinationExists: "Файл с таким именем уже существует",
+    modelsCategory: "3D-модели",
+    preview3D: "3D-просмотр",
   },
   customize: {
     title: "ÐšÐ°ÑÑ‚Ð¾Ð¼Ð¸Ð·Ð°Ñ†Ð¸Ñ",

@@ -28,7 +28,25 @@ const mockStorage = {
           metadata: { size: 1024, mimetype: "audio/mp3" },
           created_at: new Date().toISOString(),
         },
+        {
+          id: "f2",
+          name: "spaceship.glb",
+          metadata: { size: 5048, mimetype: "model/gltf-binary" },
+          created_at: new Date().toISOString(),
+        },
       ],
+      error: null,
+    }),
+  ),
+  createSignedUrl: vi.fn((path: string) =>
+    Promise.resolve({
+      data: { signedUrl: `https://example.com/${path}` },
+      error: null,
+    }),
+  ),
+  download: vi.fn(() =>
+    Promise.resolve({
+      data: new Blob(["mock"], { type: "application/octet-stream" }),
       error: null,
     }),
   ),
@@ -49,7 +67,19 @@ vi.mock("@/lib/storage", () => ({
       if (bucket === "public-assets") {
         return {
           list: vi.fn(() => Promise.resolve({ data: [], error: null })),
-          createSignedUrls: vi.fn(() =>
+          createSignedUrl: vi.fn((path: string) =>
+    Promise.resolve({
+      data: { signedUrl: `https://example.com/${path}` },
+      error: null,
+    }),
+  ),
+  download: vi.fn(() =>
+    Promise.resolve({
+      data: new Blob(["mock"], { type: "application/octet-stream" }),
+      error: null,
+    }),
+  ),
+  createSignedUrls: vi.fn(() =>
             Promise.resolve({ data: [], error: null }),
           ),
           upload: vi.fn(() => Promise.resolve({ error: null })),
@@ -65,7 +95,19 @@ vi.mock("@/lib/storage", () => ({
       if (bucket === "public-assets") {
         return {
           list: vi.fn(() => Promise.resolve({ data: [], error: null })),
-          createSignedUrls: vi.fn(() =>
+          createSignedUrl: vi.fn((path: string) =>
+    Promise.resolve({
+      data: { signedUrl: `https://example.com/${path}` },
+      error: null,
+    }),
+  ),
+  download: vi.fn(() =>
+    Promise.resolve({
+      data: new Blob(["mock"], { type: "application/octet-stream" }),
+      error: null,
+    }),
+  ),
+  createSignedUrls: vi.fn(() =>
             Promise.resolve({ data: [], error: null }),
           ),
           upload: vi.fn(() => Promise.resolve({ error: null })),
@@ -156,7 +198,7 @@ describe("Storage Page", () => {
       expect(screen.getByText("test-audio.mp3")).toBeDefined();
     });
 
-    const verifyBtn = screen.getByRole("button", { name: /^Verify$/i });
+    const verifyBtn = screen.getAllByRole("button", { name: /^Verify$/i })[0];
     expect(verifyBtn).toBeDefined();
 
     fireEvent.click(verifyBtn);
@@ -218,6 +260,27 @@ describe("Storage Page", () => {
         "user-123/test-audio.mp3",
         "user-123/renamed-audio.mp3",
       );
+    });
+  });
+
+  it("renders 3D model files with 3D Preview button and opens preview modal", async () => {
+    render(
+      <MemoryRouter>
+        <Storage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText("spaceship.glb").length).toBeGreaterThan(0);
+    });
+
+    const previewBtn = screen.getByRole("button", { name: /3D Preview/i });
+    expect(previewBtn).toBeDefined();
+
+    fireEvent.click(previewBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Interactive 3D model viewport/i)).toBeDefined();
     });
   });
 });

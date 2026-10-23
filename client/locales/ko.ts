@@ -1098,6 +1098,8 @@ export const ko = {
     renameError: "파일 이름 변경에 실패했습니다",
     invalidFileName: "유효하지 않은 파일 이름입니다",
     destinationExists: "이 이름을 가진 파일이 이미 존재합니다",
+    modelsCategory: "3D 모델",
+    preview3D: "3D 미리보기",
   },
   customize: {
     title: "ì»¤ìŠ¤í„°ë§ˆì´ì¦ˆ",

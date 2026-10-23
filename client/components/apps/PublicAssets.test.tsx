@@ -47,7 +47,35 @@ vi.mock("@/lib/db", () => {
   builder.then = vi.fn((resolve) => resolve({ data: [], error: null }));
 
   const mockClient = {
-    from: vi.fn(() => builder),
+    from: vi.fn((table: string) => {
+      if (table === "public_assets") {
+        return {
+          select: vi.fn(() =>
+            Promise.resolve({
+              data: [
+                {
+                  id: "asset-3d",
+                  uploader_id: "u123",
+                  name: "mech.glb",
+                  display_name: "Battle Mech",
+                  category: "model",
+                  description: "Futuristic robot model",
+                  file_path: "models/mech.glb",
+                  file_size: 4096,
+                  mime_type: "model/gltf-binary",
+                  downloads: 5,
+                  created_at: new Date().toISOString(),
+                  likes_count: 2,
+                  is_liked_by_user: false,
+                },
+              ],
+              error: null,
+            }),
+          ),
+        };
+      }
+      return builder;
+    }),
     storage: {
       from: vi.fn(() => mockStorageFrom),
     },
@@ -108,6 +136,7 @@ describe("PublicAssetsApp Component", () => {
     );
 
     const filesTab = screen.getByRole("tab", { name: "Files" });
+    fireEvent.keyDown(filesTab, { key: "Enter" });
     fireEvent.click(filesTab);
 
     const submissionsTab = screen.getByRole("tab", { name: "My Submissions" });
@@ -127,5 +156,28 @@ describe("PublicAssetsApp Component", () => {
     fireEvent.click(publishBtn);
 
     expect(screen.getByText("Publish to Public Assets")).toBeDefined();
+  });
+
+  it("renders 3D model file assets in Files tab and opens details dialog", async () => {
+    render(
+      <MemoryRouter>
+        <PublicAssetsApp />
+      </MemoryRouter>,
+    );
+
+    const filesTab = screen.getByRole("tab", { name: "Files" });
+    fireEvent.keyDown(filesTab, { key: "Enter" });
+    fireEvent.click(filesTab);
+
+    await waitFor(() => {
+      expect(screen.getByText("Battle Mech")).toBeDefined();
+    });
+
+    const card = screen.getByText("Battle Mech");
+    fireEvent.click(card);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Futuristic robot model").length).toBeGreaterThanOrEqual(2);
+    });
   });
 });

@@ -18,6 +18,7 @@ import {
   Image as ImageIcon,
   Music,
   Film,
+  Box,
   Folder,
   ChevronRight,
   Home,
@@ -39,7 +40,7 @@ interface StorageFile {
 interface StorageFileSelectorProps {
   onSelect: (file: StorageFile) => void;
   allowedExtensions?: string[];
-  allowedTypes?: ("image" | "audio" | "video")[];
+  allowedTypes?: ("image" | "audio" | "video" | "model")[];
   trigger?: React.ReactNode;
 }
 
@@ -136,13 +137,15 @@ export function StorageFileSelector({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   }, []);
 
-  const getFileIcon = useCallback((mimetype: string) => {
+  const getFileIcon = useCallback((mimetype: string, name?: string) => {
     if (mimetype.startsWith("image/"))
       return <ImageIcon className="w-4 h-4 text-pink-500" />;
     if (mimetype.startsWith("audio/"))
       return <Music className="w-4 h-4 text-cyan-500" />;
     if (mimetype.startsWith("video/"))
       return <Film className="w-4 h-4 text-purple-500" />;
+    if (mimetype.startsWith("model/") || (name && /\.(glb|gltf|obj|stl|fbx)$/i.test(name)))
+      return <Box className="w-4 h-4 text-purple-400" />;
     return <File className="w-4 h-4 text-slate-400" />;
   }, []);
 
@@ -234,7 +237,7 @@ export function StorageFileSelector({
                             {isFolder ? (
                               <Folder className="w-4 h-4 text-amber-500" />
                             ) : (
-                              getFileIcon(item.metadata?.mimetype || "")
+                              getFileIcon(item.metadata?.mimetype || "", item.name)
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
