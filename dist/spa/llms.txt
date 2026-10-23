@@ -1,0 +1,8 @@
+# Oxygen Low's Software
+
+Oxygen Low's Software is a platform for apps, storage, and customization.
+
+## Resources
+- [Main Website](/)
+- [Contact Support](/support)
+- [About Us](/about)
