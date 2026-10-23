@@ -98,8 +98,15 @@ temp/
 uploads_backup/
 
 # OS build artifacts
+*.o
+*.obj
+*.a
+*.lib
 OS/*.iso
 OS/*.elf
 OS/Output/
+OS/isodir/.disk/
+OS/isodir/README.diskdefines
+OS/isodir/boot/*.elf
 *.iso
 

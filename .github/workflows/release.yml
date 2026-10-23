@@ -12,11 +12,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   version:
-    name: Calculate Version
+    name: Calculate Version & Create Release
     runs-on: ubuntu-latest
     outputs:
       app_version: ${{ steps.calc_version.outputs.app_version }}
@@ -70,6 +70,18 @@ jobs:
           echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${{ steps.calc_version.outputs.tag_name }}"
+          if ! gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release create "$TAG_NAME" \
+              --title "Release $TAG_NAME" \
+              --target "${{ github.sha }}" \
+              --generate-notes
+          fi
+
   build-desktop:
     name: Build Desktop App
     needs: version
@@ -94,12 +106,12 @@ jobs:
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "Desktop\installer.iss" /DAppVersion="${{ needs.version.outputs.app_version }}" /DAppSource="DesktopAppOut\*"
 
-      - name: Upload Desktop Artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: desktop-installer
-          path: Desktop/Output/OxygenLowsSoftware_Installer.exe
-          if-no-files-found: error
+      - name: Upload Desktop Installer to Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.version.outputs.tag_name }}" Desktop/Output/OxygenLowsSoftware_Installer.exe --clobber
 
   build-android:
     name: Build Android App
@@ -150,12 +162,11 @@ jobs:
             cp "$APK_FILE" Android/Output/OxygenLowsSoftware.apk
           fi
 
-      - name: Upload Android Artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: android-apk
-          path: Android/Output/OxygenLowsSoftware.apk
-          if-no-files-found: error
+      - name: Upload Android APK to Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.version.outputs.tag_name }}" Android/Output/OxygenLowsSoftware.apk --clobber
 
   build-os:
     name: Build OS ISO
@@ -187,55 +198,8 @@ jobs:
           mkdir -p OS/Output
           cp OS/OxygenLowsSoftware.iso OS/Output/OxygenLowsSoftware.iso
 
-      - name: Upload OS Artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: os-iso
-          path: OS/Output/OxygenLowsSoftware.iso
-          if-no-files-found: error
-
-  publish-release:
-    name: Create & Publish Release
-    needs: [version, build-desktop, build-android, build-os]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Download Desktop Artifact
-        uses: actions/download-artifact@v7
-        with:
-          name: desktop-installer
-          path: release_assets
-
-      - name: Download Android Artifact
-        uses: actions/download-artifact@v7
-        with:
-          name: android-apk
-          path: release_assets
-
-      - name: Download OS Artifact
-        uses: actions/download-artifact@v7
-        with:
-          name: os-iso
-          path: release_assets
-
-      - name: Create Release
-        uses: softprops/action-gh-release@fe965f7af51af5f2602596916f38a38df2e33de0 # v3.0.2
-        with:
-          tag_name: ${{ needs.version.outputs.tag_name }}
-          name: Release ${{ needs.version.outputs.tag_name }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-          target_commitish: ${{ github.sha }}
-          files: |
-            release_assets/OxygenLowsSoftware_Installer.exe
-            release_assets/OxygenLowsSoftware.apk
-            release_assets/OxygenLowsSoftware.iso
+      - name: Upload OS ISO to Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.version.outputs.tag_name }}" OS/Output/OxygenLowsSoftware.iso --clobber
