@@ -3480,7 +3480,7 @@ export const en = {
     update: "Update",
     installResolving: "Resolving dependencies...",
     installDownloading: "Downloading package...",
-    installingPackage: "Installing wheels...",
+    installingPackage: "Installing packages...",
     installComplete: "Installed",
   },
 } as const;

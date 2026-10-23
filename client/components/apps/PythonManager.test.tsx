@@ -59,6 +59,14 @@ vi.mock("@/services/llmRunnerService", () => ({
       ],
     }),
     installPythonDependency: vi.fn().mockResolvedValue({ success: true, package: "airllm" }),
+    getPythonInstallProgress: vi.fn().mockResolvedValue({
+      package: "airllm",
+      status: "completed",
+      percent: 100,
+      stage: "Installed",
+      error: null,
+      log: "",
+    }),
     clearPythonLogs: vi.fn().mockResolvedValue({ status: "ok", cleared: true }),
     restartServer: vi.fn().mockResolvedValue({ success: true }),
     getDesktopServerInfo: vi.fn().mockResolvedValue({

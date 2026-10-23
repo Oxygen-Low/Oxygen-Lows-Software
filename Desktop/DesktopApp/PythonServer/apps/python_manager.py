@@ -5,6 +5,7 @@ import subprocess
 import importlib.metadata
 import re
 import logging
+import threading
 
 logger = logging.getLogger("PythonServer.PythonManager")
 
@@ -12,6 +13,16 @@ METADATA = {
     "name": "Python Manager",
     "description": "Monitors Python runtime status, tracks dependencies, and manages server logs for Oxygen Low's Software.",
     "version": "1.0.0"
+}
+
+INSTALL_LOCK = threading.Lock()
+CURRENT_INSTALL = {
+    "package": None,
+    "status": "idle",
+    "percent": 0.0,
+    "stage": "",
+    "error": None,
+    "log": ""
 }
 
 def register_app():
@@ -165,7 +176,7 @@ def action_list_dependencies(params=None):
     }
 
 def action_install_dependency(params=None):
-    """Installs or upgrades a Python dependency into the active virtual environment."""
+    """Installs or upgrades a Python dependency asynchronously into the active virtual environment."""
     params = params or {}
     pkg_name = params.get("package", "").strip()
     if not pkg_name:
@@ -175,41 +186,98 @@ def action_install_dependency(params=None):
     if not re.match(r"^[a-zA-Z0-9_\-\.\=\>\<~]+$", pkg_name):
         raise ValueError(f"Invalid package name format: '{pkg_name}'")
 
-    logger.info(f"Initiating installation of '{pkg_name}' into virtualenv...")
-    cmd = [sys.executable, "-m", "pip", "install", pkg_name]
-    try:
-        proc = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-        success = (proc.returncode == 0)
-        if success:
-            logger.info(f"Successfully installed package '{pkg_name}'")
-        else:
-            logger.warning(f"Failed to install '{pkg_name}': {proc.stderr[:300]}")
-        return {
-            "success": success,
+    with INSTALL_LOCK:
+        if CURRENT_INSTALL["status"] == "installing":
+            if CURRENT_INSTALL["package"] == pkg_name:
+                return {"success": True, "status": "installing", "package": pkg_name}
+            raise ValueError(f"Installation of '{CURRENT_INSTALL['package']}' is already in progress.")
+
+        CURRENT_INSTALL.update({
             "package": pkg_name,
-            "exit_code": proc.returncode,
-            "stdout": proc.stdout[-1500:],
-            "stderr": proc.stderr[-1500:]
-        }
-    except subprocess.TimeoutExpired:
-        logger.error(f"Timed out installing package '{pkg_name}'")
-        return {
-            "success": False,
-            "package": pkg_name,
-            "error": "Installation timed out after 300 seconds"
-        }
-    except Exception as e:
-        logger.error(f"Error during installation of '{pkg_name}': {e}", exc_info=True)
-        return {
-            "success": False,
-            "package": pkg_name,
-            "error": str(e)
-        }
+            "status": "installing",
+            "percent": 10.0,
+            "stage": f"Starting installation of '{pkg_name}'...",
+            "error": None,
+            "log": ""
+        })
+
+    def _worker():
+        global CURRENT_INSTALL
+        logger.info(f"Initiating installation of '{pkg_name}' into virtualenv...")
+        cmd = [sys.executable, "-m", "pip", "install", "--no-input", pkg_name]
+        output_lines = []
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                universal_newlines=True
+            )
+
+            if proc.stdout:
+                for line in proc.stdout:
+                    clean = line.strip()
+                    if not clean:
+                        continue
+                    output_lines.append(clean)
+                    lower = clean.lower()
+
+                    with INSTALL_LOCK:
+                        CURRENT_INSTALL["log"] = clean
+                        if "collecting" in lower or "requirement already satisfied" in lower:
+                            CURRENT_INSTALL["percent"] = max(CURRENT_INSTALL["percent"], 25.0)
+                            CURRENT_INSTALL["stage"] = "Collecting packages..."
+                        elif "downloading" in lower:
+                            CURRENT_INSTALL["percent"] = min(70.0, max(CURRENT_INSTALL["percent"], 35.0) + 4.0)
+                            CURRENT_INSTALL["stage"] = "Downloading package..."
+                        elif "installing build dependencies" in lower or "getting requirements" in lower:
+                            CURRENT_INSTALL["percent"] = max(CURRENT_INSTALL["percent"], 72.0)
+                            CURRENT_INSTALL["stage"] = "Preparing packages..."
+                        elif "building wheel" in lower:
+                            CURRENT_INSTALL["percent"] = max(CURRENT_INSTALL["percent"], 80.0)
+                            CURRENT_INSTALL["stage"] = "Building wheels..."
+                        elif "installing collected packages" in lower:
+                            CURRENT_INSTALL["percent"] = max(CURRENT_INSTALL["percent"], 88.0)
+                            CURRENT_INSTALL["stage"] = "Installing packages..."
+                        elif "successfully installed" in lower:
+                            CURRENT_INSTALL["percent"] = 100.0
+                            CURRENT_INSTALL["stage"] = "Installed"
+
+            proc.wait(timeout=300)
+            success = (proc.returncode == 0)
+
+            with INSTALL_LOCK:
+                if success:
+                    CURRENT_INSTALL["status"] = "completed"
+                    CURRENT_INSTALL["percent"] = 100.0
+                    CURRENT_INSTALL["stage"] = "Installed"
+                    logger.info(f"Successfully installed package '{pkg_name}'")
+                else:
+                    CURRENT_INSTALL["status"] = "error"
+                    err_msg = "\n".join(output_lines[-10:]) if output_lines else f"Process exited with code {proc.returncode}"
+                    CURRENT_INSTALL["error"] = err_msg
+                    logger.warning(f"Failed to install '{pkg_name}': {err_msg[:300]}")
+        except subprocess.TimeoutExpired:
+            with INSTALL_LOCK:
+                CURRENT_INSTALL["status"] = "error"
+                CURRENT_INSTALL["error"] = "Installation timed out after 300 seconds."
+            logger.error(f"Timed out installing package '{pkg_name}'")
+        except Exception as e:
+            with INSTALL_LOCK:
+                CURRENT_INSTALL["status"] = "error"
+                CURRENT_INSTALL["error"] = str(e)
+            logger.error(f"Error installing '{pkg_name}': {e}", exc_info=True)
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    return {"success": True, "status": "started", "package": pkg_name}
+
+def action_get_install_progress(params=None):
+    """Retrieves the current background package installation progress."""
+    with INSTALL_LOCK:
+        return dict(CURRENT_INSTALL)
 
 def action_get_logs(params=None):
     """Retrieves server logs from the in-memory ring buffer with optional filtering."""

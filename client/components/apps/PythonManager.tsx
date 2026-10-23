@@ -122,64 +122,76 @@ export function PythonManagerApp() {
       },
     }));
 
-    const interval = setInterval(() => {
-      setInstallProgress((prev) => {
-        const cur = prev[pkgName]?.progress || 10;
-        if (cur >= 92) return prev;
-        const next = Math.min(92, cur + Math.max(1, Math.floor((92 - cur) * 0.12)));
-        let stage = t("pythonManager.installResolving", undefined, "Resolving dependencies...");
-        if (next > 25 && next <= 65) {
-          stage = t("pythonManager.installDownloading", undefined, "Downloading package...");
-        } else if (next > 65) {
-          stage = t("pythonManager.installingPackage", undefined, "Installing wheels...");
-        }
-        return {
-          ...prev,
-          [pkgName]: { progress: next, stage },
-        };
-      });
-    }, 350);
-
     toast.info(t("pythonManager.installStarted", { name: pkgName }, `Installing '${pkgName}' into isolated venv...`));
+
     try {
       const res = await llmRunnerService.installPythonDependency(pkgName);
-      clearInterval(interval);
-      if (res.success) {
-        setInstallProgress((prev) => ({
-          ...prev,
-          [pkgName]: {
-            progress: 100,
-            stage: t("pythonManager.installComplete", undefined, "Installed"),
-          },
-        }));
-        toast.success(t("pythonManager.installSuccess", { name: pkgName }, `Successfully installed '${pkgName}'!`));
-        await fetchOverviewData();
-        setTimeout(() => {
-          setInstallProgress((prev) => {
-            const copy = { ...prev };
-            delete copy[pkgName];
-            return copy;
-          });
-        }, 1200);
-      } else {
+
+      // If the backend runs asynchronously, poll real progress
+      if (res.status === "started" || res.status === "installing") {
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            clearInterval(pollInterval);
+            reject(new Error("Installation timed out after 300 seconds."));
+          }, 300000);
+
+          const pollInterval = setInterval(async () => {
+            try {
+              const info = await llmRunnerService.getPythonInstallProgress();
+              if (info && info.package === pkgName) {
+                if (info.status === "installing") {
+                  setInstallProgress((prev) => ({
+                    ...prev,
+                    [pkgName]: {
+                      progress: Math.max(10, Math.min(95, Math.round(info.percent || 15))),
+                      stage: info.stage || t("pythonManager.installingPackage", undefined, "Installing packages..."),
+                    },
+                  }));
+                } else if (info.status === "completed") {
+                  clearInterval(pollInterval);
+                  clearTimeout(timeout);
+                  resolve();
+                } else if (info.status === "error") {
+                  clearInterval(pollInterval);
+                  clearTimeout(timeout);
+                  reject(new Error(info.error || "Package installation failed"));
+                }
+              }
+            } catch {
+              // Ignore temporary poll network errors
+            }
+          }, 500);
+        });
+      } else if (!res.success) {
+        throw new Error(res.error || res.stderr?.slice(0, 150) || "Check logs for details");
+      }
+
+      setInstallProgress((prev) => ({
+        ...prev,
+        [pkgName]: {
+          progress: 100,
+          stage: t("pythonManager.installComplete", undefined, "Installed"),
+        },
+      }));
+      toast.success(t("pythonManager.installSuccess", { name: pkgName }, `Successfully installed '${pkgName}'!`));
+      await fetchOverviewData();
+      setTimeout(() => {
         setInstallProgress((prev) => {
           const copy = { ...prev };
           delete copy[pkgName];
           return copy;
         });
-        toast.error(
-          t("pythonManager.installFailed", { name: pkgName }, `Failed to install '${pkgName}': `) +
-            (res.error || res.stderr?.slice(0, 150) || "Check logs for details"),
-        );
-      }
+      }, 1200);
     } catch (err: any) {
-      clearInterval(interval);
       setInstallProgress((prev) => {
         const copy = { ...prev };
         delete copy[pkgName];
         return copy;
       });
-      toast.error(err.message || `Failed to install '${pkgName}'`);
+      toast.error(
+        t("pythonManager.installFailed", { name: pkgName }, `Failed to install '${pkgName}': `) +
+          (err.message || "Check logs for details"),
+      );
     } finally {
       setInstallingPackage(null);
     }

@@ -355,8 +355,19 @@ class LLMRunnerService {
 
   public async installPythonDependency(
     pkg: string,
-  ): Promise<{ success: boolean; package: string; stdout?: string; stderr?: string; error?: string }> {
+  ): Promise<{ success: boolean; package: string; status?: string; stdout?: string; stderr?: string; error?: string }> {
     return this.callAction("python_manager", "install_dependency", { package: pkg });
+  }
+
+  public async getPythonInstallProgress(): Promise<{
+    package: string | null;
+    status: "idle" | "installing" | "completed" | "error";
+    percent: number;
+    stage: string;
+    error: string | null;
+    log: string;
+  }> {
+    return this.callAction("python_manager", "get_install_progress");
   }
 
   public async getPythonLogs(

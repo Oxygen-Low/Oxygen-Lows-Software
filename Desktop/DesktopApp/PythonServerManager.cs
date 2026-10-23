@@ -16,7 +16,7 @@ public class PythonServerManager
     public static PythonServerManager Instance => _instance.Value;
 
     private Process? _serverProcess;
-    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(2) };
+    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromMinutes(10) };
     private readonly SemaphoreSlim _startLock = new(1, 1);
     private TaskCompletionSource<bool>? _readyTcs;
 
