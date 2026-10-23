@@ -3459,7 +3459,7 @@ export const en = {
     loadedApps: "Loaded Apps",
     statusRunning: "Running",
     statusStarting: "Starting...",
-    statusRestarting: "Restarting Server...",
+    statusRestarting: "Restarting",
     statusStopped: "Stopped",
     statusOffline: "Offline",
     statusFailed: "Failed",
@@ -3474,6 +3474,14 @@ export const en = {
     depsUnavailableTitle: "Dependencies Unavailable",
     depsUnavailableDesc: "Start the Python background server to detect and manage installed AI inference libraries.",
     loadingDependencies: "Querying installed packages...",
+    dependenciesTitle: "Dependencies",
+    installMissing: "Install Missing Packages",
+    install: "Install",
+    update: "Update",
+    installResolving: "Resolving dependencies...",
+    installDownloading: "Downloading package...",
+    installingPackage: "Installing wheels...",
+    installComplete: "Installed",
   },
 } as const;
 

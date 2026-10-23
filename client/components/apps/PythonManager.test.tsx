@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { PythonManagerApp } from "./PythonManager";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 
@@ -81,21 +81,100 @@ describe("PythonManagerApp", () => {
     vi.clearAllMocks();
   });
 
-  it("renders Python Manager header, metrics, and dependencies", async () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("renders metrics and dependencies without AI badges, CUDA section, or redundant header", async () => {
     render(
       <LanguageProvider>
         <PythonManagerApp />
       </LanguageProvider>,
     );
 
-    expect(screen.getAllByText("Python Manager")[0]).toBeDefined();
-    expect(screen.getByText("Desktop Exclusive")).toBeDefined();
+    // App header, desktop exclusive badge, CUDA section, virtualenv box, and AI fluff should be removed
+    expect(screen.queryByText("Desktop Exclusive")).toBeNull();
+    expect(screen.queryByText("CUDA GPU Acceleration")).toBeNull();
+    expect(screen.queryByText("Isolated Virtual Environment Details")).toBeNull();
+    expect(screen.queryByText(/Required packages for GGUF/i)).toBeNull();
 
+    // Dependencies title should be displayed
     await waitFor(() => {
+      expect(screen.getByText("Dependencies")).toBeDefined();
       expect(screen.getByText("torch")).toBeDefined();
       expect(screen.getByText("v2.6.0")).toBeDefined();
       expect(screen.getByText("airllm")).toBeDefined();
       expect(screen.getByText("Missing")).toBeDefined();
+    });
+
+    // Server status should be static text "Running" without ping/blink dot
+    await waitFor(() => {
+      expect(screen.getByText("Running")).toBeDefined();
+    });
+    expect(document.querySelector(".animate-ping")).toBeNull();
+  });
+
+  it("changes running to restarting when restart is triggered", async () => {
+    const { llmRunnerService } = await import("@/services/llmRunnerService");
+    let resolveRestart: (val: any) => void;
+    vi.mocked(llmRunnerService.restartServer).mockImplementation(
+      () => new Promise((resolve) => { resolveRestart = resolve; }),
+    );
+
+    render(
+      <LanguageProvider>
+        <PythonManagerApp />
+      </LanguageProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Running")).toBeDefined();
+    });
+
+    const restartBtn = screen.getByText("Restart Python Server");
+    fireEvent.click(restartBtn);
+
+    // Status should switch to "Restarting" (both in button and server status metric)
+    await waitFor(() => {
+      expect(screen.getAllByText("Restarting").length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Resolve restart
+    resolveRestart!({ success: true });
+    await waitFor(() => {
+      expect(screen.getByText("Running")).toBeDefined();
+    });
+  });
+
+  it("shows progress bar when installing a dependency", async () => {
+    const { llmRunnerService } = await import("@/services/llmRunnerService");
+    let resolveInstall: (val: any) => void;
+    vi.mocked(llmRunnerService.installPythonDependency).mockImplementation(
+      () => new Promise((resolve) => { resolveInstall = resolve; }),
+    );
+
+    render(
+      <LanguageProvider>
+        <PythonManagerApp />
+      </LanguageProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("airllm")).toBeDefined();
+    });
+
+    const installBtn = screen.getByRole("button", { name: /^Install$/i });
+    fireEvent.click(installBtn);
+
+    // Progress bar and stage should appear
+    await waitFor(() => {
+      expect(screen.getByText(/Resolving dependencies/i)).toBeDefined();
+      expect(screen.getByText(/10%/)).toBeDefined();
+    });
+
+    resolveInstall!({ success: true, package: "airllm" });
+    await waitFor(() => {
+      expect(screen.getByText(/Installed/i)).toBeDefined();
     });
   });
 
