@@ -556,6 +556,9 @@ export async function packageModelForStorage(
   }
 
   const path = `${userId || "public"}/${Date.now()}_${fileName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+  if (path.includes('..')) {
+    throw new Error('Invalid path');
+  }
   const { data, error } = await storage.from("room-models").upload(path, buffer, {
     contentType: "model/gltf-binary",
   });
@@ -593,6 +596,9 @@ export async function loadModelFromRoomObject(
   }
 
   if (customProps.modelStoragePath) {
+    if (customProps.modelStoragePath.includes('..')) {
+      throw new Error('Invalid storage path');
+    }
     const { data: blob, error } = await storage
       .from("room-models")
       .download(customProps.modelStoragePath);

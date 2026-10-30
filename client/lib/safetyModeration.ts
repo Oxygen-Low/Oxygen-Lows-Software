@@ -57,5 +57,15 @@ export function handleSafetyModeration(
     return true;
   }
 
+  // 4. Moderation service temporarily unavailable (fail-closed)
+  if (data.code === "MODERATION_SERVICE_UNAVAILABLE") {
+    const message = t
+      ? t("safety.serviceUnavailable")
+      : data.error || "Safety moderation service is temporarily unavailable. Please try again shortly.";
+
+    toast.error(message, { duration: 5000 });
+    return true;
+  }
+
   return false;
 }

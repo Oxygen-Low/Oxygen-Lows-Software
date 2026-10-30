@@ -1,5 +1,5 @@
-# Dependencies for Python background server and user-defined Python apps
+# Dependencies for Python background server
 # Place package names below. The desktop app will automatically install them into its isolated virtual environment.
-# Example:
-# requests>=2.31.0
-# pydantic>=2.0.0
+
+# Process & Hardware Telemetry (used by server.py and python_manager.py)
+psutil>=5.9.0

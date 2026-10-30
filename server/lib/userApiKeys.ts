@@ -145,6 +145,7 @@ export async function setUserApiKey(
   rawKey: string,
 ): Promise<{ success: boolean; prefix: string; provider: string }> {
   const cleanUserId = String(userId).trim();
+  if (!provider || typeof provider !== 'string') return null;
   const cleanProvider = provider.toLowerCase().trim();
   const cleanKey = rawKey.trim();
 

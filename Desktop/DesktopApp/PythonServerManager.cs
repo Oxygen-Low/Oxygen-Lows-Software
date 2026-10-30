@@ -15,15 +15,16 @@ public class PythonServerManager
     private static readonly Lazy<PythonServerManager> _instance = new(() => new PythonServerManager());
     public static PythonServerManager Instance => _instance.Value;
 
+    public const int DefaultPort = 54123;
     private Process? _serverProcess;
-    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(2) };
+    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromMinutes(10) };
     private readonly SemaphoreSlim _startLock = new(1, 1);
     private TaskCompletionSource<bool>? _readyTcs;
 
     public string AuthToken { get; private set; } = "";
 
     public bool IsRunning { get; private set; }
-    public int Port { get; private set; } = 54123;
+    public int Port { get; private set; } = DefaultPort;
     public string ServerUrl => $"http://127.0.0.1:{Port}";
     public string VenvPath { get; }
     public string Status { get; private set; } = "NotStarted";
@@ -49,6 +50,32 @@ public class PythonServerManager
         OnStatusChanged?.Invoke(status);
     }
 
+    private void CleanupOrphanedPythonProcesses()
+    {
+        try
+        {
+            string venvScript = Path.Combine(VenvPath, "Scripts", "python.exe");
+            foreach (var proc in Process.GetProcessesByName("python"))
+            {
+                try
+                {
+                    string? mainModule = null;
+                    try { mainModule = proc.MainModule?.FileName; } catch { }
+                    if (!string.IsNullOrEmpty(mainModule) &&
+                        string.Equals(Path.GetFullPath(mainModule), Path.GetFullPath(venvScript), StringComparison.OrdinalIgnoreCase))
+                    {
+                        proc.Kill(entireProcessTree: true);
+                    }
+                }
+                catch { }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[PythonServerManager] CleanupOrphanedPythonProcesses error: {ex.Message}");
+        }
+    }
+
     public async Task<bool> StartAsync()
     {
         await _startLock.WaitAsync();
@@ -56,8 +83,16 @@ public class PythonServerManager
         {
             if (IsRunning && _serverProcess != null && !_serverProcess.HasExited)
             {
-                return true;
+                bool isStillHealthy = await PollHealthCheckAsync(TimeSpan.FromSeconds(1));
+                if (isStillHealthy)
+                {
+                    return true;
+                }
             }
+
+            // Ensure any previous process or orphan is cleaned up
+            Stop();
+            Port = DefaultPort;
 
             SetStatus("Initializing");
 
@@ -99,6 +134,7 @@ public class PythonServerManager
                 RedirectStandardInput = true
             };
 
+            startInfo.ArgumentList.Add("-u");
             startInfo.ArgumentList.Add(canonicalScript);
             startInfo.ArgumentList.Add("--parent-pid");
             startInfo.ArgumentList.Add(Environment.ProcessId.ToString());
@@ -109,6 +145,7 @@ public class PythonServerManager
             AuthToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
             _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", AuthToken);
             startInfo.Environment["OXYGEN_PYTHON_TOKEN"] = AuthToken;
+            startInfo.Environment["PYTHONUNBUFFERED"] = "1";
 
             _serverProcess = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
 
@@ -157,13 +194,13 @@ public class PythonServerManager
 
             // Wait for handshake or health check
             var readyTask = _readyTcs.Task;
-            var timeoutTask = Task.Delay(10000);
+            var timeoutTask = Task.Delay(15000);
 
             var completedTask = await Task.WhenAny(readyTask, timeoutTask);
             if (completedTask == readyTask && await readyTask)
             {
                 // Verify with health check
-                bool healthy = await PollHealthCheckAsync(TimeSpan.FromSeconds(3));
+                bool healthy = await PollHealthCheckAsync(TimeSpan.FromSeconds(5));
                 if (healthy)
                 {
                     IsRunning = true;
@@ -173,11 +210,32 @@ public class PythonServerManager
                 }
             }
 
+            try
+            {
+                if (_serverProcess != null && !_serverProcess.HasExited)
+                {
+                    _serverProcess.Kill(entireProcessTree: true);
+                    _serverProcess.Dispose();
+                    _serverProcess = null;
+                }
+            }
+            catch { }
+
             SetStatus("Failed", "Timed out waiting for Python server handshake.");
             return false;
         }
         catch (Exception ex)
         {
+            try
+            {
+                if (_serverProcess != null && !_serverProcess.HasExited)
+                {
+                    _serverProcess.Kill(entireProcessTree: true);
+                    _serverProcess.Dispose();
+                    _serverProcess = null;
+                }
+            }
+            catch { }
             SetStatus("Failed", ex.Message);
             return false;
         }
@@ -196,7 +254,11 @@ public class PythonServerManager
                 try
                 {
                     // Attempt graceful shutdown
-                    _ = _httpClient.PostAsync($"{ServerUrl}/shutdown", new StringContent("{}", Encoding.UTF8, "application/json"));
+                    using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+                    using var req = new HttpRequestMessage(HttpMethod.Post, $"{ServerUrl}/shutdown");
+                    req.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+                    req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", AuthToken);
+                    _ = _httpClient.SendAsync(req, cts.Token);
                     _serverProcess.StandardInput.Close();
                 }
                 catch { }
@@ -216,19 +278,58 @@ public class PythonServerManager
         }
         finally
         {
+            CleanupOrphanedPythonProcesses();
+            Port = DefaultPort;
             IsRunning = false;
             SetStatus("Stopped");
         }
     }
 
+    public async Task<(bool Success, JsonElement Data, string? Error)> CallActionAsync(string appId, string action, string jsonParams)
+    {
+        if (!IsRunning)
+        {
+            return (false, default, $"Python server is not running (status: {Status})");
+        }
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{ServerUrl}/api/apps/{appId}/{action}");
+            request.Content = new StringContent(jsonParams, Encoding.UTF8, "application/json");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", AuthToken);
+
+            var res = await _httpClient.SendAsync(request);
+            string responseText = await res.Content.ReadAsStringAsync();
+
+            if (!res.IsSuccessStatusCode)
+            {
+                return (false, default, $"Python server returned {res.StatusCode}: {responseText}");
+            }
+
+            using var doc = JsonDocument.Parse(responseText);
+            var root = doc.RootElement.Clone();
+            if (root.TryGetProperty("data", out var dataEl))
+            {
+                return (true, dataEl.Clone(), null);
+            }
+            return (true, root, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, default, ex.Message);
+        }
+    }
+
     private async Task<bool> PollHealthCheckAsync(TimeSpan timeout)
     {
-        var cts = new CancellationTokenSource(timeout);
+        using var cts = new CancellationTokenSource(timeout);
         while (!cts.Token.IsCancellationRequested)
         {
             try
             {
-                var response = await _httpClient.GetAsync($"{ServerUrl}/health", cts.Token);
+                using var req = new HttpRequestMessage(HttpMethod.Get, $"{ServerUrl}/health");
+                req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", AuthToken);
+                var response = await _httpClient.SendAsync(req, cts.Token);
                 if (response.IsSuccessStatusCode)
                 {
                     return true;
@@ -236,7 +337,7 @@ public class PythonServerManager
             }
             catch
             {
-                await Task.Delay(200);
+                try { await Task.Delay(200, cts.Token); } catch { break; }
             }
         }
         return false;
@@ -302,7 +403,9 @@ public class PythonServerManager
         venvProcess.StartInfo.ArgumentList.Add(Path.GetFullPath(VenvPath));
 
         venvProcess.Start();
-        await venvProcess.WaitForExitAsync();
+        var venvOutTask = venvProcess.StandardOutput.ReadToEndAsync();
+        var venvErrTask = venvProcess.StandardError.ReadToEndAsync();
+        await Task.WhenAll(venvOutTask, venvErrTask, venvProcess.WaitForExitAsync());
 
         if (venvProcess.ExitCode == 0 && File.Exists(venvPython))
         {
@@ -366,9 +469,18 @@ public class PythonServerManager
         pipProcess.StartInfo.ArgumentList.Add("--disable-pip-version-check");
 
         pipProcess.Start();
-        await pipProcess.WaitForExitAsync();
+        var pipOutTask = pipProcess.StandardOutput.ReadToEndAsync();
+        var pipErrTask = pipProcess.StandardError.ReadToEndAsync();
+        var waitTask = pipProcess.WaitForExitAsync();
 
-        if (pipProcess.ExitCode == 0)
+        var allTasks = Task.WhenAll(pipOutTask, pipErrTask, waitTask);
+        var completed = await Task.WhenAny(allTasks, Task.Delay(TimeSpan.FromSeconds(60)));
+        if (completed != allTasks && !pipProcess.HasExited)
+        {
+            try { pipProcess.Kill(true); } catch { }
+            Debug.WriteLine("[PythonServerManager] Timed out installing requirements. Continuing server startup.");
+        }
+        else if (pipProcess.ExitCode == 0)
         {
             await File.WriteAllTextAsync(hashFile, currentHash);
         }

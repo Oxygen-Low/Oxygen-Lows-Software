@@ -105,6 +105,11 @@ export const ALL_INTERNAL_NAV_LINKS: InternalLinkItem[] = [
     description: "Community hardware, browser, and gaming surveys",
   },
   {
+    href: "/apps/datasets",
+    label: "Datasets",
+    description: "Create, refine, and import datasets for AI training",
+  },
+  {
     href: "/games",
     label: "Games",
     description: "Classic single-player and multiplayer web games",
@@ -302,7 +307,45 @@ export const SEO_ROUTES: Record<string, RouteSeoData> = {
         label: "VPN",
         description: "VPN and proxy traffic manager",
       },
+      {
+        href: "/apps/datasets",
+        label: "Datasets",
+        description: "Create, refine, and import datasets for AI training",
+      },
     ],
+  },
+  "/apps/datasets": {
+    path: "/apps/datasets",
+    title: "Datasets - Oxygen Low's Software",
+    description:
+      "Create, refine, and import datasets for AI model fine-tuning and post-training (DPO) using AI generation or HuggingFace Hub imports with Parquet & JSONL export.",
+    canonicalPath: "/apps/datasets",
+    h1: "AI Training Datasets Manager",
+    h2: [
+      "Generate Synthetic Datasets with AI",
+      "Import Datasets from HuggingFace Hub",
+      "Refine & Export Parquet / JSONL",
+    ],
+    keywords: [
+      "ai datasets",
+      "synthetic dataset generator",
+      "huggingface datasets",
+      "llm fine tuning",
+      "dpo dataset",
+      "parquet dataset",
+    ],
+    ogType: "website",
+    breadcrumbs: [
+      { name: "Home", url: "/" },
+      { name: "Apps", url: "/apps" },
+      { name: "Datasets", url: "/apps/datasets" },
+    ],
+    internalLinks: [
+      { href: "/apps", label: "All Apps" },
+      { href: "/apps/chatbot", label: "AI Chatbot" },
+      { href: "/apps/llm-agent", label: "LLM Agent" },
+    ],
+    softwareType: "AI Dataset Creation & Management Tool",
   },
   "/apps/chatbot": {
     path: "/apps/chatbot",

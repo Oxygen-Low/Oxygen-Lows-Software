@@ -113,8 +113,14 @@ describe("All Locales Verification", () => {
       expect(t("account.researchAgentDefaultTitle")).toBeTruthy();
       expect(t("account.researchSummarizerDefaultTitle")).toBeTruthy();
       expect(t("account.registeredModels")).toBeTruthy();
+      expect(t("account.freeModels")).toBeTruthy();
+      expect(t("account.freeModelsNotice")).toBeTruthy();
+      expect(t("chatbot.authRequiredForFree")).toBeTruthy();
+      expect(t("chatbot.freeLimitExceeded")).toBeTruthy();
       expect(t("account.standardModels")).toBeTruthy();
       expect(t("account.questPollenNotice")).toBeTruthy();
+      expect(t("account.paidModels")).toBeTruthy();
+      expect(t("account.paidPollenNotice")).toBeTruthy();
       expect(t("account.customModels")).toBeTruthy();
 
       // Test AI generation keys in characters
@@ -380,7 +386,9 @@ type _AssertKoMusicStudio = AssertTrue<ExactKeys<typeof en.musicStudio, typeof k
 type _AssertRuMusicStudio = AssertTrue<ExactKeys<typeof en.musicStudio, typeof ru.musicStudio>>;
 type _AssertZhMusicStudio = AssertTrue<ExactKeys<typeof en.musicStudio, typeof zhCN.musicStudio>>;
 
-
-
-
-
+// 12. datasets leaf keys exact parity across all 6 locales
+type _AssertEsDatasets = AssertTrue<ExactKeys<typeof en.datasets, typeof es.datasets>>;
+type _AssertJaDatasets = AssertTrue<ExactKeys<typeof en.datasets, typeof ja.datasets>>;
+type _AssertKoDatasets = AssertTrue<ExactKeys<typeof en.datasets, typeof ko.datasets>>;
+type _AssertRuDatasets = AssertTrue<ExactKeys<typeof en.datasets, typeof ru.datasets>>;
+type _AssertZhDatasets = AssertTrue<ExactKeys<typeof en.datasets, typeof zhCN.datasets>>;

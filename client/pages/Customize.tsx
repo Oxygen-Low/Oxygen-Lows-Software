@@ -327,6 +327,9 @@ export default function Customize() {
 
   const handleSelectBackgroundImage = async (track: PlaylistTrack, file: any) => {
     try {
+      if (file.name.includes('..')) {
+        throw new Error("Invalid file name");
+      }
       const { data, error } = await storage.from("Storage").download(file.name);
       if (error || !data) {
         toast({
@@ -357,6 +360,9 @@ export default function Customize() {
 
     if (source) {
       try {
+        if (source.includes('..')) {
+          throw new Error('Invalid path');
+        }
         const { data } = await storage.from("Storage").download(source);
         if (data) {
           loadedSrc = URL.createObjectURL(data);

@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/lib/db";
 import { getLocalSession } from "@/lib/localSession";
 import { fetchPollinationsBalance } from "@/services/pollinationsClient";
+import { llmRunnerService } from "@/services/llmRunnerService";
+import { isDesktopBridgeAvailable } from "@/lib/desktopBridge";
 import {
   encryptApiKey,
   decryptApiKey,
@@ -15,10 +17,37 @@ export interface Model {
   model_id: string;
   name?: string;
   rate?: string;
-  category?: "standard" | "custom";
+  category?: "free" | "standard" | "paid" | "custom";
+  isPaid?: boolean;
   isCustom?: boolean;
   isLocal?: boolean;
   isShared?: boolean;
+}
+
+export interface FreeModelUsageItem {
+  id: string;
+  name: string;
+  tierName: string;
+  rateDisplay?: string;
+  promptPointsPer1k?: number;
+  completionPointsPer1k?: number;
+  baseDailyLimit?: number;
+  effectiveLimit?: number;
+  outputMultiplier?: number;
+  usedTokens?: number;
+  remainingTokens?: number;
+}
+
+export interface FreeUsageData {
+  userId: string;
+  ip: string;
+  date: string;
+  userCountOnIp: number;
+  baseDailyPoints?: number;
+  effectiveLimitPoints?: number;
+  usedPoints?: number;
+  remainingPoints?: number;
+  models: Record<string, FreeModelUsageItem>;
 }
 
 export interface LocalProviderStatus {
@@ -51,11 +80,28 @@ export const SUPPORTED_PROVIDERS: ProviderInfo[] = [
 
 export const BUILTIN_MODELS: Model[] = [
   {
+    id: "free:deepseek/deepseek-v4.1-flash",
     provider: "pollinations",
-    model_id: "inclusionai/ling-3.1-flash",
-    name: "Free",
-    rate: "infinite requests/$1",
-    category: "standard",
+    model_id: "deepseek/deepseek-v4.1-flash",
+    name: "Best",
+    rate: "~0.04 pts / 1k",
+    category: "free",
+  },
+  {
+    id: "free:openai/gpt-6-luna",
+    provider: "pollinations",
+    model_id: "openai/gpt-6-luna",
+    name: "Standard",
+    rate: "~0.03 pts / 1k",
+    category: "free",
+  },
+  {
+    id: "free:openai/gpt-oss-20b",
+    provider: "pollinations",
+    model_id: "openai/gpt-oss-20b",
+    name: "Cheap",
+    rate: "~0.01 pts / 1k",
+    category: "free",
   },
   {
     provider: "pollinations",
@@ -92,6 +138,46 @@ export const BUILTIN_MODELS: Model[] = [
     rate: "around 20 requests/$1",
     category: "standard",
   },
+  {
+    provider: "pollinations",
+    model_id: "xiaomi/mimo-v2.5",
+    name: "Cheap",
+    rate: "58.8K/$1",
+    category: "paid",
+    isPaid: true,
+  },
+  {
+    provider: "pollinations",
+    model_id: "anthropic/claude-haiku-5.5",
+    name: "Fast",
+    rate: "1.7K/$1",
+    category: "paid",
+    isPaid: true,
+  },
+  {
+    provider: "pollinations",
+    model_id: "google/gemini-3.8-flash",
+    name: "Balanced",
+    rate: "300/$1",
+    category: "paid",
+    isPaid: true,
+  },
+  {
+    provider: "pollinations",
+    model_id: "google/gemini-4-argon",
+    name: "Smart",
+    rate: "45/$1",
+    category: "paid",
+    isPaid: true,
+  },
+  {
+    provider: "pollinations",
+    model_id: "anthropic/claude-fable-5.1",
+    name: "Smartest",
+    rate: "7/$1",
+    category: "paid",
+    isPaid: true,
+  },
 ];
 
 export const POPULAR_PRESETS: Record<
@@ -99,18 +185,24 @@ export const POPULAR_PRESETS: Record<
   Array<{ model_id: string; name: string }>
 > = {
   pollinations: [
-    { model_id: "inclusionai/ling-3.1-flash", name: "Free" },
+    { model_id: "deepseek/deepseek-v4.1-flash", name: "Best" },
     { model_id: "amazon/nova-micro-v1", name: "Cheap" },
     { model_id: "openai/gpt-6-luna", name: "Fast" },
     { model_id: "openai/gpt-5.6-terra", name: "Balanced" },
     { model_id: "openai/gpt-6.1-sol", name: "Smart" },
     { model_id: "openai/gpt-6-astra", name: "Smartest" },
+    { model_id: "openai/gpt-oss-20b", name: "Cheap" },
+    { model_id: "xiaomi/mimo-v2.5", name: "Cheap" },
+    { model_id: "anthropic/claude-haiku-5.5", name: "Fast" },
+    { model_id: "google/gemini-3.8-flash", name: "Balanced" },
+    { model_id: "google/gemini-4-argon", name: "Smart" },
+    { model_id: "anthropic/claude-fable-5.1", name: "Smartest" },
   ],
 };
 
-const DEFAULT_CHATBOT_MODEL = "inclusionai/ling-3.1-flash";
-const DEFAULT_RESEARCH_MODEL = "inclusionai/ling-3.1-flash";
-const DEFAULT_SUMMARIZER_MODEL = "inclusionai/ling-3.1-flash";
+const DEFAULT_CHATBOT_MODEL = "openai/gpt-6-luna";
+const DEFAULT_RESEARCH_MODEL = "openai/gpt-6-luna";
+const DEFAULT_SUMMARIZER_MODEL = "openai/gpt-6-luna";
 
 const LOCAL_STORAGE_KEY_POLLINATIONS = "pollinations_api_key";
 const LOCAL_STORAGE_CUSTOM_MODELS = "pollinations_custom_models";
@@ -133,8 +225,60 @@ export function useAiModels() {
       }
     });
   const [pollenBalance, setPollenBalance] = useState<number>(0);
+  const [freeUsage, setFreeUsage] = useState<FreeUsageData | null>(null);
   const [isMasterKeyActive, setIsMasterKeyActive] = useState(false);
+  const [localRunnerModel, setLocalRunnerModel] = useState<Model | null>(null);
   const loadIdRef = useRef<number>(0);
+  const isMountedRef = useRef<boolean>(true);
+
+  const checkLocalRunner = useCallback(async () => {
+    if (!isDesktopBridgeAvailable()) {
+      if (isMountedRef.current) setLocalRunnerModel(null);
+      return null;
+    }
+    try {
+      const status = await llmRunnerService.getStatus();
+      if (status?.is_active && status.active_model?.name) {
+        const item: Model = {
+          id: `local:${status.active_model.name}`,
+          provider: "local-llm-runner",
+          model_id: status.active_model.name,
+          name: `${status.active_model.name} (${status.active_model.engine_type.toUpperCase()})`,
+          rate: "Local GPU/CPU",
+          category: "custom",
+          isLocal: true,
+        };
+        if (isMountedRef.current) {
+          setLocalRunnerModel(item);
+        }
+        return item;
+      } else {
+        if (isMountedRef.current) {
+          setLocalRunnerModel(null);
+        }
+        return null;
+      }
+    } catch {
+      if (isMountedRef.current) {
+        setLocalRunnerModel(null);
+      }
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    checkLocalRunner();
+    const interval = setInterval(checkLocalRunner, 3500);
+    return () => clearInterval(interval);
+  }, [checkLocalRunner]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      loadIdRef.current++;
+    };
+  }, []);
 
   // Feature Defaults
   const [chatbotDefaultModel, setChatbotDefaultModelState] = useState<string>(
@@ -155,6 +299,7 @@ export function useAiModels() {
         const stored = localStorage.getItem(LOCAL_STORAGE_DEFAULTS);
         if (stored) {
           const parsed = JSON.parse(stored);
+          if (parsed?.research) return parsed.research;
           if (parsed?.researchAgent) return parsed.researchAgent;
         }
       } catch {}
@@ -168,6 +313,7 @@ export function useAiModels() {
       const stored = localStorage.getItem(LOCAL_STORAGE_DEFAULTS);
       if (stored) {
         const parsed = JSON.parse(stored);
+        if (parsed?.summarizer) return parsed.summarizer;
         if (parsed?.researchSummarizer) return parsed.researchSummarizer;
       }
     } catch {}
@@ -205,9 +351,14 @@ export function useAiModels() {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed.chatbot) setChatbotDefaultModelState(parsed.chatbot);
-        if (parsed.research) setResearchAgentDefaultModelState(parsed.research);
-        if (parsed.summarizer)
-          setResearchSummarizerDefaultModelState(parsed.summarizer);
+        if (parsed.research || parsed.researchAgent)
+          setResearchAgentDefaultModelState(
+            parsed.research || parsed.researchAgent,
+          );
+        if (parsed.summarizer || parsed.researchSummarizer)
+          setResearchSummarizerDefaultModelState(
+            parsed.summarizer || parsed.researchSummarizer,
+          );
       }
     } catch {}
   }, []);
@@ -268,21 +419,27 @@ export function useAiModels() {
       console.warn("Failed to load pollinations api key status", e);
     }
 
-    if (currentLoadId !== loadIdRef.current) return;
+    if (currentLoadId !== loadIdRef.current || !isMountedRef.current) return;
 
     setIsPollinationsConfigured(configured);
     setPollinationsApiKeyState(displayPrefix);
     setIsKeyLoading(false);
 
+    if (sessionToken) {
+      refreshFreeUsage(sessionToken).catch(() => {});
+    }
+
     if (configured && sessionToken) {
       try {
         const bal = await fetchPollinationsBalance(sessionToken);
-        if (currentLoadId === loadIdRef.current) {
+        if (currentLoadId === loadIdRef.current && isMountedRef.current) {
           setPollenBalance(bal);
         }
       } catch {}
     } else {
-      setPollenBalance(0);
+      if (isMountedRef.current) {
+        setPollenBalance(0);
+      }
     }
   }, []);
 
@@ -293,7 +450,7 @@ export function useAiModels() {
     setIsMasterKeyActive(!!getActiveMasterKey());
   }, [loadCustomModels, loadDefaults, loadApiKey]);
 
-  // Combine built-in models and custom models
+  // Combine built-in models, custom models, and active local runner model
   useEffect(() => {
     const combined = [...BUILTIN_MODELS];
     for (const cm of customModels) {
@@ -301,8 +458,11 @@ export function useAiModels() {
         combined.push(cm);
       }
     }
+    if (localRunnerModel && !combined.some((m) => m.model_id === localRunnerModel.model_id)) {
+      combined.unshift(localRunnerModel);
+    }
     setModels(combined);
-  }, [customModels]);
+  }, [customModels, localRunnerModel]);
 
   const refreshPollenBalance = useCallback(
     async (tokenToUse?: string) => {
@@ -313,16 +473,42 @@ export function useAiModels() {
           token = data?.session?.access_token;
         }
         if (!token) {
-          setPollenBalance(0);
+          if (isMountedRef.current) setPollenBalance(0);
           return 0;
         }
         const bal = await fetchPollinationsBalance(token);
-        setPollenBalance(bal);
+        if (isMountedRef.current) setPollenBalance(bal);
         return bal;
       } catch {
-        setPollenBalance(0);
+        if (isMountedRef.current) setPollenBalance(0);
         return 0;
       }
+    },
+    [],
+  );
+
+  const refreshFreeUsage = useCallback(
+    async (tokenToUse?: string) => {
+      try {
+        let token = tokenToUse || getLocalSession()?.access_token;
+        if (!token && supabase?.auth?.getSession) {
+          const { data } = await supabase.auth.getSession().catch(() => ({ data: null }));
+          token = data?.session?.access_token;
+        }
+        if (!token) {
+          if (isMountedRef.current) setFreeUsage(null);
+          return null;
+        }
+        const res = await fetch("/api/ai/free-usage", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMountedRef.current) setFreeUsage(data);
+          return data;
+        }
+      } catch {}
+      return null;
     },
     [],
   );
@@ -514,18 +700,46 @@ export function useAiModels() {
   }, []);
 
   const refreshModels = useCallback(async () => {
+    if (!isMountedRef.current) return;
     setIsLoading(true);
     try {
       loadCustomModels();
-      await refreshPollenBalance();
+      await Promise.allSettled([refreshPollenBalance(), refreshFreeUsage()]);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
-  }, [loadCustomModels, refreshPollenBalance]);
+  }, [loadCustomModels, refreshPollenBalance, refreshFreeUsage]);
+
+  const freeModels = useMemo(
+    () => models.filter((m) => m.category === "free"),
+    [models],
+  );
+  const standardModels = useMemo(
+    () =>
+      models.filter(
+        (m) =>
+          !m.isCustom &&
+          !m.isPaid &&
+          m.category !== "paid" &&
+          m.category !== "free",
+      ),
+    [models],
+  );
+  const paidModels = useMemo(
+    () => models.filter((m) => !m.isCustom && (m.isPaid || m.category === "paid")),
+    [models],
+  );
 
   return {
     models,
+    freeModels,
+    standardModels,
+    paidModels,
     customModels,
+    freeUsage,
+    refreshFreeUsage,
     isLoading,
     isKeyLoading,
     refreshModels,
@@ -552,12 +766,16 @@ export function useAiModels() {
     pollenBalance,
     refreshPollenBalance,
     isMasterKeyActive,
+    localRunnerModel,
+    localModels: localRunnerModel ? [localRunnerModel] : [],
+    isLocalRunnerActive: !!localRunnerModel,
+    checkLocalRunner,
     localStatus: {
       ollama: false,
       lmstudio: false,
       kobold: false,
-      desktopBridge: false,
-      totalLocal: 0,
+      desktopBridge: isDesktopBridgeAvailable(),
+      totalLocal: localRunnerModel ? 1 : 0,
     } as LocalProviderStatus,
     hordeStatus: {} as Record<string, any>,
   };

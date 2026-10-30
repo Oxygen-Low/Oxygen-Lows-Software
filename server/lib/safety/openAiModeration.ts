@@ -8,12 +8,14 @@ import path from "node:path";
 import fs from "node:fs";
 
 export const SELF_HARM_HELP_URL = "https://findahelpline.com/";
+export const POLLINATIONS_MODERATION_MODEL = "qwen/qwen3guard-gen-8b";
 
 export interface OpenAiModerationResult {
   allowed: boolean;
   category?: string;
   isSelfHarm?: boolean;
   isCsamMinorViolation?: boolean;
+  isServiceUnavailable?: boolean;
   redirectUrl?: string;
   reason?: string;
   details?: Record<string, any>;
@@ -23,26 +25,132 @@ export interface OpenAiModerationResult {
 
 export interface ModerationClientResponse {
   error: string;
-  code: "CHILD_SAFETY_POLICY_VIOLATION" | "SELF_HARM_DETECTED" | "CONTENT_POLICY_VIOLATION" | string;
+  code:
+    | "CHILD_SAFETY_POLICY_VIOLATION"
+    | "SELF_HARM_DETECTED"
+    | "CONTENT_POLICY_VIOLATION"
+    | "MODERATION_SERVICE_UNAVAILABLE"
+    | string;
   category?: string;
   redirectUrl?: string;
 }
 
+export interface Qwen3GuardParseResult {
+  safety: "Safe" | "Controversial" | "Unsafe" | "Unknown";
+  categories: string[];
+  rawText: string;
+}
+
 /**
- * Moderation categories policy mapping:
- * harassment: Blocked
- * harassment/threatening: Blocked
- * hate: Blocked
- * hate/threatening: Blocked
- * illicit: Blocked
- * illicit/violent: Blocked
- * self-harm: Blocked + redirect to help website
- * self-harm/intent: Blocked + redirect to help website
- * self-harm/instructions: Blocked + redirect to help website
- * sexual: Blocked
- * sexual/minors: Blocked + do everything CSAM detection does
- * violence: Allowed
- * violence/graphic: Blocked
+ * Parses Qwen3Guard structured model output.
+ * Standard format:
+ * Safety: [Safe | Controversial | Unsafe]
+ * Categories: [Category_Name | None]
+ */
+export function parseQwen3GuardOutput(content: string): Qwen3GuardParseResult {
+  if (!content || typeof content !== "string") {
+    return { safety: "Unknown", categories: [], rawText: "" };
+  }
+
+  const trimmed = content.trim();
+
+  // Match Safety: Safe | Controversial | Unsafe
+  const safetyMatch = trimmed.match(/Safety:\s*(Safe|Controversial|Unsafe)/i);
+  let safety: "Safe" | "Controversial" | "Unsafe" | "Unknown" = "Unknown";
+  if (safetyMatch) {
+    const rawVal = safetyMatch[1].toLowerCase();
+    if (rawVal === "safe") safety = "Safe";
+    else if (rawVal === "controversial") safety = "Controversial";
+    else if (rawVal === "unsafe") safety = "Unsafe";
+  } else {
+    if (/^safe\b/i.test(trimmed)) safety = "Safe";
+    else if (/^unsafe\b/i.test(trimmed)) safety = "Unsafe";
+    else if (/^controversial\b/i.test(trimmed)) safety = "Controversial";
+  }
+
+  // Match Categories: ...
+  const categoriesMatch = trimmed.match(/Categories:\s*([^\n\r]+)/i);
+  let categories: string[] = [];
+  if (categoriesMatch) {
+    const rawCat = categoriesMatch[1].trim();
+    if (rawCat && rawCat.toLowerCase() !== "none") {
+      categories = rawCat
+        .split(/[,;\/]+/)
+        .map((c) => c.trim())
+        .filter(Boolean);
+    }
+  }
+
+  return { safety, categories, rawText: trimmed };
+}
+
+/**
+ * Evaluates parsed Qwen3Guard verdict:
+ * Standard mode: Blocks "Unsafe" verdicts only; allows "Controversial" and "Safe".
+ * Maps self-harm to crisis resources and child/minor safety to zero-tolerance lockdown.
+ */
+export function evaluateQwen3GuardVerdict(
+  verdict: Qwen3GuardParseResult,
+  details?: Record<string, any>,
+): OpenAiModerationResult {
+  if (verdict.safety === "Safe" || verdict.safety === "Controversial") {
+    return { allowed: true, category: verdict.categories[0], details };
+  }
+
+  if (verdict.safety === "Unsafe") {
+    // 1. Check for child safety / exploitation
+    const isCsamMinor = verdict.categories.some((cat) =>
+      /minor|child|csam|pedophil|exploitation/i.test(cat),
+    );
+    if (isCsamMinor) {
+      return {
+        allowed: false,
+        category: "sexual/minors",
+        isCsamMinorViolation: true,
+        reason: "Matched prohibited child exploitation or minor safety policy",
+        details,
+      };
+    }
+
+    // 2. Check for self-harm / suicide
+    const isSelfHarm = verdict.categories.some((cat) =>
+      /suicide|self-harm|self harm/i.test(cat),
+    );
+    if (isSelfHarm) {
+      const selfHarmCat =
+        verdict.categories.find((cat) => /suicide|self-harm|self harm/i.test(cat)) ||
+        "Suicide & Self-Harm";
+      return {
+        allowed: false,
+        category: selfHarmCat,
+        isSelfHarm: true,
+        redirectUrl: SELF_HARM_HELP_URL,
+        reason: "Content flagged under self-harm policy. Crisis support resources provided.",
+        details,
+      };
+    }
+
+    // 3. Other blocked categories
+    const primaryCategory = verdict.categories[0] || "Violent";
+    return {
+      allowed: false,
+      category: primaryCategory,
+      reason: `Content violates safety policy: ${verdict.categories.join(", ") || primaryCategory}`,
+      details,
+    };
+  }
+
+  // Unknown or unparseable output -> Fail closed
+  return {
+    allowed: false,
+    isServiceUnavailable: true,
+    reason: "Unable to verify content safety with moderation service.",
+    details,
+  };
+}
+
+/**
+ * Legacy category map evaluation (retained for backward compatibility and unit tests).
  */
 export function evaluateModerationCategories(
   categories: Record<string, boolean>,
@@ -52,7 +160,6 @@ export function evaluateModerationCategories(
     return { allowed: true };
   }
 
-  // 1. sexual/minors: Blocked + escalate to CSAM lockdown
   if (categories["sexual/minors"]) {
     return {
       allowed: false,
@@ -63,8 +170,12 @@ export function evaluateModerationCategories(
     };
   }
 
-  // 2. self-harm categories: Blocked + redirect to help website
-  const selfHarmCategories = ["self-harm", "self-harm/intent", "self-harm/instructions"];
+  const selfHarmCategories = [
+    "self-harm",
+    "self-harm/intent",
+    "self-harm/instructions",
+    "Suicide & Self-Harm",
+  ];
   for (const cat of selfHarmCategories) {
     if (categories[cat]) {
       return {
@@ -78,7 +189,6 @@ export function evaluateModerationCategories(
     }
   }
 
-  // 3. Other blocked categories
   const blockedCategories = [
     "harassment",
     "harassment/threatening",
@@ -88,6 +198,12 @@ export function evaluateModerationCategories(
     "illicit/violent",
     "sexual",
     "violence/graphic",
+    "Violent",
+    "Non-violent Illegal Acts",
+    "Sexual Content or Sexual Acts",
+    "PII",
+    "Unethical Acts",
+    "Copyright Violation",
   ];
 
   for (const cat of blockedCategories) {
@@ -101,7 +217,6 @@ export function evaluateModerationCategories(
     }
   }
 
-  // General "violence" is explicitly allowed if "violence/graphic" is false
   return { allowed: true, details };
 }
 
@@ -117,18 +232,17 @@ const DIRECT_THREAT_PATTERNS = [
 ];
 
 /**
- * Returns the effective OpenAI API key from environment variables or optional override.
- * Checks OPENAI_MODERATION_API_KEY, OPENAI_API_KEY, and case-insensitive matches in process.env.
+ * Returns the effective Pollinations API key from environment variables or optional override.
+ * Checks POLLINATIONS_API_KEY, and case-insensitive matches in process.env.
  * If not found, attempts to locate and load a .env file from common deployment paths.
  */
-export function getOpenAiApiKey(overrideKey?: string): string {
+export function getPollinationsApiKey(overrideKey?: string): string {
   if (overrideKey && typeof overrideKey === "string" && overrideKey.trim().length > 0) {
     return overrideKey.trim().replace(/^['"]|['"]$/g, "");
   }
 
-  // Helper to extract candidate key from current process.env
   const extractFromEnv = (): string => {
-    const direct = process.env.OPENAI_MODERATION_API_KEY || process.env.OPENAI_API_KEY;
+    const direct = process.env.POLLINATIONS_API_KEY;
     if (direct && typeof direct === "string" && direct.trim().length > 0) {
       return direct.trim().replace(/^['"]|['"]$/g, "");
     }
@@ -137,7 +251,7 @@ export function getOpenAiApiKey(overrideKey?: string): string {
       if (
         typeof val === "string" &&
         val.trim().length > 0 &&
-        (/^openai[_-]?(moderation[_-]?)?api[_-]?key$/i.test(key) || /^openai[_-]?key$/i.test(key))
+        /^pollinations[_-]?(api[_-]?)?key$/i.test(key)
       ) {
         return val.trim().replace(/^['"]|['"]$/g, "");
       }
@@ -150,7 +264,6 @@ export function getOpenAiApiKey(overrideKey?: string): string {
     return keyFromEnv;
   }
 
-  // Fallback: try loading .env if not yet loaded in process.env (e.g. Plesk / PM2 custom cwd)
   try {
     const possibleEnvPaths = [
       path.resolve(process.cwd(), ".env"),
@@ -172,40 +285,50 @@ export function getOpenAiApiKey(overrideKey?: string): string {
 }
 
 /**
- * Returns true if an OpenAI API key is detected.
+ * Returns true if a moderation API key is detected.
  */
-export function isOpenAiConfigured(overrideKey?: string): boolean {
-  return getOpenAiApiKey(overrideKey).length > 0;
+export function isModerationConfigured(overrideKey?: string): boolean {
+  return getPollinationsApiKey(overrideKey).length > 0;
 }
 
+// Backward-compatibility aliases
+export const getOpenAiApiKey = getPollinationsApiKey;
+export const isOpenAiConfigured = isModerationConfigured;
+
 /**
- * Calls OpenAI Moderation API with omni-moderation-latest.
- * Fail-open design: if key is absent or API call fails, logs a warning and returns { allowed: true }.
+ * Calls Pollinations API with qwen/qwen3guard-gen-8b.
+ * Fail-closed design: if the API call fails or times out, returns { allowed: false, isServiceUnavailable: true }.
+ * If key is not configured in local environment, fails open with warning for local dev/testing.
  */
-export async function checkOpenAiModeration(
-  input: string | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>,
+export async function checkPollinationsModeration(
+  text: string,
   overrideApiKey?: string,
 ): Promise<OpenAiModerationResult> {
-  const apiKey = getOpenAiApiKey(overrideApiKey);
+  const apiKey = getPollinationsApiKey(overrideApiKey);
   if (!apiKey) {
     console.warn(
-      "[OpenAI Moderation] OPENAI_API_KEY is not configured; failing open (allowing request).",
+      "[Pollinations Moderation] POLLINATIONS_API_KEY is not configured; bypassing cloud moderation for local unconfigured environment.",
     );
-    return { allowed: true, bypassed: true, reason: "OPENAI_API_KEY is not configured" };
+    return { allowed: true, bypassed: true, reason: "POLLINATIONS_API_KEY is not configured" };
   }
 
   try {
-    const res = await fetch("https://api.openai.com/v1/moderations", {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const res = await fetch("https://gen.pollinations.ai/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "omni-moderation-latest",
-        input,
+        model: POLLINATIONS_MODERATION_MODEL,
+        messages: [{ role: "user", content: text }],
+        stream: false,
       }),
-    });
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeoutId));
 
     if (!res.ok) {
       const errText =
@@ -213,43 +336,63 @@ export async function checkOpenAiModeration(
           ? await (res as any).text().catch(() => "")
           : "";
       const errorMsg = errText ? `HTTP ${res.status}: ${errText}` : `HTTP ${res.status}`;
-      console.warn(
-        `[OpenAI Moderation] API returned ${errorMsg}; failing open with warning.`,
-      );
+      console.warn(`[Pollinations Moderation] API returned ${errorMsg}; failing closed.`);
       return {
-        allowed: true,
-        bypassed: true,
-        apiError: `OpenAI API returned ${errorMsg}`,
+        allowed: false,
+        isServiceUnavailable: true,
+        apiError: errorMsg,
+        reason: "Moderation service is temporarily unavailable. Please try again shortly.",
       };
     }
 
     const data: any = await res.json();
-    const results = data.results;
-    if (!Array.isArray(results) || results.length === 0) {
-      return { allowed: true, details: data };
+    const messageContent = data?.choices?.[0]?.message?.content;
+    if (!messageContent || typeof messageContent !== "string") {
+      console.warn("[Pollinations Moderation] Empty or invalid response payload; failing closed.");
+      return {
+        allowed: false,
+        isServiceUnavailable: true,
+        apiError: "Empty response from moderation model",
+        reason: "Moderation service returned an invalid response.",
+        details: data,
+      };
     }
 
-    // Combine flagged results across all inputs if multiple items
-    for (const result of results) {
-      const evaluation = evaluateModerationCategories(result.categories || {}, data);
-      if (!evaluation.allowed) {
-        return evaluation;
-      }
-    }
-
-    return { allowed: true, details: data };
+    const verdict = parseQwen3GuardOutput(messageContent);
+    return evaluateQwen3GuardVerdict(verdict, data);
   } catch (err: any) {
-    console.warn("[OpenAI Moderation] Request failed; failing open with warning:", err);
+    const isAbort = err?.name === "AbortError";
+    const errorMsg = isAbort ? "Request timed out after 10s" : err?.message || String(err);
+    console.warn("[Pollinations Moderation] Request failed; failing closed:", errorMsg);
     return {
-      allowed: true,
-      bypassed: true,
-      apiError: err?.message || String(err),
+      allowed: false,
+      isServiceUnavailable: true,
+      apiError: errorMsg,
+      reason: "Moderation service is temporarily unavailable. Please try again shortly.",
     };
   }
 }
 
+// Backward-compatibility alias
+export const checkOpenAiModeration = async (
+  input: string | Array<{ type: string; text?: string; [key: string]: any }>,
+  overrideApiKey?: string,
+): Promise<OpenAiModerationResult> => {
+  if (typeof input === "string") {
+    return checkPollinationsModeration(input, overrideApiKey);
+  }
+  const text = input
+    .filter((item) => item.type === "text" && item.text)
+    .map((item) => item.text)
+    .join("\n");
+  if (!text) {
+    return { allowed: true };
+  }
+  return checkPollinationsModeration(text, overrideApiKey);
+};
+
 /**
- * Moderate text string using OpenAI Moderation API.
+ * Moderate text string using Pollinations qwen/qwen3guard-gen-8b.
  */
 export async function moderateText(
   text: string,
@@ -270,41 +413,26 @@ export async function moderateText(
     }
   }
 
-  return checkOpenAiModeration(text, overrideApiKey);
+  return checkPollinationsModeration(text, overrideApiKey);
 }
 
 /**
- * Moderate image buffer using OpenAI Moderation API via base64 data URI.
+ * Moderate image buffer.
+ * Per policy, cloud image moderation is disabled in favor of local CSAM Guard.
  */
 export async function moderateImage(
-  buffer: Buffer,
-  mimeType: string = "image/png",
-  overrideApiKey?: string,
+  _buffer?: Buffer,
+  _mimeType: string = "image/png",
+  _overrideApiKey?: string,
 ): Promise<OpenAiModerationResult> {
-  if (!buffer || buffer.length === 0) {
-    return { allowed: true };
-  }
-
-  const base64 = buffer.toString("base64");
-  const dataUrl = `data:${mimeType};base64,${base64}`;
-
-  return checkOpenAiModeration(
-    [
-      {
-        type: "image_url",
-        image_url: {
-          url: dataUrl,
-        },
-      },
-    ],
-    overrideApiKey,
-  );
+  return { allowed: true };
 }
 
 /**
  * Convenience helper to handle moderation result across routes.
  * If sexual/minors is detected, triggers executeZeroToleranceLockdown.
- * Returns null if allowed, or an object ready to send back to client via c.json(response, 400).
+ * If service is unavailable, returns MODERATION_SERVICE_UNAVAILABLE.
+ * Returns null if allowed, or an object ready to send back to client via c.json(response, 400 or 503).
  */
 export async function handleModerationEnforcement(
   result: OpenAiModerationResult,
@@ -314,12 +442,26 @@ export async function handleModerationEnforcement(
     return null;
   }
 
-  // 1. sexual/minors escalation -> Execute Zero Tolerance Lockdown
+  // 1. Service unavailable (Fail-closed)
+  if (result.isServiceUnavailable) {
+    console.warn(
+      `[Safety Enforcement] Moderation service unavailable on ${enforcementContext.surface}: ${result.apiError || result.reason}`,
+    );
+    return {
+      clientResponse: {
+        error: "Safety moderation service is temporarily unavailable. Please try again shortly.",
+        code: "MODERATION_SERVICE_UNAVAILABLE",
+      },
+      isLockdown: false,
+    };
+  }
+
+  // 2. sexual/minors escalation -> Execute Zero Tolerance Lockdown
   if (result.isCsamMinorViolation) {
     const lockdown = await executeZeroToleranceLockdown({
       ...enforcementContext,
       severity: 3,
-      reason: result.reason || "Prohibited minor safety violation detected by OpenAI Moderation",
+      reason: result.reason || "Prohibited minor safety violation detected by Moderation",
       details: result.details,
     });
     return {
@@ -328,7 +470,7 @@ export async function handleModerationEnforcement(
     };
   }
 
-  // 2. self-harm redirect
+  // 3. self-harm redirect
   if (result.isSelfHarm) {
     console.warn(
       `[Safety Enforcement] Self-harm content blocked on ${enforcementContext.surface}. Redirecting user to helpline.`,
@@ -345,13 +487,13 @@ export async function handleModerationEnforcement(
     };
   }
 
-  // 3. General blocked category
+  // 4. General blocked category
   console.warn(
     `[Safety Enforcement] Blocked ${result.category} on ${enforcementContext.surface}.`,
   );
   return {
     clientResponse: {
-      error: `Content blocked due to safety policy violation: ${result.category}.`,
+      error: `Content blocked due to safety policy violation: ${result.category || "General Safety"}.`,
       code: "CONTENT_POLICY_VIOLATION",
       category: result.category,
     },

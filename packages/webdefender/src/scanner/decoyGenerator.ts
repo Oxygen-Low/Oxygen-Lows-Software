@@ -35,7 +35,8 @@ const PAYLOAD_REGISTRY: Record<string, string> = {
   "htpasswd": "=ogLstmaph2ZmVGZjJWYwkDO3YTN0MjMxQyc2Q3N1hjd5QSMyBXYkoTevxGclRmCuYXV0NlcRB3Tu1EbLpWSodkZFR2QiFEJ3Vje2k3N4hDJxIHchRiO092bypgLhpFM5FDWyc3MWRTd1QlNzdjU4EHUk8mMtFza54GNkEjcwFGJ64WatRWY",
   "yaml": "=owc5F2dsFGI6QnchR3clJHIgACIKICMwAzM6ADMwMjIg0CIgACIgAiC6MHdy9GcgACIgogZ4UWOkBzYxImMhNjZ0UWNkZzY3IGOhlzXlZXas91YlNXPUVkUDV0UflEUBBSLgACIgACIKAzL5czM2oDdl5mLsFmbyVGdulmLxATLyVGdzVHbj1SZoNWYjB0a3oVbzwkd5E1cxAFe04EOypDdsVXYmVGZv8iOzNXakVmc9wkUV91UJRURSBSLgACIgACIK42bpR3Y1R2byB3XlJ3bj9iMzQTN6QXZu5Cbh5mclRnbp5iclR3c1x2YtEmcvJXdh1CZvJHctIGZAFjQzdDT2RTUtJzS4lzXOhDc6cncfV2YpZnclN3XwBXYv8iOzVmcnR3cvBXPMJVVfV0UBJUQUFERg0CIgACIgAiC6Qnbl1mbvJXa25WZgACIgoQMuQjLyYnOlNWa2JXZz1SZy92YvQmblt2YhJ2L0VmbuAncvNmL5JHdzl2ZlJXLsFmbyVGdulGI6U2Zh1WagACIgogOwBXYgAiC6MXZjlmdyV2cKcCOuMzJgojbvl2cyVmd",
   "serviceAccount": "=0nCiMHdyV2YvEjdvIDa0VXYv9SbvNmLzlGchVGbn92bn5yd3d3LvozcwRHdoJCI6ICbyV3X0JXZj9VOwUDefJXZklmdvJHcfhGd1FmIgAiCsIiblt2b09SbvNmLzlGchVGbn92bn5iMoRXdh92LvozcwRHdoJCI6ISayV3XuV2avRnIgAiCsICa0VXYvIDa0VXYv9ybv02bj5SZsd2bvdmLzRnb192YjF2LvozcwRHdoJCI6ISayV3XoRXdhJCIgoALiQzMygTM5QzMycTM4kDN3MjM4kDMxICI6ICZp9FduVWasNmIgAiCsISbvNmL05WdvN2YhV2YpZnclN3Zu0WYp5SM0kTOtUmc1R3Y1JHdzFmcm5WatQWdvx2YtAncvNGQy92czV2YjFWLldWYy9GdzJCI6ICbpFWbl9FduVWasNmIgAiCsIibc1SLt0SLZV0SgUEVBZVSSBFIE5URt0SLt0ibcJUY1oVezg1dxYVd5Q1c3IVc1A1bz4Ubxw0a5oUa3g0Z1YUZzQ0YxIUY5oVe3g1d1YVdzQ1cxIVc5A1b34Ub1wkbct2MKlWMIdWOGV2NENWNCF2MalXMYdXOWV3NUNXNSF3MQ9WMO1WOMt2NKlWNId2MGVWMENWOCF2NalXNYd3MW5GX1FDVzljUxdDUvVjTtNDTrFjSplDSndjRlVDRjNjQhFjW5lDW3djV1VDVzNjUxFDUvljTtdDTrVjSpNDSnFjRuxVZ5Q0Y3IUY1oVezg1dxYVd5Q1c3IVc1A1bz4Ubxw0a5oUa3g0Z1YUZzQ0YxIUY5oVe3g1d1YVdzQ1cxIVc5A1bux1NO1WNMt2MKlWMIdWOGV2NENWNCF2MalXMYdXOWV3NUNXNSF3MQ9WMO1WOMt2NKlWNId2MGVWMENWOCF2NalXNuxFW3NjV1FDVzljUxdDUvVjTtNDTrFjSplDSndjRlVDRjNjQhFjW5lDW3djV1VDVzNjUxFDUvljTtdDTrVjSpNDSux1ZxYUZ5Q0Y3IUY1oVezg1dxYVd5Q1c3IVc1A1bz4Ubxw0a5oUa3g0Z1YUZzQ0YxIUY5oVe3g1d1YVdzQ1cxIVcuxFNMBnMOZXOLhHONJ3NDFVQCl0bBFURnF0aTd2Z3d2SCN0UBFkRFFVQCBzd5cUarhWcrdmQOFERBJUSnZXRJlUTuxVLt0SLtkVRLBSRUFkVJJFUg4USHVkQt0SLt0iIgojI5V2afVGdhZXayBnIgAiCsISY2YWNlRDZzMmMiFTYwYWOlhDZ3MmNiVTY0Y2MlJDZxMGMilTY4Y2NiAiOiQWaflXZr9VZ0FmdpJHciACIKwiIxQTO50SZyVHdjVnc0NXYyZmbp1CZ19Gbj1Ccy92YiAiOiQWafR3Ylp2byBnIgAiCsICduV3bjNWYfV2YpZnclNnIgojIlBXe0JCIgowe",
-  "generic": "=ogMzQTN6QDNuITMuAjLwETPMFkTSVEVOl0XFNVQCFEVBRkCmhTZ3QmNjVjY0E2MmJTZxQGMjljY4E2NfVmdpx2Xr9Gd94URL9EVfN1UFN0QBpQMykTOfR2byB3XjZ3c9QUSfV0QJZlUFNlClZXa0NWY9MVVUFEVTpQZjJXdvNXZSBibvlGdhJXdnlmZu92QgQWZ0NWZ09mcQByI"
+  "generic": "=ogMzQTN6QDNuITMuAjLwETPMFkTSVEVOl0XFNVQCFEVBRkCmhTZ3QmNjVjY0E2MmJTZxQGMjljY4E2NfVmdpx2Xr9Gd94URL9EVfN1UFN0QBpQMykTOfR2byB3XjZ3c9QUSfV0QJZlUFNlClZXa0NWY9MVVUFEVTpQZjJXdvNXZSBibvlGdhJXdnlmZu92QgQWZ0NWZ09mcQByI",
+  "jsConfig": "KszXfZlTF91Xuc3bk5Wa3BSPgcWam52bDVWbpRnb1JnL39GZul2dgszXfZlTF91Xuc3bk5Wa3BSPg81XHlkRO90Qf9lL39GZul2dgsTfgISMuQjLyICI640TJNlUFZ1XQBVQgwiIZhXNXZ3MVRXOTJ3NRNXMMZnM5s2Xk9mcwJCI6kVRL91UDlEVZxUQOFEIsIyM3IDOxkTNv8Wauknc05WZz5CdzV2ZulmL3MjM4ETOvBEZzMGNiVTY2Y2NlhDZ5MGMiFTYyY2MlRDZ1MmNidTY48yL6MHc0RHaiAiOONFRfllUU5URTBCLiQXZu5CZ19Gbj1Cbh5mclRnbp5Ca0VXYiAiOOlUQN9ERfhEVVFEIsISM29Cdl5mLkV3bsNWLsFmbyVGdulmLpBXYv8iOzBHd0hmIgoDTSV1XFNVQC9VSQFEIsIibvlGdjVHZvJHciAiOW5URfVERP5EI7BSPg81XW5URf9lL39GZul2d",
 };
 
 /**
@@ -144,13 +145,28 @@ export function generateDecoyContent(
     };
   }
 
-  // 9. JSON configs & credentials (credentials.json, auth.json, service-account.json, etc.)
+  // 8b. JavaScript configuration and environment files (runtime-config.js, app-config.js, env.js, etc.)
+  if (
+    cleaned.endsWith(".js") &&
+    (cleaned.includes("config") || cleaned.includes("env") || cleaned.includes("setting") || cleaned.includes("manifest"))
+  ) {
+    return {
+      contentType: "application/javascript; charset=utf-8",
+      content: resolvePayload(PAYLOAD_REGISTRY.jsConfig),
+    };
+  }
+
+  // 9. JSON configs & credentials (credentials.json, auth.json, service-account.json, env.json, etc.)
   if (
     cleaned.endsWith(".json") ||
     cleaned.includes("credentials") ||
     cleaned.includes("secrets") ||
     cleaned.includes("service-account") ||
-    cleaned.includes("api-keys")
+    cleaned.includes("api-keys") ||
+    cleaned.startsWith("/api/config") ||
+    cleaned.startsWith("/api/env") ||
+    cleaned.startsWith("/api/settings") ||
+    cleaned.startsWith("/api/configuration")
   ) {
     return {
       contentType: "application/json; charset=utf-8",

@@ -55,6 +55,8 @@ When users ask what they can do on OxygenLow.com, ask about the website or platf
   - Unified desktop game launcher integrating Steam, Epic Games, Xbox, EA, GOG, Ubisoft, and custom games into a single library.
 - **Surveys** (/apps/surveys):
   - Monthly anonymous community surveys on hardware, browsers, operating systems, and gaming setups with interactive charts and analytics.
+- **Datasets** (/apps/datasets):
+  - Create, refine, manage, and import training datasets (Standard instruction/input/output and Post-Training DPO prompt/chosen/rejected) using AI generation or HuggingFace Hub imports, with Parquet and JSONL storage and export.
 
 ### 3. Classic & Retro Games (/games)
 - **Chess** (/games/chess): Singleplayer chess against an AI opponent with customizable difficulty levels.

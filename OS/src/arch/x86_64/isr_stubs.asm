@@ -163,12 +163,6 @@ global idt_load
 gdt_load:
     ; RDI = GDTPointer*
     lgdt [rdi]
-    ; Far return to reload CS
-    push qword 0x08                         ; Kernel CS (0x08)
-    lea rax, [rel .reload_cs]
-    push rax
-    retfq
-.reload_cs:
     mov ax, 0x10                            ; Kernel Data (0x10)
     mov ds, ax
     mov es, ax

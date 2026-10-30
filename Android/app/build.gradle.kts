@@ -56,6 +56,7 @@ android {
 }
 
 dependencies {
+    implementation(enforcedPlatform("org.jetbrains.kotlin:kotlin-bom:2.1.0"))
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
     implementation("androidx.webkit:webkit:1.12.1")

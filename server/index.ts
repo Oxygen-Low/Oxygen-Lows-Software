@@ -34,6 +34,7 @@ import { contentTestRouter } from "./routes/contentTest.ts";
 import { partnersRouter } from "./routes/partners.ts";
 import { agentsRouter } from "./routes/agents.ts";
 import { customGamesRouter } from "./routes/customGames.ts";
+import { datasetsRouter } from "./routes/datasets.ts";
 import { resumeInterruptedCrawls } from "./lib/oxylowCrawler.ts";
 import {
   getActiveDefenderBannedIps,
@@ -102,7 +103,8 @@ app.use("*", async (c, next) => {
     c.req.path.startsWith("/api/chat") ||
     c.req.path.startsWith("/api/chess") ||
     c.req.path.startsWith("/api/agents") ||
-    c.req.path.startsWith("/api/custom-games")
+    c.req.path.startsWith("/api/custom-games") ||
+    c.req.path.startsWith("/api/datasets")
   ) {
     return next();
   }
@@ -115,6 +117,7 @@ app.use("*", async (c, next) => {
           "/api/ai",
           "/api/data",
           "/api/storage",
+          "/api/datasets",
           "/api/v1",
           "/v1",
         ],
@@ -153,7 +156,7 @@ app.use(
       workerSrc: ["'self'", "blob:"],
       childSrc: ["'self'", "blob:"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "blob:", "data:"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],
       mediaSrc: ["'self'", "blob:", "data:", "https:"],
       connectSrc: [
@@ -186,6 +189,8 @@ app.use(
         "https://image.pollinations.ai",
         "https://pollinations.ai",
         "https://*.pollinations.ai",
+        "https://datasets-server.huggingface.co",
+        "https://huggingface.co",
       ],
       frameSrc: ["'self'", "blob:"],
       frameAncestors: ["'self'"],
@@ -405,6 +410,12 @@ app.get("/sitemap.xml", (c) => {
       loc: `${baseUrl}/apps/vpn`,
       changefreq: "weekly",
       priority: "0.7",
+      lastmod: today,
+    },
+    {
+      loc: `${baseUrl}/apps/datasets`,
+      changefreq: "weekly",
+      priority: "0.8",
       lastmod: today,
     },
     {
@@ -1266,6 +1277,7 @@ app.route("/api/models", modelsRouter);
 app.route("/api/partners", partnersRouter);
 app.route("/api/agents", agentsRouter);
 app.route("/api/custom-games", customGamesRouter);
+app.route("/api/datasets", datasetsRouter);
 app.route("/v1", v1Router);
 app.route("/api/v1", v1Router);
 app.route("/api/contenttest", contentTestRouter);

@@ -125,11 +125,33 @@ export const ProjectsDialog: React.FC<ProjectsDialogProps> = ({
   const handleLoadProject = async (item: SavedProjectItem) => {
     try {
       setLoading(true);
+      if (item.fullPath.includes('..')) throw new Error("Invalid path");
       const res = await storage.from("Storage").download(item.fullPath);
       if (res.error || !res.data) throw res.error || new Error("Failed to download");
 
       const text = await res.data.text();
       const proj: CanvasProject = JSON.parse(text);
+
+      // Refresh signed URLs for any image layers with storagePath
+      if (Array.isArray(proj.layers)) {
+        proj.layers = await Promise.all(
+          proj.layers.map(async (layer) => {
+            if (layer.type === "image" && layer.storagePath) {
+              try {
+                if (layer.storagePath.includes('..')) throw new Error("Invalid path");
+                const { data } = await storage
+                  .from("Storage")
+                  .createSignedUrl(layer.storagePath, 60 * 60 * 24 * 7);
+                if (data?.signedUrl) {
+                  return { ...layer, src: data.signedUrl };
+                }
+              } catch {}
+            }
+            return layer;
+          }),
+        );
+      }
+
       onLoadProject(proj);
       toast.success(t("imageStudio.projectLoaded", undefined, "Project loaded!"));
       onOpenChange(false);
@@ -144,6 +166,9 @@ export const ProjectsDialog: React.FC<ProjectsDialogProps> = ({
   const handleDeleteProject = async (item: SavedProjectItem, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
+      if (item.fullPath.includes('..')) {
+        throw new Error('Invalid path');
+      }
       await storage.from("Storage").remove([item.fullPath]);
       toast.success(t("imageStudio.projectDeleted", undefined, "Project removed."));
       fetchProjects();

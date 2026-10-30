@@ -19,7 +19,9 @@ import { getPreset } from "./presetLibrary";
 export type DemoId = "cyberpunk" | "lofi" | "synthwave";
 export const DEMO_IDS: DemoId[] = ["cyberpunk", "lofi", "synthwave"];
 
-export function createMixerTrack(partial: Partial<MixerTrack> = {}): MixerTrack {
+export function createMixerTrack(
+  partial: Partial<MixerTrack> = {},
+): MixerTrack {
   return {
     name: "",
     volume: 0.8,
@@ -114,11 +116,23 @@ function notes(list: [number, number, number, number?][]): Note[] {
   }));
 }
 
-function chord(pitches: number[], start: number, length: number, velocity = 0.7) {
-  return pitches.map((p) => [p, start, length, velocity] as [number, number, number, number]);
+function chord(
+  pitches: number[],
+  start: number,
+  length: number,
+  velocity = 0.7,
+) {
+  return pitches.map(
+    (p) => [p, start, length, velocity] as [number, number, number, number],
+  );
 }
 
-function clip(patternId: string, track: number, start: number, length: number): PlaylistClip {
+function clip(
+  patternId: string,
+  track: number,
+  start: number,
+  length: number,
+): PlaylistClip {
   return { id: uid("clip"), patternId, track, start, length };
 }
 
@@ -175,15 +189,35 @@ function cyberpunk(name: string): MusicProject {
   beat.steps[hat.id] = steps(".o.o.o.o.o.o.o.o");
   beat.steps[open.id] = steps("..x...x...x...x.");
   beat.notes[bass.id] = notes([
-    [33, 0, 1], [33, 2, 1], [45, 3, 1, 0.95], [33, 4, 1], [43, 6, 1],
-    [33, 8, 1], [33, 10, 1], [45, 11, 1, 0.95], [36, 12, 1], [38, 14, 1],
+    [33, 0, 1],
+    [33, 2, 1],
+    [45, 3, 1, 0.95],
+    [33, 4, 1],
+    [43, 6, 1],
+    [33, 8, 1],
+    [33, 10, 1],
+    [45, 11, 1, 0.95],
+    [36, 12, 1],
+    [38, 14, 1],
   ]);
 
   const melody = createPattern(1, 32);
-  melody.notes[pad.id] = notes([...chord([57, 60, 64], 0, 16, 0.6), ...chord([53, 57, 60], 16, 16, 0.6)]);
+  melody.notes[pad.id] = notes([
+    ...chord([57, 60, 64], 0, 16, 0.6),
+    ...chord([53, 57, 60], 16, 16, 0.6),
+  ]);
   melody.notes[lead.id] = notes([
-    [69, 0, 2], [72, 2, 2], [76, 4, 4], [74, 8, 2], [72, 10, 2], [71, 12, 4],
-    [69, 16, 2], [72, 18, 2], [77, 20, 4], [76, 24, 4], [72, 28, 4],
+    [69, 0, 2],
+    [72, 2, 2],
+    [76, 4, 4],
+    [74, 8, 2],
+    [72, 10, 2],
+    [71, 12, 4],
+    [69, 16, 2],
+    [72, 18, 2],
+    [77, 20, 4],
+    [76, 24, 4],
+    [72, 28, 4],
   ]);
 
   const impact = createPattern(2, 16);
@@ -234,8 +268,14 @@ function lofi(name: string): MusicProject {
     ...chord([48, 52, 55, 59], 48, 14),
   ]);
   chords.notes[bass.id] = notes([
-    [41, 0, 6], [41, 10, 4], [40, 16, 6], [40, 26, 4],
-    [38, 32, 6], [38, 42, 4], [36, 48, 6], [43, 58, 4],
+    [41, 0, 6],
+    [41, 10, 4],
+    [40, 16, 6],
+    [40, 26, 4],
+    [38, 32, 6],
+    [38, 42, 4],
+    [36, 48, 6],
+    [43, 58, 4],
   ]);
 
   p.patterns = [drums, chords];
@@ -276,10 +316,21 @@ function synthwave(name: string): MusicProject {
   const arpNotes: [number, number, number, number?][] = [];
   const padNotes: [number, number, number, number?][] = [];
   roots.forEach((root, bar) => {
-    for (let i = 0; i < 8; i++) bassNotes.push([i % 2 === 0 ? root : root + 12, bar * 16 + i * 2, 1, 0.85]);
+    for (let i = 0; i < 8; i++)
+      bassNotes.push([
+        i % 2 === 0 ? root : root + 12,
+        bar * 16 + i * 2,
+        1,
+        0.85,
+      ]);
     for (let i = 0; i < 16; i++) {
       const tones = chordTones[bar];
-      arpNotes.push([tones[i % 4] + (i >= 8 ? 12 : 0), bar * 16 + i, 1, i % 4 === 0 ? 0.9 : 0.65]);
+      arpNotes.push([
+        tones[i % 4] + (i >= 8 ? 12 : 0),
+        bar * 16 + i,
+        1,
+        i % 4 === 0 ? 0.9 : 0.65,
+      ]);
     }
     padNotes.push(...chord(chordTones[bar].slice(0, 3), bar * 16, 16, 0.55));
   });
@@ -314,7 +365,11 @@ export function createDemoProject(id: DemoId, name: string): MusicProject {
 export function normalizeProject(raw: unknown): MusicProject | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Partial<MusicProject>;
-  if (!Array.isArray(r.channels) || !Array.isArray(r.patterns) || r.patterns.length === 0) {
+  if (
+    !Array.isArray(r.channels) ||
+    !Array.isArray(r.patterns) ||
+    r.patterns.length === 0
+  ) {
     return null;
   }
   const base = baseProject(typeof r.name === "string" ? r.name : "", 120);
@@ -346,13 +401,14 @@ export function normalizeProject(raw: unknown): MusicProject | null {
       (_, i) => !!r.playlistTrackMutes?.[i],
     ),
     mixer: base.mixer.map((def, i) => {
-      const src = mixer[i] || {};
+      const src: any = mixer[i] || {};
       return {
         ...def,
         ...src,
-        fxSlots: Array.isArray(src.fxSlots) && src.fxSlots.length === 10
-          ? src.fxSlots
-          : def.fxSlots,
+        fxSlots:
+          Array.isArray(src.fxSlots) && src.fxSlots.length === 10
+            ? src.fxSlots
+            : def.fxSlots,
       };
     }),
   };

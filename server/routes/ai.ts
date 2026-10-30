@@ -20,11 +20,18 @@ import {
   setUserApiKey,
   deleteUserApiKey,
 } from "../lib/userApiKeys.ts";
+import {
+  FREE_MODELS,
+  checkFreeModelAllowance,
+  recordFreeModelUsage,
+  getAllFreeModelsUsage,
+  createFreeAiTrackingStream,
+} from "../lib/freeAiLimits.ts";
 
 export const aiRouter = new Hono();
 
 const DEFAULT_MODELS = [
-  { provider: "pollinations", model_id: "inclusionai/ling-3.1-flash" },
+  { provider: "pollinations", model_id: "openai/gpt-6-luna" },
 ];
 
 export const HORDE_MODELS_MAP: Record<string, string[]> = {
@@ -208,6 +215,27 @@ aiRouter.delete("/keys/:provider", apiLimiter, async (c) => {
 
   await deleteUserApiKey(user.id, provider);
   return c.json({ success: true, provider: provider.toLowerCase() });
+});
+
+aiRouter.get("/free-usage", apiLimiter, async (c) => {
+  const authHeader = c.req.header("authorization");
+  const token = extractBearerToken(authHeader);
+  let user = null;
+
+  if (token && token !== "undefined" && token !== "null") {
+    user = await resolveUserFromToken(token);
+  }
+
+  if (!user) {
+    return c.json(
+      { error: "Authentication required to view free model usage." },
+      401,
+    );
+  }
+
+  const ip = extractClientIp(c);
+  const data = getAllFreeModelsUsage(user.id, ip);
+  return c.json(data);
 });
 
 aiRouter.get("/horde-status", apiLimiter, async (c) => {
@@ -424,9 +452,138 @@ aiRouter.post("/tts", apiLimiter, async (c) => {
   }
 });
 
+async function resolvePollinationsCustomModelId(
+  requestedModel: string,
+  apiKey?: string,
+): Promise<string | null> {
+  if (!requestedModel || typeof requestedModel !== "string") return null;
+  const trimmed = requestedModel.trim();
+  if (!trimmed) return null;
+  const needle = trimmed.toLowerCase();
+  const strippedNeedle = needle.replace(/^community\//, "");
+
+  const headers: Record<string, string> = {};
+  if (apiKey && apiKey.trim()) {
+    headers["Authorization"] = `Bearer ${apiKey.trim()}`;
+  }
+
+  // 1. Check user's own custom models (/account/my-models) if API key is available
+  if (headers["Authorization"]) {
+    try {
+      const myModelsRes = await fetch(
+        "https://gen.pollinations.ai/account/my-models",
+        { headers },
+      );
+      if (myModelsRes.ok) {
+        const data = await myModelsRes.json();
+        const list = Array.isArray(data) ? data : data?.models;
+        if (Array.isArray(list)) {
+          for (const m of list) {
+            const modelId = String(m?.modelId || m?.id || "").trim();
+            const name = String(m?.name || "").trim();
+            const title = String(m?.title || "").trim();
+            if (
+              modelId.toLowerCase() === needle ||
+              name.toLowerCase() === needle ||
+              name.toLowerCase() === strippedNeedle ||
+              title.toLowerCase() === needle ||
+              (strippedNeedle &&
+                modelId.toLowerCase().endsWith("/" + strippedNeedle))
+            ) {
+              if (modelId) return modelId;
+            }
+          }
+        }
+      }
+    } catch {
+      // Ignore lookup failure and try public/all models list
+    }
+  }
+
+  // 2. Check /v1/models?reliability=all (includes community custom models and aliases)
+  try {
+    const allModelsRes = await fetch(
+      "https://gen.pollinations.ai/v1/models?reliability=all",
+      { headers },
+    );
+    if (allModelsRes.ok) {
+      const data = await allModelsRes.json();
+      const list = Array.isArray(data) ? data : data?.data;
+      if (Array.isArray(list)) {
+        for (const m of list) {
+          if (!m || typeof m !== "object") continue;
+          const canonicalId = String(m.id || m.name || "").trim();
+          if (!canonicalId) continue;
+          const aliases: string[] = Array.isArray(m.aliases) ? m.aliases : [];
+          const desc = String(m.description || "").trim();
+          if (
+            canonicalId.toLowerCase() === needle ||
+            aliases.some(
+              (a) =>
+                String(a).toLowerCase() === needle ||
+                String(a).toLowerCase() === strippedNeedle,
+            ) ||
+            (strippedNeedle &&
+              canonicalId.toLowerCase().endsWith("/" + strippedNeedle)) ||
+            desc.toLowerCase() === needle ||
+            desc.toLowerCase().startsWith(needle + " -")
+          ) {
+            return canonicalId;
+          }
+        }
+      }
+    }
+  } catch {
+    // Ignore lookup failure
+  }
+
+  return null;
+}
+
+function createSseStreamFromCompletionJson(
+  data: any,
+): ReadableStream<Uint8Array> {
+  const content =
+    data?.choices?.[0]?.message?.content ??
+    data?.choices?.[0]?.delta?.content ??
+    data?.choices?.[0]?.text ??
+    data?.content?.[0]?.text ??
+    (typeof data === "string" ? data : "");
+  const sseChunk = {
+    id: data?.id || "chatcmpl-custom",
+    object: "chat.completion.chunk",
+    created: data?.created || Math.floor(Date.now() / 1000),
+    model: data?.model || "custom",
+    choices: [
+      {
+        index: 0,
+        delta: { role: "assistant", content: String(content || "") },
+        finish_reason: "stop",
+      },
+    ],
+  };
+  const payload = `data: ${JSON.stringify(sseChunk)}\n\ndata: [DONE]\n\n`;
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(payload));
+      controller.close();
+    },
+  });
+}
+
 aiRouter.post("/proxy", apiLimiter, async (c) => {
-  const { provider, model, messages, prompt, systemPrompt, stream, apiKey, baseUrl, tools } =
-    await c.req.json();
+  const {
+    provider,
+    model,
+    messages,
+    prompt,
+    systemPrompt,
+    stream,
+    apiKey,
+    baseUrl,
+    tools,
+    category,
+  } = await c.req.json();
   const authHeader = c.req.header("authorization");
   // A02: RFC 6750 scheme is case-insensitive; use slice to avoid partial-replace bugs
   const token = extractBearerToken(authHeader);
@@ -436,7 +593,22 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     user = await resolveUserFromToken(token);
   }
 
-  if (!user && provider !== "horde" && provider !== "pollinations") {
+  const userPolliKey = user?.id
+    ? await getUserApiKey(user.id, "pollinations")
+    : null;
+  const isDirectPolliKey = !isInvalidOrMaskedApiKey(apiKey);
+  const isFreeModelRequest =
+    Boolean(FREE_MODELS[model]) &&
+    (category === "free" ||
+      (!isDirectPolliKey &&
+        !userPolliKey &&
+        (provider === "pollinations" || !provider)));
+
+  if (isFreeModelRequest) {
+    if (!user) {
+      return c.json({ error: "Please log in to use free AI models." }, 401);
+    }
+  } else if (!user && provider !== "horde" && provider !== "pollinations") {
     return c.json({ error: "Authentication required for this model." }, 401);
   }
 
@@ -453,9 +625,11 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     envKey = process.env.GROK_API_KEY || process.env.XAI_API_KEY || "";
   }
 
+  const effectiveProvider =
+    provider || (isFreeModelRequest ? "pollinations" : "pollinations");
   let effectiveApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
-  if (!effectiveApiKey && user?.id) {
-    effectiveApiKey = (await getUserApiKey(user.id, provider)) || "";
+  if (!effectiveApiKey && user?.id && effectiveProvider) {
+    effectiveApiKey = (await getUserApiKey(user.id, effectiveProvider)) || "";
   }
   if (!effectiveApiKey) {
     effectiveApiKey = envKey;
@@ -493,6 +667,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
 
   if (
     !integration?.api_key &&
+    !isFreeModelRequest &&
     provider !== "horde" &&
     provider !== "pollinations" &&
     provider !== "shared-model"
@@ -500,7 +675,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     return c.json({ error: "Provider not configured" }, 400);
   }
 
-  // A03: cap message history and enforce a per-message content length limit
+  // A03: cap message history, strip non-standard client properties, and enforce a per-message content length limit
   const MAX_MSG_CONTENT_LENGTH = 32_768; // 32 KB per message
   const rawMessages = Array.isArray(messages)
     ? messages
@@ -508,13 +683,33 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
         ...(prompt ? [{ role: "user", content: prompt }] : []),
       ];
-  const processedMessages = rawMessages.slice(-20).map((m: any) => ({
-    ...m,
-    content:
-      typeof m.content === "string" && m.content.length > MAX_MSG_CONTENT_LENGTH
-        ? m.content.slice(0, MAX_MSG_CONTENT_LENGTH)
-        : m.content,
-  }));
+
+  const sanitizeMessage = (m: any) => {
+    const rawContent = m?.content ?? "";
+    const sanitized: Record<string, any> = {
+      role: typeof m?.role === "string" ? m.role : "user",
+      content:
+        typeof rawContent === "string" &&
+        rawContent.length > MAX_MSG_CONTENT_LENGTH
+          ? rawContent.slice(0, MAX_MSG_CONTENT_LENGTH)
+          : rawContent,
+    };
+    if (typeof m?.name === "string" && m.name) sanitized.name = m.name;
+    if (Array.isArray(m?.tool_calls) && m.tool_calls.length > 0)
+      sanitized.tool_calls = m.tool_calls;
+    if (typeof m?.tool_call_id === "string" && m.tool_call_id)
+      sanitized.tool_call_id = m.tool_call_id;
+    return sanitized;
+  };
+
+  const rawSystemMessages = rawMessages
+    .filter((m: any) => m?.role === "system")
+    .map(sanitizeMessage);
+  const rawNonSystemMessages = rawMessages
+    .filter((m: any) => m?.role !== "system")
+    .slice(-20)
+    .map(sanitizeMessage);
+  const processedMessages = [...rawSystemMessages, ...rawNonSystemMessages];
   let finalMessages = [...processedMessages];
 
   // Pre-dispatch CSAM & Child Safety Scanning on User Messages
@@ -592,6 +787,66 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     });
   }
 
+  // Consolidate all system messages into a single system message at index 0
+  // so strict OpenAI-compatible custom models never reject multiple system messages.
+  const systemParts = finalMessages
+    .filter(
+      (m: any) =>
+        m.role === "system" &&
+        typeof m.content === "string" &&
+        m.content.trim().length > 0,
+    )
+    .map((m: any) => m.content.trim());
+  const nonSystemFinal = finalMessages.filter((m: any) => m.role !== "system");
+  if (systemParts.length > 0) {
+    finalMessages = [
+      { role: "system", content: systemParts.join("\n\n") },
+      ...nonSystemFinal,
+    ];
+  } else {
+    finalMessages = nonSystemFinal;
+  }
+
+  const clientIp = extractClientIp(c);
+  const estimatedPromptTokens = Math.max(
+    1,
+    Math.ceil(
+      finalMessages.reduce(
+        (acc: number, m: any) =>
+          acc + (typeof m.content === "string" ? m.content.length : 0),
+        0,
+      ) / 4,
+    ),
+  );
+
+  if (isFreeModelRequest && user?.id) {
+    const allowance = checkFreeModelAllowance(
+      user.id,
+      model,
+      clientIp,
+      estimatedPromptTokens,
+    );
+    if (!allowance.allowed) {
+      return c.json(
+        {
+          error: `Daily limit reached for free models. Your daily limit is ${allowance.effectiveLimit} points${
+            allowance.userCountOnIp > 1
+              ? ` (split between ${allowance.userCountOnIp} accounts on this IP)`
+              : ""
+          }. Resets at midnight UTC.`,
+          code: "FREE_TIER_LIMIT_REACHED",
+          effectiveLimit: allowance.effectiveLimit,
+          usedPoints: allowance.usedPoints,
+          remainingPoints: allowance.remainingPoints,
+          usedTokens: allowance.usedTokens,
+          remainingTokens: allowance.remainingTokens,
+          userCountOnIp: allowance.userCountOnIp,
+        },
+        429,
+      );
+    }
+  }
+
   const fetchOptions: any = {
     method: "POST",
     headers: {
@@ -602,7 +857,8 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
 
   try {
     let targetUrl = "";
-    let requestBody: any = { stream, tools };
+    const hasTools = Array.isArray(tools) && tools.length > 0;
+    let requestBody: any = hasTools ? { stream, tools } : { stream };
 
     if (provider === "openai") {
       targetUrl = "https://api.openai.com/v1/chat/completions";
@@ -659,11 +915,19 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       targetUrl = "https://api.x.ai/v1/chat/completions";
       requestBody = { ...requestBody, model, messages: finalMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
-    } else if (provider === "pollinations") {
+    } else if (provider === "pollinations" || isFreeModelRequest) {
       targetUrl = "https://gen.pollinations.ai/v1/chat/completions";
-      requestBody = { ...requestBody, model, messages: finalMessages };
-      if (integration?.api_key) {
-        fetchOptions.headers["Authorization"] = `Bearer ${integration.api_key}`;
+      requestBody = {
+        ...requestBody,
+        model,
+        messages: finalMessages,
+        stream_options: stream ? { include_usage: true } : undefined,
+      };
+      const polliApiKey = isFreeModelRequest
+        ? process.env.POLLINATIONS_API_KEY || ""
+        : integration?.api_key || process.env.POLLINATIONS_API_KEY || "";
+      if (polliApiKey) {
+        fetchOptions.headers["Authorization"] = `Bearer ${polliApiKey}`;
       }
     } else if (provider === "horde") {
       let actualModel = resolveHordeModel(model);
@@ -786,27 +1050,135 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
 
     fetchOptions.body = JSON.stringify(requestBody);
 
-    const upstreamResponse = await fetch(targetUrl, fetchOptions);
+    let upstreamResponse = await fetch(targetUrl, fetchOptions);
+
+    if (
+      !upstreamResponse.ok &&
+      provider === "pollinations" &&
+      (upstreamResponse.status === 400 ||
+        upstreamResponse.status === 404 ||
+        upstreamResponse.status === 422)
+    ) {
+      // Attempt 1: Resolve custom Pollinations model ID (e.g. short name -> community/<owner>/<name>)
+      const resolvedModel = await resolvePollinationsCustomModelId(
+        model,
+        integration?.api_key,
+      );
+      if (resolvedModel && resolvedModel !== requestBody.model) {
+        requestBody = { ...requestBody, model: resolvedModel };
+        fetchOptions.body = JSON.stringify(requestBody);
+        upstreamResponse = await fetch(targetUrl, fetchOptions);
+      }
+
+      // Attempt 2: Custom Pollinations models often do not support SSE streaming (stream: true).
+      // Retry with stream: false and convert JSON completion into an SSE stream.
+      if (
+        !upstreamResponse.ok &&
+        stream &&
+        (upstreamResponse.status === 400 ||
+          upstreamResponse.status === 422 ||
+          upstreamResponse.status === 502)
+      ) {
+        const nonStreamBody = { ...requestBody, stream: false };
+        const nonStreamRes = await fetch(targetUrl, {
+          ...fetchOptions,
+          body: JSON.stringify(nonStreamBody),
+        });
+        if (nonStreamRes.ok) {
+          const data = await nonStreamRes.json();
+          c.header("Content-Type", "text/event-stream");
+          c.header("Cache-Control", "no-cache");
+          c.header("Connection", "keep-alive");
+          return c.body(createSseStreamFromCompletionJson(data) as any);
+        }
+      }
+    }
 
     if (!upstreamResponse.ok) {
       const status = upstreamResponse.status;
-      let userMessage = "The AI provider returned an error.";
+      let upstreamErrorMsg = "";
+      try {
+        if (typeof upstreamResponse.json === "function") {
+          const errJson = await upstreamResponse.json();
+          if (typeof errJson?.error === "string") {
+            upstreamErrorMsg = errJson.error;
+          } else if (typeof errJson?.error?.message === "string") {
+            upstreamErrorMsg = errJson.error.message;
+          } else if (typeof errJson?.message === "string") {
+            upstreamErrorMsg = errJson.message;
+          }
+        }
+      } catch {
+        // ignore JSON parse errors
+      }
+      let userMessage =
+        upstreamErrorMsg || "The AI provider returned an error.";
       if (status === 401 || status === 403)
-        userMessage = "Invalid or expired API key for this provider.";
+        userMessage =
+          upstreamErrorMsg || "Invalid or expired API key for this provider.";
       else if (status === 429)
-        userMessage = "Rate limit exceeded. Please try again later.";
+        userMessage =
+          upstreamErrorMsg || "Rate limit exceeded. Please try again later.";
       else if (status === 503 || status === 502)
-        userMessage = "The AI provider is temporarily unavailable.";
+        userMessage =
+          upstreamErrorMsg || "The AI provider is temporarily unavailable.";
       return c.json({ error: userMessage }, status as any);
     }
 
     if (stream) {
+      const contentType =
+        upstreamResponse.headers?.get?.("content-type")?.toLowerCase() || "";
+      if (
+        contentType.includes("application/json") &&
+        typeof upstreamResponse.json === "function"
+      ) {
+        const data = await upstreamResponse.json();
+        if (isFreeModelRequest && user?.id) {
+          const promptTokens = data?.usage?.prompt_tokens ?? estimatedPromptTokens;
+          const completionTokens =
+            data?.usage?.completion_tokens ??
+            Math.max(
+              1,
+              Math.ceil(
+                (data?.choices?.[0]?.message?.content?.length || 0) / 4,
+              ),
+            );
+          recordFreeModelUsage(user.id, model, clientIp, promptTokens, completionTokens);
+        }
+        c.header("Content-Type", "text/event-stream");
+        c.header("Cache-Control", "no-cache");
+        c.header("Connection", "keep-alive");
+        return c.body(createSseStreamFromCompletionJson(data) as any);
+      }
       c.header("Content-Type", "text/event-stream");
       c.header("Cache-Control", "no-cache");
       c.header("Connection", "keep-alive");
-      return c.body(upstreamResponse.body as any);
+
+      let bodyStream = upstreamResponse.body as any;
+      if (isFreeModelRequest && user?.id) {
+        bodyStream = createFreeAiTrackingStream(
+          bodyStream,
+          (inTok, outTok) => {
+            recordFreeModelUsage(user.id, model, clientIp, inTok, outTok);
+          },
+          estimatedPromptTokens,
+        );
+      }
+      return c.body(bodyStream);
     } else {
       const data = await upstreamResponse.json();
+      if (isFreeModelRequest && user?.id) {
+        const promptTokens = data?.usage?.prompt_tokens ?? estimatedPromptTokens;
+        const completionTokens =
+          data?.usage?.completion_tokens ??
+          Math.max(
+            1,
+            Math.ceil(
+              (data?.choices?.[0]?.message?.content?.length || 0) / 4,
+            ),
+          );
+        recordFreeModelUsage(user.id, model, clientIp, promptTokens, completionTokens);
+      }
       return c.json(data);
     }
   } catch (err: any) {
@@ -842,9 +1214,39 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
         if (effectiveApiKey) {
           fetchHeaders["Authorization"] = `Bearer ${effectiveApiKey}`;
         }
-        let res = await fetch("https://gen.pollinations.ai/v1/models", {
-          headers: fetchHeaders,
-        });
+        const customUserModels: { id: string; name: string }[] = [];
+        if (effectiveApiKey) {
+          try {
+            const myModelsRes = await fetch(
+              "https://gen.pollinations.ai/account/my-models",
+              { headers: fetchHeaders },
+            );
+            if (myModelsRes.ok) {
+              const myModelsData = await myModelsRes.json();
+              const myList = Array.isArray(myModelsData)
+                ? myModelsData
+                : myModelsData?.models;
+              if (Array.isArray(myList)) {
+                for (const m of myList) {
+                  const id = m?.modelId || m?.id || m?.name;
+                  if (id) {
+                    customUserModels.push({
+                      id: String(id),
+                      name: String(m?.title || m?.name || id),
+                    });
+                  }
+                }
+              }
+            }
+          } catch {}
+        }
+
+        let res = await fetch(
+          "https://gen.pollinations.ai/v1/models?reliability=all",
+          {
+            headers: fetchHeaders,
+          },
+        );
         if (!res.ok) {
           res = await fetch("https://text.pollinations.ai/models");
         }
@@ -856,18 +1258,29 @@ aiRouter.post("/fetch-provider-models", apiLimiter, async (c) => {
               id: typeof m === "string" ? m : (m.id || m.name),
               name: typeof m === "string" ? m : (m.description || m.name || m.id),
             }));
+            const seenIds = new Set(models.map((m: any) => m.id));
+            for (const cm of customUserModels) {
+              if (!seenIds.has(cm.id)) {
+                models.unshift(cm);
+                seenIds.add(cm.id);
+              }
+            }
             return c.json({ models });
           }
         }
       } catch {}
       return c.json({
         models: [
-          { id: "inclusionai/ling-3.1-flash", name: "Free" },
           { id: "amazon/nova-micro-v1", name: "Cheap" },
           { id: "openai/gpt-6-luna", name: "Fast" },
           { id: "openai/gpt-5.6-terra", name: "Balanced" },
           { id: "openai/gpt-6.1-sol", name: "Smart" },
           { id: "openai/gpt-6-astra", name: "Smartest" },
+          { id: "xiaomi/mimo-v2.5", name: "Cheap" },
+          { id: "anthropic/claude-haiku-5.5", name: "Fast" },
+          { id: "google/gemini-3.8-flash", name: "Balanced" },
+          { id: "google/gemini-4-argon", name: "Smart" },
+          { id: "anthropic/claude-fable-5.1", name: "Smartest" },
         ],
       });
     }

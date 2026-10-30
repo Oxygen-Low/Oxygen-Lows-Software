@@ -37,6 +37,7 @@ import {
   EyeOff,
   ExternalLink,
   Heart,
+  Cpu,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
@@ -46,6 +47,7 @@ import {
   generateImage,
   ImageModelInfo,
 } from "@/services/imageGen";
+import { llmRunnerService } from "@/services/llmRunnerService";
 import {
   streamPollinationsClient,
   fetchPollinationsClient,
@@ -514,6 +516,7 @@ interface Message {
   usedFallback?: boolean;
   fallbackModel?: string;
   fallbackReason?: string;
+  fallbackSourceModel?: string;
 }
 
 interface Chat {
@@ -736,6 +739,18 @@ const ChatMessage = React.memo(
                             "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
                         },
                         `Generated via AI Horde (${m.fallbackModel || "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"}) fallback due to Pollinations 404 error.`,
+                      )
+                    : m.fallbackSourceModel &&
+                      m.fallbackSourceModel !== "openai/gpt-6-luna"
+                    ? t(
+                        "apps.customModelFallbackNotice",
+                        {
+                          sourceModel: m.fallbackSourceModel,
+                          model:
+                            m.fallbackModel ||
+                            "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+                        },
+                        `Generated via AI Horde (${m.fallbackModel || "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"}) fallback because ${m.fallbackSourceModel} was unavailable.`,
                       )
                     : t(
                         "apps.defaultModelFallbackNotice",
@@ -1122,6 +1137,8 @@ export function ChatbotApp() {
     chatbotDefaultModel,
     setChatbotDefault,
     researchAgentDefaultModel,
+    freeUsage,
+    refreshFreeUsage,
   } = useAiModels();
   const [gateKeyInput, setGateKeyInput] = useState("");
   const [showGateKey, setShowGateKey] = useState(false);
@@ -1380,8 +1397,9 @@ export function ChatbotApp() {
   }, []);
 
   const [userSelectedModel, setUserSelectedModel] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("free");
   const selectedModel =
-    userSelectedModel || chatbotDefaultModel || "inclusionai/ling-3.1-flash";
+    userSelectedModel || chatbotDefaultModel || "openai/gpt-6-luna";
   const setSelectedModel = useCallback((modelId: string) => {
     setUserSelectedModel(modelId);
   }, []);
@@ -1396,12 +1414,30 @@ export function ChatbotApp() {
     [models],
   );
 
+  const freeModels = useMemo(() => {
+    return models.filter((m) => m.category === "free");
+  }, [models]);
+
   const standardModels = useMemo(() => {
-    return models.filter((m) => !m.isCustom);
+    return models.filter(
+      (m) =>
+        !m.isCustom &&
+        !m.isPaid &&
+        m.category !== "paid" &&
+        m.category !== "free",
+    );
+  }, [models]);
+
+  const paidModels = useMemo(() => {
+    return models.filter((m) => !m.isCustom && (m.isPaid || m.category === "paid"));
   }, [models]);
 
   const customModels = useMemo(() => {
-    return models.filter((m) => m.isCustom);
+    return models.filter((m) => m.isCustom && !m.isLocal);
+  }, [models]);
+
+  const localModels = useMemo(() => {
+    return models.filter((m) => m.isLocal);
   }, [models]);
 
   // Click outside listener for dropdowns
@@ -1592,7 +1628,7 @@ export function ChatbotApp() {
             },
             body: JSON.stringify({
               provider: "pollinations",
-              model: "inclusionai/ling-3.1-flash",
+              model: "openai/gpt-6-luna",
               messages: [
                 {
                   role: "user",
@@ -1614,7 +1650,7 @@ export function ChatbotApp() {
       } else if (isDirectKey) {
         try {
           const directTitle = await fetchPollinationsClient({
-            model: "inclusionai/ling-3.1-flash",
+            model: "openai/gpt-6-luna",
             messages: [
               {
                 role: "user",
@@ -1703,6 +1739,10 @@ export function ChatbotApp() {
     onFallback?: (modelUsed?: string) => void,
   ): Promise<string> => {
     const apiKey = pollinationsApiKey;
+    const sanitizedMsgs = msgs.map((m) => ({
+      role: (m.role || "user") as "system" | "user" | "assistant",
+      content: m.content || "",
+    }));
 
     const streamResponseData = async (
       response: Response,
@@ -1720,66 +1760,96 @@ export function ChatbotApp() {
       }
 
       let streamBuffer = "";
+      let rawStreamText = "";
       const translator = createSseDeltaTranslator();
+
+      const processSseLine = (line: string) => {
+        if (!line.trim() || !line.startsWith("data: ")) return;
+        const dataStr = line.replace("data: ", "");
+        if (dataStr === "[DONE]") return;
+
+        try {
+          const data = JSON.parse(dataStr);
+          if (data.error) throw new Error(data.error);
+          if (data.queue_info) setQueueStatus(data.queue_info);
+
+          let delta = "";
+          if (streamProvider === "google") {
+            delta =
+              data.delta?.content ||
+              data.message?.content?.text ||
+              data.candidates?.[0]?.content?.parts?.[0]?.text ||
+              "";
+            const fc =
+              data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
+            if (fc) {
+              delta += `<tool_call>\n{"name": ${JSON.stringify(fc.name)}, "args": ${JSON.stringify(fc.args)}}\n</tool_call>`;
+            }
+          } else if (streamProvider === "ollama") {
+            delta = data.message?.content || data.response || "";
+          } else {
+            delta = translator.translate(data);
+          }
+
+          if (delta) {
+            setQueueStatus(null);
+            fullContent += delta;
+            streamCallback(fullContent);
+          }
+        } catch (e: any) {
+          if (
+            e.message &&
+            e.message !== "Unexpected end of JSON input" &&
+            !e.message.includes("JSON")
+          ) {
+            toast.error(e.message);
+          }
+        }
+      };
 
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          streamBuffer += decoder.decode(value, { stream: true });
+          const chunkText = decoder.decode(value, { stream: true });
+          rawStreamText += chunkText;
+          streamBuffer += chunkText;
           const lines = streamBuffer.split("\n");
           streamBuffer = lines.pop() || "";
 
           for (const line of lines) {
-            if (!line.trim() || !line.startsWith("data: ")) continue;
-            const dataStr = line.replace("data: ", "");
-            if (dataStr === "[DONE]") break;
-
-            try {
-              const data = JSON.parse(dataStr);
-              if (data.error) throw new Error(data.error);
-              if (data.queue_info) setQueueStatus(data.queue_info);
-
-              let delta = "";
-              if (streamProvider === "google") {
-                delta =
-                  data.delta?.content ||
-                  data.message?.content?.text ||
-                  data.candidates?.[0]?.content?.parts?.[0]?.text ||
-                  "";
-                const fc =
-                  data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
-                if (fc) {
-                  delta += `<tool_call>\n{"name": ${JSON.stringify(fc.name)}, "args": ${JSON.stringify(fc.args)}}\n</tool_call>`;
-                }
-              } else if (streamProvider === "ollama") {
-                delta = data.message?.content || data.response || "";
-              } else {
-                delta = translator.translate(data);
-              }
-
-              if (delta) {
-                setQueueStatus(null);
-                fullContent += delta;
-                streamCallback(fullContent);
-              }
-            } catch (e: any) {
-              if (
-                e.message &&
-                e.message !== "Unexpected end of JSON input" &&
-                !e.message.includes("JSON")
-              ) {
-                toast.error(e.message);
-              }
-            }
+            processSseLine(line);
           }
+        }
+
+        if (streamBuffer.trim()) {
+          processSseLine(streamBuffer);
         }
 
         const flushed = translator.flush();
         if (flushed) {
           fullContent += flushed;
           streamCallback(fullContent);
+        }
+
+        // Fallback if upstream returned a non-SSE JSON completion object
+        if (!fullContent && rawStreamText.trim().startsWith("{")) {
+          try {
+            const parsedJson = JSON.parse(rawStreamText.trim());
+            const fallbackDelta =
+              parsedJson?.choices?.[0]?.message?.content ||
+              parsedJson?.choices?.[0]?.delta?.content ||
+              parsedJson?.choices?.[0]?.text ||
+              parsedJson?.content?.[0]?.text ||
+              "";
+            if (fallbackDelta) {
+              fullContent += fallbackDelta;
+              streamCallback(fullContent);
+            }
+          } catch {
+            // ignore non-JSON
+          }
         }
       }
       return fullContent;
@@ -1789,6 +1859,20 @@ export function ChatbotApp() {
       fallbackModelId: string,
       reason: "rate_limit" | "not_found" | "auth_required" = "rate_limit",
     ): Promise<string> => {
+      const effectiveSourceModel = model || "openai/gpt-6-luna";
+      const isDefaultPollinationsModel =
+        !model || model === "openai/gpt-6-luna";
+      const matchedModelObj =
+        models.find(
+          (m) =>
+            m.model_id === effectiveSourceModel ||
+            m.id === effectiveSourceModel,
+        );
+      const sourceModelDisplay =
+        matchedModelObj?.name && matchedModelObj.name !== effectiveSourceModel
+          ? `${matchedModelObj.name} (${effectiveSourceModel})`
+          : effectiveSourceModel;
+
       onFallback?.(fallbackModelId);
       setAllMessages((prevAll) =>
         prevAll.map((m) =>
@@ -1798,6 +1882,9 @@ export function ChatbotApp() {
                 usedFallback: true,
                 fallbackModel: fallbackModelId,
                 fallbackReason: reason,
+                fallbackSourceModel: isDefaultPollinationsModel
+                  ? undefined
+                  : sourceModelDisplay,
               }
             : m,
         ),
@@ -1818,12 +1905,20 @@ export function ChatbotApp() {
             `Pollinations returned a 404 (Not Found) error. Falling back to AI Horde backup (${fallbackModelId}). Quality may be decreased.`,
           ),
         );
+      } else if (!isDefaultPollinationsModel) {
+        toast.warning(
+          t(
+            "apps.customModelFallbackWarning",
+            { sourceModel: sourceModelDisplay, model: fallbackModelId },
+            `The selected model (${sourceModelDisplay}) is currently unavailable. Falling back to AI Horde (${fallbackModelId}). Quality may be decreased.`,
+          ),
+        );
       } else {
         toast.warning(
           t(
             "apps.defaultModelFallbackWarning",
             { model: fallbackModelId },
-            `The main default model (Ling 3.1 Flash) is currently unavailable (rate limited). Falling back to AI Horde (${fallbackModelId}). Quality may be decreased.`,
+            `The main default model (GPT-6 Luna) is currently unavailable (rate limited). Falling back to AI Horde (${fallbackModelId}). Quality may be decreased.`,
           ),
         );
       }
@@ -1838,7 +1933,7 @@ export function ChatbotApp() {
         body: JSON.stringify({
           provider: "horde",
           model: fallbackModelId,
-          messages: msgs,
+          messages: sanitizedMsgs,
           stream: true,
         }),
       };
@@ -1857,6 +1952,20 @@ export function ChatbotApp() {
           !apiKey.includes("...") &&
           apiKey.length > 20,
       );
+      if (
+        selectedCategory === "free" ||
+        (!isDirectKey && freeModels.some((m) => m.model_id === model))
+      ) {
+        if (!session?.access_token) {
+          throw new Error(
+            t(
+              "chatbot.authRequiredForFree",
+              undefined,
+              "Please log in to use free AI models.",
+            ),
+          );
+        }
+      }
       if (!isDirectKey && session?.access_token) {
         try {
           const fetchOptions: RequestInit = {
@@ -1868,23 +1977,44 @@ export function ChatbotApp() {
             signal,
             body: JSON.stringify({
               provider: "pollinations",
-              model: model || "inclusionai/ling-3.1-flash",
-              messages: msgs,
+              model: model || "openai/gpt-6-luna",
+              messages: sanitizedMsgs,
               stream: true,
+              category:
+                selectedCategory ||
+                (freeModels.some((m) => m.model_id === model)
+                  ? "free"
+                  : undefined),
             }),
           };
           const res = await fetch("/api/ai/proxy", fetchOptions);
           if (!res.ok) {
             const errStatus = res.status;
             const errMsg = await parseAiProxyError(res);
+            const lowerErr = errMsg.toLowerCase();
+            const isFreeDailyLimit =
+              errMsg.includes("Daily token limit reached") ||
+              errMsg.includes("Daily limit reached") ||
+              lowerErr.includes("free_tier_limit_reached");
+            if (
+              isFreeDailyLimit ||
+              (errStatus === 401 && selectedCategory === "free")
+            ) {
+              throw new Error(errMsg);
+            }
             const is401 =
               errStatus === 401 ||
               errStatus === 403 ||
               errMsg.includes("401") ||
               errMsg.includes("403") ||
-              errMsg.toLowerCase().includes("unauthorized") ||
-              errMsg.toLowerCase().includes("api key");
-            const is404 = errStatus === 404 || errMsg.includes("404");
+              lowerErr.includes("unauthorized") ||
+              lowerErr.includes("api key");
+            const is404 =
+              errStatus === 404 ||
+              errMsg.includes("404") ||
+              lowerErr.includes("not found") ||
+              lowerErr.includes("invalid model") ||
+              lowerErr.includes("unknown model");
             const fallbackReason: "rate_limit" | "not_found" | "auth_required" =
               is401 ? "auth_required" : is404 ? "not_found" : "rate_limit";
 
@@ -1900,9 +2030,23 @@ export function ChatbotApp() {
               );
             }
           }
-          return await streamResponseData(res, "pollinations");
+          const streamRes = await streamResponseData(res, "pollinations");
+          if (
+            selectedCategory === "free" ||
+            freeModels.some((m) => m.model_id === model)
+          ) {
+            refreshFreeUsage().catch(() => {});
+          }
+          return streamRes;
         } catch (err: any) {
           if (signal.aborted) throw err;
+          if (
+            err?.message?.includes("Daily token limit reached") ||
+            err?.message?.includes("Daily limit reached") ||
+            err?.message?.includes("free AI models")
+          ) {
+            throw err;
+          }
           console.warn(
             "Pollinations proxy stream failed, falling back to Horde:",
             err,
@@ -1924,11 +2068,8 @@ export function ChatbotApp() {
       try {
         let directContent = "";
         await streamPollinationsClient({
-          model: model || "inclusionai/ling-3.1-flash",
-          messages: msgs.map((m) => ({
-            role: (m.role || "user") as "system" | "user" | "assistant",
-            content: m.content || "",
-          })),
+          model: model || "openai/gpt-6-luna",
+          messages: sanitizedMsgs,
           signal,
           apiKey: isDirectKey ? apiKey : undefined,
           onChunk: (delta) => {
@@ -1940,6 +2081,7 @@ export function ChatbotApp() {
         return directContent;
       } catch (err: any) {
         if (signal.aborted) throw err;
+        const lowerErrMsg = String(err?.message || "").toLowerCase();
         const is401 =
           err instanceof PollinationsAuthError ||
           err?.statusCode === 401 ||
@@ -1949,15 +2091,19 @@ export function ChatbotApp() {
         const is404 =
           err instanceof PollinationsNotFoundError ||
           err?.statusCode === 404 ||
-          err?.message?.includes("404");
+          err?.message?.includes("404") ||
+          lowerErrMsg.includes("not found") ||
+          lowerErrMsg.includes("invalid model") ||
+          lowerErrMsg.includes("unknown model");
         const isRateLimit =
           err instanceof PollinationsRateLimitError ||
           err?.statusCode === 429;
         const is402 =
           err?.statusCode === 402 ||
           err?.message?.includes("402");
+        const is400 = err?.statusCode === 400;
 
-        if (is401 || is404 || isRateLimit || is402) {
+        if (is401 || is404 || isRateLimit || is402 || is400) {
           const fallbackReason: "rate_limit" | "not_found" | "auth_required" = is401
             ? "auth_required"
             : is404
@@ -1995,13 +2141,24 @@ export function ChatbotApp() {
       body: JSON.stringify({
         provider: provider,
         model: model,
-        messages: msgs,
+        messages: sanitizedMsgs,
         stream: true,
         apiKey: apiKey || undefined,
       }),
     };
 
     if (provider.startsWith("local-")) {
+      if (provider === "local-llm-runner") {
+        let accumulated = "";
+        return await llmRunnerService.chatStream(
+          msgs,
+          { signal },
+          (delta) => {
+            accumulated += delta;
+            streamCallback(accumulated);
+          },
+        );
+      }
       if (provider === "local-ollama")
         url = "http://127.0.0.1:11434/v1/chat/completions";
       else if (provider === "local-lmstudio")
@@ -2190,7 +2347,8 @@ export function ChatbotApp() {
   }> => {
     let finalContent = "";
     let reasoningContent = "";
-    const effectiveProvider = selectedProvider;
+    const effectiveProvider =
+      selectedCategory === "local" ? "local-llm-runner" : selectedProvider;
     const effectiveModel = selectedModel;
 
     const injectedSystemPrompt = getInjectedSystemPrompt();
@@ -2219,10 +2377,13 @@ export function ChatbotApp() {
         ),
       );
 
-      const planPrompt = `Formulate a targeted web search query and response format to research and answer my request.\nRespond ONLY with a valid JSON object in this exact structure:\n{\n  "query": "<search query to look up on the web>",\n  "responseFormat": "<conclusion | summary | analysis | description | comparison>"\n}`;
+      const lastUserMsg = baseChatMessages.filter((m) => m.role === "user").pop();
+      const lastUserText = lastUserMsg?.content || baseChatMessages[baseChatMessages.length - 1]?.content || "";
+
+      const planPrompt = `Formulate a targeted web search query and response format to research and answer this request: "${lastUserText}".\nRespond ONLY with a valid JSON object in this exact structure:\n{\n  "query": "<search query to look up on the web>",\n  "responseFormat": "<conclusion | summary | analysis | description | comparison>"\n}`;
 
       const searchPlanMessages = [
-        ...baseChatMessages,
+        ...baseChatMessages.slice(0, -1),
         { role: "user", content: planPrompt } as Message,
       ];
 
@@ -2230,15 +2391,14 @@ export function ChatbotApp() {
       const planOutput = await callAiStream(
         effectiveProvider,
         effectiveModel,
-        getApiMessages(searchPlanMessages),
+        getApiMessages(searchPlanMessages.length > 0 ? searchPlanMessages : [{ role: "user", content: planPrompt } as Message]),
         signal,
         (content) => {
           searchPlanningText = content;
         },
       );
 
-      let parsedQuery =
-        baseChatMessages[baseChatMessages.length - 1]?.content || "";
+      let parsedQuery = lastUserText;
       let parsedFormat = "conclusion";
 
       try {
@@ -2264,7 +2424,7 @@ export function ChatbotApp() {
 
       const finalResearchProvider = "pollinations";
       const finalResearchModel =
-        selectedModel || researchAgentDefaultModel || "inclusionai/ling-3.1-flash";
+        selectedModel || researchAgentDefaultModel || "openai/gpt-6-luna";
       const finalApiKey = pollinationsApiKey || undefined;
 
       const agentRes = await fetch("/api/ai/agent-search", {
@@ -2337,108 +2497,100 @@ export function ChatbotApp() {
         ),
       );
 
-    let hadFallback = false;
-    let fallbackModelUsed: string | undefined = undefined;
-    const onFallback = (modelUsed?: string) => {
-      hadFallback = true;
-      if (modelUsed) fallbackModelUsed = modelUsed;
-    };
+      let hadFallback = false;
+      let fallbackModelUsed: string | undefined = undefined;
+      const onFallback = (modelUsed?: string) => {
+        hadFallback = true;
+        if (modelUsed) fallbackModelUsed = modelUsed;
+      };
 
-    // Perform synthesis with the selected chatbot model
-    if (isReasoningEnabled) {
-      const reasoningMessages = [
-        ...baseChatMessages,
-        {
-          role: "assistant",
-          content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}`,
-        } as Message,
-        {
-          role: "user",
-          content:
-            "Based on the web search findings above, please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.",
-        } as Message,
-      ];
+      // Perform synthesis with the selected chatbot model
+      const searchContextPrefix = `Web Search Findings:\n${searchFindings || "No search findings gathered."}\n\nInstructions: Answer the user's request accurately, factually, and comprehensively using the verified web search findings above. Cite relevant source URLs where applicable.`;
 
-      reasoningContent = await callAiStream(
-        effectiveProvider,
-        effectiveModel,
-        getApiMessages(reasoningMessages),
-        signal,
-        (content) => {
-          setAllMessages((prevAll) =>
-            prevAll.map((m) =>
-              m.id === "temp-streaming" ? { ...m, reasoning: content } : m,
-            ),
-          );
-        },
-        onFallback,
-      );
+      if (isReasoningEnabled) {
+        const reasoningMessages = [
+          ...baseChatMessages.slice(0, -1),
+          {
+            role: "user",
+            content: `${lastUserText}\n\n${searchContextPrefix}\n\nBased on the web search findings above, please think step-by-step about my last request. Output your internal reasoning process and analysis. DO NOT output the final response to the user yet, just your thoughts.`,
+          } as Message,
+        ];
 
-      const finalMessages = [
-        ...baseChatMessages,
-        {
-          role: "assistant",
-          content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}\n\nMy internal reasoning:\n${reasoningContent}`,
-        } as Message,
-        {
-          role: "user",
-          content:
-            "Great. Now based on your web search findings and reasoning, provide the final response.",
-        } as Message,
-      ];
+        reasoningContent = await callAiStream(
+          effectiveProvider,
+          effectiveModel,
+          getApiMessages(reasoningMessages),
+          signal,
+          (content) => {
+            setAllMessages((prevAll) =>
+              prevAll.map((m) =>
+                m.id === "temp-streaming" ? { ...m, reasoning: content } : m,
+              ),
+            );
+          },
+          onFallback,
+        );
 
-      finalContent = await callAiStream(
-        effectiveProvider,
-        effectiveModel,
-        getApiMessages(finalMessages),
-        signal,
-        (content) => {
-          setAllMessages((prevAll) =>
-            prevAll.map((m) =>
-              m.id === "temp-streaming" ? { ...m, content } : m,
-            ),
-          );
-        },
-        onFallback,
-      );
-    } else {
-      const synthesisMessages = [
-        ...baseChatMessages,
-        {
-          role: "assistant",
-          content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}`,
-        } as Message,
-        {
-          role: "user",
-          content:
-            "Based on the web search findings above, synthesize a high-quality, comprehensive, and well-structured response to answer my request. Cite sources where relevant.",
-        } as Message,
-      ];
+        const finalMessages = [
+          ...baseChatMessages.slice(0, -1),
+          {
+            role: "assistant",
+            content: `Web Search Findings:\n${searchFindings || "No search findings gathered."}\n\nMy internal reasoning:\n${reasoningContent}`,
+          } as Message,
+          {
+            role: "user",
+            content:
+              "Great. Now based on your web search findings and reasoning, provide the final response.",
+          } as Message,
+        ];
 
-      finalContent = await callAiStream(
-        effectiveProvider,
-        effectiveModel,
-        getApiMessages(synthesisMessages),
-        signal,
-        (content) => {
-          setAllMessages((prevAll) =>
-            prevAll.map((m) =>
-              m.id === "temp-streaming" ? { ...m, content } : m,
-            ),
-          );
-        },
-        onFallback,
-      );
-    }
+        finalContent = await callAiStream(
+          effectiveProvider,
+          effectiveModel,
+          getApiMessages(finalMessages),
+          signal,
+          (content) => {
+            setAllMessages((prevAll) =>
+              prevAll.map((m) =>
+                m.id === "temp-streaming" ? { ...m, content } : m,
+              ),
+            );
+          },
+          onFallback,
+        );
+      } else {
+        const synthesisMessages = [
+          ...baseChatMessages.slice(0, -1),
+          {
+            role: "user",
+            content: `${lastUserText}\n\n${searchContextPrefix}`,
+          } as Message,
+        ];
 
-    return {
-      finalContent,
-      reasoningContent: reasoningContent || null,
-      isWebSearch: true,
-      usedFallback: hadFallback,
-      fallbackModel: fallbackModelUsed,
-    };
-  } else if (isReasoningEnabled) {
+        finalContent = await callAiStream(
+          effectiveProvider,
+          effectiveModel,
+          getApiMessages(synthesisMessages),
+          signal,
+          (content) => {
+            setAllMessages((prevAll) =>
+              prevAll.map((m) =>
+                m.id === "temp-streaming" ? { ...m, content } : m,
+              ),
+            );
+          },
+          onFallback,
+        );
+      }
+
+      return {
+        finalContent,
+        reasoningContent: reasoningContent || null,
+        isWebSearch: true,
+        usedFallback: hadFallback,
+        fallbackModel: fallbackModelUsed,
+      };
+    } else if (isReasoningEnabled) {
     let hadFallback = false;
     let fallbackModelUsed: string | undefined = undefined;
     const onFallback = (modelUsed?: string) => {
@@ -3628,7 +3780,7 @@ export function ChatbotApp() {
                 New Chat
               </span>
             </button>
-            <ScrollArea className="flex-1 -mx-2 px-2">
+            <ScrollArea className="flex-1 -mx-2 px-2 [&_[data-radix-scroll-area-viewport]>div]:!block">
               <div className="flex flex-col gap-1 mt-2">
                 <p className="text-slate-400 text-[11px] font-display font-medium uppercase tracking-[0.05em] px-3 pb-2">
                   Chats
@@ -3637,7 +3789,7 @@ export function ChatbotApp() {
                   <div
                     key={c.id}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg group/chat text-left cursor-pointer transition-colors",
+                      "flex items-center gap-2.5 px-3 py-2 rounded-lg group/chat text-left cursor-pointer transition-colors w-full min-w-0",
                       currentChatId === c.id
                         ? "bg-white/10 text-white"
                         : "hover:bg-white/5 text-slate-400 hover:text-white",
@@ -3647,8 +3799,8 @@ export function ChatbotApp() {
                       setSidebarOpen(false);
                     }}
                   >
-                    <Bot className="w-5 h-5 opacity-70" />
-                    <span className="text-sm font-medium truncate flex-1 font-body">
+                    <Bot className="w-5 h-5 opacity-70 shrink-0" />
+                    <span className="text-sm font-medium truncate flex-1 min-w-0 font-body">
                       {c.title}
                     </span>
                     <button
@@ -3663,11 +3815,16 @@ export function ChatbotApp() {
                             if (currentChatId === c.id) setCurrentChatId(null);
                           });
                       }}
-                      className="md:opacity-0 md:group-hover/chat:opacity-100 opacity-100 hover:text-red-400 p-1 transition-opacity"
+                      className={cn(
+                        "shrink-0 p-1.5 rounded-md hover:bg-white/10 hover:text-red-400 transition-opacity",
+                        currentChatId === c.id
+                          ? "opacity-100 text-slate-300"
+                          : "opacity-100 md:opacity-0 md:group-hover/chat:opacity-100 text-slate-400",
+                      )}
                       aria-label="Delete chat"
                       title="Delete chat"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
@@ -4151,6 +4308,142 @@ export function ChatbotApp() {
                     )}
                   >
                     <div className="max-h-[360px] overflow-y-auto no-scrollbar pb-2">
+                      {localModels.length > 0 && (
+                        <>
+                          <div className="px-3 pt-3 pb-1 flex items-center justify-between">
+                            <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-display font-medium flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              {t("chatbot.localModels", undefined, "Local LLMs")}
+                            </p>
+                            <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              Running
+                            </span>
+                          </div>
+                          <div className="px-2">
+                            {localModels.map((m) => {
+                              const isCurrentSelected =
+                                selectedModel === m.model_id &&
+                                selectedCategory === "local";
+                              return (
+                                <button
+                                  key={`local-${m.model_id}`}
+                                  onClick={() => {
+                                    setSelectedModel(m.model_id);
+                                    setSelectedCategory("local");
+                                    setModelDropdownOpen(false);
+                                  }}
+                                  className={cn(
+                                    "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
+                                    isCurrentSelected
+                                      ? "bg-white/5 border border-emerald-500/30"
+                                      : "",
+                                  )}
+                                >
+                                  <div className="text-sm text-white font-medium flex items-center gap-2">
+                                    <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+                                    <span>{m.name || m.model_id}</span>
+                                  </div>
+                                  <div className="text-[11px] text-emerald-400/90 truncate flex items-center justify-between w-full">
+                                    <span>
+                                      Local Desktop GPU/CPU • {m.rate || "Offline"}
+                                    </span>
+                                  </div>
+                                  {isCurrentSelected && (
+                                    <Check className="w-4 h-4 text-emerald-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+
+                      {freeModels.length > 0 && (
+                        <>
+                          <div className="px-3 pt-3 pb-1">
+                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-display font-medium">
+                              {t("account.freeModels", undefined, "Free Models")}
+                            </p>
+                            <p className="text-[10px] text-blue-400/90 mt-0.5 leading-snug">
+                              {t(
+                                "account.freeModelsNotice",
+                                undefined,
+                                "No Pollinations account needed. Daily 25 points usage limit applies per user and splits between accounts sharing an IP.",
+                              )}
+                            </p>
+                          </div>
+                          <div className="px-2">
+                            {freeModels.map((m) => {
+                              const usageInfo = freeUsage?.models?.[m.model_id];
+                              const isCurrentSelected =
+                                selectedModel === m.model_id &&
+                                selectedCategory === "free";
+                              return (
+                                <button
+                                  key={`free-${m.model_id}`}
+                                  onClick={() => {
+                                    setSelectedModel(m.model_id);
+                                    setSelectedCategory("free");
+                                    setModelDropdownOpen(false);
+                                  }}
+                                  className={cn(
+                                    "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
+                                    isCurrentSelected ? "bg-white/5" : "",
+                                  )}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="text-sm text-white font-medium">
+                                      {m.name || m.model_id}
+                                    </div>
+                                    {usageInfo && (
+                                      <span className="text-[10px] text-blue-300 font-mono">
+                                        {Number((freeUsage?.remainingPoints ?? usageInfo.remainingTokens).toFixed(1))} /{" "}
+                                        {freeUsage?.effectiveLimitPoints ?? usageInfo.effectiveLimit} pts
+                                      </span>
+                                    )}
+                                  </div>
+                                  {usageInfo && (
+                                    <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden my-1">
+                                      <div
+                                        className={cn(
+                                          "h-full rounded-full transition-all duration-300",
+                                          (freeUsage?.remainingPoints ?? usageInfo.remainingTokens) /
+                                            (freeUsage?.effectiveLimitPoints ?? usageInfo.effectiveLimit) > 0.25
+                                            ? "bg-blue-500"
+                                            : (freeUsage?.remainingPoints ?? usageInfo.remainingTokens) > 0
+                                              ? "bg-amber-500"
+                                              : "bg-rose-500",
+                                        )}
+                                        style={{
+                                          width: `${Math.min(
+                                            100,
+                                            Math.max(
+                                              0,
+                                              ((freeUsage?.remainingPoints ?? usageInfo.remainingTokens) /
+                                                (freeUsage?.effectiveLimitPoints ?? usageInfo.effectiveLimit)) *
+                                                100,
+                                            ),
+                                          )}%`,
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                  <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
+                                    <span>
+                                      {m.model_id}
+                                      {usageInfo?.rateDisplay || m.rate ? ` • ${usageInfo?.rateDisplay || m.rate}` : ""}
+                                    </span>
+                                  </div>
+                                  {isCurrentSelected && (
+                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+
                       {standardModels.length > 0 && (
                         <>
                           <div className="px-3 pt-3 pb-1">
@@ -4166,39 +4459,92 @@ export function ChatbotApp() {
                             </p>
                           </div>
                           <div className="px-2">
-                            {standardModels.map((m) => (
-                              <button
-                                key={`${m.provider}-${m.model_id}`}
-                                onClick={() => {
-                                  setSelectedModel(m.model_id);
-                                  setModelDropdownOpen(false);
-                                }}
-                                className={cn(
-                                  "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
-                                  selectedModel === m.model_id
-                                    ? "bg-white/5"
-                                    : "",
-                                )}
-                              >
-                                <div className="text-sm text-white font-medium">
-                                  {m.name || m.model_id}
-                                </div>
-                                <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
-                                  <span>
-                                    {m.model_id}
-                                    {m.rate ? ` • ${m.rate}` : ""}
-                                  </span>
-                                </div>
-                                {selectedModel === m.model_id && (
-                                  <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
-                                )}
-                              </button>
-                            ))}
+                            {standardModels.map((m) => {
+                              const isCurrentSelected =
+                                selectedModel === m.model_id &&
+                                selectedCategory !== "free";
+                              return (
+                                <button
+                                  key={`standard-${m.model_id}`}
+                                  onClick={() => {
+                                    setSelectedModel(m.model_id);
+                                    setSelectedCategory("standard");
+                                    setModelDropdownOpen(false);
+                                  }}
+                                  className={cn(
+                                    "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
+                                    isCurrentSelected ? "bg-white/5" : "",
+                                  )}
+                                >
+                                  <div className="text-sm text-white font-medium">
+                                    {m.name || m.model_id}
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
+                                    <span>
+                                      {m.model_id}
+                                      {m.rate ? ` • ${m.rate}` : ""}
+                                    </span>
+                                  </div>
+                                  {isCurrentSelected && (
+                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
                         </>
                       )}
 
-
+                      {paidModels.length > 0 && (
+                        <>
+                          <div className="px-3 pt-3 pb-1">
+                            <p className="text-[10px] uppercase tracking-wider text-slate-400 font-display font-medium">
+                              {t("account.paidModels", undefined, "Paid Models")}
+                            </p>
+                            <p className="text-[10px] text-emerald-400/90 mt-0.5 leading-snug">
+                              {t(
+                                "account.paidPollenNotice",
+                                undefined,
+                                "All models in this section use paid pollen, not quest pollen.",
+                              )}
+                            </p>
+                          </div>
+                          <div className="px-2">
+                            {paidModels.map((m) => {
+                              const isCurrentSelected =
+                                selectedModel === m.model_id &&
+                                selectedCategory === "paid";
+                              return (
+                                <button
+                                  key={`paid-${m.model_id}`}
+                                  onClick={() => {
+                                    setSelectedModel(m.model_id);
+                                    setSelectedCategory("paid");
+                                    setModelDropdownOpen(false);
+                                  }}
+                                  className={cn(
+                                    "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
+                                    isCurrentSelected ? "bg-white/5" : "",
+                                  )}
+                                >
+                                  <div className="text-sm text-white font-medium">
+                                    {m.name || m.model_id}
+                                  </div>
+                                  <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
+                                    <span>
+                                      {m.model_id}
+                                      {m.rate ? ` • ${m.rate}` : ""}
+                                    </span>
+                                  </div>
+                                  {isCurrentSelected && (
+                                    <Check className="w-4 h-4 text-primary absolute right-3 top-1/2 -translate-y-1/2" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
 
                       {customModels.length > 0 && (
                         <>
@@ -4213,6 +4559,7 @@ export function ChatbotApp() {
                                 key={`${m.provider}-${m.model_id}`}
                                 onClick={() => {
                                   setSelectedModel(m.model_id);
+                                  setSelectedCategory("custom");
                                   setModelDropdownOpen(false);
                                 }}
                                 className={cn(

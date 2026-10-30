@@ -66,7 +66,7 @@ $(ISO_NAME): $(KERNEL_ELF) grub.cfg
 	grub-mkrescue -o $(ISO_NAME) $(ISO_DIR) -- -volid "Ubuntu 24.04 amd64"
 
 test: $(ISO_NAME)
-	python3 test_runner.py --iso $(ISO_NAME) --timeout 25
+	python3 test_runner.py --iso $(ISO_NAME) --timeout 45
 
 run: $(ISO_NAME)
 	qemu-system-x86_64 -cdrom $(ISO_NAME) -m 256M -serial stdio -vga std

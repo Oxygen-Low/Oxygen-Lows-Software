@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import type { Channel, MusicProject, PlayMode, StudioView } from "./types";
+import type {
+  Channel,
+  MusicProject,
+  PlayMode,
+  StudioView,
+  WindowId,
+  WindowState,
+} from "./types";
 import { TopTransportBar } from "./TopTransportBar";
 import { ChannelRack } from "./ChannelRack";
 import { PianoRoll } from "./PianoRoll";
@@ -28,7 +35,7 @@ export const MusicStudioApp: React.FC = () => {
 
   // Project state with history for undo/redo
   const [project, setProject] = useState<MusicProject>(() =>
-    createDemoProject("cyberpunk", t("demos.cyberpunk"))
+    createDemoProject("cyberpunk", t("demos.cyberpunk")),
   );
   const [history, setHistory] = useState<MusicProject[]>([]);
   const [future, setFuture] = useState<MusicProject[]>([]);
@@ -109,39 +116,51 @@ export const MusicStudioApp: React.FC = () => {
     setView(id);
   }, []);
 
-  const toggleWindow = useCallback((id: WindowId) => {
-    setWindows((w) => {
-      const current = w[id];
-      const willOpen = !current.isOpen || current.isMinimized;
-      return {
-        ...w,
-        [id]: {
-          ...current,
-          isOpen: willOpen,
-          isMinimized: false,
-          zIndex: willOpen ? topZ + 1 : current.zIndex,
-        },
-      };
-    });
-    setTopZ((prev) => prev + 1);
-    setView(id);
-  }, [topZ]);
+  const toggleWindow = useCallback(
+    (id: WindowId) => {
+      setWindows((w) => {
+        const current = w[id];
+        const willOpen = !current.isOpen || current.isMinimized;
+        return {
+          ...w,
+          [id]: {
+            ...current,
+            isOpen: willOpen,
+            isMinimized: false,
+            zIndex: willOpen ? topZ + 1 : current.zIndex,
+          },
+        };
+      });
+      setTopZ((prev) => prev + 1);
+      setView(id);
+    },
+    [topZ],
+  );
 
-  const updateWindowState = useCallback((id: WindowId, partial: Partial<WindowState>) => {
-    setWindows((w) => ({
-      ...w,
-      [id]: { ...w[id], ...partial },
-    }));
-  }, []);
-  const [activePatternId, setActivePatternId] = useState<string>(() => project.patterns[0]?.id || "");
-  const [activePianoChannelId, setActivePianoChannelId] = useState<string>(() => project.channels[0]?.id || "");
+  const updateWindowState = useCallback(
+    (id: WindowId, partial: Partial<WindowState>) => {
+      setWindows((w) => ({
+        ...w,
+        [id]: { ...w[id], ...partial },
+      }));
+    },
+    [],
+  );
+  const [activePatternId, setActivePatternId] = useState<string>(
+    () => project.patterns[0]?.id || "",
+  );
+  const [activePianoChannelId, setActivePianoChannelId] = useState<string>(
+    () => project.channels[0]?.id || "",
+  );
   const [metronome, setMetronome] = useState<boolean>(false);
   const [recording, setRecording] = useState<boolean>(false);
   const [playing, setPlaying] = useState<boolean>(false);
   const [playStep, setPlayStep] = useState<number>(-1);
 
   // Modals state
-  const [synthModalChannel, setSynthModalChannel] = useState<Channel | null>(null);
+  const [synthModalChannel, setSynthModalChannel] = useState<Channel | null>(
+    null,
+  );
   const [projectsDialogOpen, setProjectsDialogOpen] = useState<boolean>(false);
   const [exportDialogOpen, setExportDialogOpen] = useState<boolean>(false);
 
@@ -189,11 +208,14 @@ export const MusicStudioApp: React.FC = () => {
   }, [playing]);
 
   // Project state updater with undo tracking
-  const updateProjectWithHistory = useCallback((nextProject: MusicProject) => {
-    setHistory((prev) => [...prev.slice(-25), project]);
-    setFuture([]);
-    setProject(nextProject);
-  }, [project]);
+  const updateProjectWithHistory = useCallback(
+    (nextProject: MusicProject) => {
+      setHistory((prev) => [...prev.slice(-25), project]);
+      setFuture([]);
+      setProject(nextProject);
+    },
+    [project],
+  );
 
   const handleUndo = useCallback(() => {
     if (history.length === 0) return;
@@ -235,7 +257,11 @@ export const MusicStudioApp: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT") {
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT"
+      ) {
         return;
       }
 
@@ -261,10 +287,15 @@ export const MusicStudioApp: React.FC = () => {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
         e.preventDefault();
         handleRedo();
-      } else if (KEYBOARD_MAP[e.key.toLowerCase()] !== undefined && engineRef.current) {
+      } else if (
+        KEYBOARD_MAP[e.key.toLowerCase()] !== undefined &&
+        engineRef.current
+      ) {
         // Live computer keyboard playback on active channel
         const offset = KEYBOARD_MAP[e.key.toLowerCase()];
-        const channel = project.channels.find((c) => c.id === activePianoChannelId) || project.channels[0];
+        const channel =
+          project.channels.find((c) => c.id === activePianoChannelId) ||
+          project.channels[0];
         if (channel) {
           engineRef.current.preview(channel, 60 + offset);
         }
@@ -273,11 +304,19 @@ export const MusicStudioApp: React.FC = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleTogglePlay, handleUndo, handleRedo, toggleWindow, project.channels, activePianoChannelId]);
+  }, [
+    handleTogglePlay,
+    handleUndo,
+    handleRedo,
+    toggleWindow,
+    project.channels,
+    activePianoChannelId,
+  ]);
 
   // Active Pattern safety
   const activePattern =
-    project.patterns.find((p) => p.id === activePatternId) || project.patterns[0];
+    project.patterns.find((p) => p.id === activePatternId) ||
+    project.patterns[0];
 
   return (
     <div className="flex flex-col h-full w-full bg-slate-950 text-slate-100 select-none overflow-hidden">
@@ -302,8 +341,12 @@ export const MusicStudioApp: React.FC = () => {
           focusWindow(v);
         }}
         onBpmChange={(bpm) => updateProjectWithHistory({ ...project, bpm })}
-        onSwingChange={(swing) => updateProjectWithHistory({ ...project, swing })}
-        onMasterChange={(masterVolume) => updateProjectWithHistory({ ...project, masterVolume })}
+        onSwingChange={(swing) =>
+          updateProjectWithHistory({ ...project, swing })
+        }
+        onMasterChange={(masterVolume) =>
+          updateProjectWithHistory({ ...project, masterVolume })
+        }
         onMetronomeChange={setMetronome}
         onRecordingChange={setRecording}
         onUndo={handleUndo}
@@ -319,7 +362,10 @@ export const MusicStudioApp: React.FC = () => {
         }}
         onPatternClone={() => {
           if (activePattern) {
-            const { project: next, id } = clonePattern(project, activePattern.id);
+            const { project: next, id } = clonePattern(
+              project,
+              activePattern.id,
+            );
             updateProjectWithHistory(next);
             setActivePatternId(id);
           }
@@ -333,12 +379,16 @@ export const MusicStudioApp: React.FC = () => {
         }}
         onPatternRename={(name) => {
           if (activePattern) {
-            updateProjectWithHistory(renamePattern(project, activePattern.id, name));
+            updateProjectWithHistory(
+              renamePattern(project, activePattern.id, name),
+            );
           }
         }}
         onPatternLength={(length) => {
           if (activePattern) {
-            updateProjectWithHistory(setPatternLength(project, activePattern.id, length));
+            updateProjectWithHistory(
+              setPatternLength(project, activePattern.id, length),
+            );
           }
         }}
         getAnalyser={() => engineRef.current?.graph.masterAnalyser || null}
@@ -363,9 +413,15 @@ export const MusicStudioApp: React.FC = () => {
             zIndex={windows.rack.zIndex}
             onFocus={() => focusWindow("rack")}
             onClose={() => updateWindowState("rack", { isOpen: false })}
-            onMinimize={() => updateWindowState("rack", { isMinimized: !windows.rack.isMinimized })}
+            onMinimize={() =>
+              updateWindowState("rack", {
+                isMinimized: !windows.rack.isMinimized,
+              })
+            }
             onMove={(x, y) => updateWindowState("rack", { x, y })}
-            onResize={(width, height) => updateWindowState("rack", { width, height })}
+            onResize={(width, height) =>
+              updateWindowState("rack", { width, height })
+            }
           >
             <ChannelRack
               t={t}
@@ -373,7 +429,9 @@ export const MusicStudioApp: React.FC = () => {
               activePattern={activePattern}
               playStep={playStep}
               onUpdateProject={updateProjectWithHistory}
-              onPreviewChannel={(ch) => engineRef.current?.preview(ch, ch.stepNote)}
+              onPreviewChannel={(ch) =>
+                engineRef.current?.preview(ch, ch.stepNote)
+              }
               onOpenSynth={(ch) => setSynthModalChannel(ch)}
               onOpenPianoRoll={(chId) => {
                 setActivePianoChannelId(chId);
@@ -402,9 +460,15 @@ export const MusicStudioApp: React.FC = () => {
             zIndex={windows.piano.zIndex}
             onFocus={() => focusWindow("piano")}
             onClose={() => updateWindowState("piano", { isOpen: false })}
-            onMinimize={() => updateWindowState("piano", { isMinimized: !windows.piano.isMinimized })}
+            onMinimize={() =>
+              updateWindowState("piano", {
+                isMinimized: !windows.piano.isMinimized,
+              })
+            }
             onMove={(x, y) => updateWindowState("piano", { x, y })}
-            onResize={(width, height) => updateWindowState("piano", { width, height })}
+            onResize={(width, height) =>
+              updateWindowState("piano", { width, height })
+            }
           >
             <PianoRoll
               t={t}
@@ -432,9 +496,15 @@ export const MusicStudioApp: React.FC = () => {
           zIndex={windows.playlist.zIndex}
           onFocus={() => focusWindow("playlist")}
           onClose={() => updateWindowState("playlist", { isOpen: false })}
-          onMinimize={() => updateWindowState("playlist", { isMinimized: !windows.playlist.isMinimized })}
+          onMinimize={() =>
+            updateWindowState("playlist", {
+              isMinimized: !windows.playlist.isMinimized,
+            })
+          }
           onMove={(x, y) => updateWindowState("playlist", { x, y })}
-          onResize={(width, height) => updateWindowState("playlist", { width, height })}
+          onResize={(width, height) =>
+            updateWindowState("playlist", { width, height })
+          }
         >
           <PlaylistArranger
             t={t}
@@ -459,9 +529,15 @@ export const MusicStudioApp: React.FC = () => {
           zIndex={windows.mixer.zIndex}
           onFocus={() => focusWindow("mixer")}
           onClose={() => updateWindowState("mixer", { isOpen: false })}
-          onMinimize={() => updateWindowState("mixer", { isMinimized: !windows.mixer.isMinimized })}
+          onMinimize={() =>
+            updateWindowState("mixer", {
+              isMinimized: !windows.mixer.isMinimized,
+            })
+          }
           onMove={(x, y) => updateWindowState("mixer", { x, y })}
-          onResize={(width, height) => updateWindowState("mixer", { width, height })}
+          onResize={(width, height) =>
+            updateWindowState("mixer", { width, height })
+          }
         >
           <MixerConsole
             t={t}
@@ -478,11 +554,15 @@ export const MusicStudioApp: React.FC = () => {
           channel={synthModalChannel}
           onClose={() => setSynthModalChannel(null)}
           onChangeParams={(params) => {
-            const next = updateChannel(project, synthModalChannel.id, { params });
+            const next = updateChannel(project, synthModalChannel.id, {
+              params,
+            });
             updateProjectWithHistory(next);
             setSynthModalChannel({ ...synthModalChannel, params });
           }}
-          onPreview={(midi) => engineRef.current?.preview(synthModalChannel, midi)}
+          onPreview={(midi) =>
+            engineRef.current?.preview(synthModalChannel, midi)
+          }
         />
       )}
 

@@ -57,14 +57,36 @@ export const CropDialog: React.FC<CropDialogProps> = ({
     setAspect("free");
     setImageLoaded(false);
 
+    const isBlobOrData = layer.src.startsWith("blob:") || layer.src.startsWith("data:");
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    if (!isBlobOrData) {
+      img.crossOrigin = "anonymous";
+    }
     img.onload = () => {
       imageElementRef.current = img;
       setNaturalSize({
         w: img.naturalWidth || layer.width,
         h: img.naturalHeight || layer.height,
       });
+      setImageLoaded(true);
+    };
+    img.onerror = () => {
+      if (img.crossOrigin && !isBlobOrData) {
+        const retryImg = new Image();
+        retryImg.onload = () => {
+          imageElementRef.current = retryImg;
+          setNaturalSize({
+            w: retryImg.naturalWidth || layer.width,
+            h: retryImg.naturalHeight || layer.height,
+          });
+          setImageLoaded(true);
+        };
+        retryImg.onerror = () => {
+          setImageLoaded(true);
+        };
+        retryImg.src = layer.src;
+        return;
+      }
       setImageLoaded(true);
     };
     img.src = layer.src;

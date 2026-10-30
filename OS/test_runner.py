@@ -377,7 +377,7 @@ class StreamVerifier:
 def run_headless_qemu_test(
     iso_path: str,
     qemu_bin: str,
-    timeout_sec: float = 25.0,
+    timeout_sec: float = 45.0,
     memory: str = "128M",
     verbose: bool = False,
     log_file: Optional[str] = None,

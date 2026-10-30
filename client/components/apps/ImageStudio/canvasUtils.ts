@@ -353,22 +353,118 @@ export function drawText(
 }
 
 // Global Image Cache for instant rendering
-const imageCache: Map<string, HTMLImageElement> = new Map();
+interface ImageCacheEntry {
+  img: HTMLImageElement;
+  status: "loading" | "loaded" | "error";
+  callbacks: Array<() => void>;
+}
+
+const imageCache: Map<string, ImageCacheEntry> = new Map();
+
+export function getImageStatus(src: string): "loading" | "loaded" | "error" | "none" {
+  const entry = imageCache.get(src);
+  if (!entry) return "none";
+  return entry.status;
+}
+
+export function preloadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const existing = getImageElement(src, () => {
+      const el = getImageElement(src);
+      resolve(el);
+    });
+    if (existing) {
+      resolve(existing);
+    } else {
+      const status = getImageStatus(src);
+      if (status === "error") {
+        resolve(null);
+      }
+    }
+  });
+}
 
 export function getImageElement(src: string, onLoad?: () => void): HTMLImageElement | null {
-  if (imageCache.has(src)) {
-    const img = imageCache.get(src)!;
-    if (img.complete && img.naturalWidth > 0) return img;
+  if (!src) return null;
+
+  const entry = imageCache.get(src);
+  if (entry) {
+    if (entry.status === "loaded" && entry.img.complete && entry.img.naturalWidth > 0) {
+      return entry.img;
+    }
+    if (entry.status === "error") {
+      return null;
+    }
+    // If currently loading, attach callback if provided and not already registered
+    if (onLoad && !entry.callbacks.includes(onLoad)) {
+      entry.callbacks.push(onLoad);
+    }
+    return null;
   }
 
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  img.src = src;
-  img.onload = () => {
-    imageCache.set(src, img);
-    if (onLoad) onLoad();
+  // Create new entry
+  const newEntry: ImageCacheEntry = {
+    img: new Image(),
+    status: "loading",
+    callbacks: onLoad ? [onLoad] : [],
   };
-  imageCache.set(src, img);
+  imageCache.set(src, newEntry);
+
+  const img = newEntry.img;
+  const isBlobOrData = src.startsWith("blob:") || src.startsWith("data:");
+
+  const handleSuccess = () => {
+    newEntry.status = "loaded";
+    const callbacks = [...newEntry.callbacks];
+    newEntry.callbacks = [];
+    callbacks.forEach((cb) => {
+      try {
+        cb();
+      } catch (err) {
+        console.error("Error in image onLoad callback:", err);
+      }
+    });
+  };
+
+  const handleError = () => {
+    // If crossOrigin was set and this isn't a blob/data URL, retry once without crossOrigin
+    if (img.crossOrigin && !isBlobOrData) {
+      const retryImg = new Image();
+      newEntry.img = retryImg;
+      retryImg.onload = handleSuccess;
+      retryImg.onerror = () => {
+        newEntry.status = "error";
+        const callbacks = [...newEntry.callbacks];
+        newEntry.callbacks = [];
+        callbacks.forEach((cb) => {
+          try {
+            cb();
+          } catch {}
+        });
+      };
+      retryImg.src = src;
+      return;
+    }
+
+    newEntry.status = "error";
+    const callbacks = [...newEntry.callbacks];
+    newEntry.callbacks = [];
+    callbacks.forEach((cb) => {
+      try {
+        cb();
+      } catch {}
+    });
+  };
+
+  // Do NOT set crossOrigin on blob: or data: URLs to avoid browser CORS errors
+  if (!isBlobOrData) {
+    img.crossOrigin = "anonymous";
+  }
+
+  img.onload = handleSuccess;
+  img.onerror = handleError;
+  img.src = src;
+
   return null;
 }
 
@@ -392,6 +488,8 @@ export function drawLayer(
   if (layer.type === "image") {
     const imgLayer = layer as ImageLayer;
     const img = getImageElement(imgLayer.src, onImageLoad);
+    const status = getImageStatus(imgLayer.src);
+
     if (img && img.complete && img.naturalWidth > 0) {
       ctx.save();
       const scaleX = imgLayer.flipH ? -1 : 1;
@@ -411,6 +509,18 @@ export function drawLayer(
         imgLayer.height,
       );
       ctx.restore();
+    } else if (status === "error") {
+      // Error state indicator
+      ctx.fillStyle = "#1e293b";
+      ctx.fillRect(-layer.width / 2, -layer.height / 2, layer.width, layer.height);
+      ctx.strokeStyle = "#ef4444";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-layer.width / 2, -layer.height / 2, layer.width, layer.height);
+      ctx.fillStyle = "#f87171";
+      ctx.font = "14px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("Failed to load image", 0, 0);
     } else {
       // Placeholder while loading
       ctx.fillStyle = "#334155";

@@ -33,8 +33,10 @@ SECTIONS {
     } :data
 
     .bss ALIGN(4K) : {
+        __bss_start = .;
         *(COMMON)
         *(.bss*)
+        __bss_end = .;
     } :data
 
     _kernel_end = .;

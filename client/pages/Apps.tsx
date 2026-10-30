@@ -38,6 +38,8 @@ import {
   X,
   Cpu,
   Headphones,
+  Database,
+  Terminal,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -85,6 +87,16 @@ const QRCodeGeneratorApp = lazy(() =>
 const LLMAgentApp = lazy(() =>
   import("@/components/apps/LLMAgent").then((m) => ({
     default: m.LLMAgentApp,
+  })),
+);
+const LLMRunnerApp = lazy(() =>
+  import("@/components/apps/LLMRunner").then((m) => ({
+    default: m.LLMRunnerApp,
+  })),
+);
+const PythonManagerApp = lazy(() =>
+  import("@/components/apps/PythonManager").then((m) => ({
+    default: m.PythonManagerApp,
   })),
 );
 const VPNApp = lazy(() =>
@@ -175,6 +187,11 @@ const GameStudioApp = lazy(() =>
 const CustomGamesApp = lazy(() =>
   import("@/components/apps/CustomGames").then((m) => ({
     default: m.CustomGamesApp,
+  })),
+);
+const DatasetsApp = lazy(() =>
+  import("@/components/apps/Datasets").then((m) => ({
+    default: m.DatasetsApp,
   })),
 );
 
@@ -399,6 +416,30 @@ const APPS: AppMetadata[] = [
     authRequired: true,
   },
   {
+    id: "llm-runner",
+    nameKey: "apps.llmRunnerTitle",
+    defaultName: "LLM Runner",
+    descKey: "apps.llmRunnerDesc",
+    defaultDesc:
+      "Run local GGUF, SafeTensors, and massive AirLLM models right on your desktop hardware.",
+    categories: ["All", "LLM/AI", "Development"],
+    availability: "desktop-only",
+    icon: <Cpu className="w-8 h-8 text-cyan-500" />,
+    component: LLMRunnerApp,
+  },
+  {
+    id: "python-manager",
+    nameKey: "apps.pythonManagerTitle",
+    defaultName: "Python Manager",
+    descKey: "apps.pythonManagerDesc",
+    defaultDesc:
+      "Inspect Python server runtime status, manage AI packages, and view live error and warning logs.",
+    categories: ["All", "Utility", "Development"],
+    availability: "desktop-only",
+    icon: <Terminal className="w-8 h-8 text-cyan-500" />,
+    component: PythonManagerApp,
+  },
+  {
     id: "vpn",
     nameKey: "apps.vpnTitle",
     defaultName: "VPN",
@@ -583,6 +624,19 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Gamepad2 className="w-8 h-8 text-cyan-500" />,
     component: CustomGamesApp,
+  },
+  {
+    id: "datasets",
+    nameKey: "apps.datasetsTitle",
+    defaultName: "Datasets",
+    descKey: "apps.datasetsDesc",
+    defaultDesc:
+      "Create, refine, and import datasets for AI training with Parquet and JSONL support.",
+    categories: ["All", "LLM/AI", "Development"],
+    availability: "web-and-desktop",
+    icon: <Database className="w-8 h-8 text-cyan-500" />,
+    component: DatasetsApp,
+    authRequired: true,
   },
 ];
 

@@ -19,8 +19,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { CanvasProject } from "./types";
-import { drawBackground, drawLayer } from "./canvasUtils";
+import { CanvasProject, ImageLayer } from "./types";
+import { drawBackground, drawLayer, preloadImage } from "./canvasUtils";
 import { storage } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -76,6 +76,12 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
     } else {
       drawBackground(ctx, project.width, project.height, project.background, false);
     }
+
+    // Preload all visible image layers before drawing
+    const imageLayers = project.layers.filter(
+      (l): l is ImageLayer => l.isVisible && l.type === "image",
+    );
+    await Promise.all(imageLayers.map((l) => preloadImage(l.src)));
 
     // Draw all visible layers
     for (const layer of project.layers) {

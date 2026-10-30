@@ -201,47 +201,90 @@ export async function streamPollinationsClient({
 
   const reader = response.body?.getReader();
   if (!reader) {
+    if (typeof (response as any).json === "function") {
+      const data = await response.json();
+      const text =
+        data?.choices?.[0]?.message?.content ||
+        data?.choices?.[0]?.delta?.content ||
+        data?.choices?.[0]?.text ||
+        data?.content?.[0]?.text ||
+        (typeof data === "string" ? data : "");
+      if (text) {
+        onChunk(text);
+        return text;
+      }
+    }
     throw new Error("Unable to read response stream from Pollinations.");
   }
 
   const decoder = new TextDecoder();
   let fullContent = "";
   let streamBuffer = "";
+  let rawStreamText = "";
   const translator = createSseDeltaTranslator();
+
+  const processLine = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed || !trimmed.startsWith("data: ")) return;
+    const dataStr = trimmed.slice(6);
+    if (dataStr === "[DONE]") return;
+
+    try {
+      const parsed = JSON.parse(dataStr);
+      if (parsed.queue_info) onQueueInfo?.(parsed.queue_info);
+      const delta = translator.translate(parsed);
+
+      if (delta) {
+        fullContent += delta;
+        onChunk(delta);
+      }
+    } catch {
+      // ignore parse error on partial chunks
+    }
+  };
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
 
-    streamBuffer += decoder.decode(value, { stream: true });
+    const chunkText = decoder.decode(value, { stream: true });
+    rawStreamText += chunkText;
+    streamBuffer += chunkText;
     const lines = streamBuffer.split("\n");
     streamBuffer = lines.pop() || "";
 
     for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith("data: ")) continue;
-      const dataStr = trimmed.slice(6);
-      if (dataStr === "[DONE]") break;
-
-      try {
-        const parsed = JSON.parse(dataStr);
-        if (parsed.queue_info) onQueueInfo?.(parsed.queue_info);
-        const delta = translator.translate(parsed);
-
-        if (delta) {
-          fullContent += delta;
-          onChunk(delta);
-        }
-      } catch {
-        // ignore parse error on partial chunks
-      }
+      processLine(line);
     }
+  }
+
+  if (streamBuffer.trim()) {
+    processLine(streamBuffer);
   }
 
   const flushed = translator.flush();
   if (flushed) {
     fullContent += flushed;
     onChunk(flushed);
+  }
+
+  // Fallback for custom Pollinations models that return a non-SSE JSON completion object
+  if (!fullContent && rawStreamText.trim().startsWith("{")) {
+    try {
+      const parsedJson = JSON.parse(rawStreamText.trim());
+      const fallbackText =
+        parsedJson?.choices?.[0]?.message?.content ||
+        parsedJson?.choices?.[0]?.delta?.content ||
+        parsedJson?.choices?.[0]?.text ||
+        parsedJson?.content?.[0]?.text ||
+        "";
+      if (fallbackText) {
+        fullContent += fallbackText;
+        onChunk(fallbackText);
+      }
+    } catch {
+      // not valid single JSON object
+    }
   }
 
   return fullContent;

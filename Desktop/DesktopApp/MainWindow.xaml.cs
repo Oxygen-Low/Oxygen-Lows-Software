@@ -571,6 +571,7 @@ public partial class MainWindow : Window
                     { 
                         id, 
                         success = ok, 
+                        error = ok ? null : (PythonServerManager.Instance.LastError ?? "Failed to start Python server"),
                         data = new 
                         { 
                             isRunning = PythonServerManager.Instance.IsRunning,
@@ -581,6 +582,22 @@ public partial class MainWindow : Window
                             error = PythonServerManager.Instance.LastError
                         } 
                     });
+                }
+                else if (cmd == "call_python_action")
+                {
+                    string appId = doc.RootElement.TryGetProperty("app", out var a) ? a.GetString() ?? "" : "";
+                    string action = doc.RootElement.TryGetProperty("action", out var act) ? act.GetString() ?? "" : "";
+                    string paramsJson = doc.RootElement.TryGetProperty("params", out var p) ? p.GetRawText() : "{}";
+
+                    var (callSuccess, callData, callError) = await PythonServerManager.Instance.CallActionAsync(appId, action, paramsJson);
+                    if (callSuccess)
+                    {
+                        SendWebMessage(new { id, success = true, data = callData });
+                    }
+                    else
+                    {
+                        SendWebMessage(new { id, success = false, error = callError ?? "Python action failed" });
+                    }
                 }
                 else if (cmd == "fetch_local_models")
                 {
@@ -874,6 +891,73 @@ public partial class MainWindow : Window
 
                     SendWebMessage(new { id, success = true, data = new { runningGames } });
                 }
+                else if (cmd == "open_models_folder")
+                {
+                    try
+                    {
+                        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                        string modelsFolder = Path.Combine(localAppData, "OxygenLowsSoftware", "Models");
+                        if (!Directory.Exists(modelsFolder))
+                        {
+                            Directory.CreateDirectory(modelsFolder);
+                        }
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = "explorer.exe",
+                            Arguments = $"\"{modelsFolder}\"",
+                            UseShellExecute = true
+                        });
+                        SendWebMessage(new { id, success = true, data = new { path = modelsFolder } });
+                    }
+                    catch (Exception ex)
+                    {
+                        SendWebMessage(new { id, success = false, error = ex.Message });
+                    }
+                }
+                else if (cmd == "pick_model_file")
+                {
+                    object? fileResult = null;
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        using var dialog = new System.Windows.Forms.OpenFileDialog
+                        {
+                            Title = "Select LLM Model File",
+                            Filter = "LLM Models (*.gguf;*.safetensors)|*.gguf;*.safetensors|GGUF Models (*.gguf)|*.gguf|SafeTensors Models (*.safetensors)|*.safetensors|All Files (*.*)|*.*",
+                            Multiselect = false,
+                            CheckFileExists = true
+                        };
+
+                        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK && !string.IsNullOrEmpty(dialog.FileName))
+                        {
+                            fileResult = new
+                            {
+                                path = dialog.FileName,
+                                name = Path.GetFileName(dialog.FileName),
+                                extension = Path.GetExtension(dialog.FileName).ToLowerInvariant()
+                            };
+                        }
+                    });
+
+                    SendWebMessage(new { id, success = true, data = fileResult });
+                }
+                else if (cmd == "pick_model_folder")
+                {
+                    string? selectedFolder = null;
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        using var dialog = new System.Windows.Forms.FolderBrowserDialog
+                        {
+                            Description = "Select Model / Checkpoint Directory",
+                            UseDescriptionForTitle = true
+                        };
+                        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                        {
+                            selectedFolder = dialog.SelectedPath;
+                        }
+                    });
+
+                    SendWebMessage(new { id, success = true, data = selectedFolder != null ? new { path = selectedFolder, name = Path.GetFileName(selectedFolder) } : null });
+                }
             }
             catch (Exception ex)
             {
@@ -915,7 +999,10 @@ public partial class MainWindow : Window
     private static void OpenExternalUrl(string url)
     {
         if (!NativeSecurity.IsWebUrl(url)) return;
-        try { Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true }); }
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return;
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) return;
+        // It is recommended to further restrict allowed hosts using a whitelist of known-safe domains.
+        try { Process.Start(new ProcessStartInfo { FileName = uri.AbsoluteUri, UseShellExecute = true }); }
         catch (Exception ex) { Debug.WriteLine("Could not open browser: " + ex.Message); }
     }
 
