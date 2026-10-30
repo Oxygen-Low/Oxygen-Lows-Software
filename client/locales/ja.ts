@@ -578,6 +578,12 @@ export const ja = {
     musicStudioTitle: "Music Studio",
     musicStudioDesc:
       "インタラクティブなミキサーと帰属不要のプリセットを使用して、ビート、メロディ、シンセサイザー、ドラムループ、曲全体を制作できます。",
+    gameStudioTitle: "ゲームスタジオ",
+    gameStudioDesc:
+      "AIが生成するコード、モデル、サウンド、アート、実績を使用して2D・3Dゲームを作成・管理します。",
+    customGamesTitle: "カスタムゲーム",
+    customGamesDesc:
+      "ゲームスタジオで他のクリエイターが作成した2D・3Dゲームを発見してプレイできます。",
     webBrowserTitle: "ã‚¦ã‚§ãƒ–ãƒ–ãƒ©ã‚¦ã‚¶",
     webBrowserDesc:
       "ãƒžãƒ«ãƒã‚¿ãƒ–é–²è¦§ã€æ¤œç´¢å€™è£œã€ãƒ–ãƒƒã‚¯ãƒžãƒ¼ã‚¯ã€ãƒªãƒ¼ãƒ€ãƒ¼ãƒ¢ãƒ¼ãƒ‰ã§ã‚¤ãƒ³ã‚¿ãƒ¼ãƒãƒƒãƒˆã‚’é–²è¦§ã§ãã¾ã™ã€‚",
@@ -3238,5 +3244,48 @@ notificationsTitle: "é€šçŸ¥",
       "laserZap": "レーザーFX",
       "noiseSweep": "ノイズスウィープFX"
     }
+  },
+  gameStudio: {
+    welcomeMessage:
+      "ゲームスタジオへようこそ！私はあなたのAIゲームディレクターです。作りたい2Dまたは3Dゲームを説明するか、ライブプレビューのゲームシステム、アート、3Dモデル、効果音、実績の調整方法を教えてください。",
+    directorChatTitle: "AIゲームディレクター",
+    freeAndPaidPollen: "Pollinations AI 準備完了",
+    codeModel: "コード/テキストモデル",
+    artModel: "アートモデル",
+    dimension: "次元 (2D/3D)",
+    promptPlaceholder:
+      "新しいゲームを説明するか、AIディレクターに変更点を指示してください...",
+    sendPrompt: "ディレクターに送信",
+    generatingStatus: "AIディレクターがコード・音声・アセットを構築中...",
+    generatedSuccess:
+      "ゲームを生成し、ライブサンドボックスプレビューを更新しました！",
+    tabPreview: "ライブプレビュー",
+    tabCodeAssets: "コード＆アート",
+    tabAchievements: "実績",
+    highScore: "ベストスコア",
+    restart: "リスタート",
+    exportHtml: "HTML出力",
+    publishBtn: "ゲームを公開",
+    publishModalTitle: "カスタムゲームに公開",
+    gameTitleLabel: "ゲームタイトル",
+    gameDescLabel: "説明",
+    genreLabel: "ジャンル",
+    coverUrlLabel: "カバー画像URL（任意）",
+    aiCoverArt: "AIゲームカバーアート",
+    generateCoverBtn: "カバーアートを生成",
+    coverGenerated: "PollinationsでAIカバーアートを生成しました！",
+    addAchievement: "ゲーム実績を追加",
+    achievementUnlocked: "実績解除",
+    publishing: "公開中...",
+    confirmPublish: "今すぐ公開",
+    publishSuccess: "カスタムゲームに公開されました！",
+  },
+  customGames: {
+    searchPlaceholder: "ゲーム、ジャンル、クリエイターを検索...",
+    createInStudio: "ゲームスタジオ",
+    noGamesFound: "一致するカスタムゲームが見つかりません。",
+    playNow: "今すぐプレイ",
+    plays: "回プレイ",
+    achievementUnlocked: "実績解除",
   },
 } as const;

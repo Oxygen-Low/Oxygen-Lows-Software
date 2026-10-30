@@ -574,6 +574,12 @@ export const ko = {
     musicStudioTitle: "Music Studio",
     musicStudioDesc:
       "대화형 믹서와 저작자 표시가 필요 없는 프리셋을 사용하여 비트, 멜로디, 신디사이저 악기, 드럼 루프 및 완성된 트랙을 제작할 수 있습니다.",
+    gameStudioTitle: "게임 스튜디오",
+    gameStudioDesc:
+      "AI 생성 코드, 모델, 사운드, 아트 및 업적을 사용하여 2D 및 3D 게임을 만들고 관리합니다.",
+    customGamesTitle: "커스텀 게임",
+    customGamesDesc:
+      "게임 스튜디오에서 다른 사용자가 만든 2D 및 3D 커뮤니티 게임을 찾아보고 플레이하세요.",
     webBrowserTitle: "ì›¹ ë¸Œë¼ìš°ì €",
     webBrowserDesc:
       "ë‹¤ì¤‘ íƒ­ íƒìƒ‰, ê²€ìƒ‰ì–´ ì¶”ì²œ, ë¶ë§ˆí¬ ë° ë¦¬ë” ëª¨ë“œë¡œ ì¸í„°ë„·ì„ íƒìƒ‰í•˜ì„¸ìš”.",
@@ -3215,5 +3221,48 @@ notificationsTitle: "ì•Œë¦¼",
       "laserZap": "레이저 FX",
       "noiseSweep": "노이즈 스윕 FX"
     }
+  },
+  gameStudio: {
+    welcomeMessage:
+      "게임 스튜디오에 오신 것을 환영합니다! 저는 AI 게임 디렉터입니다. 만들고 싶은 2D 또는 3D 게임을 설명하거나 실시간 미리보기에서 시스템, 비주얼, 3D 모델, 사운드 효과 및 업적을 수정할 방법을 알려주세요.",
+    directorChatTitle: "AI 게임 디렉터",
+    freeAndPaidPollen: "Pollinations AI 준비됨",
+    codeModel: "코드/텍스트 모델",
+    artModel: "아트 모델",
+    dimension: "차원 (2D/3D)",
+    promptPlaceholder:
+      "새로운 게임을 설명하거나 AI 디렉터에게 변경할 사항을 말해보세요...",
+    sendPrompt: "디렉터에게 전송",
+    generatingStatus: "디렉터 AI가 코드, 오디오 및 에셋을 조립 중입니다...",
+    generatedSuccess:
+      "게임을 생성하고 실시간 샌드박스 미리보기를 새로고침했습니다!",
+    tabPreview: "실시간 미리보기",
+    tabCodeAssets: "코드 및 아트",
+    tabAchievements: "업적",
+    highScore: "최고 점수",
+    restart: "다시 시작",
+    exportHtml: "HTML 내보내기",
+    publishBtn: "게임 게시",
+    publishModalTitle: "커스텀 게임에 게시",
+    gameTitleLabel: "게임 제목",
+    gameDescLabel: "설명",
+    genreLabel: "장르",
+    coverUrlLabel: "커버 아트 URL (선택)",
+    aiCoverArt: "AI 게임 커버 아트",
+    generateCoverBtn: "커버 아트 생성",
+    coverGenerated: "Pollinations로 AI 커버 아트를 생성했습니다!",
+    addAchievement: "게임 업적 추가",
+    achievementUnlocked: "업적 달성",
+    publishing: "게시 중...",
+    confirmPublish: "지금 게시",
+    publishSuccess: "커스텀 게임에 게임이 게시되었습니다!",
+  },
+  customGames: {
+    searchPlaceholder: "게임, 장르 또는 제작자 검색...",
+    createInStudio: "게임 스튜디오",
+    noGamesFound: "검색과 일치하는 커스텀 게임이 없습니다.",
+    playNow: "지금 플레이",
+    plays: "회 플레이",
+    achievementUnlocked: "업적 달성",
   },
 } as const;

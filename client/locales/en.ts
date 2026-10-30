@@ -581,6 +581,12 @@ export const en = {
     musicStudioTitle: "Music Studio",
     musicStudioDesc:
       "Compose beats, melodies, multi-channel synthesizer instruments, drum loops, and full songs with an interactive mixer and zero-attribution presets.",
+    gameStudioTitle: "Game Studio",
+    gameStudioDesc:
+      "Create and manage 2D and 3D games using AI-generated code, models, sounds, art, and achievements.",
+    customGamesTitle: "Custom Games",
+    customGamesDesc:
+      "Discover and play community 2D and 3D games created by others in Game Studio.",
     webBrowserTitle: "Web Browser",
     webBrowserDesc:
       "Browse the internet with multi-tab navigation, search suggestions, bookmarks, and reader mode.",
@@ -3274,6 +3280,49 @@ export const en = {
       "laserZap": "Laser Zap FX",
       "noiseSweep": "Noise Sweep FX"
     }
+  },
+  gameStudio: {
+    welcomeMessage:
+      "Welcome to Game Studio! I am your AI Game Director. Describe any 2D or 3D game you want to build—or tell me how to tweak the mechanics, visuals, 3D models, sound effects, and achievements in the live preview.",
+    directorChatTitle: "AI Game Director",
+    freeAndPaidPollen: "Pollinations AI Ready",
+    codeModel: "Code/Text Model",
+    artModel: "Art Model",
+    dimension: "Dimension",
+    promptPlaceholder:
+      "Describe a new game or tell the AI Director what to change...",
+    sendPrompt: "Send to Director",
+    generatingStatus: "Director AI is assembling code, audio & assets...",
+    generatedSuccess:
+      "I have generated and hot-reloaded your game in the live sandbox preview!",
+    tabPreview: "Live Preview",
+    tabCodeAssets: "Code & Art",
+    tabAchievements: "Achievements",
+    highScore: "Best Score",
+    restart: "Restart",
+    exportHtml: "Export HTML",
+    publishBtn: "Publish Game",
+    publishModalTitle: "Publish to Custom Games",
+    gameTitleLabel: "Game Title",
+    gameDescLabel: "Description",
+    genreLabel: "Genre",
+    coverUrlLabel: "Cover Art URL (Optional)",
+    aiCoverArt: "AI Game Cover Art",
+    generateCoverBtn: "Generate Cover Art",
+    coverGenerated: "Generated AI Cover Art using Pollinations!",
+    addAchievement: "Add Game Achievement",
+    achievementUnlocked: "Achievement Unlocked",
+    publishing: "Publishing...",
+    confirmPublish: "Publish Now",
+    publishSuccess: "Game published to Custom Games!",
+  },
+  customGames: {
+    searchPlaceholder: "Search games, genres, or creators...",
+    createInStudio: "Game Studio",
+    noGamesFound: "No custom games match your search.",
+    playNow: "Play Now",
+    plays: "plays",
+    achievementUnlocked: "Achievement Unlocked",
   },
 } as const;
 

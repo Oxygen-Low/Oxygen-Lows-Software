@@ -554,6 +554,12 @@ export const zhCN = {
     musicStudioTitle: "音乐工作室",
     musicStudioDesc:
       "使用交互式混音器和免署名预设制作节拍、旋律、多通道合成器乐器、鼓点循环和完整音轨。",
+    gameStudioTitle: "游戏工作室",
+    gameStudioDesc:
+      "使用 AI 生成的代码、模型、音效、美术与成就来创建和管理 2D 与 3D 游戏。",
+    customGamesTitle: "自定义游戏",
+    customGamesDesc:
+      "探索并畅玩其他创作者在游戏工作室中制作的 2D 与 3D 社区游戏。",
     webBrowserTitle: "ç½‘é¡µæµè§ˆå™¨",
     webBrowserDesc:
       "æ”¯æŒå¤šæ ‡ç­¾æµè§ˆã€æœç´¢å»ºè®®ã€ä¹¦ç­¾å’Œé˜…è¯»æ¨¡å¼ã€‚",
@@ -3144,5 +3150,47 @@ notificationsTitle: "é€šçŸ¥",
       "laserZap": "激光音效",
       "noiseSweep": "噪声扫频音效"
     }
+  },
+  gameStudio: {
+    welcomeMessage:
+      "欢迎来到游戏工作室！我是您的 AI 游戏总监。请描述您想制作的任何 2D 或 3D 游戏，或告诉我如何在实时预览中调整玩法机制、视觉效果、3D 模型、音效和成就。",
+    directorChatTitle: "AI 游戏总监",
+    freeAndPaidPollen: "Pollinations AI 就绪",
+    codeModel: "代码/文本模型",
+    artModel: "美术模型",
+    dimension: "维度 (2D/3D)",
+    promptPlaceholder:
+      "描述一款新游戏，或告诉 AI 总监需要修改的内容...",
+    sendPrompt: "发送给总监",
+    generatingStatus: "AI 总监正在生成代码、音效与美术资源...",
+    generatedSuccess: "已生成并在实时沙盒预览中热重载您的游戏！",
+    tabPreview: "实时预览",
+    tabCodeAssets: "代码与美术",
+    tabAchievements: "成就",
+    highScore: "最高分",
+    restart: "重新开始",
+    exportHtml: "导出 HTML",
+    publishBtn: "发布游戏",
+    publishModalTitle: "发布到自定义游戏",
+    gameTitleLabel: "游戏名称",
+    gameDescLabel: "游戏简介",
+    genreLabel: "类型",
+    coverUrlLabel: "封面图片 URL（可选）",
+    aiCoverArt: "AI 游戏封面",
+    generateCoverBtn: "生成封面",
+    coverGenerated: "已通过 Pollinations 生成 AI 游戏封面！",
+    addAchievement: "添加游戏成就",
+    achievementUnlocked: "成就已解锁",
+    publishing: "正在发布...",
+    confirmPublish: "立即发布",
+    publishSuccess: "游戏已成功发布到自定义游戏！",
+  },
+  customGames: {
+    searchPlaceholder: "搜索游戏、类型或创作者...",
+    createInStudio: "游戏工作室",
+    noGamesFound: "没有找到匹配的自定义游戏。",
+    playNow: "立即畅玩",
+    plays: "次游玩",
+    achievementUnlocked: "成就已解锁",
   },
 } as const;

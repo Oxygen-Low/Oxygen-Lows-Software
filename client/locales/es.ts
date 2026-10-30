@@ -588,6 +588,12 @@ export const es = {
     musicStudioTitle: "Music Studio",
     musicStudioDesc:
       "Componga ritmos, melodías, sintetizadores multicanal, bucles de batería y canciones completas con un mezclador interactivo y ajustes preestablecidos sin atribución.",
+    gameStudioTitle: "Estudio de Juegos",
+    gameStudioDesc:
+      "Crea y gestiona juegos 2D y 3D usando código, modelos, sonidos, arte y logros generados por IA.",
+    customGamesTitle: "Juegos Personalizados",
+    customGamesDesc:
+      "Descubre y juega juegos 2D y 3D de la comunidad creados por otros en el Estudio de Juegos.",
     webBrowserTitle: "Navegador Web",
     webBrowserDesc:
       "Navega por Internet con pestaÃ±as mÃºltiples, sugerencias de bÃºsqueda, marcadores y modo lectura.",
@@ -3256,5 +3262,48 @@ export const es = {
       "laserZap": "Efecto Láser Zap",
       "noiseSweep": "Efecto Barrido de Ruido"
     }
+  },
+  gameStudio: {
+    welcomeMessage:
+      "¡Bienvenido al Estudio de Juegos! Soy tu Director de Juegos con IA. Describe cualquier juego 2D o 3D que quieras crear o dime cómo ajustar las mecánicas, gráficos, modelos 3D, sonidos y logros.",
+    directorChatTitle: "Director de Juegos IA",
+    freeAndPaidPollen: "Pollinations IA Listo",
+    codeModel: "Modelo de Código/Texto",
+    artModel: "Modelo de Arte",
+    dimension: "Dimensión",
+    promptPlaceholder:
+      "Describe un nuevo juego o dile al Director IA qué cambiar...",
+    sendPrompt: "Enviar al Director",
+    generatingStatus: "El Director IA está ensamblando código, audio y recursos...",
+    generatedSuccess:
+      "¡He generado y recargado tu juego en la vista previa en vivo!",
+    tabPreview: "Vista en Vivo",
+    tabCodeAssets: "Código y Arte",
+    tabAchievements: "Logros",
+    highScore: "Mejor Puntuación",
+    restart: "Reiniciar",
+    exportHtml: "Exportar HTML",
+    publishBtn: "Publicar Juego",
+    publishModalTitle: "Publicar en Juegos Personalizados",
+    gameTitleLabel: "Título del Juego",
+    gameDescLabel: "Descripción",
+    genreLabel: "Género",
+    coverUrlLabel: "URL de Portada (Opcional)",
+    aiCoverArt: "Portada de Juego con IA",
+    generateCoverBtn: "Generar Portada",
+    coverGenerated: "¡Portada generada con Pollinations!",
+    addAchievement: "Añadir Logro del Juego",
+    achievementUnlocked: "Logro Desbloqueado",
+    publishing: "Publicando...",
+    confirmPublish: "Publicar Ahora",
+    publishSuccess: "¡Juego publicado en Juegos Personalizados!",
+  },
+  customGames: {
+    searchPlaceholder: "Buscar juegos, géneros o creadores...",
+    createInStudio: "Estudio de Juegos",
+    noGamesFound: "Ningún juego coincide con tu búsqueda.",
+    playNow: "Jugar Ahora",
+    plays: "partidas",
+    achievementUnlocked: "Logro Desbloqueado",
   },
 } as const;

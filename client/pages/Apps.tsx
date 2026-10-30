@@ -167,6 +167,16 @@ const AgentsManagerApp = lazy(() =>
     default: m.AgentsManagerApp,
   })),
 );
+const GameStudioApp = lazy(() =>
+  import("@/components/apps/GameStudio").then((m) => ({
+    default: m.GameStudioApp,
+  })),
+);
+const CustomGamesApp = lazy(() =>
+  import("@/components/apps/CustomGames").then((m) => ({
+    default: m.CustomGamesApp,
+  })),
+);
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -549,6 +559,30 @@ const APPS: AppMetadata[] = [
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
     component: WebmasterApp,
     authRequired: true,
+  },
+  {
+    id: "game-studio",
+    nameKey: "apps.gameStudioTitle",
+    defaultName: "Game Studio",
+    descKey: "apps.gameStudioDesc",
+    defaultDesc:
+      "Create and manage 2D and 3D games using AI-generated code, models, sounds, art, and achievements.",
+    categories: ["All", "LLM/AI", "Development"],
+    availability: "web-and-desktop",
+    icon: <Sparkles className="w-8 h-8 text-cyan-500" />,
+    component: GameStudioApp,
+  },
+  {
+    id: "custom-games",
+    nameKey: "apps.customGamesTitle",
+    defaultName: "Custom Games",
+    descKey: "apps.customGamesDesc",
+    defaultDesc:
+      "Discover and play community 2D and 3D games created by others in Game Studio.",
+    categories: ["All", "Social", "Utility"],
+    availability: "web-and-desktop",
+    icon: <Gamepad2 className="w-8 h-8 text-cyan-500" />,
+    component: CustomGamesApp,
   },
 ];
 
