@@ -3344,6 +3344,7 @@ export const es = {
     playNow: "Jugar Ahora",
     plays: "partidas",
     achievementUnlocked: "Logro Desbloqueado",
+  },
   datasets: {
     title: "Conjuntos de Datos",
     subtitle: "Crea y gestiona conjuntos de datos para el entrenamiento de IA",

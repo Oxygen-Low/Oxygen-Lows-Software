@@ -3231,6 +3231,7 @@ notificationsTitle: "é€šçŸ¥",
     playNow: "立即畅玩",
     plays: "次游玩",
     achievementUnlocked: "成就已解锁",
+  },
   datasets: {
     title: "数据集",
     subtitle: "创建和管理用于 AI 训练的数据集",

@@ -3331,6 +3331,7 @@ notificationsTitle: "Ð£Ð²ÐµÐ´Ð¾Ð¼Ð»ÐµÐ½Ð¸Ñ",
     playNow: "Играть",
     plays: "сыграно",
     achievementUnlocked: "Достижение Разблокировано",
+  },
   datasets: {
     title: "Датасеты",
     subtitle: "Создавайте и управляйте наборами данных для обучения ИИ",

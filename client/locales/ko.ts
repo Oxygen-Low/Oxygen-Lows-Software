@@ -3302,6 +3302,7 @@ notificationsTitle: "ì•Œë¦¼",
     playNow: "지금 플레이",
     plays: "회 플레이",
     achievementUnlocked: "업적 달성",
+  },
   datasets: {
     title: "데이터셋",
     subtitle: "AI 학습을 위한 데이터셋 생성 및 관리",

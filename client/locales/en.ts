@@ -3363,6 +3363,7 @@ export const en = {
     playNow: "Play Now",
     plays: "plays",
     achievementUnlocked: "Achievement Unlocked",
+  },
   datasets: {
     title: "Datasets",
     subtitle: "Create and manage datasets for AI training",

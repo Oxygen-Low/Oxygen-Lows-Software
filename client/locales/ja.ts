@@ -3325,6 +3325,7 @@ notificationsTitle: "é€šçŸ¥",
     playNow: "今すぐプレイ",
     plays: "回プレイ",
     achievementUnlocked: "実績解除",
+  },
   datasets: {
     title: "データセット",
     subtitle: "AIトレーニング用のデータセットを作成・管理",
