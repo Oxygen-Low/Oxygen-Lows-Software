@@ -12,12 +12,14 @@ vi.mock("@/hooks/useAuth");
 describe("CustomGamesApp", () => {
   beforeEach(() => {
     vi.spyOn(authHook, "useAuth").mockReturnValue({
-      user: { id: "1", username: "oxygenlow", role: "admin" } as any,
-      session: { access_token: "test-token" } as any,
+      session: {
+        access_token: "test-token",
+        token_type: "bearer",
+        user: { id: "1", username: "oxygenlow", role: "admin" },
+      } as any,
       loading: false,
       signOut: vi.fn(),
-      refreshUser: vi.fn(),
-    });
+    } as any);
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any) => {
       if (String(url).includes("/api/custom-games")) {
         return new Response(JSON.stringify({ games: [] }), { status: 200 });

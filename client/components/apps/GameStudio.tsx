@@ -241,7 +241,7 @@ function synthesizeFallbackGame(
     }
     return {
       code: tweaked,
-      dimension: dimension === "3d" ? "3d" : "2d",
+      dimension: "2d",
       reply:
         "I have updated the game code with your requested adjustments and hot-reloaded the live sandbox preview!",
     };
@@ -249,7 +249,7 @@ function synthesizeFallbackGame(
 
   return {
     code: currentCode || NEON_SPACE_SHOOTER_CODE,
-    dimension: dimension === "3d" ? "3d" : "2d",
+    dimension: "2d",
     title: prompt.slice(0, 36).trim() || "AI Arcade Game",
     reply:
       "I have processed your request, generated the requested Pollinations assets, and hot-reloaded the live game sandbox!",
@@ -258,7 +258,7 @@ function synthesizeFallbackGame(
 
 export const GameStudioApp: React.FC = () => {
   const { t } = useTranslation();
-  const { user, session } = useAuth();
+  const { session } = useAuth();
   const navigate = useNavigate();
   const { models, pollinationsApiKey, pollenBalance } = useAiModels();
 
@@ -636,7 +636,7 @@ Current project assets:
           coverUrl: gameCoverUrl.trim(),
           code: gameCode,
           achievements,
-          creatorUsername: user?.username || "Director",
+          creatorUsername: session?.user?.username || "Director",
           tags: [gameGenre.toLowerCase(), gameDimension],
         }),
       });
