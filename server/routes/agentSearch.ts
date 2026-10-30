@@ -30,6 +30,8 @@ export const HORDE_MODELS_MAP: Record<string, string[]> = {
   Fast: ["koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"],
   Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
   Writing: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
+  "Backup Free Model": ["gemma-4-E4B-it"],
+  "gemma-4-E4B-it": ["gemma-4-E4B-it"],
 };
 
 export function resolveHordeModel(model: string): string {

@@ -1859,7 +1859,9 @@ export default function Account() {
                         >
                           <div className="flex items-center justify-between gap-2">
                             <p className="text-xs font-semibold text-white truncate">
-                              {m.name || m.model_id}
+                              {m.name === "Backup Free Model"
+                                ? t("account.backupFreeModel", undefined, m.name)
+                                : m.name || m.model_id}
                             </p>
                             {m.rate && (
                               <Badge
@@ -1873,7 +1875,7 @@ export default function Account() {
                           <p className="text-[10px] text-slate-400 truncate font-mono">
                             {m.model_id}
                           </p>
-                          {info && (
+                          {info && m.provider !== "horde" && (
                             <div className="pt-1.5 border-t border-slate-800/50 space-y-1">
                               <div className="flex items-center justify-between text-[10px]">
                                 <span className="text-slate-400">

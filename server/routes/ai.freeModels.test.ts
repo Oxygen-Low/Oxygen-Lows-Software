@@ -59,6 +59,9 @@ describe("AI Router - Free Models API and Proxy", () => {
     expect(json.models["deepseek/deepseek-v4.1-flash"].rateDisplay).toBeDefined();
     expect(json.models["openai/gpt-6-luna"].rateDisplay).toBeDefined();
     expect(json.models["openai/gpt-oss-20b"].rateDisplay).toBeDefined();
+    expect(json.models["gemma-4-E4B-it"]).toBeDefined();
+    expect(json.models["gemma-4-E4B-it"].rateDisplay).toBe("0 pts");
+    expect(json.models["gemma-4-E4B-it"].name).toBe("Backup Free Model");
   });
 
   it("POST /proxy rejects unauthenticated access to free models", async () => {
@@ -185,5 +188,62 @@ describe("AI Router - Free Models API and Proxy", () => {
     const json = await res.json();
     expect(json.code).toBe("FREE_TIER_LIMIT_REACHED");
     expect(json.error).toContain("split between 2 accounts on this IP");
+  });
+
+  it("POST /proxy routes Backup Free Model (gemma-4-E4B-it) via AI Horde instead of Pollinations without consuming points", async () => {
+    let pollinationsCalled = false;
+    let hordeCalled = false;
+    let requestedHordeModel = "";
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockImplementation(async (url: any, opts: any) => {
+      const urlStr = String(url);
+      if (urlStr.includes("pollinations.ai")) {
+        pollinationsCalled = true;
+        return new Response(JSON.stringify({ choices: [{ message: { content: "Polli response" } }] }));
+      }
+      if (urlStr.includes("stablehorde.net")) {
+        hordeCalled = true;
+        try {
+          const body = JSON.parse(opts?.body || "{}");
+          requestedHordeModel = body.model;
+        } catch {}
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { role: "assistant", content: "Response from AI Horde Gemma model." } }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return originalFetch(url, opts);
+    });
+
+    const ip = "100.200.50.9";
+    // First max out user points on Pollinations
+    recordFreeModelUsage(mockUser.id, "deepseek/deepseek-v4.1-flash", ip, 500_000, 500_000);
+    const pointsBefore = getUserDailyPointsUsage(mockUser.id);
+
+    const res = await aiRouter.request("/proxy", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer valid-user-token",
+        "x-forwarded-for": ip,
+      },
+      body: JSON.stringify({
+        model: "gemma-4-E4B-it",
+        category: "free",
+        messages: [{ role: "user", content: "Hello from backup model" }],
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(pollinationsCalled).toBe(false);
+    expect(hordeCalled).toBe(true);
+    expect(requestedHordeModel).toBe("gemma-4-E4B-it");
+
+    // Points should not have increased
+    const pointsAfter = getUserDailyPointsUsage(mockUser.id);
+    expect(pointsAfter).toBe(pointsBefore);
   });
 });

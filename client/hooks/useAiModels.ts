@@ -104,6 +104,14 @@ export const BUILTIN_MODELS: Model[] = [
     category: "free",
   },
   {
+    id: "free:gemma-4-E4B-it",
+    provider: "horde",
+    model_id: "gemma-4-E4B-it",
+    name: "Backup Free Model",
+    rate: "0 pts",
+    category: "free",
+  },
+  {
     provider: "pollinations",
     model_id: "amazon/nova-micro-v1",
     name: "Cheap",

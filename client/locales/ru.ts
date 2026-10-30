@@ -281,6 +281,7 @@ export const ru = {
     registeredModelsDesc:
       "Все доступные модели Pollinations, включая официальные предустановки и пользовательские модели.",
     freeModels: "Бесплатные модели",
+    backupFreeModel: "Резервная бесплатная модель",
     freeModelsNotice: "Аккаунт Pollinations не требуется. Дневной лимит 25 баллов действует на пользователя и делится между аккаунтами с одного IP.",
     freePointsRemaining: "{remaining} из {total} баллов осталось сегодня",
     pointsRemainingLabel: "Баллы",

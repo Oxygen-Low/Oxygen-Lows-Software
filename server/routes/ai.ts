@@ -57,6 +57,8 @@ export const HORDE_MODELS_MAP: Record<string, string[]> = {
   ],
   Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
   Writing: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
+  "Backup Free Model": ["gemma-4-E4B-it"],
+  "gemma-4-E4B-it": ["gemma-4-E4B-it"],
 };
 
 export function resolveHordeModel(model: string): string {
@@ -597,6 +599,11 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     ? await getUserApiKey(user.id, "pollinations")
     : null;
   const isDirectPolliKey = !isInvalidOrMaskedApiKey(apiKey);
+  const isHordeFreeModel =
+    model === "gemma-4-E4B-it" ||
+    model === "Backup Free Model" ||
+    FREE_MODELS[model]?.provider === "horde" ||
+    (FREE_MODELS[model] && provider === "horde");
   const isFreeModelRequest =
     Boolean(FREE_MODELS[model]) &&
     (category === "free" ||
@@ -604,11 +611,11 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         !userPolliKey &&
         (provider === "pollinations" || !provider)));
 
-  if (isFreeModelRequest) {
+  if (isFreeModelRequest && !isHordeFreeModel) {
     if (!user) {
       return c.json({ error: "Please log in to use free AI models." }, 401);
     }
-  } else if (!user && provider !== "horde" && provider !== "pollinations") {
+  } else if (!user && provider !== "horde" && provider !== "pollinations" && !isHordeFreeModel) {
     return c.json({ error: "Authentication required for this model." }, 401);
   }
 
@@ -626,7 +633,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
   }
 
   const effectiveProvider =
-    provider || (isFreeModelRequest ? "pollinations" : "pollinations");
+    provider || (isHordeFreeModel ? "horde" : (isFreeModelRequest ? "pollinations" : "pollinations"));
   let effectiveApiKey = isInvalidOrMaskedApiKey(apiKey) ? "" : apiKey.trim();
   if (!effectiveApiKey && user?.id && effectiveProvider) {
     effectiveApiKey = (await getUserApiKey(user.id, effectiveProvider)) || "";
@@ -668,6 +675,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
   if (
     !integration?.api_key &&
     !isFreeModelRequest &&
+    !isHordeFreeModel &&
     provider !== "horde" &&
     provider !== "pollinations" &&
     provider !== "shared-model"
@@ -819,7 +827,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
     ),
   );
 
-  if (isFreeModelRequest && user?.id) {
+  if (isFreeModelRequest && !isHordeFreeModel && user?.id) {
     const allowance = checkFreeModelAllowance(
       user.id,
       model,
@@ -915,7 +923,11 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       targetUrl = "https://api.x.ai/v1/chat/completions";
       requestBody = { ...requestBody, model, messages: finalMessages };
       fetchOptions.headers["Authorization"] = `Bearer ${integration?.api_key}`;
-    } else if (provider === "pollinations" || isFreeModelRequest) {
+    } else if (
+      (effectiveProvider === "pollinations" || (isFreeModelRequest && !isHordeFreeModel)) &&
+      effectiveProvider !== "horde" &&
+      !isHordeFreeModel
+    ) {
       targetUrl = "https://gen.pollinations.ai/v1/chat/completions";
       requestBody = {
         ...requestBody,
@@ -929,7 +941,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       if (polliApiKey) {
         fetchOptions.headers["Authorization"] = `Bearer ${polliApiKey}`;
       }
-    } else if (provider === "horde") {
+    } else if (effectiveProvider === "horde" || isHordeFreeModel) {
       let actualModel = resolveHordeModel(model);
       const hordeHeaders: Record<string, string> = {
         Authorization: `Bearer ${integration?.api_key || "0000000000"}`,
@@ -1133,7 +1145,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         typeof upstreamResponse.json === "function"
       ) {
         const data = await upstreamResponse.json();
-        if (isFreeModelRequest && user?.id) {
+        if (isFreeModelRequest && !isHordeFreeModel && user?.id) {
           const promptTokens = data?.usage?.prompt_tokens ?? estimatedPromptTokens;
           const completionTokens =
             data?.usage?.completion_tokens ??
@@ -1155,7 +1167,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       c.header("Connection", "keep-alive");
 
       let bodyStream = upstreamResponse.body as any;
-      if (isFreeModelRequest && user?.id) {
+      if (isFreeModelRequest && !isHordeFreeModel && user?.id) {
         bodyStream = createFreeAiTrackingStream(
           bodyStream,
           (inTok, outTok) => {
@@ -1167,7 +1179,7 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
       return c.body(bodyStream);
     } else {
       const data = await upstreamResponse.json();
-      if (isFreeModelRequest && user?.id) {
+      if (isFreeModelRequest && !isHordeFreeModel && user?.id) {
         const promptTokens = data?.usage?.prompt_tokens ?? estimatedPromptTokens;
         const completionTokens =
           data?.usage?.completion_tokens ??

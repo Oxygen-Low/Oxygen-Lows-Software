@@ -23,6 +23,8 @@ export const formatModelLabel = (provider: string, modelId: string) => {
       Fast: "Fast - koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
       Smart: "Smart - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
       Writing: "Writing - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
+      "Backup Free Model": "Backup Free Model - gemma-4-E4B-it",
+      "gemma-4-E4B-it": "Backup Free Model - gemma-4-E4B-it",
     };
     return labels[modelId] || "AI Horde - " + modelId;
   }

@@ -276,6 +276,7 @@ export const en = {
     registeredModelsDesc:
       "All available Pollinations models, including official presets and custom registered models.",
     freeModels: "Free Models",
+    backupFreeModel: "Backup Free Model",
     freeModelsNotice: "No Pollinations account needed. Daily 25 points usage limit applies per user and splits between accounts sharing an IP.",
     freePointsRemaining: "{remaining} of {total} points left today",
     pointsRemainingLabel: "Points",

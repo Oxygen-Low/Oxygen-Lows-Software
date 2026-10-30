@@ -275,6 +275,7 @@ export const ko = {
     registeredModelsDesc:
       "공식 프리셋 및 사용자 지정 등록 모델을 포함한 모든 사용 가능한 Pollinations 모델입니다.",
     freeModels: "무료 모델",
+    backupFreeModel: "백업 무료 모델",
     freeModelsNotice: "Pollinations 계정이 필요하지 않습니다. 사용자당 일일 25포인트 사용 한도가 적용되며 동일한 IP를 공유하는 계정 간에 분할됩니다.",
     freePointsRemaining: "오늘 남은 포인트: {remaining} / {total}",
     pointsRemainingLabel: "포인트",

@@ -24,6 +24,9 @@ describe("freeAiLimits (Points Usage System)", () => {
     expect(FREE_MODELS["deepseek/deepseek-v4.1-flash"].tierName).toBe("Best");
     expect(FREE_MODELS["openai/gpt-6-luna"].tierName).toBe("Standard");
     expect(FREE_MODELS["openai/gpt-oss-20b"].tierName).toBe("Cheap");
+    expect(FREE_MODELS["gemma-4-E4B-it"].tierName).toBe("Backup");
+    expect(FREE_MODELS["gemma-4-E4B-it"].name).toBe("Backup Free Model");
+    expect(FREE_MODELS["gemma-4-E4B-it"].provider).toBe("horde");
   });
 
   it("should give full base limit (25 points = $0.25) to a single user on an IP", () => {
@@ -240,5 +243,31 @@ describe("freeAiLimits (Points Usage System)", () => {
     expect(recordedIn).toBe(5);
     // 8 characters / 4 = 2 completion tokens
     expect(recordedOut).toBe(2);
+  });
+
+  it("Backup Free Model (gemma-4-E4B-it) does not use any usage points and is allowed even when limit is reached", () => {
+    const ip = "198.51.100.99";
+    const userId = "user-backup-test";
+    const now = Date.now();
+
+    // 1. Max out daily points limit using a Pollinations model (25 points)
+    recordFreeModelUsage(userId, "deepseek/deepseek-v4.1-flash", ip, 500_000, 500_000, now);
+    const lunaAllowance = checkFreeModelAllowance(userId, "openai/gpt-6-luna", ip, 100, now);
+    expect(lunaAllowance.allowed).toBe(false);
+
+    // 2. Backup Free Model should still be allowed because it does not use usage points
+    const backupAllowance = checkFreeModelAllowance(userId, "gemma-4-E4B-it", ip, 100, now);
+    expect(backupAllowance.allowed).toBe(true);
+
+    // 3. Recording usage on Backup Free Model should add 0 points
+    const recordResult = recordFreeModelUsage(userId, "gemma-4-E4B-it", ip, 1000, 1000, now);
+    expect(recordResult.addedPoints).toBe(0);
+
+    // 4. Usage overview should list Backup Free Model with 0 pts rate
+    const allUsage = getAllFreeModelsUsage(userId, ip, now);
+    expect(allUsage.models["gemma-4-E4B-it"]).toBeDefined();
+    expect(allUsage.models["gemma-4-E4B-it"].name).toBe("Backup Free Model");
+    expect(allUsage.models["gemma-4-E4B-it"].rateDisplay).toBe("0 pts");
+    expect(allUsage.models["gemma-4-E4B-it"].provider).toBe("horde");
   });
 });

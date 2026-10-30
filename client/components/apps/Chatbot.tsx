@@ -2135,7 +2135,9 @@ export function ChatbotApp() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${session?.access_token}`,
+        ...(session?.access_token
+          ? { Authorization: `Bearer ${session.access_token}` }
+          : {}),
       },
       signal,
       body: JSON.stringify({
@@ -2144,6 +2146,9 @@ export function ChatbotApp() {
         messages: sanitizedMsgs,
         stream: true,
         apiKey: apiKey || undefined,
+        category:
+          selectedCategory ||
+          (freeModels.some((m) => m.model_id === model) ? "free" : undefined),
       }),
     };
 
@@ -2347,8 +2352,11 @@ export function ChatbotApp() {
   }> => {
     let finalContent = "";
     let reasoningContent = "";
+    const currentModelObj = models.find((m) => m.model_id === selectedModel);
     const effectiveProvider =
-      selectedCategory === "local" ? "local-llm-runner" : selectedProvider;
+      selectedCategory === "local"
+        ? "local-llm-runner"
+        : (currentModelObj?.provider || selectedProvider);
     const effectiveModel = selectedModel;
 
     const injectedSystemPrompt = getInjectedSystemPrompt();
@@ -4393,16 +4401,18 @@ export function ChatbotApp() {
                                 >
                                   <div className="flex items-center justify-between">
                                     <div className="text-sm text-white font-medium">
-                                      {m.name || m.model_id}
+                                      {m.name === "Backup Free Model"
+                                        ? t("account.backupFreeModel", undefined, m.name)
+                                        : m.name || m.model_id}
                                     </div>
-                                    {usageInfo && (
+                                    {usageInfo && m.provider !== "horde" && (
                                       <span className="text-[10px] text-blue-300 font-mono">
                                         {Number((freeUsage?.remainingPoints ?? usageInfo.remainingTokens).toFixed(1))} /{" "}
                                         {freeUsage?.effectiveLimitPoints ?? usageInfo.effectiveLimit} pts
                                       </span>
                                     )}
                                   </div>
-                                  {usageInfo && (
+                                  {usageInfo && m.provider !== "horde" && (
                                     <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden my-1">
                                       <div
                                         className={cn(
@@ -4431,7 +4441,9 @@ export function ChatbotApp() {
                                   <div className="text-[11px] text-slate-400 truncate flex items-center justify-between w-full">
                                     <span>
                                       {m.model_id}
-                                      {usageInfo?.rateDisplay || m.rate ? ` • ${usageInfo?.rateDisplay || m.rate}` : ""}
+                                      {m.provider === "horde"
+                                        ? ` • ${m.rate || "0 pts"}`
+                                        : (usageInfo?.rateDisplay || m.rate ? ` • ${usageInfo?.rateDisplay || m.rate}` : "")}
                                     </span>
                                   </div>
                                   {isCurrentSelected && (

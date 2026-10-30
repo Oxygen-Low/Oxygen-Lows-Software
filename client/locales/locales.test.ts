@@ -114,6 +114,7 @@ describe("All Locales Verification", () => {
       expect(t("account.researchSummarizerDefaultTitle")).toBeTruthy();
       expect(t("account.registeredModels")).toBeTruthy();
       expect(t("account.freeModels")).toBeTruthy();
+      expect(t("account.backupFreeModel")).toBeTruthy();
       expect(t("account.freeModelsNotice")).toBeTruthy();
       expect(t("chatbot.authRequiredForFree")).toBeTruthy();
       expect(t("chatbot.freeLimitExceeded")).toBeTruthy();

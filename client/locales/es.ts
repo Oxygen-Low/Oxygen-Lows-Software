@@ -283,6 +283,7 @@ export const es = {
     registeredModelsDesc:
       "Todos los modelos de Pollinations disponibles, incluidos ajustes preestablecidos oficiales y modelos registrados personalizados.",
     freeModels: "Modelos Gratuitos",
+    backupFreeModel: "Modelo gratuito de respaldo",
     freeModelsNotice: "No se necesita cuenta de Pollinations. Se aplica un límite diario de 25 puntos por usuario y se divide entre cuentas que comparten IP.",
     freePointsRemaining: "{remaining} de {total} puntos restantes hoy",
     pointsRemainingLabel: "Puntos",

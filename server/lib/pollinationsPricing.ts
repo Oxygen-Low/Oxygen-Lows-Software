@@ -35,6 +35,13 @@ export const FALLBACK_MODEL_PRICING: Record<string, ModelPricing> = {
     completionPointsPer1k: 0.018,
     rateDisplay: "~0.01 pts / 1k",
   },
+  "gemma-4-E4B-it": {
+    promptTextTokens: 0,
+    completionTextTokens: 0,
+    promptPointsPer1k: 0,
+    completionPointsPer1k: 0,
+    rateDisplay: "0 pts",
+  },
 };
 
 const TEN_MINUTES_MS = 10 * 60 * 1000;

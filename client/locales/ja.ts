@@ -278,6 +278,7 @@ export const ja = {
     registeredModelsDesc:
       "公式プリセットおよびカスタム登録モデルを含む、利用可能なすべてのPollinationsモデル。",
     freeModels: "無料モデル",
+    backupFreeModel: "バックアップ無料モデル",
     freeModelsNotice: "Pollinationsアカウントは不要です。ユーザーごとに1日25ポイントの利用制限が適用され、同一IPを共有するアカウント間で分割されます。",
     freePointsRemaining: "本日残り {remaining} / {total} ポイント",
     pointsRemainingLabel: "ポイント",

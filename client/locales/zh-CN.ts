@@ -270,6 +270,7 @@ export const zhCN = {
     registeredModelsDesc:
       "所有可用的 Pollinations 模型，包括官方预设和自定义注册模型。",
     freeModels: "免费模型",
+    backupFreeModel: "备用免费模型",
     freeModelsNotice: "无需连接 Pollinations 账户。每日25点使用积分按用户计算，共享 IP 的账户将平分额度。",
     freePointsRemaining: "今日剩余 {remaining} / {total} 点积分",
     pointsRemainingLabel: "积分",

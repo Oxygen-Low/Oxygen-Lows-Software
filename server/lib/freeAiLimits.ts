@@ -10,7 +10,8 @@ import {
 export interface FreeModelConfig {
   id: string;
   name: string;
-  tierName: "Best" | "Standard" | "Cheap";
+  tierName: "Best" | "Standard" | "Cheap" | "Backup";
+  provider?: "pollinations" | "horde";
   // Backward compatibility
   baseDailyLimit?: number;
   outputMultiplier?: number;
@@ -21,6 +22,7 @@ export const FREE_MODELS: Record<string, FreeModelConfig> = {
     id: "deepseek/deepseek-v4.1-flash",
     name: "Best",
     tierName: "Best",
+    provider: "pollinations",
     baseDailyLimit: 25,
     outputMultiplier: 1,
   },
@@ -28,6 +30,7 @@ export const FREE_MODELS: Record<string, FreeModelConfig> = {
     id: "openai/gpt-6-luna",
     name: "Standard",
     tierName: "Standard",
+    provider: "pollinations",
     baseDailyLimit: 25,
     outputMultiplier: 1,
   },
@@ -35,8 +38,17 @@ export const FREE_MODELS: Record<string, FreeModelConfig> = {
     id: "openai/gpt-oss-20b",
     name: "Cheap",
     tierName: "Cheap",
+    provider: "pollinations",
     baseDailyLimit: 25,
     outputMultiplier: 1,
+  },
+  "gemma-4-E4B-it": {
+    id: "gemma-4-E4B-it",
+    name: "Backup Free Model",
+    tierName: "Backup",
+    provider: "horde",
+    baseDailyLimit: 25,
+    outputMultiplier: 0,
   },
 };
 
@@ -263,9 +275,25 @@ export function checkFreeModelAllowance(
     nowTimestamp,
   );
 
-  const estimatedPromptCost = calculatePointsCost(modelId, estimatedPromptTokens, 0);
   const usedPoints = getUserDailyPointsUsage(cleanUserId, dateStr);
   const remainingPoints = Math.max(0, Math.round((effectiveLimit - usedPoints) * 1000) / 1000);
+
+  const modelConfig = FREE_MODELS[modelId];
+  if (modelId === "gemma-4-E4B-it" || modelConfig?.provider === "horde") {
+    return {
+      allowed: true,
+      usedPoints,
+      remainingPoints,
+      effectiveLimit,
+      baseLimit,
+      userCountOnIp,
+      usedTokens: 0,
+      remainingTokens: remainingPoints,
+      outputMultiplier: 0,
+    };
+  }
+
+  const estimatedPromptCost = calculatePointsCost(modelId, estimatedPromptTokens, 0);
   const allowed = usedPoints + estimatedPromptCost <= effectiveLimit;
 
   return {
@@ -302,6 +330,29 @@ export function recordFreeModelUsage(
 } {
   const cleanUserId = String(userId);
   const dateStr = getUtcDateString(new Date(nowTimestamp));
+  const modelConfig = FREE_MODELS[modelId];
+
+  // If this free model is powered by AI Horde (e.g. gemma-4-E4B-it), it consumes zero points
+  if (modelId === "gemma-4-E4B-it" || modelConfig?.provider === "horde") {
+    recordUserIpAccess(cleanUserId, ip, nowTimestamp);
+    const { effectiveLimit } = getEffectiveDailyLimit(
+      modelId,
+      ip,
+      cleanUserId,
+      nowTimestamp,
+    );
+    const currentUsed = getUserDailyPointsUsage(cleanUserId, dateStr);
+    const remainingPoints = Math.max(0, Math.round((effectiveLimit - currentUsed) * 1000) / 1000);
+    return {
+      addedPoints: 0,
+      newTotalUsed: currentUsed,
+      effectiveLimit,
+      remainingPoints,
+      weightedAddedTokens: 0,
+      remainingTokens: remainingPoints,
+    };
+  }
+
   const addedPoints = calculatePointsCost(modelId, inputTokens, outputTokens);
 
   // 1. Record IP access
@@ -376,6 +427,7 @@ export function getAllFreeModelsUsage(
       id: string;
       name: string;
       tierName: string;
+      provider?: string;
       rateDisplay: string;
       promptPointsPer1k: number;
       completionPointsPer1k: number;
@@ -389,19 +441,21 @@ export function getAllFreeModelsUsage(
 
   for (const [id, config] of Object.entries(FREE_MODELS)) {
     const pricing = getModelPricing(id);
+    const isHorde = config.provider === "horde" || id === "gemma-4-E4B-it";
 
     models[id] = {
       id,
       name: config.name,
       tierName: config.tierName,
-      rateDisplay: pricing.rateDisplay,
-      promptPointsPer1k: pricing.promptPointsPer1k,
-      completionPointsPer1k: pricing.completionPointsPer1k,
+      provider: config.provider || "pollinations",
+      rateDisplay: isHorde ? "0 pts" : pricing.rateDisplay,
+      promptPointsPer1k: isHorde ? 0 : pricing.promptPointsPer1k,
+      completionPointsPer1k: isHorde ? 0 : pricing.completionPointsPer1k,
       baseDailyLimit: effectiveLimit,
       effectiveLimit,
-      outputMultiplier: 1,
-      usedTokens: usedPoints,
-      remainingTokens: remainingPoints,
+      outputMultiplier: config.outputMultiplier ?? 1,
+      usedTokens: isHorde ? 0 : usedPoints,
+      remainingTokens: isHorde ? effectiveLimit : remainingPoints,
     };
   }
 

@@ -1553,6 +1553,87 @@ describe("ChatbotApp", () => {
     });
     fireEvent(document, new Event("visibilitychange"));
   });
+
+  it("allows selecting Backup Free Model which routes via AI Horde instead of Pollinations", async () => {
+    mockUserPreferences = {
+      theme: "default",
+      use_gradient: true,
+      language: "English",
+      sub_language: "GB",
+      last_provider: "pollinations",
+      last_model_id: "openai/gpt-6-luna",
+    };
+    mockUserModels = [];
+    mockChats = [];
+
+    let capturedProvider = "";
+    let capturedModel = "";
+    const originalFetch = global.fetch;
+
+    try {
+      global.fetch = vi.fn((url: any, options: any) => {
+        const urlStr = String(url || "");
+        if (urlStr.includes("/api/ai/proxy")) {
+          const bodyJson = JSON.parse(options?.body || "{}");
+          capturedProvider = bodyJson.provider;
+          capturedModel = bodyJson.model;
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            headers: new Headers({ "content-type": "text/event-stream" }),
+            body: {
+              getReader() {
+                let sent = false;
+                const encoder = new TextEncoder();
+                return {
+                  read() {
+                    if (!sent) {
+                      sent = true;
+                      return Promise.resolve({
+                        done: false,
+                        value: encoder.encode('data: {"choices":[{"delta":{"content":"Response from Gemma backup free model."}}]}\n\ndata: [DONE]\n\n'),
+                      });
+                    }
+                    return Promise.resolve({ done: true, value: undefined });
+                  },
+                };
+              },
+            },
+          } as unknown as Response);
+        }
+        return originalFetch(url, options);
+      }) as any;
+
+      renderChatbot();
+
+      // Open model dropdown
+      const modelDropdownButton = await screen.findByTestId(
+        "chatbot-model-dropdown-btn",
+      );
+      fireEvent.click(modelDropdownButton);
+
+      // Verify "Backup Free Model" button is visible and click it
+      const backupBtn = await screen.findByText("Backup Free Model");
+      fireEvent.click(backupBtn);
+
+      // Send a message
+      const input = await screen.findByPlaceholderText("Type a message...");
+      fireEvent.change(input, { target: { value: "Hello Gemma" } });
+
+      const sendBtn = screen.getByLabelText("Send message");
+      fireEvent.click(sendBtn);
+
+      // Verify captured provider and model were horde and gemma-4-E4B-it
+      await waitFor(() => {
+        expect(capturedProvider).toBe("horde");
+        expect(capturedModel).toBe("gemma-4-E4B-it");
+      });
+
+      await screen.findByText("Response from Gemma backup free model.");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
 
 

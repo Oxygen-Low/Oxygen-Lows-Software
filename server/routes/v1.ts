@@ -245,6 +245,9 @@ export function resolveV1TextModel(modelName?: string): string {
   if (clean === "writing") {
     return resolveHordeModel("Writing");
   }
+  if (clean === "backup free model" || clean === "gemma-4-e4b-it") {
+    return resolveHordeModel("gemma-4-E4B-it");
+  }
   if (clean === "llama-3.2-3b") {
     return "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M";
   }

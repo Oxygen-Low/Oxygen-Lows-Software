@@ -54,6 +54,12 @@ describe("formatModelLabel", () => {
     expect(formatModelLabel("horde", "Writing")).toBe(
       "Writing - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
     );
+    expect(formatModelLabel("horde", "gemma-4-E4B-it")).toBe(
+      "Backup Free Model - gemma-4-E4B-it",
+    );
+    expect(formatModelLabel("horde", "Backup Free Model")).toBe(
+      "Backup Free Model - gemma-4-E4B-it",
+    );
     expect(formatModelLabel("horde", "UnknownModel")).toBe(
       "AI Horde - UnknownModel",
     );
