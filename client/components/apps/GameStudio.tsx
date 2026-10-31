@@ -35,10 +35,7 @@ import {
   CustomGameAchievement,
   CustomGameDimension,
   CustomGameRecord,
-  DEFAULT_CUSTOM_GAMES,
-  EMBER_RING_CODE,
-  NEON_SPACE_SHOOTER_CODE,
-  CYBER_RUNNER_3D_CODE,
+  BLANK_GAME_CODE,
 } from "@shared/customGames";
 import { GameSandbox } from "./game-studio/GameSandbox";
 import { LightDismissDialog } from "./game-studio/LightDismissDialog";
@@ -197,37 +194,8 @@ function synthesizeFallbackGame(
       (lower.includes("3d") ||
         lower.includes("runner") ||
         lower.includes("cube") ||
-        lower.includes("horizon")));
-
-  if (lower.includes("ember") || lower.includes("ring") || lower.includes("hearth") || lower.includes("puzzle")) {
-    return {
-      code: EMBER_RING_CODE,
-      dimension: "2d",
-      title: "Ember Ring",
-      reply:
-        "I have assembled the **Ember Ring** 2D hearth puzzle with circular coal sliding mechanics, candle brightness tracking, procedural fireside audio cues, and 3 unlockable achievements.",
-    };
-  }
-
-  if (is3d) {
-    return {
-      code: CYBER_RUNNER_3D_CODE,
-      dimension: "3d",
-      title: "Cyber Runner 3D",
-      reply:
-        "I have built a **3D Low-Poly Horizon Runner** with 3-lane perspective projection, jumping physics, collectible data orbs, synth audio cues, and achievement triggers.",
-    };
-  }
-
-  if (lower.includes("space") || lower.includes("shooter") || lower.includes("asteroid") || lower.includes("laser")) {
-    return {
-      code: NEON_SPACE_SHOOTER_CODE,
-      dimension: "2d",
-      title: "Neon Asteroid Blaster",
-      reply:
-        "I have generated a **2D Neon Space Shooter** with ship controls, rapid laser blasts, splitting polygon asteroids, combo multipliers, and Web Audio synthesizer effects.",
-    };
-  }
+        lower.includes("horizon") ||
+        lower.includes("spatial")));
 
   if (currentCode && (lower.includes("faster") || lower.includes("color") || lower.includes("green") || lower.includes("gold"))) {
     let tweaked = currentCode;
@@ -241,18 +209,125 @@ function synthesizeFallbackGame(
     }
     return {
       code: tweaked,
-      dimension: "2d",
+      dimension: is3d ? "3d" : "2d",
       reply:
         "I have updated the game code with your requested adjustments and hot-reloaded the live sandbox preview!",
     };
   }
 
+  const generatedTitle = prompt.slice(0, 32).trim() || "AI Custom Game";
+  const safeTitle = generatedTitle.replace(/'/g, "\\'");
+
+  const generatedCode = is3d
+    ? `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${safeTitle}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #020617; color: #f8fafc; font-family: system-ui, sans-serif; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
+  canvas { background: #000; border-radius: 8px; border: 1px solid #1e293b; }
+</style>
+</head>
+<body>
+<canvas id="c" width="640" height="400"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let t = 0;
+let score = 0;
+window.addEventListener('keydown', (e) => {
+  if (e.key === ' ') {
+    score += 10;
+    if (window.__triggerAchievement) window.__triggerAchievement('score_point');
+    if (window.__submitScore) window.__submitScore(score);
+  }
+});
+function render() {
+  ctx.fillStyle = '#05070f';
+  ctx.fillRect(0, 0, 640, 400);
+  ctx.save();
+  ctx.translate(320, 200);
+  const cx = Math.sin(t * 0.03) * 80;
+  const cy = Math.cos(t * 0.03) * 40;
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(cx - 40, cy - 40, 80, 80);
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 18px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('${safeTitle}', 0, -80);
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '13px system-ui';
+  ctx.fillText('Score: ' + score + ' (Press SPACE)', 0, 80);
+  ctx.restore();
+  t++;
+  requestAnimationFrame(loop);
+}
+function loop() { render(); }
+loop();
+</script>
+</body>
+</html>`
+    : `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${safeTitle}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #020617; color: #f8fafc; font-family: system-ui, sans-serif; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
+  canvas { background: #090d16; border-radius: 8px; border: 1px solid #1e293b; }
+</style>
+</head>
+<body>
+<canvas id="c" width="640" height="400"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let score = 0;
+let x = 320, y = 200, targetX = 320, targetY = 200;
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft' || e.key === 'a') targetX -= 25;
+  if (e.key === 'ArrowRight' || e.key === 'd') targetX += 25;
+  if (e.key === 'ArrowUp' || e.key === 'w') targetY -= 25;
+  if (e.key === 'ArrowDown' || e.key === 's') targetY += 25;
+  if (e.key === ' ') {
+    score += 10;
+    if (window.__triggerAchievement) window.__triggerAchievement('score_point');
+    if (window.__submitScore) window.__submitScore(score);
+  }
+});
+function render() {
+  x += (targetX - x) * 0.2;
+  y += (targetY - y) * 0.2;
+  ctx.fillStyle = '#090d16';
+  ctx.fillRect(0, 0, 640, 400);
+  ctx.fillStyle = '#38bdf8';
+  ctx.beginPath();
+  ctx.arc(x, y, 16, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'bold 16px system-ui';
+  ctx.fillText('${safeTitle} | Score: ' + score, 20, 30);
+  ctx.fillStyle = '#64748b';
+  ctx.font = '12px system-ui';
+  ctx.fillText('Arrows / WASD to move • SPACE to score', 20, 380);
+  requestAnimationFrame(render);
+}
+render();
+</script>
+</body>
+</html>`;
+
   return {
-    code: currentCode || NEON_SPACE_SHOOTER_CODE,
-    dimension: "2d",
-    title: prompt.slice(0, 36).trim() || "AI Arcade Game",
-    reply:
-      "I have processed your request, generated the requested Pollinations assets, and hot-reloaded the live game sandbox!",
+    code: generatedCode,
+    dimension: is3d ? "3d" : "2d",
+    title: generatedTitle,
+    reply: `I have generated your game "${generatedTitle}" in the live sandbox preview!`,
   };
 }
 
@@ -271,20 +346,16 @@ export const GameStudioApp: React.FC = () => {
   const [dimensionMode, setDimensionMode] = useState<CustomGameDimension | "auto">("auto");
 
   // Active Game Project State
-  const [gameTitle, setGameTitle] = useState<string>("Ember Ring");
-  const [gameDescription, setGameDescription] = useState<string>(
-    DEFAULT_CUSTOM_GAMES[0].description,
-  );
-  const [gameGenre, setGameGenre] = useState<string>("Puzzle");
+  const [gameTitle, setGameTitle] = useState<string>("New Game");
+  const [gameDescription, setGameDescription] = useState<string>("");
+  const [gameGenre, setGameGenre] = useState<string>("Arcade");
   const [gameDimension, setGameDimension] = useState<CustomGameDimension>("2d");
   const [gameCoverUrl, setGameCoverUrl] = useState<string>("");
-  const [gameCode, setGameCode] = useState<string>(EMBER_RING_CODE);
+  const [gameCode, setGameCode] = useState<string>(BLANK_GAME_CODE);
   const [projectAssets, setProjectAssets] = useState<GameProjectAssets>(
     DEFAULT_PROJECT_ASSETS,
   );
-  const [achievements, setAchievements] = useState<CustomGameAchievement[]>(
-    DEFAULT_CUSTOM_GAMES[0].achievements,
-  );
+  const [achievements, setAchievements] = useState<CustomGameAchievement[]>([]);
   const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
   const [liveScore, setLiveScore] = useState<number>(0);
 
@@ -532,17 +603,21 @@ Current project assets:
     );
   };
 
-  const handleLoadPreset = (preset: CustomGameRecord) => {
-    setGameTitle(preset.title);
-    setGameDescription(preset.description);
-    setGameGenre(preset.genre);
-    setGameDimension(preset.dimension);
-    setGameCode(preset.code);
-    setAchievements(preset.achievements);
+  const handleNewGame = () => {
+    setGameTitle("New Game");
+    setGameDescription("");
+    setGameGenre("Arcade");
+    setGameDimension("2d");
+    setGameCoverUrl("");
+    setGameCode(BLANK_GAME_CODE);
+    setProjectAssets(DEFAULT_PROJECT_ASSETS);
+    setAchievements([]);
     setUnlockedIds([]);
     setLiveScore(0);
     setSandboxKey((k) => k + 1);
-    toast.success(`Loaded template: ${preset.title}`);
+    toast.success(
+      t("gameStudio.newGameCreated", undefined, "Started a new blank game project"),
+    );
   };
 
   const handleAddAchievement = () => {
@@ -694,23 +769,15 @@ Current project assets:
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Starter Template Switcher */}
-          <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-lg p-1">
-            {DEFAULT_CUSTOM_GAMES.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => handleLoadPreset(preset)}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                  gameTitle === preset.title
-                    ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                {preset.title}
-              </button>
-            ))}
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNewGame}
+            className="gap-1.5 border-slate-700"
+          >
+            <Plus className="w-4 h-4" />
+            {t("gameStudio.newGame", undefined, "New Game")}
+          </Button>
 
           <Button
             variant="outline"
@@ -1343,50 +1410,60 @@ Current project assets:
               </div>
 
               <div className="space-y-2">
-                {achievements.map((ach) => {
-                  const unlocked = unlockedIds.includes(ach.id);
-                  return (
-                    <div
-                      key={ach.id}
-                      className="flex items-center justify-between p-3 rounded-xl bg-slate-950/90 border border-slate-800"
-                    >
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm text-slate-100">
-                            {ach.title}
-                          </span>
-                          <code className="text-[11px] bg-slate-900 px-1.5 py-0.5 rounded text-cyan-400">
-                            {ach.id}
-                          </code>
-                          {unlocked && (
-                            <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-[10px]">
-                              Unlocked
-                            </Badge>
-                          )}
+                {achievements.length === 0 ? (
+                  <div className="text-center py-8 text-xs text-slate-500 bg-slate-950/50 rounded-xl border border-slate-800">
+                    {t(
+                      "gameStudio.noAchievements",
+                      undefined,
+                      "No achievements yet. Add milestones above or ask the AI Director!",
+                    )}
+                  </div>
+                ) : (
+                  achievements.map((ach) => {
+                    const unlocked = unlockedIds.includes(ach.id);
+                    return (
+                      <div
+                        key={ach.id}
+                        className="flex items-center justify-between p-3 rounded-xl bg-slate-950/90 border border-slate-800"
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm text-slate-100">
+                              {ach.title}
+                            </span>
+                            <code className="text-[11px] bg-slate-900 px-1.5 py-0.5 rounded text-cyan-400">
+                              {ach.id}
+                            </code>
+                            {unlocked && (
+                              <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-[10px]">
+                                Unlocked
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-400">{ach.description}</p>
                         </div>
-                        <p className="text-xs text-slate-400">{ach.description}</p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleUnlockAchievement(ach.id)}
+                            className="text-xs h-7 border-slate-700"
+                          >
+                            Test Unlock
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveAchievement(ach.id)}
+                            className="h-7 w-7 text-rose-400 hover:text-rose-300"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleUnlockAchievement(ach.id)}
-                          className="text-xs h-7 border-slate-700"
-                        >
-                          Test Unlock
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveAchievement(ach.id)}
-                          className="h-7 w-7 text-rose-400 hover:text-rose-300"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </div>
           )}

@@ -9,7 +9,6 @@ import {
   CustomGameAchievement,
   CustomGameDimension,
   UserUnlockedAchievement,
-  DEFAULT_CUSTOM_GAMES,
 } from "../../shared/customGames.ts";
 
 export const customGamesRouter = new Hono();
@@ -29,21 +28,21 @@ export function loadCustomGames(): CustomGameRecord[] {
   if (!fs.existsSync(GAMES_FILE)) {
     fs.writeFileSync(
       GAMES_FILE,
-      JSON.stringify(DEFAULT_CUSTOM_GAMES, null, 2),
+      JSON.stringify([], null, 2),
       "utf-8",
     );
-    return [...DEFAULT_CUSTOM_GAMES];
+    return [];
   }
   try {
     const raw = fs.readFileSync(GAMES_FILE, "utf-8");
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
       return parsed;
     }
   } catch {
-    // Fallback to defaults if corrupted
+    // Fallback if corrupted
   }
-  return [...DEFAULT_CUSTOM_GAMES];
+  return [];
 }
 
 export function saveCustomGames(games: CustomGameRecord[]) {

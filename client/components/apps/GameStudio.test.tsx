@@ -45,7 +45,7 @@ describe("GameStudioApp", () => {
     expect(screen.getByLabelText("Code/Text Model")).toBeTruthy();
     expect(screen.getByLabelText("Art Model")).toBeTruthy();
     expect(screen.getByLabelText("Dimension")).toBeTruthy();
-    expect(screen.getByTitle("Ember Ring")).toBeTruthy();
+    expect(screen.getByTitle("New Game")).toBeTruthy();
   });
 
   it("updates the game via Conversational Director Chat using Pollinations AI", async () => {
@@ -116,6 +116,12 @@ I have generated your 3D Star Cruiser model, Warp Drive SFX, Galaxy BGM, Captain
     // Switch to Achievements tab
     const achTab = screen.getByRole("button", { name: /Achievements/i });
     fireEvent.click(achTab);
+
+    // Add milestone
+    const titleInput = screen.getByPlaceholderText("Achievement Title");
+    fireEvent.change(titleInput, { target: { value: "Spark of Warmth" } });
+    const addBtn = screen.getByRole("button", { name: "Add" });
+    fireEvent.click(addBtn);
 
     expect(screen.getByText("Spark of Warmth")).toBeTruthy();
     const testUnlockBtns = screen.getAllByRole("button", { name: /Test Unlock/i });

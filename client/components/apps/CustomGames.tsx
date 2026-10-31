@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import {
   CustomGameRecord,
-  DEFAULT_CUSTOM_GAMES,
 } from "@shared/customGames";
 import { GameSandbox } from "./game-studio/GameSandbox";
 import { LightDismissDialog } from "./game-studio/LightDismissDialog";
@@ -30,7 +29,7 @@ export const CustomGamesApp: React.FC = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
 
-  const [games, setGames] = useState<CustomGameRecord[]>(DEFAULT_CUSTOM_GAMES);
+  const [games, setGames] = useState<CustomGameRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [activeGame, setActiveGame] = useState<CustomGameRecord | null>(null);
   const [muted, setMuted] = useState<boolean>(false);
@@ -45,12 +44,12 @@ export const CustomGamesApp: React.FC = () => {
         const res = await fetch("/api/custom-games");
         if (res.ok) {
           const data = await res.json();
-          if (!cancelled && Array.isArray(data?.games) && data.games.length > 0) {
+          if (!cancelled && Array.isArray(data?.games)) {
             setGames(data.games);
           }
         }
       } catch {
-        // Fallback to DEFAULT_CUSTOM_GAMES
+        // Fallback to empty games list
       }
     }
     fetchGames();
@@ -205,7 +204,17 @@ export const CustomGamesApp: React.FC = () => {
         <div className="text-center py-16 bg-slate-900/50 border border-slate-800 rounded-xl">
           <Gamepad2 className="w-10 h-10 text-slate-500 mx-auto mb-2" />
           <p className="text-slate-300 font-medium">
-            {t("customGames.noGamesFound", undefined, "No custom games match your search.")}
+            {searchQuery.trim()
+              ? t(
+                  "customGames.noGamesFound",
+                  undefined,
+                  "No custom games match your search.",
+                )
+              : t(
+                  "customGames.noGamesYet",
+                  undefined,
+                  "No custom games published yet. Create one in Game Studio!",
+                )}
           </p>
         </div>
       ) : (

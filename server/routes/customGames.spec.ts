@@ -2,23 +2,15 @@ import { describe, it, expect } from "vitest";
 import app from "../index.ts";
 
 describe("Custom Games API (/api/custom-games)", () => {
-  it("lists default custom games including Ember Ring, Neon Asteroid Blaster, and Cyber Runner 3D", async () => {
+  it("lists custom games without preset or template games", async () => {
     const res = await app.request("/api/custom-games");
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(Array.isArray(data.games)).toBe(true);
-    expect(data.games.length).toBeGreaterThanOrEqual(3);
     const titles = data.games.map((g: any) => g.title);
-    expect(titles).toContain("Ember Ring");
-    expect(titles).toContain("Neon Asteroid Blaster");
-    expect(titles).toContain("Cyber Runner 3D");
-  });
-
-  it("filters games by search query and dimension", async () => {
-    const res = await app.request("/api/custom-games?search=ember&dimension=2d");
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.games.some((g: any) => g.id === "ember-ring")).toBe(true);
+    expect(titles).not.toContain("Ember Ring");
+    expect(titles).not.toContain("Neon Asteroid Blaster");
+    expect(titles).not.toContain("Cyber Runner 3D");
   });
 
   it("publishes a new game, increments play count, and unlocks an achievement", async () => {
@@ -71,5 +63,12 @@ describe("Custom Games API (/api/custom-games)", () => {
     const achData = await achRes.json();
     expect(achData.unlocked).toBe(true);
     expect(achData.achievement.title).toBe("First Launch");
+  });
+
+  it("filters games by search query and dimension", async () => {
+    const res = await app.request("/api/custom-games?search=starfighter&dimension=2d");
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.games.some((g: any) => g.title === "Test Starfighter")).toBe(true);
   });
 });
