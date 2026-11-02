@@ -42,6 +42,13 @@ export const FALLBACK_MODEL_PRICING: Record<string, ModelPricing> = {
     completionPointsPer1k: 0,
     rateDisplay: "0 pts",
   },
+  "koboldcpp/qwen3-coder-next": {
+    promptTextTokens: 0,
+    completionTextTokens: 0,
+    promptPointsPer1k: 0,
+    completionPointsPer1k: 0,
+    rateDisplay: "0 pts",
+  },
 };
 
 const TEN_MINUTES_MS = 10 * 60 * 1000;

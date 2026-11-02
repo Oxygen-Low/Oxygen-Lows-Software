@@ -50,6 +50,14 @@ export const FREE_MODELS: Record<string, FreeModelConfig> = {
     baseDailyLimit: 25,
     outputMultiplier: 0,
   },
+  "koboldcpp/qwen3-coder-next": {
+    id: "koboldcpp/qwen3-coder-next",
+    name: "Backup Best",
+    tierName: "Backup",
+    provider: "horde",
+    baseDailyLimit: 25,
+    outputMultiplier: 0,
+  },
 };
 
 /** Default daily points budget ($0.25 USD = 25 points = 25 cents = 0.25 Pollen) */
@@ -279,7 +287,7 @@ export function checkFreeModelAllowance(
   const remainingPoints = Math.max(0, Math.round((effectiveLimit - usedPoints) * 1000) / 1000);
 
   const modelConfig = FREE_MODELS[modelId];
-  if (modelId === "gemma-4-E4B-it" || modelConfig?.provider === "horde") {
+  if (modelId === "gemma-4-E4B-it" || modelId === "koboldcpp/qwen3-coder-next" || modelConfig?.provider === "horde") {
     return {
       allowed: true,
       usedPoints,
@@ -333,7 +341,7 @@ export function recordFreeModelUsage(
   const modelConfig = FREE_MODELS[modelId];
 
   // If this free model is powered by AI Horde (e.g. gemma-4-E4B-it), it consumes zero points
-  if (modelId === "gemma-4-E4B-it" || modelConfig?.provider === "horde") {
+  if (modelId === "gemma-4-E4B-it" || modelId === "koboldcpp/qwen3-coder-next" || modelConfig?.provider === "horde") {
     recordUserIpAccess(cleanUserId, ip, nowTimestamp);
     const { effectiveLimit } = getEffectiveDailyLimit(
       modelId,
@@ -441,7 +449,7 @@ export function getAllFreeModelsUsage(
 
   for (const [id, config] of Object.entries(FREE_MODELS)) {
     const pricing = getModelPricing(id);
-    const isHorde = config.provider === "horde" || id === "gemma-4-E4B-it";
+    const isHorde = config.provider === "horde" || id === "gemma-4-E4B-it" || id === "koboldcpp/qwen3-coder-next";
 
     models[id] = {
       id,

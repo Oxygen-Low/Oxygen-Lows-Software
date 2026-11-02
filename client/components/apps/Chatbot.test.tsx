@@ -1634,6 +1634,112 @@ describe("ChatbotApp", () => {
       global.fetch = originalFetch;
     }
   });
+
+  it("greys out and disables Backup Best when no workers are serving it", async () => {
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = vi.fn().mockImplementation((url, options) => {
+        const urlStr = String(url);
+        if (urlStr.includes("/api/ai/horde-status")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              "koboldcpp/qwen3-coder-next": { workers: 0, queued: 0 },
+            }),
+          } as unknown as Response);
+        }
+        return originalFetch(url, options);
+      }) as any;
+
+      renderChatbot();
+
+      const modelDropdownButton = await screen.findByTestId("chatbot-model-dropdown-btn");
+      fireEvent.click(modelDropdownButton);
+
+      const backupBestBtn = await screen.findByText(/Backup Best/);
+      const buttonElem = backupBestBtn.closest("button");
+      expect(buttonElem).toBeDefined();
+      expect(buttonElem?.disabled).toBe(true);
+      expect(buttonElem?.className).toContain("opacity-40");
+      expect(screen.getByText("(0 workers)")).toBeDefined();
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it("enables Backup Best and allows routing via AI Horde when workers are serving it", async () => {
+    const originalFetch = global.fetch;
+    let capturedProvider = "";
+    let capturedModel = "";
+
+    try {
+      global.fetch = vi.fn().mockImplementation((url, options) => {
+        const urlStr = String(url);
+        if (urlStr.includes("/api/ai/horde-status")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              "koboldcpp/qwen3-coder-next": { workers: 3, queued: 0 },
+            }),
+          } as unknown as Response);
+        }
+        if (urlStr.includes("/api/ai/proxy")) {
+          const bodyJson = JSON.parse(options.body || "{}");
+          capturedProvider = bodyJson.provider;
+          capturedModel = bodyJson.model;
+          const encoder = new TextEncoder();
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            headers: new Headers({ "content-type": "text/event-stream" }),
+            body: {
+              getReader() {
+                let sent = false;
+                return {
+                  read() {
+                    if (!sent) {
+                      sent = true;
+                      return Promise.resolve({
+                        done: false,
+                        value: encoder.encode('data: {"choices":[{"delta":{"content":"Response from Qwen3 Backup Best."}}]}\n\ndata: [DONE]\n\n'),
+                      });
+                    }
+                    return Promise.resolve({ done: true, value: undefined });
+                  },
+                };
+              },
+            },
+          } as unknown as Response);
+        }
+        return originalFetch(url, options);
+      }) as any;
+
+      renderChatbot();
+
+      const modelDropdownButton = await screen.findByTestId("chatbot-model-dropdown-btn");
+      fireEvent.click(modelDropdownButton);
+
+      const backupBestBtn = await screen.findByText(/Backup Best/);
+      const buttonElem = backupBestBtn.closest("button");
+      expect(buttonElem?.disabled).toBe(false);
+      fireEvent.click(buttonElem!);
+
+      const input = await screen.findByPlaceholderText("Type a message...");
+      fireEvent.change(input, { target: { value: "Code test" } });
+
+      const sendBtn = screen.getByLabelText("Send message");
+      fireEvent.click(sendBtn);
+
+      await waitFor(() => {
+        expect(capturedProvider).toBe("horde");
+        expect(capturedModel).toBe("koboldcpp/qwen3-coder-next");
+      });
+
+      await screen.findByText("Response from Qwen3 Backup Best.");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
 
 

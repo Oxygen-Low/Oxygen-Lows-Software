@@ -88,11 +88,12 @@ describe("useAiModels Hook (Pollinations Exclusive)", () => {
     expect(
       result.current.models.some((m) => m.provider === "horde" && m.model_id === "gemma-4-E4B-it"),
     ).toBe(true);
-    expect(result.current.freeModels.length).toBe(4);
+    expect(result.current.freeModels.length).toBe(5);
     expect(result.current.freeModels.some((m) => m.model_id === "deepseek/deepseek-v4.1-flash")).toBe(true);
     expect(result.current.freeModels.some((m) => m.model_id === "openai/gpt-6-luna")).toBe(true);
     expect(result.current.freeModels.some((m) => m.model_id === "openai/gpt-oss-20b")).toBe(true);
     expect(result.current.freeModels.some((m) => m.model_id === "gemma-4-E4B-it" && m.provider === "horde")).toBe(true);
+    expect(result.current.freeModels.some((m) => m.model_id === "koboldcpp/qwen3-coder-next" && m.name === "Backup Best" && m.provider === "horde")).toBe(true);
     expect(result.current.standardModels.length).toBe(5);
     expect(result.current.paidModels.length).toBe(5);
     expect(result.current.paidModels.some((m) => m.model_id === "xiaomi/mimo-v2.5")).toBe(true);

@@ -62,6 +62,9 @@ describe("AI Router - Free Models API and Proxy", () => {
     expect(json.models["gemma-4-E4B-it"]).toBeDefined();
     expect(json.models["gemma-4-E4B-it"].rateDisplay).toBe("0 pts");
     expect(json.models["gemma-4-E4B-it"].name).toBe("Backup Free Model");
+    expect(json.models["koboldcpp/qwen3-coder-next"]).toBeDefined();
+    expect(json.models["koboldcpp/qwen3-coder-next"].rateDisplay).toBe("0 pts");
+    expect(json.models["koboldcpp/qwen3-coder-next"].name).toBe("Backup Best");
   });
 
   it("POST /proxy rejects unauthenticated access to free models", async () => {
@@ -245,5 +248,58 @@ describe("AI Router - Free Models API and Proxy", () => {
     // Points should not have increased
     const pointsAfter = getUserDailyPointsUsage(mockUser.id);
     expect(pointsAfter).toBe(pointsBefore);
+  });
+
+  it("POST /proxy routes Backup Best (koboldcpp/qwen3-coder-next) via AI Horde without consuming points", async () => {
+    let pollinationsCalled = false;
+    let hordeCalled = false;
+    let requestedHordeModel = "";
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockImplementation(async (url: any, opts: any) => {
+      const urlStr = String(url);
+      if (urlStr.includes("pollinations.ai")) {
+        pollinationsCalled = true;
+        return new Response(JSON.stringify({ choices: [{ message: { content: "Polli response" } }] }));
+      }
+      if (urlStr.includes("stablehorde.net")) {
+        hordeCalled = true;
+        try {
+          const body = JSON.parse(opts?.body || "{}");
+          requestedHordeModel = body.model;
+        } catch {}
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { role: "assistant", content: "Response from Qwen3 Coder Next." } }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return originalFetch(url, opts);
+    });
+
+    try {
+      const ip = "100.200.50.15";
+      const res = await aiRouter.request("/proxy", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer valid-user-token",
+          "x-forwarded-for": ip,
+        },
+        body: JSON.stringify({
+          model: "koboldcpp/qwen3-coder-next",
+          category: "free",
+          messages: [{ role: "user", content: "Write quick code" }],
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(pollinationsCalled).toBe(false);
+      expect(hordeCalled).toBe(true);
+      expect(requestedHordeModel).toBe("koboldcpp/qwen3-coder-next");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

@@ -1139,6 +1139,7 @@ export function ChatbotApp() {
     researchAgentDefaultModel,
     freeUsage,
     refreshFreeUsage,
+    hordeStatus,
   } = useAiModels();
   const [gateKeyInput, setGateKeyInput] = useState("");
   const [showGateKey, setShowGateKey] = useState(false);
@@ -4386,10 +4387,17 @@ export function ChatbotApp() {
                               const isCurrentSelected =
                                 selectedModel === m.model_id &&
                                 selectedCategory === "free";
+                              const hordeInfo = hordeStatus?.[m.model_id] || hordeStatus?.[m.name || ""];
+                              const isNoWorkers =
+                                m.provider === "horde" &&
+                                (m.model_id === "koboldcpp/qwen3-coder-next" || m.name === "Backup Best") &&
+                                (!hordeInfo || hordeInfo.workers <= 0);
                               return (
                                 <button
                                   key={`free-${m.model_id}`}
+                                  disabled={isNoWorkers}
                                   onClick={() => {
+                                    if (isNoWorkers) return;
                                     setSelectedModel(m.model_id);
                                     setSelectedCategory("free");
                                     setModelDropdownOpen(false);
@@ -4397,13 +4405,22 @@ export function ChatbotApp() {
                                   className={cn(
                                     "w-full text-left px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group relative",
                                     isCurrentSelected ? "bg-white/5" : "",
+                                    isNoWorkers ? "opacity-40 cursor-not-allowed hover:bg-transparent" : "",
                                   )}
+                                  title={isNoWorkers ? t("account.noWorkersServing", undefined, "No workers are currently serving this model") : undefined}
                                 >
                                   <div className="flex items-center justify-between">
-                                    <div className="text-sm text-white font-medium">
+                                    <div className={cn("text-sm font-medium", isNoWorkers ? "text-slate-400" : "text-white")}>
                                       {m.name === "Backup Free Model"
                                         ? t("account.backupFreeModel", undefined, m.name)
-                                        : m.name || m.model_id}
+                                        : m.name === "Backup Best"
+                                          ? t("account.backupBest", undefined, m.name)
+                                          : m.name || m.model_id}
+                                      {isNoWorkers && (
+                                        <span className="ml-2 text-[10px] text-amber-400/90 font-mono font-normal">
+                                          ({t("account.noWorkers", undefined, "0 workers")})
+                                        </span>
+                                      )}
                                     </div>
                                     {usageInfo && m.provider !== "horde" && (
                                       <span className="text-[10px] text-blue-300 font-mono">

@@ -248,6 +248,9 @@ export function resolveV1TextModel(modelName?: string): string {
   if (clean === "backup free model" || clean === "gemma-4-e4b-it") {
     return resolveHordeModel("gemma-4-E4B-it");
   }
+  if (clean === "backup best" || clean === "koboldcpp/qwen3-coder-next" || clean === "qwen3-coder-next") {
+    return resolveHordeModel("koboldcpp/qwen3-coder-next");
+  }
   if (clean === "llama-3.2-3b") {
     return "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M";
   }

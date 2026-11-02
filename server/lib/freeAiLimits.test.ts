@@ -27,6 +27,9 @@ describe("freeAiLimits (Points Usage System)", () => {
     expect(FREE_MODELS["gemma-4-E4B-it"].tierName).toBe("Backup");
     expect(FREE_MODELS["gemma-4-E4B-it"].name).toBe("Backup Free Model");
     expect(FREE_MODELS["gemma-4-E4B-it"].provider).toBe("horde");
+    expect(FREE_MODELS["koboldcpp/qwen3-coder-next"].tierName).toBe("Backup");
+    expect(FREE_MODELS["koboldcpp/qwen3-coder-next"].name).toBe("Backup Best");
+    expect(FREE_MODELS["koboldcpp/qwen3-coder-next"].provider).toBe("horde");
   });
 
   it("should give full base limit (25 points = $0.25) to a single user on an IP", () => {
@@ -268,6 +271,10 @@ describe("freeAiLimits (Points Usage System)", () => {
     expect(allUsage.models["gemma-4-E4B-it"]).toBeDefined();
     expect(allUsage.models["gemma-4-E4B-it"].name).toBe("Backup Free Model");
     expect(allUsage.models["gemma-4-E4B-it"].rateDisplay).toBe("0 pts");
-    expect(allUsage.models["gemma-4-E4B-it"].provider).toBe("horde");
+    expect(allUsage.models["gemma-4-E4B-it"].provider).toBe("horde");
+    expect(allUsage.models["koboldcpp/qwen3-coder-next"]).toBeDefined();
+    expect(allUsage.models["koboldcpp/qwen3-coder-next"].name).toBe("Backup Best");
+    expect(allUsage.models["koboldcpp/qwen3-coder-next"].rateDisplay).toBe("0 pts");
+    expect(allUsage.models["koboldcpp/qwen3-coder-next"].provider).toBe("horde");
   });
 });

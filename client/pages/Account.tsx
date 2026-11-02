@@ -244,6 +244,7 @@ export default function Account() {
     researchSummarizerDefaultModel,
     researchSummarizerDefaultProvider,
     setResearchSummarizerDefault,
+    hordeStatus,
   } = useAiModels();
 
   // Pollinations API Key Management State
@@ -1626,14 +1627,37 @@ export default function Account() {
                           <SelectItem
                             key={m.model_id}
                             value={m.model_id}
-                            className="text-xs focus:bg-slate-800 py-1.5"
+                            disabled={
+                              m.provider === "horde" &&
+                              (m.model_id === "koboldcpp/qwen3-coder-next" || m.name === "Backup Best") &&
+                              (!hordeStatus?.[m.model_id] || (hordeStatus?.[m.model_id]?.workers ?? 0) <= 0)
+                            }
+                            className={cn(
+                              "text-xs focus:bg-slate-800 py-1.5",
+                              m.provider === "horde" &&
+                                (m.model_id === "koboldcpp/qwen3-coder-next" || m.name === "Backup Best") &&
+                                (!hordeStatus?.[m.model_id] || (hordeStatus?.[m.model_id]?.workers ?? 0) <= 0)
+                                ? "opacity-40 text-slate-500 cursor-not-allowed"
+                                : "",
+                            )}
                           >
                             <span className="font-medium text-slate-200">
-                              {m.name || m.model_id}
+                              {m.name === "Backup Free Model"
+                                ? t("account.backupFreeModel", undefined, m.name)
+                                : m.name === "Backup Best"
+                                  ? t("account.backupBest", undefined, m.name)
+                                  : m.name || m.model_id}
                             </span>
                             <span className="ml-2 text-[10px] text-slate-400">
                               ({m.model_id})
                             </span>
+                            {m.provider === "horde" &&
+                              (m.model_id === "koboldcpp/qwen3-coder-next" || m.name === "Backup Best") &&
+                              (!hordeStatus?.[m.model_id] || (hordeStatus?.[m.model_id]?.workers ?? 0) <= 0) && (
+                                <span className="ml-1.5 text-[10px] text-amber-500/80 italic">
+                                  ({t("account.noWorkers", undefined, "0 workers")})
+                                </span>
+                              )}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1692,14 +1716,37 @@ export default function Account() {
                           <SelectItem
                             key={m.model_id}
                             value={m.model_id}
-                            className="text-xs focus:bg-slate-800 py-1.5"
+                            disabled={
+                              m.provider === "horde" &&
+                              (m.model_id === "koboldcpp/qwen3-coder-next" || m.name === "Backup Best") &&
+                              (!hordeStatus?.[m.model_id] || (hordeStatus?.[m.model_id]?.workers ?? 0) <= 0)
+                            }
+                            className={cn(
+                              "text-xs focus:bg-slate-800 py-1.5",
+                              m.provider === "horde" &&
+                                (m.model_id === "koboldcpp/qwen3-coder-next" || m.name === "Backup Best") &&
+                                (!hordeStatus?.[m.model_id] || (hordeStatus?.[m.model_id]?.workers ?? 0) <= 0)
+                                ? "opacity-40 text-slate-500 cursor-not-allowed"
+                                : "",
+                            )}
                           >
                             <span className="font-medium text-slate-200">
-                              {m.name || m.model_id}
+                              {m.name === "Backup Free Model"
+                                ? t("account.backupFreeModel", undefined, m.name)
+                                : m.name === "Backup Best"
+                                  ? t("account.backupBest", undefined, m.name)
+                                  : m.name || m.model_id}
                             </span>
                             <span className="ml-2 text-[10px] text-slate-400">
                               ({m.model_id})
                             </span>
+                            {m.provider === "horde" &&
+                              (m.model_id === "koboldcpp/qwen3-coder-next" || m.name === "Backup Best") &&
+                              (!hordeStatus?.[m.model_id] || (hordeStatus?.[m.model_id]?.workers ?? 0) <= 0) && (
+                                <span className="ml-1.5 text-[10px] text-amber-500/80 italic">
+                                  ({t("account.noWorkers", undefined, "0 workers")})
+                                </span>
+                              )}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1758,14 +1805,37 @@ export default function Account() {
                           <SelectItem
                             key={m.model_id}
                             value={m.model_id}
-                            className="text-xs focus:bg-slate-800 py-1.5"
+                            disabled={
+                              m.provider === "horde" &&
+                              (m.model_id === "koboldcpp/qwen3-coder-next" || m.name === "Backup Best") &&
+                              (!hordeStatus?.[m.model_id] || (hordeStatus?.[m.model_id]?.workers ?? 0) <= 0)
+                            }
+                            className={cn(
+                              "text-xs focus:bg-slate-800 py-1.5",
+                              m.provider === "horde" &&
+                                (m.model_id === "koboldcpp/qwen3-coder-next" || m.name === "Backup Best") &&
+                                (!hordeStatus?.[m.model_id] || (hordeStatus?.[m.model_id]?.workers ?? 0) <= 0)
+                                ? "opacity-40 text-slate-500 cursor-not-allowed"
+                                : "",
+                            )}
                           >
                             <span className="font-medium text-slate-200">
-                              {m.name || m.model_id}
+                              {m.name === "Backup Free Model"
+                                ? t("account.backupFreeModel", undefined, m.name)
+                                : m.name === "Backup Best"
+                                  ? t("account.backupBest", undefined, m.name)
+                                  : m.name || m.model_id}
                             </span>
                             <span className="ml-2 text-[10px] text-slate-400">
                               ({m.model_id})
                             </span>
+                            {m.provider === "horde" &&
+                              (m.model_id === "koboldcpp/qwen3-coder-next" || m.name === "Backup Best") &&
+                              (!hordeStatus?.[m.model_id] || (hordeStatus?.[m.model_id]?.workers ?? 0) <= 0) && (
+                                <span className="ml-1.5 text-[10px] text-amber-500/80 italic">
+                                  ({t("account.noWorkers", undefined, "0 workers")})
+                                </span>
+                              )}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1852,25 +1922,46 @@ export default function Account() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                     {freeModelsList.map((m) => {
                       const info = freeUsage?.models?.[m.model_id];
+                      const hordeInfo = hordeStatus?.[m.model_id] || hordeStatus?.[m.name || ""];
+                      const isNoWorkers =
+                        m.provider === "horde" &&
+                        (m.model_id === "koboldcpp/qwen3-coder-next" || m.name === "Backup Best") &&
+                        (!hordeInfo || hordeInfo.workers <= 0);
                       return (
                         <div
                           key={`free-${m.model_id}`}
-                          className="p-3 rounded-lg bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition space-y-1.5"
+                          className={cn(
+                            "p-3 rounded-lg bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition space-y-1.5",
+                            isNoWorkers ? "opacity-50 border-slate-800/40" : "",
+                          )}
+                          title={isNoWorkers ? t("account.noWorkersServing", undefined, "No workers are currently serving this model") : undefined}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-xs font-semibold text-white truncate">
+                            <p className={cn("text-xs font-semibold truncate", isNoWorkers ? "text-slate-400" : "text-white")}>
                               {m.name === "Backup Free Model"
                                 ? t("account.backupFreeModel", undefined, m.name)
-                                : m.name || m.model_id}
+                                : m.name === "Backup Best"
+                                  ? t("account.backupBest", undefined, m.name)
+                                  : m.name || m.model_id}
                             </p>
-                            {m.rate && (
-                              <Badge
-                                variant="outline"
-                                className="text-[9px] px-1.5 py-0 border-blue-800/60 bg-blue-950/40 text-blue-300 shrink-0 font-normal"
-                              >
-                                {m.rate}
-                              </Badge>
-                            )}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isNoWorkers && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] px-1.5 py-0 border-amber-800/60 bg-amber-950/40 text-amber-300 font-normal"
+                                >
+                                  {t("account.noWorkers", undefined, "0 workers")}
+                                </Badge>
+                              )}
+                              {m.rate && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[9px] px-1.5 py-0 border-blue-800/60 bg-blue-950/40 text-blue-300 font-normal"
+                                >
+                                  {m.rate}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <p className="text-[10px] text-slate-400 truncate font-mono">
                             {m.model_id}

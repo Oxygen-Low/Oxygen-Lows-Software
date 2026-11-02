@@ -59,6 +59,8 @@ export const HORDE_MODELS_MAP: Record<string, string[]> = {
   Writing: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
   "Backup Free Model": ["gemma-4-E4B-it"],
   "gemma-4-E4B-it": ["gemma-4-E4B-it"],
+  "Backup Best": ["koboldcpp/qwen3-coder-next"],
+  "koboldcpp/qwen3-coder-next": ["koboldcpp/qwen3-coder-next"],
 };
 
 export function resolveHordeModel(model: string): string {
@@ -250,7 +252,10 @@ aiRouter.get("/horde-status", apiLimiter, async (c) => {
 
     const statusByName: Record<string, any> = {};
     for (const m of allModels) {
-      if (m.name) statusByName[m.name] = m;
+      if (m.name) {
+        statusByName[m.name] = m;
+        statusByName[m.name.toLowerCase()] = m;
+      }
     }
 
     const result: Record<
@@ -265,7 +270,7 @@ aiRouter.get("/horde-status", apiLimiter, async (c) => {
       let eta = 0;
 
       for (const name of hordeNames) {
-        const info = statusByName[name];
+        const info = statusByName[name] || statusByName[name.toLowerCase()];
         if (info) {
           workers += info.count || 0;
           queued += info.queued || 0;
@@ -602,6 +607,8 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
   const isHordeFreeModel =
     model === "gemma-4-E4B-it" ||
     model === "Backup Free Model" ||
+    model === "koboldcpp/qwen3-coder-next" ||
+    model === "Backup Best" ||
     FREE_MODELS[model]?.provider === "horde" ||
     (FREE_MODELS[model] && provider === "horde");
   const isFreeModelRequest =

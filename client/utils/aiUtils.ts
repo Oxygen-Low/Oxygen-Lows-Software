@@ -25,6 +25,8 @@ export const formatModelLabel = (provider: string, modelId: string) => {
       Writing: "Writing - aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
       "Backup Free Model": "Backup Free Model - gemma-4-E4B-it",
       "gemma-4-E4B-it": "Backup Free Model - gemma-4-E4B-it",
+      "Backup Best": "Backup Best - koboldcpp/qwen3-coder-next",
+      "koboldcpp/qwen3-coder-next": "Backup Best - koboldcpp/qwen3-coder-next",
     };
     return labels[modelId] || "AI Horde - " + modelId;
   }

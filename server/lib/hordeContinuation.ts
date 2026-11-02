@@ -562,6 +562,8 @@ export const HORDE_MODELS_MAP: Record<string, string[]> = {
   Writing: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
   "Backup Free Model": ["gemma-4-E4B-it"],
   "gemma-4-E4B-it": ["gemma-4-E4B-it"],
+  "Backup Best": ["koboldcpp/qwen3-coder-next"],
+  "koboldcpp/qwen3-coder-next": ["koboldcpp/qwen3-coder-next"],
 };
 
 export function resolveHordeModel(modelName: string): string {

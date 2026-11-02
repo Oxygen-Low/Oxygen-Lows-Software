@@ -37,6 +37,12 @@ describe("OpenAI-Compatible Free AI API (/v1 & /api/v1)", () => {
       expect(resolveV1TextModel("Writing")).toBe(
         "aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
       );
+      expect(resolveV1TextModel("Backup Best")).toBe(
+        "koboldcpp/qwen3-coder-next",
+      );
+      expect(resolveV1TextModel("koboldcpp/qwen3-coder-next")).toBe(
+        "koboldcpp/qwen3-coder-next",
+      );
       expect(resolveV1TextModel()).toBe(resolveV1TextModel("Fast"));
     });
 

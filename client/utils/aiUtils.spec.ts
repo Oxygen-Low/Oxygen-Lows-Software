@@ -60,6 +60,12 @@ describe("formatModelLabel", () => {
     expect(formatModelLabel("horde", "Backup Free Model")).toBe(
       "Backup Free Model - gemma-4-E4B-it",
     );
+    expect(formatModelLabel("horde", "Backup Best")).toBe(
+      "Backup Best - koboldcpp/qwen3-coder-next",
+    );
+    expect(formatModelLabel("horde", "koboldcpp/qwen3-coder-next")).toBe(
+      "Backup Best - koboldcpp/qwen3-coder-next",
+    );
     expect(formatModelLabel("horde", "UnknownModel")).toBe(
       "AI Horde - UnknownModel",
     );

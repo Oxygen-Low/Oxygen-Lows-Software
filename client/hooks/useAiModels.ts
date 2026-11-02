@@ -112,6 +112,14 @@ export const BUILTIN_MODELS: Model[] = [
     category: "free",
   },
   {
+    id: "free:koboldcpp/qwen3-coder-next",
+    provider: "horde",
+    model_id: "koboldcpp/qwen3-coder-next",
+    name: "Backup Best",
+    rate: "0 pts",
+    category: "free",
+  },
+  {
     provider: "pollinations",
     model_id: "amazon/nova-micro-v1",
     name: "Cheap",
@@ -233,6 +241,7 @@ export function useAiModels() {
       }
     });
   const [pollenBalance, setPollenBalance] = useState<number>(0);
+  const [hordeStatus, setHordeStatus] = useState<Record<string, { workers: number; queued: number; speed?: string; eta?: number }>>({});
   const [freeUsage, setFreeUsage] = useState<FreeUsageData | null>(null);
   const [isMasterKeyActive, setIsMasterKeyActive] = useState(false);
   const [localRunnerModel, setLocalRunnerModel] = useState<Model | null>(null);
@@ -495,6 +504,26 @@ export function useAiModels() {
     [],
   );
 
+  const refreshHordeStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ai/horde-status");
+      if (res.ok) {
+        const data = await res.json();
+        if (isMountedRef.current && data && typeof data === "object") {
+          setHordeStatus(data);
+        }
+        return data;
+      }
+    } catch {}
+    return null;
+  }, []);
+
+  useEffect(() => {
+    refreshHordeStatus();
+    const interval = setInterval(refreshHordeStatus, 30000);
+    return () => clearInterval(interval);
+  }, [refreshHordeStatus]);
+
   const refreshFreeUsage = useCallback(
     async (tokenToUse?: string) => {
       try {
@@ -712,13 +741,13 @@ export function useAiModels() {
     setIsLoading(true);
     try {
       loadCustomModels();
-      await Promise.allSettled([refreshPollenBalance(), refreshFreeUsage()]);
+      await Promise.allSettled([refreshPollenBalance(), refreshFreeUsage(), refreshHordeStatus()]);
     } finally {
       if (isMountedRef.current) {
         setIsLoading(false);
       }
     }
-  }, [loadCustomModels, refreshPollenBalance, refreshFreeUsage]);
+  }, [loadCustomModels, refreshPollenBalance, refreshFreeUsage, refreshHordeStatus]);
 
   const freeModels = useMemo(
     () => models.filter((m) => m.category === "free"),
@@ -785,7 +814,8 @@ export function useAiModels() {
       desktopBridge: isDesktopBridgeAvailable(),
       totalLocal: localRunnerModel ? 1 : 0,
     } as LocalProviderStatus,
-    hordeStatus: {} as Record<string, any>,
+    hordeStatus,
+    refreshHordeStatus,
   };
 }
 
