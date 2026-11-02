@@ -243,7 +243,7 @@ describe("AI Router - Free Models API and Proxy", () => {
     expect(res.status).toBe(200);
     expect(pollinationsCalled).toBe(false);
     expect(hordeCalled).toBe(true);
-    expect(requestedHordeModel).toBe("gemma-4-E4B-it");
+    expect(requestedHordeModel).toBe("koboldcpp/gemma-4-E4B-it");
 
     // Points should not have increased
     const pointsAfter = getUserDailyPointsUsage(mockUser.id);

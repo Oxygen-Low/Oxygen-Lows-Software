@@ -12,6 +12,8 @@ import {
 import {
   streamHordeWithContinuation,
   fetchHordeNonStreamWithContinuation,
+  HORDE_MODELS_MAP,
+  resolveHordeModel,
 } from "../lib/hordeContinuation.ts";
 import { safeParseJson } from "../../shared/jsonRepair.ts";
 import { getUserApiKey } from "../lib/userApiKeys.ts";
@@ -21,27 +23,6 @@ export const agentSearchRouter = new Hono();
 export const HORDE_URL = "https://oai.stablehorde.net/v1/chat/completions";
 export const HORDE_FAST_MODEL = "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M";
 
-export const HORDE_MODELS_MAP: Record<string, string[]> = {
-  TitleGen: [
-    "koboldcpp/Llama-3.2-1B-Instruct",
-    "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M",
-    "meta-llama/Llama-3.2-3B-Instruct",
-  ],
-  Fast: ["koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M"],
-  Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
-  Writing: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
-  "Backup Free Model": ["gemma-4-E4B-it"],
-  "gemma-4-E4B-it": ["gemma-4-E4B-it"],
-  "Backup Best": ["koboldcpp/qwen3-coder-next"],
-  "koboldcpp/qwen3-coder-next": ["koboldcpp/qwen3-coder-next"],
-};
-
-export function resolveHordeModel(model: string): string {
-  if (HORDE_MODELS_MAP[model]) {
-    return HORDE_MODELS_MAP[model].join(",");
-  }
-  return model;
-}
 
 // Max research tool rounds with Horde (up to 100 calls)
 const MAX_RESEARCH_ROUNDS = 100;

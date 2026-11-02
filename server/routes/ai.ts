@@ -7,7 +7,12 @@ import { safeParseJson } from "../../shared/jsonRepair.ts";
 import {
   streamHordeWithContinuation,
   fetchHordeNonStreamWithContinuation,
+  HORDE_MODELS_MAP,
+  resolveHordeModel,
+  getFallbackHordeModel,
 } from "../lib/hordeContinuation.ts";
+
+export { HORDE_MODELS_MAP, resolveHordeModel, getFallbackHordeModel };
 import { scanText } from "../lib/safety/csamGuard.ts";
 import { executeZeroToleranceLockdown, extractClientIp } from "../lib/safety/enforcement.ts";
 import {
@@ -34,42 +39,6 @@ const DEFAULT_MODELS = [
   { provider: "pollinations", model_id: "openai/gpt-6-luna" },
 ];
 
-export const HORDE_MODELS_MAP: Record<string, string[]> = {
-  TitleGen: [
-    "koboldcpp/Llama-3.2-1B-Instruct",
-    "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M",
-    "meta-llama/Llama-3.2-3B-Instruct",
-  ],
-  Fast: [
-    "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
-  ],
-  "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M": [
-    "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
-  ],
-  "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M": [
-    "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M",
-    "koboldcpp/llama-3.2-3b-instruct-q4_k_m",
-    "meta-llama/Llama-3.2-3B-Instruct",
-    "koboldcpp/Llama-3.2-1B-Instruct",
-    "koboldcpp/L3-Super-Nova-RP-8B",
-    "koboldcpp/L3-8B-Stheno-v3.2",
-    "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
-  ],
-  Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
-  Writing: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
-  "Backup Free Model": ["gemma-4-E4B-it"],
-  "gemma-4-E4B-it": ["gemma-4-E4B-it"],
-  "Backup Best": ["koboldcpp/qwen3-coder-next"],
-  "koboldcpp/qwen3-coder-next": ["koboldcpp/qwen3-coder-next"],
-};
-
-export function resolveHordeModel(model: string): string {
-  if (HORDE_MODELS_MAP[model]) {
-    return HORDE_MODELS_MAP[model].join(",");
-  }
-  return model;
-}
-
 export function isInvalidOrMaskedApiKey(key?: unknown): boolean {
   if (!key || typeof key !== "string") return true;
   const trimmed = key.trim();
@@ -79,30 +48,6 @@ export function isInvalidOrMaskedApiKey(key?: unknown): boolean {
   return false;
 }
 
-export async function getFallbackHordeModel(
-  preference: "fast" | "general" = "fast",
-): Promise<string | null> {
-  try {
-    const res = await fetch(
-      "https://stablehorde.net/api/v2/status/models?type=text",
-    );
-    if (!res.ok) return null;
-    const models: Array<{ name: string; count: number }> = await res.json();
-    const sorted = models
-      .filter((m) => m && m.count > 0 && typeof m.name === "string")
-      .sort((a, b) => b.count - a.count);
-
-    if (preference === "fast") {
-      const fast = sorted.find((m) =>
-        /(?:^|[^0-9])([1378])b(?:[^0-9]|$)/i.test(m.name),
-      );
-      if (fast) return fast.name;
-    }
-    return sorted[0]?.name || null;
-  } catch {
-    return null;
-  }
-}
 
 export interface SearchIntent {
   search: boolean;
@@ -954,8 +899,8 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
         Authorization: `Bearer ${integration?.api_key || "0000000000"}`,
       };
       let hordeRequestBody = {
-        max_tokens: requestBody.max_tokens || 512,
         ...requestBody,
+        max_tokens: Math.max(16, requestBody.max_tokens || 512),
         model: actualModel,
         messages: finalMessages,
       };
@@ -968,31 +913,76 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
           signal: c.req.raw.signal,
         });
 
-        if (hordeResponse.status === 406) {
-          const dynamicFallback = await getFallbackHordeModel(
-            model.toLowerCase().includes("fast") ? "fast" : "general",
-          );
-          if (dynamicFallback && dynamicFallback !== actualModel) {
-            actualModel = dynamicFallback;
-            hordeRequestBody = { ...hordeRequestBody, model: actualModel };
-            hordeResponse = await streamHordeWithContinuation({
-              targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
-              fetchHeaders: hordeHeaders,
-              requestBody: hordeRequestBody,
-              signal: c.req.raw.signal,
-            });
+        const shouldFallback =
+          hordeResponse.status === 404 ||
+          hordeResponse.status === 406 ||
+          hordeResponse.status === 502 ||
+          hordeResponse.status === 503;
+
+        if (shouldFallback) {
+          const candidates = HORDE_MODELS_MAP[model] || [];
+          for (const candidate of candidates) {
+            if (candidate !== actualModel) {
+              actualModel = candidate;
+              hordeRequestBody = { ...hordeRequestBody, model: actualModel };
+              hordeResponse = await streamHordeWithContinuation({
+                targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
+                fetchHeaders: hordeHeaders,
+                requestBody: hordeRequestBody,
+                signal: c.req.raw.signal,
+              });
+              if (hordeResponse.ok) break;
+            }
+          }
+
+          if (!hordeResponse.ok) {
+            const dynamicFallback = await getFallbackHordeModel(
+              model.toLowerCase().includes("fast") ? "fast" : "general",
+            );
+            if (dynamicFallback && dynamicFallback !== actualModel) {
+              actualModel = dynamicFallback;
+              hordeRequestBody = { ...hordeRequestBody, model: actualModel };
+              hordeResponse = await streamHordeWithContinuation({
+                targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
+                fetchHeaders: hordeHeaders,
+                requestBody: hordeRequestBody,
+                signal: c.req.raw.signal,
+              });
+            }
           }
         }
 
         if (!hordeResponse.ok) {
           const status = hordeResponse.status;
-          let userMessage = "The AI provider returned an error.";
-          if (status === 401 || status === 403)
-            userMessage = "Invalid or expired API key for this provider.";
-          else if (status === 429)
-            userMessage = "Rate limit exceeded. Please try again later.";
-          else if (status === 503 || status === 502)
-            userMessage = "The AI provider is temporarily unavailable.";
+          let upstreamErrorMsg = "";
+          try {
+            const clone = hordeResponse.clone();
+            const errJson = await clone.json().catch(() => null);
+            upstreamErrorMsg = errJson?.error?.message || errJson?.message || "";
+            if (!upstreamErrorMsg) {
+              const text = await clone.text().catch(() => "");
+              if (text && !text.includes("<html>")) upstreamErrorMsg = text;
+            }
+          } catch {}
+
+          console.error(
+            `[AI Proxy] AI Horde request failed (model: ${actualModel}, status: ${status}):`,
+            upstreamErrorMsg || `HTTP ${status}`,
+          );
+
+          let userMessage = upstreamErrorMsg;
+          if (!userMessage) {
+            if (status === 401 || status === 403)
+              userMessage = "Invalid or expired API key for AI Horde.";
+            else if (status === 429)
+              userMessage = "AI Horde worker network is currently busy. Please retry shortly.";
+            else if (status === 503 || status === 502)
+              userMessage = "No AI Horde workers are currently available for this model. Please retry shortly.";
+            else if (status === 404)
+              userMessage = "The requested model is currently not available on AI Horde.";
+            else
+              userMessage = "The AI provider returned an error.";
+          }
           return c.json({ error: userMessage }, status as any);
         }
 
@@ -1008,31 +998,76 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
           signal: c.req.raw.signal,
         });
 
-        if (hordeResponse.status === 406) {
-          const dynamicFallback = await getFallbackHordeModel(
-            model.toLowerCase().includes("fast") ? "fast" : "general",
-          );
-          if (dynamicFallback && dynamicFallback !== actualModel) {
-            actualModel = dynamicFallback;
-            hordeRequestBody = { ...hordeRequestBody, model: actualModel };
-            hordeResponse = await fetchHordeNonStreamWithContinuation({
-              targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
-              fetchHeaders: hordeHeaders,
-              requestBody: hordeRequestBody,
-              signal: c.req.raw.signal,
-            });
+        const shouldFallback =
+          hordeResponse.status === 404 ||
+          hordeResponse.status === 406 ||
+          hordeResponse.status === 502 ||
+          hordeResponse.status === 503;
+
+        if (shouldFallback) {
+          const candidates = HORDE_MODELS_MAP[model] || [];
+          for (const candidate of candidates) {
+            if (candidate !== actualModel) {
+              actualModel = candidate;
+              hordeRequestBody = { ...hordeRequestBody, model: actualModel };
+              hordeResponse = await fetchHordeNonStreamWithContinuation({
+                targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
+                fetchHeaders: hordeHeaders,
+                requestBody: hordeRequestBody,
+                signal: c.req.raw.signal,
+              });
+              if (hordeResponse.ok) break;
+            }
+          }
+
+          if (!hordeResponse.ok) {
+            const dynamicFallback = await getFallbackHordeModel(
+              model.toLowerCase().includes("fast") ? "fast" : "general",
+            );
+            if (dynamicFallback && dynamicFallback !== actualModel) {
+              actualModel = dynamicFallback;
+              hordeRequestBody = { ...hordeRequestBody, model: actualModel };
+              hordeResponse = await fetchHordeNonStreamWithContinuation({
+                targetUrl: "https://oai.stablehorde.net/v1/chat/completions",
+                fetchHeaders: hordeHeaders,
+                requestBody: hordeRequestBody,
+                signal: c.req.raw.signal,
+              });
+            }
           }
         }
 
         if (!hordeResponse.ok) {
           const status = hordeResponse.status;
-          let userMessage = "The AI provider returned an error.";
-          if (status === 401 || status === 403)
-            userMessage = "Invalid or expired API key for this provider.";
-          else if (status === 429)
-            userMessage = "Rate limit exceeded. Please try again later.";
-          else if (status === 503 || status === 502)
-            userMessage = "The AI provider is temporarily unavailable.";
+          let upstreamErrorMsg = "";
+          try {
+            const clone = hordeResponse.clone();
+            const errJson = await clone.json().catch(() => null);
+            upstreamErrorMsg = errJson?.error?.message || errJson?.message || "";
+            if (!upstreamErrorMsg) {
+              const text = await clone.text().catch(() => "");
+              if (text && !text.includes("<html>")) upstreamErrorMsg = text;
+            }
+          } catch {}
+
+          console.error(
+            `[AI Proxy] AI Horde non-stream request failed (model: ${actualModel}, status: ${status}):`,
+            upstreamErrorMsg || `HTTP ${status}`,
+          );
+
+          let userMessage = upstreamErrorMsg;
+          if (!userMessage) {
+            if (status === 401 || status === 403)
+              userMessage = "Invalid or expired API key for AI Horde.";
+            else if (status === 429)
+              userMessage = "AI Horde worker network is currently busy. Please retry shortly.";
+            else if (status === 503 || status === 502)
+              userMessage = "No AI Horde workers are currently available for this model. Please retry shortly.";
+            else if (status === 404)
+              userMessage = "The requested model is currently not available on AI Horde.";
+            else
+              userMessage = "The AI provider returned an error.";
+          }
           return c.json({ error: userMessage }, status as any);
         }
 

@@ -1695,7 +1695,7 @@ export function ChatbotApp() {
             response = await fetchTitleViaProxy(HORDE_FALLBACK_SMART_MODEL);
           }
 
-          if (response.ok) {
+          if (response.ok && typeof response.json === "function") {
             const data = await response.json();
             const hordeTitle =
               data.choices?.[0]?.message?.content?.trim() || "";
@@ -1941,7 +1941,9 @@ export function ChatbotApp() {
 
       const res = await fetch("/api/ai/proxy", fetchOptions);
       if (!res.ok) {
-        throw new Error(await parseAiProxyError(res));
+        const errorText = await parseAiProxyError(res);
+        console.warn(`[Chatbot] Horde fallback (${fallbackModelId}) failed:`, errorText);
+        throw new Error(errorText);
       }
       return await streamResponseData(res, "horde");
     };
@@ -3126,6 +3128,7 @@ export function ChatbotApp() {
         }
       }
     } catch (e: any) {
+      console.error("[Chatbot] Message turn error:", e);
       toast.error(e.message);
       if (input === "") setInput(originalInput);
       if (fromVoice || isVoiceInputRef.current) {
@@ -3299,6 +3302,7 @@ export function ChatbotApp() {
       };
       setActiveChildren(activeChildrenRef.current);
     } catch (e: any) {
+      console.error("[Chatbot] Message regeneration error:", e);
       toast.error(e.message);
       activeChildrenRef.current = {
         ...activeChildrenRef.current,

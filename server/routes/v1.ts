@@ -229,9 +229,11 @@ export function resolveV1TextModel(modelName?: string): string {
     return resolveHordeModel("Fast");
   }
   const clean = modelName.trim().toLowerCase();
+  if (clean === "gpt-3.5-turbo") {
+    return "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M";
+  }
   if (
     clean === "fast" ||
-    clean === "gpt-3.5-turbo" ||
     clean === "gpt-4" ||
     clean === "gpt-4o" ||
     clean === "gpt-4o-mini" ||
@@ -398,28 +400,69 @@ v1Router.post("/chat/completions", async (c) => {
         signal: c.req.raw.signal,
       });
 
-      // If model not found or unsupported, attempt fallback
-      if (hordeResponse.status === 406 || hordeResponse.status === 404) {
-        const fallback = await getFallbackHordeModel("fast");
-        if (fallback && fallback !== actualModel) {
-          actualModel = fallback;
-          hordeRequestBody.model = actualModel;
-          hordeResponse = await streamHordeWithContinuation({
-            targetUrl,
-            fetchHeaders: hordeHeaders,
-            requestBody: hordeRequestBody,
-            signal: c.req.raw.signal,
-          });
+      const shouldFallback =
+        hordeResponse.status === 404 ||
+        hordeResponse.status === 406 ||
+        hordeResponse.status === 502 ||
+        hordeResponse.status === 503;
+
+      if (shouldFallback) {
+        const clean = (typeof model === "string" ? model : "").trim();
+        const candidates = HORDE_MODELS_MAP[clean] || HORDE_MODELS_MAP[actualModel] || [];
+        for (const candidate of candidates) {
+          if (candidate !== actualModel) {
+            actualModel = candidate;
+            hordeRequestBody.model = actualModel;
+            hordeResponse = await streamHordeWithContinuation({
+              targetUrl,
+              fetchHeaders: hordeHeaders,
+              requestBody: hordeRequestBody,
+              signal: c.req.raw.signal,
+            });
+            if (hordeResponse.ok) break;
+          }
+        }
+
+        if (!hordeResponse.ok) {
+          const fallback = await getFallbackHordeModel("fast");
+          if (fallback && fallback !== actualModel) {
+            actualModel = fallback;
+            hordeRequestBody.model = actualModel;
+            hordeResponse = await streamHordeWithContinuation({
+              targetUrl,
+              fetchHeaders: hordeHeaders,
+              requestBody: hordeRequestBody,
+              signal: c.req.raw.signal,
+            });
+          }
         }
       }
 
       if (!hordeResponse.ok) {
         const status = hordeResponse.status;
-        let userMessage = "The AI provider returned an error.";
-        if (status === 429) {
-          userMessage = "AI Horde worker network is currently busy. Please retry shortly.";
-        } else if (status >= 500) {
-          userMessage = "AI Horde service temporarily unavailable.";
+        let upstreamErrorMsg = "";
+        try {
+          const clone = hordeResponse.clone();
+          const errJson = await clone.json().catch(() => null);
+          upstreamErrorMsg = errJson?.error?.message || errJson?.message || "";
+        } catch {}
+
+        console.error(
+          `[V1 API] AI Horde stream failed (model: ${actualModel}, status: ${status}):`,
+          upstreamErrorMsg || `HTTP ${status}`,
+        );
+
+        let userMessage = upstreamErrorMsg;
+        if (!userMessage) {
+          if (status === 429) {
+            userMessage = "AI Horde worker network is currently busy. Please retry shortly.";
+          } else if (status >= 500) {
+            userMessage = "AI Horde service temporarily unavailable.";
+          } else if (status === 404) {
+            userMessage = "The requested model is currently not available on AI Horde.";
+          } else {
+            userMessage = "The AI provider returned an error.";
+          }
         }
         return c.json(
           {
@@ -446,28 +489,69 @@ v1Router.post("/chat/completions", async (c) => {
         signal: c.req.raw.signal,
       });
 
-      // If model not found or unsupported, attempt fallback
-      if (hordeResponse.status === 406 || hordeResponse.status === 404) {
-        const fallback = await getFallbackHordeModel("fast");
-        if (fallback && fallback !== actualModel) {
-          actualModel = fallback;
-          hordeRequestBody.model = actualModel;
-          hordeResponse = await fetchHordeNonStreamWithContinuation({
-            targetUrl,
-            fetchHeaders: hordeHeaders,
-            requestBody: hordeRequestBody,
-            signal: c.req.raw.signal,
-          });
+      const shouldFallback =
+        hordeResponse.status === 404 ||
+        hordeResponse.status === 406 ||
+        hordeResponse.status === 502 ||
+        hordeResponse.status === 503;
+
+      if (shouldFallback) {
+        const clean = (typeof model === "string" ? model : "").trim();
+        const candidates = HORDE_MODELS_MAP[clean] || HORDE_MODELS_MAP[actualModel] || [];
+        for (const candidate of candidates) {
+          if (candidate !== actualModel) {
+            actualModel = candidate;
+            hordeRequestBody.model = actualModel;
+            hordeResponse = await fetchHordeNonStreamWithContinuation({
+              targetUrl,
+              fetchHeaders: hordeHeaders,
+              requestBody: hordeRequestBody,
+              signal: c.req.raw.signal,
+            });
+            if (hordeResponse.ok) break;
+          }
+        }
+
+        if (!hordeResponse.ok) {
+          const fallback = await getFallbackHordeModel("fast");
+          if (fallback && fallback !== actualModel) {
+            actualModel = fallback;
+            hordeRequestBody.model = actualModel;
+            hordeResponse = await fetchHordeNonStreamWithContinuation({
+              targetUrl,
+              fetchHeaders: hordeHeaders,
+              requestBody: hordeRequestBody,
+              signal: c.req.raw.signal,
+            });
+          }
         }
       }
 
       if (!hordeResponse.ok) {
         const status = hordeResponse.status;
-        let userMessage = "The AI provider returned an error.";
-        if (status === 429) {
-          userMessage = "AI Horde worker network is currently busy. Please retry shortly.";
-        } else if (status >= 500) {
-          userMessage = "AI Horde service temporarily unavailable.";
+        let upstreamErrorMsg = "";
+        try {
+          const clone = hordeResponse.clone();
+          const errJson = await clone.json().catch(() => null);
+          upstreamErrorMsg = errJson?.error?.message || errJson?.message || "";
+        } catch {}
+
+        console.error(
+          `[V1 API] AI Horde non-stream failed (model: ${actualModel}, status: ${status}):`,
+          upstreamErrorMsg || `HTTP ${status}`,
+        );
+
+        let userMessage = upstreamErrorMsg;
+        if (!userMessage) {
+          if (status === 429) {
+            userMessage = "AI Horde worker network is currently busy. Please retry shortly.";
+          } else if (status >= 500) {
+            userMessage = "AI Horde service temporarily unavailable.";
+          } else if (status === 404) {
+            userMessage = "The requested model is currently not available on AI Horde.";
+          } else {
+            userMessage = "The AI provider returned an error.";
+          }
         }
         return c.json(
           {

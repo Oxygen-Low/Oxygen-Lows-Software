@@ -196,6 +196,10 @@ export async function streamHordeWithContinuation(
   let currentMessages = [...(requestBody.messages || [])];
   const initialBody = {
     ...requestBody,
+    max_tokens:
+      requestBody.max_tokens !== undefined
+        ? Math.max(16, Number(requestBody.max_tokens))
+        : 512,
     stream: true,
     messages: currentMessages,
   };
@@ -457,6 +461,10 @@ export async function fetchHordeNonStreamWithContinuation(
   while (continuationCount <= maxContinuations) {
     const currentBody = {
       ...requestBody,
+      max_tokens:
+        requestBody.max_tokens !== undefined
+          ? Math.max(16, Number(requestBody.max_tokens))
+          : 512,
       stream: false,
       messages: currentMessages,
     };
@@ -554,21 +562,65 @@ export async function fetchHordeNonStreamWithContinuation(
 }
 
 export const HORDE_MODELS_MAP: Record<string, string[]> = {
+  TitleGen: [
+    "koboldcpp/gemma-4-E4B-it",
+    "koboldcpp/Llama-3.2-1B-Instruct",
+    "koboldcpp/L3-8B-Stheno-v3.2",
+    "meta-llama/Llama-3.2-3B-Instruct",
+  ],
   Fast: [
     "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+    "koboldcpp/gemma-4-E4B-it",
     "koboldcpp/Llama-3.2-1B-Instruct",
   ],
-  Smart: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
-  Writing: ["aphrodite/TheDrummer/Behemoth-X-123B-v2.1"],
-  "Backup Free Model": ["gemma-4-E4B-it"],
-  "gemma-4-E4B-it": ["gemma-4-E4B-it"],
-  "Backup Best": ["koboldcpp/qwen3-coder-next"],
-  "koboldcpp/qwen3-coder-next": ["koboldcpp/qwen3-coder-next"],
+  "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M": [
+    "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M",
+    "koboldcpp/gemma-4-E4B-it",
+  ],
+  "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M": [
+    "koboldcpp/L3-8B-Stheno-v3.2",
+    "koboldcpp/Llama-3.2-3B-Instruct-Q4_K_M",
+    "koboldcpp/llama-3.2-3b-instruct-q4_k_m",
+    "meta-llama/Llama-3.2-3B-Instruct",
+    "koboldcpp/Llama-3.2-1B-Instruct",
+    "koboldcpp/L3-Super-Nova-RP-8B",
+    "koboldcpp/Meta-Llama-3.1-8B-Instruct-Q3_K_M",
+  ],
+  Smart: [
+    "aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
+    "koboldcpp/Qwen3.5-27B-heretic",
+    "koboldcpp/gemma-4-26B-A4B-it-ultra-uncensored-heretic",
+    "TheDrummer/Behemoth-128B-v3",
+  ],
+  Writing: [
+    "aphrodite/TheDrummer/Behemoth-X-123B-v2.1",
+    "koboldcpp/Qwen3.5-27B-heretic",
+    "koboldcpp/gemma-4-26B-A4B-it-ultra-uncensored-heretic",
+    "TheDrummer/Behemoth-128B-v3",
+  ],
+  "Backup Free Model": [
+    "koboldcpp/gemma-4-E4B-it",
+    "gemma-4-E4B-it",
+  ],
+  "gemma-4-E4B-it": [
+    "koboldcpp/gemma-4-E4B-it",
+    "gemma-4-E4B-it",
+  ],
+  "Backup Best": [
+    "koboldcpp/qwen3-coder-next",
+    "koboldcpp/Qwen3.5-27B-heretic",
+    "koboldcpp/gemma-4-26B-A4B-it-ultra-uncensored-heretic",
+  ],
+  "koboldcpp/qwen3-coder-next": [
+    "koboldcpp/qwen3-coder-next",
+    "koboldcpp/Qwen3.5-27B-heretic",
+    "koboldcpp/gemma-4-26B-A4B-it-ultra-uncensored-heretic",
+  ],
 };
 
 export function resolveHordeModel(modelName: string): string {
-  if (HORDE_MODELS_MAP[modelName]) {
-    return HORDE_MODELS_MAP[modelName].join(",");
+  if (HORDE_MODELS_MAP[modelName] && HORDE_MODELS_MAP[modelName].length > 0) {
+    return HORDE_MODELS_MAP[modelName][0];
   }
   return modelName;
 }
@@ -577,17 +629,75 @@ export async function getFallbackHordeModel(
   category: "fast" | "general" = "general",
 ): Promise<string> {
   try {
-    const res = await fetch("https://stablehorde.net/api/v2/status/models?type=text");
-    if (!res.ok) return "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M";
-    const models: any[] = await res.json();
-    if (!Array.isArray(models) || models.length === 0) {
-      return "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M";
+    let oaiModels: string[] = [];
+    try {
+      const oaiRes = await fetch("https://oai.stablehorde.net/v1/models", {
+        headers: { Authorization: "Bearer 0000000000" },
+      });
+      if (oaiRes.ok) {
+        const oaiData = await oaiRes.json();
+        if (Array.isArray(oaiData?.data)) {
+          oaiModels = oaiData.data.map((m: any) => m?.id).filter(Boolean);
+        }
+      }
+    } catch {}
+
+    let statusModels: Array<{ name: string; count: number }> = [];
+    try {
+      const statusRes = await fetch("https://stablehorde.net/api/v2/status/models?type=text");
+      if (statusRes.ok) {
+        statusModels = await statusRes.json();
+      }
+    } catch {}
+
+    const workerCounts = new Map<string, number>();
+    for (const sm of statusModels) {
+      if (sm?.name && typeof sm.count === "number") {
+        workerCounts.set(sm.name, sm.count);
+        workerCounts.set(sm.name.toLowerCase(), sm.count);
+      }
     }
-    const available = models.filter((m) => m.count > 0 && m.performance > 0);
-    if (available.length === 0) return models[0].name;
-    available.sort((a, b) => b.count - a.count);
-    return available[0].name;
+
+    if (oaiModels.length > 0) {
+      const scored = oaiModels
+        .map((id) => {
+          const rawName = id.replace(/^koboldcpp\//, "");
+          const count =
+            workerCounts.get(id) ??
+            workerCounts.get(id.toLowerCase()) ??
+            workerCounts.get(rawName) ??
+            workerCounts.get(rawName.toLowerCase()) ??
+            1;
+          return { id, count };
+        })
+        .filter((m) => m.count > 0)
+        .sort((a, b) => b.count - a.count);
+
+      if (category === "fast") {
+        const fast = scored.find((m) =>
+          /(?:^|[^0-9])([123478])b(?:[^0-9]|$)|270m|nano/i.test(m.id),
+        );
+        if (fast) return fast.id;
+      }
+      if (scored.length > 0) return scored[0].id;
+      return oaiModels[0];
+    }
+
+    if (statusModels.length > 0) {
+      const sorted = statusModels
+        .filter((m) => m && m.count > 0 && typeof m.name === "string")
+        .sort((a, b) => b.count - a.count);
+      if (category === "fast") {
+        const fast = sorted.find((m) =>
+          /(?:^|[^0-9])([123478])b(?:[^0-9]|$)|270m|nano/i.test(m.name),
+        );
+        if (fast) return fast.name;
+      }
+      return sorted[0]?.name || "koboldcpp/gemma-4-E4B-it";
+    }
+
+    return "koboldcpp/gemma-4-E4B-it";
   } catch {
-    return "koboldcpp/NVIDIA-Nemotron-3-Nano-4B-Q4_K_M";
+    return "koboldcpp/gemma-4-E4B-it";
   }
 }
