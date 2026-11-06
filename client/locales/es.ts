@@ -1859,6 +1859,48 @@ export const es = {
     passkeyRenamedSuccess: "Â¡Clave de acceso renombrada con Ã©xito!",
     failedToGetRegisterOptions: "Error al obtener las opciones de registro",
     failedToVerifyPasskey: "Error al verificar la clave de acceso",
+    encryptedApiTitle: "Acceso cifrado a la API",
+    encryptedApiDesc:
+      "Crea tokens con permisos limitados para que tus aplicaciones descifren los datos seleccionados sin compartir la contraseña de tu cuenta.",
+    encryptedApiNoPasswordsWarning:
+      "El acceso a la caja fuerte de contraseñas no está disponible mediante tokens de API cifrados. Solo puedes seleccionar datos de Personajes, Guardado de datos y Chatbot.",
+    encryptedApiLocked:
+      "Desbloquea tu sesión de cifrado arriba para crear y gestionar claves de acceso a la API cifrada.",
+    encryptedApiName: "Nombre de la clave",
+    encryptedApiNamePlaceholder: "p. ej., Mi aplicación de escritorio",
+    encryptedApiExpiry: "Caduca el",
+    encryptedApiScopes: "Categorías de datos permitidas",
+    encryptedApiCreating: "Creando clave...",
+    encryptedApiCreate: "Crear clave de acceso",
+    encryptedApiEndpointsTitle: "Puntos finales de la API",
+    encryptedApiEndpointsDesc:
+      "Envía el token en el encabezado Authorization de cada solicitud:",
+    encryptedApiExistingKeys: "Tus claves de acceso",
+    encryptedApiRefresh: "Actualizar",
+    encryptedApiLoading: "Cargando claves...",
+    encryptedApiNoKeys: "No se ha creado ninguna clave de acceso a la API cifrada.",
+    encryptedApiExpires: "Caduca",
+    encryptedApiLastUsed: "Último uso",
+    encryptedApiNeverUsed: "Nunca",
+    encryptedApiRevoke: "Revocar",
+    encryptedApiTokenTitle: "Copia ahora tu token de acceso",
+    encryptedApiTokenDesc:
+      "Por tu seguridad, este token solo se muestra una vez. Guárdalo en un lugar seguro antes de cerrar este diálogo.",
+    encryptedApiCopied: "Copiado",
+    encryptedApiCopyToken: "Copiar token",
+    encryptedApiRevokeTitle: "¿Revocar esta clave de acceso?",
+    encryptedApiRevokeDesc:
+      "Las aplicaciones que usen este token perderán el acceso inmediatamente. Esta acción no se puede deshacer.",
+    encryptedApiCancel: "Cancelar",
+    encryptedApiConfirmRevoke: "Revocar acceso",
+    encryptedApiLoadError: "No se pudieron cargar las claves de acceso a la API cifrada.",
+    encryptedApiNameRequired: "Introduce un nombre para esta clave de acceso.",
+    encryptedApiCategoryRequired: "Selecciona al menos una categoría de datos.",
+    encryptedApiExpiryRequired: "Elige una fecha de caducidad futura.",
+    encryptedApiCreateError: "No se pudo crear la clave de acceso a la API cifrada.",
+    encryptedApiRevokeError: "No se pudo revocar la clave de acceso.",
+    encryptedApiCopyError:
+      "No se pudo copiar el token. Selecciónalo y cópialo manualmente.",
   },
   passwords: {
     appTitle: "Gestor de ContraseÃ±as",

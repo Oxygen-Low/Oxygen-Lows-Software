@@ -35,6 +35,7 @@ import { partnersRouter } from "./routes/partners.ts";
 import { agentsRouter } from "./routes/agents.ts";
 import { customGamesRouter } from "./routes/customGames.ts";
 import { datasetsRouter } from "./routes/datasets.ts";
+import { encryptedAccessRouter } from "./routes/encryptedAccess.ts";
 import { resumeInterruptedCrawls } from "./lib/oxylowCrawler.ts";
 import {
   getActiveDefenderBannedIps,
@@ -1278,6 +1279,7 @@ app.route("/api/partners", partnersRouter);
 app.route("/api/agents", agentsRouter);
 app.route("/api/custom-games", customGamesRouter);
 app.route("/api/datasets", datasetsRouter);
+app.route("/api/encrypted-access", encryptedAccessRouter);
 app.route("/v1", v1Router);
 app.route("/api/v1", v1Router);
 app.route("/api/contenttest", contentTestRouter);

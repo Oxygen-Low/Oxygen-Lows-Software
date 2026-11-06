@@ -1,4 +1,11 @@
 import { db, supabase } from "@/lib/db";
+import {
+  clearCategoryDataKeyCache,
+  decryptCategoryField,
+  encryptCategoryField,
+  rewrapCategoryDataKeys,
+} from "./encryptedApiCrypto";
+import { ENCRYPTED_DATA_KEY_ENVELOPE_PREFIX } from "@shared/encryptedApi";
 
 /**
  * Cryptographic utilities for AES-256 master key generation, format conversion,
@@ -649,6 +656,7 @@ export function getActiveMasterKey(): Uint8Array | null {
  * Store or clear the active master key in session storage (and in-memory fallback).
  */
 export function setActiveMasterKey(key: Uint8Array | string | null): void {
+  clearCategoryDataKeyCache();
   if (inMemoryKeyBytes) {
     zeroizeBytes(inMemoryKeyBytes);
     inMemoryKeyBytes = null;
@@ -688,6 +696,7 @@ export function setActiveMasterKey(key: Uint8Array | string | null): void {
  * Clear and zeroize the active master key from session storage, in-memory buffers, and crypto caches.
  */
 export function clearActiveMasterKey(): void {
+  clearCategoryDataKeyCache();
   if (inMemoryKeyBytes) {
     zeroizeBytes(inMemoryKeyBytes);
     inMemoryKeyBytes = null;
@@ -904,7 +913,11 @@ export const ENCRYPTED_PREFIX = "ENC:aes-256-gcm:";
  * Check if a string value is an encrypted AES-256-GCM envelope.
  */
 export function isEncrypted(value: unknown): boolean {
-  return typeof value === "string" && value.startsWith(ENCRYPTED_PREFIX);
+  return (
+    typeof value === "string" &&
+    (value.startsWith(ENCRYPTED_PREFIX) ||
+      value.startsWith(ENCRYPTED_DATA_KEY_ENVELOPE_PREFIX))
+  );
 }
 
 /**
@@ -985,7 +998,7 @@ export interface CharacterData {
   [key: string]: any;
 }
 
-export async function encryptCharacterData<T extends CharacterData>(
+async function legacyEncryptCharacterData<T extends CharacterData>(
   char: T,
   keyBytes: Uint8Array,
 ): Promise<T> {
@@ -1022,7 +1035,7 @@ export async function encryptCharacterData<T extends CharacterData>(
   return result;
 }
 
-export async function decryptCharacterData<T extends CharacterData>(
+async function legacyDecryptCharacterData<T extends CharacterData>(
   char: T,
   keyBytes: Uint8Array | null,
 ): Promise<T> {
@@ -1075,7 +1088,7 @@ export interface DataSaveData {
   [key: string]: any;
 }
 
-export async function encryptDataSaveData<T extends DataSaveData>(
+async function legacyEncryptDataSaveData<T extends DataSaveData>(
   item: T,
   keyBytes: Uint8Array,
 ): Promise<T> {
@@ -1089,7 +1102,7 @@ export async function encryptDataSaveData<T extends DataSaveData>(
   return result;
 }
 
-export async function decryptDataSaveData<T extends DataSaveData>(
+async function legacyDecryptDataSaveData<T extends DataSaveData>(
   item: T,
   keyBytes: Uint8Array | null,
 ): Promise<T> {
@@ -1110,7 +1123,7 @@ export interface DataSaveCategoryData {
   [key: string]: any;
 }
 
-export async function encryptDataSaveCategoryData<
+async function legacyEncryptDataSaveCategoryData<
   T extends DataSaveCategoryData,
 >(cat: T, keyBytes: Uint8Array): Promise<T> {
   const result: any = { ...cat };
@@ -1119,7 +1132,7 @@ export async function encryptDataSaveCategoryData<
   return result;
 }
 
-export async function decryptDataSaveCategoryData<
+async function legacyDecryptDataSaveCategoryData<
   T extends DataSaveCategoryData,
 >(cat: T, keyBytes: Uint8Array | null): Promise<T> {
   const result: any = { ...cat };
@@ -1136,7 +1149,7 @@ export interface ChatData {
   [key: string]: any;
 }
 
-export async function encryptChatData<T extends ChatData>(
+async function legacyEncryptChatData<T extends ChatData>(
   chat: T,
   keyBytes: Uint8Array,
 ): Promise<T> {
@@ -1148,7 +1161,7 @@ export async function encryptChatData<T extends ChatData>(
   return result;
 }
 
-export async function decryptChatData<T extends ChatData>(
+async function legacyDecryptChatData<T extends ChatData>(
   chat: T,
   keyBytes: Uint8Array | null,
 ): Promise<T> {
@@ -1170,7 +1183,7 @@ export interface ChatMessageData {
   [key: string]: any;
 }
 
-export async function encryptChatMessageData<T extends ChatMessageData>(
+async function legacyEncryptChatMessageData<T extends ChatMessageData>(
   msg: T,
   keyBytes: Uint8Array,
 ): Promise<T> {
@@ -1182,7 +1195,7 @@ export async function encryptChatMessageData<T extends ChatMessageData>(
   return result;
 }
 
-export async function decryptChatMessageData<T extends ChatMessageData>(
+async function legacyDecryptChatMessageData<T extends ChatMessageData>(
   msg: T,
   keyBytes: Uint8Array | null,
 ): Promise<T> {
@@ -1192,6 +1205,81 @@ export async function decryptChatMessageData<T extends ChatMessageData>(
   if (msg.reasoning !== undefined)
     result.reasoning = await decryptField(msg.reasoning, keyBytes);
   return result;
+}
+
+type SupportedRecord = CharacterData | DataSaveData | DataSaveCategoryData | ChatData | ChatMessageData;
+
+async function applyCategoryFields<T extends SupportedRecord>(
+  data: T,
+  keyBytes: Uint8Array | null,
+  category: "characters" | "data_save" | "chatbot",
+  fields: string[],
+  decrypt = false,
+): Promise<T> {
+  const result: any = { ...data };
+  const operation = decrypt ? decryptCategoryField : encryptCategoryField;
+  for (const field of fields) {
+    if (data[field] !== undefined) {
+      result[field] = await operation(data[field], keyBytes, category);
+    }
+  }
+  if (category === "characters" && data.stats !== undefined && data.stats !== null) {
+    const raw = typeof data.stats === "object" ? JSON.stringify(data.stats) : String(data.stats);
+    let value = await operation(raw, keyBytes, category);
+    if (decrypt && typeof value === "string") {
+      try {
+        value = JSON.parse(value);
+      } catch {}
+    }
+    result.stats = value;
+  }
+  return result;
+}
+
+export async function encryptCharacterData<T extends CharacterData>(char: T, keyBytes: Uint8Array): Promise<T> {
+  return applyCategoryFields(char, keyBytes, "characters", [
+    "name", "short_description", "display_name", "appearance", "personality",
+    "backstory", "situation", "hidden_description",
+  ]);
+}
+
+export async function decryptCharacterData<T extends CharacterData>(char: T, keyBytes: Uint8Array | null): Promise<T> {
+  return applyCategoryFields(char, keyBytes, "characters", [
+    "name", "short_description", "display_name", "appearance", "personality",
+    "backstory", "situation", "hidden_description",
+  ], true);
+}
+
+export async function encryptDataSaveData<T extends DataSaveData>(item: T, keyBytes: Uint8Array): Promise<T> {
+  return applyCategoryFields(item, keyBytes, "data_save", ["key_name", "content"]);
+}
+
+export async function decryptDataSaveData<T extends DataSaveData>(item: T, keyBytes: Uint8Array | null): Promise<T> {
+  return applyCategoryFields(item, keyBytes, "data_save", ["key_name", "content"], true);
+}
+
+export async function encryptDataSaveCategoryData<T extends DataSaveCategoryData>(cat: T, keyBytes: Uint8Array): Promise<T> {
+  return applyCategoryFields(cat, keyBytes, "data_save", ["name"]);
+}
+
+export async function decryptDataSaveCategoryData<T extends DataSaveCategoryData>(cat: T, keyBytes: Uint8Array | null): Promise<T> {
+  return applyCategoryFields(cat, keyBytes, "data_save", ["name"], true);
+}
+
+export async function encryptChatData<T extends ChatData>(chat: T, keyBytes: Uint8Array): Promise<T> {
+  return applyCategoryFields(chat, keyBytes, "chatbot", ["title", "system_prompt"]);
+}
+
+export async function decryptChatData<T extends ChatData>(chat: T, keyBytes: Uint8Array | null): Promise<T> {
+  return applyCategoryFields(chat, keyBytes, "chatbot", ["title", "system_prompt"], true);
+}
+
+export async function encryptChatMessageData<T extends ChatMessageData>(msg: T, keyBytes: Uint8Array): Promise<T> {
+  return applyCategoryFields(msg, keyBytes, "chatbot", ["content", "reasoning"]);
+}
+
+export async function decryptChatMessageData<T extends ChatMessageData>(msg: T, keyBytes: Uint8Array | null): Promise<T> {
+  return applyCategoryFields(msg, keyBytes, "chatbot", ["content", "reasoning"], true);
 }
 
 export interface PasswordData {
@@ -1506,6 +1594,9 @@ export async function rotateMasterKey({
 }: RotateKeyOptions): Promise<{ updatedCount: number }> {
   const db = client || supabase;
   let updatedCount = 0;
+
+  // V2 payloads do not depend on the master key; only their key ring is rewrapped.
+  await rewrapCategoryDataKeys(oldKeyBytes, newKeyBytes);
 
   const categories: EncryptionCategory[] = [
     "characters",
