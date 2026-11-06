@@ -134,7 +134,7 @@
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vaul": "^1.1.2",
-    "vite": "^8.3.2",
+    "vite": "^8.3.3",
     "vitest": "^5.0.5"
   },
   "packageManager": "pnpm@12.4.2",
