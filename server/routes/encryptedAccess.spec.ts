@@ -1,9 +1,24 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from "vitest";
 import { Hono } from "hono";
+import crypto from "node:crypto";
+import fs from "node:fs";
 import { encryptedAccessRouter } from "./encryptedAccess.ts";
 import { generateToken } from "../lib/auth.ts";
-import { initUserFolder } from "../lib/dataStore.ts";
-import { ENCRYPTED_API_TOKEN_PREFIX } from "../../shared/encryptedApi.ts";
+import { initUserFolder, insertTable } from "../lib/dataStore.ts";
+import {
+  ENCRYPTED_API_TOKEN_PREFIX,
+  ENCRYPTED_DATA_KEY_ENVELOPE_PREFIX,
+} from "../../shared/encryptedApi.ts";
+
+const testDataDir = vi.hoisted(() => {
+  const base = process.env.TEMP || process.env.TMPDIR || "/tmp";
+  const dir = `${base}/oxygen-encrypted-access-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  process.env.OXYGEN_DATA_DIR = dir;
+  process.env.AUTH_SECRET = "test-encrypted-access-secret";
+  return dir;
+});
+
+const VALID_TOKEN_HASH = "a".repeat(64);
 
 const app = new Hono();
 app.route("/api/encrypted-access", encryptedAccessRouter);
@@ -25,6 +40,7 @@ const userToken = generateToken(testUser);
 const otherUserToken = generateToken(otherUser);
 
 beforeEach(() => {
+  fs.rmSync(testDataDir, { recursive: true, force: true });
   initUserFolder(testUser.id, {
     username: testUser.username,
     email: testUser.email,
@@ -41,6 +57,10 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+afterAll(() => {
+  fs.rmSync(testDataDir, { recursive: true, force: true });
 });
 
 describe("Encrypted API Access - Management (session auth)", () => {
@@ -69,7 +89,7 @@ describe("Encrypted API Access - Management (session auth)", () => {
         name: "My App",
         categories: ["characters", "chatbot"],
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        token_hash: "deadbeef",
+        token_hash: VALID_TOKEN_HASH,
         token_prefix: "abc12345",
         wrapped_keys: {
           characters: "ENC:v2:aes-256-gcm:AAAA",
@@ -84,8 +104,10 @@ describe("Encrypted API Access - Management (session auth)", () => {
     expect(data.grant.categories).toContain("characters");
     expect(data.grant.categories).toContain("chatbot");
     expect(data.grant.token_prefix).toBe("abc12345");
-    // Raw token must NOT be in response
+    // Raw token and sensitive grant fields must NOT be in response
     expect(data.grant.token).toBeUndefined();
+    expect(data.grant.token_hash).toBeUndefined();
+    expect(data.grant.wrapped_keys).toBeUndefined();
     expect(data.token_hash).toBeUndefined();
     expect(data.wrapped_keys).toBeUndefined();
   });
@@ -101,7 +123,7 @@ describe("Encrypted API Access - Management (session auth)", () => {
         name: "Bad App",
         categories: ["passwords"],
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        token_hash: "deadbeef",
+        token_hash: VALID_TOKEN_HASH,
         token_prefix: "abc12345",
         wrapped_keys: {},
       }),
@@ -120,7 +142,7 @@ describe("Encrypted API Access - Management (session auth)", () => {
         name: "Bad App",
         categories: [],
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        token_hash: "deadbeef",
+        token_hash: VALID_TOKEN_HASH,
         token_prefix: "abc12345",
         wrapped_keys: {},
       }),
@@ -139,7 +161,7 @@ describe("Encrypted API Access - Management (session auth)", () => {
         name: "Bad App",
         categories: ["characters"],
         expires_at: new Date(Date.now() - 1000).toISOString(),
-        token_hash: "deadbeef",
+        token_hash: VALID_TOKEN_HASH,
         token_prefix: "abc12345",
         wrapped_keys: { characters: "ENC:v2:aes-256-gcm:AAAA" },
       }),
@@ -159,7 +181,7 @@ describe("Encrypted API Access - Management (session auth)", () => {
         name: "User App",
         categories: ["characters"],
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        token_hash: "hash1",
+        token_hash: VALID_TOKEN_HASH,
         token_prefix: "prefix1",
         wrapped_keys: { characters: "ENC:v2:aes-256-gcm:AAAA" },
       }),
@@ -176,7 +198,7 @@ describe("Encrypted API Access - Management (session auth)", () => {
         name: "Other App",
         categories: ["chatbot"],
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        token_hash: "hash2",
+        token_hash: VALID_TOKEN_HASH,
         token_prefix: "prefix2",
         wrapped_keys: { chatbot: "ENC:v2:aes-256-gcm:BBBB" },
       }),
@@ -206,7 +228,7 @@ describe("Encrypted API Access - Management (session auth)", () => {
         name: "Revocable App",
         categories: ["characters"],
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        token_hash: "hash-revoke",
+        token_hash: VALID_TOKEN_HASH,
         token_prefix: "prefix-revoke",
         wrapped_keys: { characters: "ENC:v2:aes-256-gcm:AAAA" },
       }),
@@ -242,7 +264,7 @@ describe("Encrypted API Access - Management (session auth)", () => {
         name: "Target App",
         categories: ["characters"],
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        token_hash: "hash-target",
+        token_hash: VALID_TOKEN_HASH,
         token_prefix: "prefix-target",
         wrapped_keys: { characters: "ENC:v2:aes-256-gcm:AAAA" },
       }),
@@ -348,11 +370,77 @@ describe("Encrypted API Access - Token validation", () => {
   });
 });
 
+const encoder = new TextEncoder();
+
+function toBase64Url(bytes: Uint8Array): string {
+  return Buffer.from(bytes)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function deriveTokenHash(secret: Uint8Array): string {
+  return crypto.createHash("sha256").update(secret as any).digest("hex");
+}
+
+async function deriveWrappingKey(secret: Uint8Array): Promise<any> {
+  const subtle = crypto.webcrypto.subtle;
+  const baseKey = await subtle.importKey("raw", secret as any, "HKDF", false, [
+    "deriveBits",
+  ]);
+  const bits = await subtle.deriveBits(
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt: encoder.encode("oxygen-lows-software/encrypted-api/v1"),
+      info: encoder.encode("category-data-key-wrap"),
+    },
+    baseKey,
+    256,
+  );
+  return subtle.importKey(
+    "raw",
+    new Uint8Array(bits) as any,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt"],
+  );
+}
+
+async function importAesKey(keyBytes: Uint8Array): Promise<any> {
+  return crypto.webcrypto.subtle.importKey(
+    "raw",
+    keyBytes as any,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
+async function encryptGcm(plaintext: string, key: any): Promise<string> {
+  const iv = crypto.randomBytes(12);
+  const ciphertext = await crypto.webcrypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv as any },
+    key,
+    encoder.encode(plaintext) as any,
+  );
+  return Buffer.concat([iv, Buffer.from(ciphertext)]).toString("base64");
+}
+
 describe("Encrypted API Access - Data read (grant token auth)", () => {
   let grantToken: string;
 
   beforeEach(async () => {
-    // Create a grant for characters + chatbot
+    const secret = crypto.randomBytes(32);
+    const secretB64Url = toBase64Url(secret);
+    const dataKeyBytes = crypto.randomBytes(32);
+    const wrappingKey = await deriveWrappingKey(secret);
+    const wrappedKey = await encryptGcm(
+      Buffer.from(dataKeyBytes).toString("base64"),
+      wrappingKey,
+    );
+
     const createRes = await app.request("/api/encrypted-access/keys", {
       method: "POST",
       headers: {
@@ -361,27 +449,72 @@ describe("Encrypted API Access - Data read (grant token auth)", () => {
       },
       body: JSON.stringify({
         name: "Test Grant",
-        categories: ["characters", "chatbot"],
+        categories: ["characters"],
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        token_hash: "placeholder",
+        token_hash: deriveTokenHash(secret),
         token_prefix: "testprefix",
-        wrapped_keys: {
-          characters: "ENC:v2:aes-256-gcm:AAAA",
-          chatbot: "ENC:v2:aes-256-gcm:BBBB",
-        },
+        wrapped_keys: { characters: wrappedKey },
       }),
     });
     const data = await createRes.json();
-    // Build a token using the grant id; hash verification will fail but we test structure
-    grantToken = `${ENCRYPTED_API_TOKEN_PREFIX}${data.grant.id}.fake-secret`;
+    grantToken = `${ENCRYPTED_API_TOKEN_PREFIX}${data.grant.id}.${secretB64Url}`;
+
+    const dataKey = await importAesKey(dataKeyBytes);
+    const encryptedName = `${ENCRYPTED_DATA_KEY_ENVELOPE_PREFIX}${await encryptGcm("Alice", dataKey)}`;
+    insertTable(
+      "characters",
+      {
+        id: crypto.randomUUID(),
+        user_id: testUser.id,
+        name: encryptedName,
+        created_at: new Date().toISOString(),
+      },
+      testUser.id,
+    );
   });
 
   it("rejects read request for ungranted category", async () => {
     const res = await app.request("/api/encrypted-access/data-save", {
       headers: { Authorization: `Bearer ${grantToken}` },
     });
-    // 401 because token hash won't match, but if we had a valid token it'd be 403
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
+  });
+
+  it("returns decrypted data for a granted category", async () => {
+    const res = await app.request("/api/encrypted-access/characters", {
+      headers: { Authorization: `Bearer ${grantToken}` },
+    });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.data[0].name).toBe("Alice");
+    expect(data.data[0].table).toBe("characters");
+  });
+
+  it("normalises pagination boundary values", async () => {
+    const zeroRes = await app.request(
+      "/api/encrypted-access/characters?limit=0",
+      { headers: { Authorization: `Bearer ${grantToken}` } },
+    );
+    const zeroData = await zeroRes.json();
+    expect(zeroData.data).toEqual([]);
+    expect(zeroData.pagination.limit).toBe(0);
+    expect(zeroData.pagination.has_more).toBe(false);
+
+    const negativeRes = await app.request(
+      "/api/encrypted-access/characters?limit=-5&offset=abc",
+      { headers: { Authorization: `Bearer ${grantToken}` } },
+    );
+    const negativeData = await negativeRes.json();
+    expect(negativeData.pagination.limit).toBe(50);
+    expect(negativeData.pagination.offset).toBe(0);
+    expect(negativeData.data.length).toBeLessThanOrEqual(50);
+
+    const largeRes = await app.request(
+      "/api/encrypted-access/characters?limit=1000",
+      { headers: { Authorization: `Bearer ${grantToken}` } },
+    );
+    const largeData = await largeRes.json();
+    expect(largeData.pagination.limit).toBe(100);
   });
 
   it("rejects missing authorization header", async () => {
@@ -409,7 +542,7 @@ describe("Encrypted API Access - Security properties", () => {
         name: "Evil App",
         categories: ["passwords"],
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        token_hash: "hash",
+        token_hash: VALID_TOKEN_HASH,
         token_prefix: "prefix",
         wrapped_keys: {},
       }),
@@ -440,7 +573,7 @@ describe("Encrypted API Access - Security properties", () => {
         name: "Secret App",
         categories: ["characters"],
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        token_hash: "secret-hash",
+        token_hash: VALID_TOKEN_HASH,
         token_prefix: "secret-prefix",
         wrapped_keys: { characters: "ENC:v2:aes-256-gcm:AAAA" },
       }),

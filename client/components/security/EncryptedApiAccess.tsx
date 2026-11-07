@@ -51,20 +51,75 @@ const CATEGORY_DEFAULTS: Record<EncryptedApiCategory, string> = {
   chatbot: "Chatbot Chats",
 };
 
+const CREATE_ERROR_MESSAGES: Record<
+  string,
+  { key: string; fallback: string }
+> = {
+  "Invalid key name": {
+    key: "security.encryptedApiErrorInvalidName",
+    fallback: "Enter a valid name of 100 characters or fewer.",
+  },
+  "Select at least one data category": {
+    key: "security.encryptedApiErrorCategory",
+    fallback: "Select at least one data category.",
+  },
+  "Unsupported category in selection": {
+    key: "security.encryptedApiErrorUnsupportedCategory",
+    fallback: "Select only supported data categories.",
+  },
+  "Expiry must be in the future": {
+    key: "security.encryptedApiErrorExpiry",
+    fallback: "Choose an expiry date in the future.",
+  },
+  "Expiry too far in the future": {
+    key: "security.encryptedApiErrorExpiryTooFar",
+    fallback: "Expiry must be within one year.",
+  },
+  "Token hash is required": {
+    key: "security.encryptedApiErrorTokenHash",
+    fallback: "The access key could not be created securely. Please try again.",
+  },
+  "Token prefix is required": {
+    key: "security.encryptedApiErrorTokenHash",
+    fallback: "The access key could not be created securely. Please try again.",
+  },
+  "Invalid token hash": {
+    key: "security.encryptedApiErrorTokenHash",
+    fallback: "The access key could not be created securely. Please try again.",
+  },
+  "Wrapped keys are required": {
+    key: "security.encryptedApiErrorWrappedKeys",
+    fallback: "The encryption key could not be prepared. Please try again.",
+  },
+};
+
+/** Map a known server creation error to a translated message descriptor. */
+function getCreateErrorTranslation(err: any) {
+  const serverError =
+    typeof err?.serverError === "string" ? err.serverError : "";
+  if (serverError.startsWith("Missing wrapped key for ")) {
+    return CREATE_ERROR_MESSAGES["Wrapped keys are required"];
+  }
+  return CREATE_ERROR_MESSAGES[serverError];
+}
+
 interface EncryptedApiAccessProps {
   masterKey: Uint8Array | null;
   userId?: string;
 }
 
+/** Format a date for a datetime-local input in the user's timezone. */
 function toLocalDateTimeInput(date: Date) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
 }
 
+/** Default access-key expiry, 30 days from now. */
 function defaultExpiry() {
   return toLocalDateTimeInput(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
 }
 
+/** Manage encrypted API grants and display their metadata. */
 export default function EncryptedApiAccess({
   masterKey,
   userId,
@@ -86,15 +141,17 @@ export default function EncryptedApiAccess({
   const minimumExpiry = useMemo(() => toLocalDateTimeInput(new Date()), []);
   const session = getLocalSession();
 
+  /** Translate a category name, falling back to its English label. */
   const categoryLabel = useCallback(
     (category: EncryptedApiCategory) =>
       t(CATEGORY_LABELS[category], undefined, CATEGORY_DEFAULTS[category]),
     [t],
   );
 
+  /** Load the signed-in user's grants; only a session is required. */
   const loadGrants = useCallback(async () => {
     const accessToken = getLocalSession()?.access_token;
-    if (!masterKey || !accessToken) {
+    if (!accessToken) {
       setGrants([]);
       return;
     }
@@ -135,6 +192,7 @@ export default function EncryptedApiAccess({
     void loadGrants();
   }, [loadGrants]);
 
+  /** Validate the form, create a grant, and reveal its one-time token. */
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -192,19 +250,22 @@ export default function EncryptedApiAccess({
         await loadGrants();
       }
     } catch (err: any) {
+      const knownError = getCreateErrorTranslation(err);
       setError(
-        err?.message ||
-          t(
-            "security.encryptedApiCreateError",
-            undefined,
-            "Failed to create the encrypted API access key.",
-          ),
+        knownError
+          ? t(knownError.key, undefined, knownError.fallback)
+          : t(
+              "security.encryptedApiCreateError",
+              undefined,
+              "Failed to create the encrypted API access key.",
+            ),
       );
     } finally {
       setCreating(false);
     }
   };
 
+  /** Revoke the grant currently awaiting confirmation. */
   const handleRevoke = async () => {
     if (!grantToRevoke || !session?.access_token) return;
     setRevoking(true);
@@ -246,6 +307,7 @@ export default function EncryptedApiAccess({
     }
   };
 
+  /** Copy the newly created token to the clipboard. */
   const copyToken = async () => {
     if (!newToken) return;
     try {
@@ -262,6 +324,7 @@ export default function EncryptedApiAccess({
     }
   };
 
+  /** Clear one-time token state when its dialog closes. */
   const closeTokenDialog = (open: boolean) => {
     if (!open) {
       setNewToken(null);
@@ -300,7 +363,7 @@ export default function EncryptedApiAccess({
           </span>
         </div>
 
-        {!masterKey ? (
+        {!masterKey && (
           <div className="flex items-start gap-2.5 p-4 rounded-xl bg-slate-950/50 border border-slate-800 text-sm text-slate-300">
             <Lock className="w-4 h-4 shrink-0 mt-0.5 text-cyan-400" />
             <span>
@@ -311,7 +374,9 @@ export default function EncryptedApiAccess({
               )}
             </span>
           </div>
-        ) : (
+        )}
+
+        {masterKey && (
           <>
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -385,7 +450,7 @@ export default function EncryptedApiAccess({
                 className="gap-2 bg-cyan-600 hover:bg-cyan-500 text-white"
               >
                 {creating ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 motion-safe:animate-spin" />
                 ) : (
                   <Plus className="w-4 h-4" />
                 )}
@@ -427,8 +492,10 @@ export default function EncryptedApiAccess({
                 <p>GET {API_ROOT}/chatbot</p>
               </div>
             </div>
+          </>
+        )}
 
-            <div className="space-y-3">
+        <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-sm font-semibold text-white">
                   {t(
@@ -446,7 +513,7 @@ export default function EncryptedApiAccess({
                   className="gap-2 text-slate-400 hover:text-white"
                 >
                   <RefreshCw
-                    className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                    className={`w-4 h-4 ${loading ? "motion-safe:animate-spin" : ""}`}
                   />
                   {t("security.encryptedApiRefresh", undefined, "Refresh")}
                 </Button>
@@ -454,7 +521,7 @@ export default function EncryptedApiAccess({
 
               {loading && grants.length === 0 ? (
                 <div className="flex items-center gap-2 p-4 text-sm text-slate-400">
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 motion-safe:animate-spin" />
                   {t("security.encryptedApiLoading", undefined, "Loading keys...")}
                 </div>
               ) : grants.length === 0 ? (
@@ -480,6 +547,18 @@ export default function EncryptedApiAccess({
                           <code className="text-xs text-cyan-300">
                             {grant.token_prefix}…
                           </code>
+                          {grant.revoked_at && (
+                            <Badge
+                              variant="outline"
+                              className="border-rose-500/40 text-rose-400"
+                            >
+                              {t(
+                                "security.encryptedApiRevoked",
+                                undefined,
+                                "Revoked",
+                              )}
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {grant.categories.map((category) => (
@@ -518,6 +597,7 @@ export default function EncryptedApiAccess({
                         variant="outline"
                         size="sm"
                         onClick={() => setGrantToRevoke(grant)}
+                        disabled={Boolean(grant.revoked_at)}
                         className="gap-2 shrink-0 border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -527,9 +607,7 @@ export default function EncryptedApiAccess({
                   ))}
                 </div>
               )}
-            </div>
-          </>
-        )}
+        </div>
 
         {error && (
           <p role="alert" className="text-sm text-rose-400">
@@ -617,7 +695,7 @@ export default function EncryptedApiAccess({
               onClick={() => void handleRevoke()}
               className="gap-2"
             >
-              {revoking && <Loader2 className="w-4 h-4 animate-spin" />}
+              {revoking && <Loader2 className="w-4 h-4 motion-safe:animate-spin" />}
               {t(
                 "security.encryptedApiConfirmRevoke",
                 undefined,

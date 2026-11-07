@@ -2,7 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 
-export const DATA_DIR = path.join(process.cwd(), "Data");
+export const DATA_DIR = process.env.OXYGEN_DATA_DIR
+  ? path.resolve(process.env.OXYGEN_DATA_DIR)
+  : path.join(process.cwd(), "Data");
 
 // ---------------------------------------------------------------------------
 // Real-time broadcast hook
@@ -33,6 +35,7 @@ export const GLOBAL_TABLE_NAMES = new Set([
   "agent_post_comments",
   "agent_messages",
   "agent_storage_files",
+  "encrypted_api_grant_index",
 ]);
 
 export function isGlobalTable(table: string): boolean {
@@ -878,6 +881,11 @@ export function getTableFilePath(
   }
   if (normTable === "chat_messages") {
     return path.join(DATA_DIR, "chat", "messages.json");
+  }
+
+  // Global encrypted API grant index stored under DATA_DIR/encrypted_api/
+  if (normTable === "encrypted_api_grant_index") {
+    return path.join(DATA_DIR, "encrypted_api", "grant-index.json");
   }
 
   // Global agent tables stored under DATA_DIR/agents/

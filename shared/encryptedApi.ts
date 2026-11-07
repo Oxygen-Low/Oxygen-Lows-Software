@@ -37,12 +37,14 @@ export interface CreateEncryptedApiGrantRequest {
   wrapped_keys: Partial<Record<EncryptedApiCategory, string>>;
 }
 
-export interface EncryptedApiPage<T = Record<string, unknown>> {
+/** Paginated payload returned by encrypted-access data endpoints. */
+export interface EncryptedApiPage<T = Array<Record<string, unknown>>> {
   data: T;
   pagination: {
     limit: number;
     offset: number;
     count: number;
+    has_more: boolean;
   };
 }
 

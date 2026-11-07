@@ -6,6 +6,7 @@ import {
   decryptAes256Gcm,
   encryptAes256Gcm,
   generateAes256Key,
+  isCategoryEncryptionEnabled,
   zeroizeBytes,
 } from "./crypto";
 import { db } from "./db";
@@ -25,6 +26,20 @@ const encoder = new TextEncoder();
 const categoryKeys = new Map<EncryptedApiCategory, Uint8Array>();
 let categoryKeysRequest: Promise<void> | null = null;
 
+/** Error raised when an encrypted-access HTTP request is rejected. */
+export class EncryptedAccessRequestError extends Error {
+  readonly status: number;
+  readonly serverError?: string;
+
+  constructor(status: number, message: string, serverError?: string) {
+    super(message);
+    this.name = "EncryptedAccessRequestError";
+    this.status = status;
+    this.serverError = serverError;
+  }
+}
+
+/** Return the runtime fetch implementation or fail clearly when unavailable. */
 function getFetch(): typeof fetch {
   if (typeof fetch !== "function") {
     throw new Error("Fetch is not available in this environment");
@@ -32,6 +47,7 @@ function getFetch(): typeof fetch {
   return fetch;
 }
 
+/** Send an authenticated encrypted-access request and parse its JSON response. */
 async function encryptedAccessRequest<T>(
   path: string,
   init: RequestInit = {},
@@ -49,25 +65,37 @@ async function encryptedAccessRequest<T>(
   });
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    throw new Error(
+    let serverError: string | undefined;
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed && typeof parsed.error === "string") serverError = parsed.error;
+    } catch {
+      // Non-JSON error bodies are intentionally not exposed to the user.
+    }
+    throw new EncryptedAccessRequestError(
+      response.status,
       `Encrypted API access request failed (${response.status})${body ? `: ${body}` : ""}`,
+      serverError,
     );
   }
   return (await response.json()) as T;
 }
 
+/** Ensure a usable 256-bit master key was provided. */
 function validateMasterKey(masterKey: Uint8Array): void {
   if (!(masterKey instanceof Uint8Array) || masterKey.length !== AES_KEY_BYTES) {
     throw new Error("A 32-byte master key is required");
   }
 }
 
+/** Cache a category key, zeroizing any key it replaces. */
 function setCachedCategoryKey(category: EncryptedApiCategory, key: Uint8Array): void {
   const previous = categoryKeys.get(category);
   if (previous && previous !== key) zeroizeBytes(previous);
   categoryKeys.set(category, new Uint8Array(key));
 }
 
+/** Decrypt and decode a category data key wrapped by the master key. */
 async function unwrapCategoryKey(
   category: EncryptedApiCategory,
   wrappedKey: string,
@@ -81,11 +109,13 @@ async function unwrapCategoryKey(
   return key;
 }
 
+/** Fetch and unwrap every provisioned category data key into the cache. */
 async function fetchCategoryKeys(masterKey: Uint8Array): Promise<void> {
   validateMasterKey(masterKey);
-  const rows = await encryptedAccessRequest<
-    Array<{ category: string; version: number; wrapped_key: string }>
-  >("/api/encrypted-access/category-keys");
+  const response = await encryptedAccessRequest<{
+    keys: Array<{ category: string; version: number; wrapped_key: string }>;
+  }>("/api/encrypted-access/category-keys");
+  const rows = Array.isArray(response?.keys) ? response.keys : [];
 
   for (const row of rows) {
     if (!isEncryptedApiCategory(row.category)) continue;
@@ -127,7 +157,20 @@ export async function getCategoryDataKey(
       categoryKeysRequest = null;
     });
   }
-  await categoryKeysRequest;
+  try {
+    await categoryKeysRequest;
+  } catch (error) {
+    // An unavailable endpoint with an empty cache cannot prove the category is
+    // provisioned, so legacy master-key encryption remains safe to use.
+    if (
+      error instanceof TypeError ||
+      (error instanceof EncryptedAccessRequestError &&
+        (error.status === 404 || error.status === 405 || error.status >= 500))
+    ) {
+      return null;
+    }
+    throw error;
+  }
   const fetched = categoryKeys.get(category);
   return fetched ? new Uint8Array(fetched) : null;
 }
@@ -163,6 +206,7 @@ export async function getAvailableCategoryDataKey(
   return getCategoryDataKey(category, masterKey);
 }
 
+/** Check whether a value uses the category data-key envelope format. */
 export function isV2Encrypted(value: unknown): value is string {
   return (
     typeof value === "string" &&
@@ -170,6 +214,10 @@ export function isV2Encrypted(value: unknown): value is string {
   );
 }
 
+/**
+ * Encrypt a field with the category key when that category is enabled,
+ * otherwise leave it in plaintext.
+ */
 export async function encryptCategoryField(
   value: string | null | undefined,
   masterKey: Uint8Array | null | undefined,
@@ -183,6 +231,7 @@ export async function encryptCategoryField(
   ) {
     return value;
   }
+  if (!isCategoryEncryptionEnabled(category)) return value;
 
   const dataKey = await getAvailableCategoryDataKey(category, masterKey);
   if (!dataKey) {
@@ -197,6 +246,7 @@ export async function encryptCategoryField(
   }
 }
 
+/** Decrypt a category-encrypted field, preserving values that cannot be read. */
 export async function decryptCategoryField(
   value: string | null | undefined,
   masterKey: Uint8Array | null | undefined,
@@ -256,6 +306,14 @@ const migrationTables: Record<
         "stats",
       ],
     },
+    {
+      table: "universes",
+      fields: ["name", "short_description", "display_name", "description", "lore"],
+    },
+    {
+      table: "races",
+      fields: ["name", "short_description", "display_name", "description", "traits"],
+    },
   ],
   data_save: [
     { table: "data_saves", fields: ["key_name", "content"] },
@@ -267,6 +325,89 @@ const migrationTables: Record<
   ],
 };
 
+/** Build the encrypted replacement values for a single row. */
+async function buildCategoryUpdates(
+  row: MigrationRow,
+  fields: string[],
+  category: EncryptedApiCategory,
+  masterKey: Uint8Array,
+): Promise<Record<string, any>> {
+  const updates: Record<string, any> = {};
+  for (const field of fields) {
+    const value = row[field];
+    if (value === null || value === undefined || value === "") continue;
+    if (isV2Encrypted(value)) continue;
+    const plaintext = value.startsWith?.("ENC:aes-256-gcm:")
+      ? await decryptAes256Gcm(value.slice("ENC:aes-256-gcm:".length), masterKey)
+      : typeof value === "object"
+        ? JSON.stringify(value)
+        : String(value);
+    updates[field] = await encryptCategoryField(plaintext, masterKey, category);
+  }
+  return updates;
+}
+
+/**
+ * Update one row while conditioning the write on the values observed during
+ * the read. When another writer wins the race, re-read the row and retry with
+ * its latest values.
+ */
+async function updateLegacyRow(
+  client: any,
+  table: string,
+  rowId: string,
+  fields: string[],
+  category: EncryptedApiCategory,
+  masterKey: Uint8Array,
+  initialRow?: MigrationRow,
+): Promise<boolean> {
+  const maxAttempts = 3;
+  let observedRow = initialRow;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (!observedRow) {
+      const { data: rows, error } = await client
+        .from(table)
+        .select("*")
+        .eq("id", rowId);
+      if (error) throw error;
+      const current = Array.isArray(rows) ? rows[0] : rows;
+      if (!current) return false;
+      observedRow = current as MigrationRow;
+    }
+
+    const updates = await buildCategoryUpdates(
+      observedRow,
+      fields,
+      category,
+      masterKey,
+    );
+    if (Object.keys(updates).length === 0) return false;
+
+    let updateQuery = client.from(table).update(updates).eq("id", rowId);
+    for (const field of Object.keys(updates)) {
+      if (observedRow[field] !== undefined) {
+        updateQuery = updateQuery.eq(field, observedRow[field]);
+      }
+    }
+    if (observedRow.updated_at !== undefined) {
+      updateQuery = updateQuery.eq("updated_at", observedRow.updated_at);
+    }
+
+    const { data: updated, error: updateError } = await updateQuery;
+    if (updateError) throw updateError;
+    if (!Array.isArray(updated) || updated.length > 0) return true;
+
+    // The observed row state no longer matched; retry from fresh values.
+    observedRow = undefined;
+  }
+
+  throw new Error(
+    `Unable to migrate ${table} row ${rowId}: it was modified concurrently`,
+  );
+}
+
+/** Migrate every matching row of a table, retrying any conflict-safe writes. */
 async function updateLegacyRows(
   client: any,
   table: string,
@@ -282,25 +423,19 @@ async function updateLegacyRows(
 
   let updatedCount = 0;
   for (const row of (rows || []) as MigrationRow[]) {
-    const updates: Record<string, any> = {};
-    for (const field of fields) {
-      const value = row[field];
-      if (value === null || value === undefined || value === "") continue;
-      if (isV2Encrypted(value)) continue;
-      const plaintext = value.startsWith?.("ENC:aes-256-gcm:")
-        ? await decryptAes256Gcm(value.slice("ENC:aes-256-gcm:".length), masterKey)
-        : typeof value === "object"
-          ? JSON.stringify(value)
-          : String(value);
-      updates[field] = await encryptCategoryField(plaintext, masterKey, category);
+    if (
+      await updateLegacyRow(
+        client,
+        table,
+        row.id,
+        fields,
+        category,
+        masterKey,
+        row,
+      )
+    ) {
+      updatedCount++;
     }
-    if (Object.keys(updates).length === 0) continue;
-    const { error: updateError } = await client
-      .from(table)
-      .update(updates)
-      .eq("id", row.id);
-    if (updateError) throw updateError;
-    updatedCount++;
   }
   return updatedCount;
 }
@@ -317,6 +452,7 @@ export async function migrateCategoryToDataKey(
   if (!isEncryptedApiCategory(category)) {
     throw new Error("Passwords and API keys do not support category data keys");
   }
+  if (!isCategoryEncryptionEnabled(category)) return { updatedCount: 0 };
   await ensureCategoryDataKey(category, masterKey);
 
   let updatedCount = 0;
@@ -340,22 +476,19 @@ export async function migrateCategoryToDataKey(
       if (messagesError) throw messagesError;
       let messageCount = 0;
       for (const message of messages || []) {
-        const updates: Record<string, any> = {};
-        for (const field of ["content", "reasoning"]) {
-          const value = message[field];
-          if (value === null || value === undefined || value === "" || isV2Encrypted(value)) continue;
-          const plaintext = value.startsWith("ENC:aes-256-gcm:")
-            ? await decryptAes256Gcm(value.slice("ENC:aes-256-gcm:".length), masterKey)
-            : String(value);
-          updates[field] = await encryptCategoryField(plaintext, masterKey, category);
+        if (
+          await updateLegacyRow(
+            db,
+            "chatbot_messages",
+            message.id,
+            ["content", "reasoning"],
+            category,
+            masterKey,
+            message,
+          )
+        ) {
+          messageCount++;
         }
-        if (Object.keys(updates).length === 0) continue;
-        const { error: updateError } = await db
-          .from("chatbot_messages")
-          .update(updates)
-          .eq("id", message.id);
-        if (updateError) throw updateError;
-        messageCount++;
       }
       updatedCount += messageCount;
     }
@@ -383,9 +516,10 @@ export async function rewrapCategoryDataKeys(
   validateMasterKey(newMasterKey);
   if (!getLocalSession()?.access_token || typeof fetch !== "function") return;
 
-  const rows = await encryptedAccessRequest<
-    Array<{ category: string; version: number; wrapped_key: string }>
-  >("/api/encrypted-access/category-keys");
+  const response = await encryptedAccessRequest<{
+    keys: Array<{ category: string; version: number; wrapped_key: string }>;
+  }>("/api/encrypted-access/category-keys");
+  const rows = Array.isArray(response?.keys) ? response.keys : [];
   for (const row of rows) {
     if (!isEncryptedApiCategory(row.category) || row.version !== 1) continue;
     const dataKey = await unwrapCategoryKey(row.category, row.wrapped_key, oldMasterKey);
@@ -418,10 +552,12 @@ export interface CreatedEncryptedApiGrant {
   grant: EncryptedApiGrant;
 }
 
+/** Encode bytes as unpadded base64url for use in grant tokens. */
 function bytesToBase64Url(bytes: Uint8Array): string {
   return bytesToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+/** Derive the AES key that wraps category keys for a grant secret. */
 async function deriveGrantWrappingKey(secret: Uint8Array): Promise<Uint8Array> {
   const cryptoObj = globalThis.crypto;
   if (!cryptoObj?.subtle) throw new Error("Web Cryptography API is not available");

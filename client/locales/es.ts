@@ -1751,7 +1751,7 @@ export const es = {
       "Tu sesiÃ³n estÃ¡ bloqueada actualmente. Introduce tu contraseÃ±a arriba para modificar la configuraciÃ³n de cifrado.",
     passwordEncryptionTitle: "Cifrado de ContraseÃ±a de Conocimiento Cero",
     passwordEncryptionDesc:
-      "Tus datos privados estÃ¡n protegidos con cifrado AES-256 en el lado del cliente derivado directamente de tu contraseÃ±a. Tu contraseÃ±a y datos en texto plano nunca tocan el servidor.",
+      "Tus datos privados están protegidos con cifrado AES-256 en el lado del cliente derivado directamente de tu contraseña. Tu contraseña y los datos en texto plano nunca se envían al servidor, salvo cuando usas deliberadamente una concesión de acceso a la API cifrada, que permite al servidor desenvolver la clave de la categoría seleccionada y descifrar esos datos para atender la solicitud.",
     activeSessionProtected: "SesiÃ³n Activa Protegida",
     encryptionActiveDesc:
       "El cifrado de conocimiento cero estÃ¡ activo. Tus datos se cifran y descifran en memoria mediante tu clave AES de 256 bits derivada de tu contraseÃ±a.",
@@ -1861,7 +1861,7 @@ export const es = {
     failedToVerifyPasskey: "Error al verificar la clave de acceso",
     encryptedApiTitle: "Acceso cifrado a la API",
     encryptedApiDesc:
-      "Crea tokens con permisos limitados para que tus aplicaciones descifren los datos seleccionados sin compartir la contraseña de tu cuenta.",
+      "Crea tokens con permisos limitados para que tus aplicaciones descifren los datos seleccionados sin compartir la contraseña de tu cuenta. Cuando se usa un token, el servidor desenvuelve la clave de la categoría seleccionada y descifra esos datos para atender la solicitud.",
     encryptedApiNoPasswordsWarning:
       "El acceso a la caja fuerte de contraseñas no está disponible mediante tokens de API cifrados. Solo puedes seleccionar datos de Personajes, Guardado de datos y Chatbot.",
     encryptedApiLocked:
@@ -1893,7 +1893,20 @@ export const es = {
       "Las aplicaciones que usen este token perderán el acceso inmediatamente. Esta acción no se puede deshacer.",
     encryptedApiCancel: "Cancelar",
     encryptedApiConfirmRevoke: "Revocar acceso",
+    encryptedApiRevoked: "Revocada",
     encryptedApiLoadError: "No se pudieron cargar las claves de acceso a la API cifrada.",
+    encryptedApiErrorInvalidName:
+      "Introduce un nombre válido de 100 caracteres o menos.",
+    encryptedApiErrorCategory: "Selecciona al menos una categoría de datos.",
+    encryptedApiErrorUnsupportedCategory:
+      "Selecciona solo categorías de datos compatibles.",
+    encryptedApiErrorExpiry: "Elige una fecha de caducidad futura.",
+    encryptedApiErrorExpiryTooFar:
+      "La caducidad debe ser dentro de un año.",
+    encryptedApiErrorTokenHash:
+      "No se pudo crear la clave de acceso de forma segura. Inténtalo de nuevo.",
+    encryptedApiErrorWrappedKeys:
+      "No se pudo preparar la clave de cifrado. Inténtalo de nuevo.",
     encryptedApiNameRequired: "Introduce un nombre para esta clave de acceso.",
     encryptedApiCategoryRequired: "Selecciona al menos una categoría de datos.",
     encryptedApiExpiryRequired: "Elige una fecha de caducidad futura.",

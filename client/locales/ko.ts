@@ -1714,7 +1714,7 @@ notificationsTitle: "ì•Œë¦¼",
       "í˜„ìž¬ ì„¸ì…˜ì´ ìž ê²¨ ìžˆìŠµë‹ˆë‹¤. ì•”í˜¸í™” ì„¤ì •ì„ ë³€ê²½í•˜ë ¤ë©´ ìœ„ì—ì„œ ë¹„ë°€ë²ˆí˜¸ë¥¼ ìž…ë ¥í•˜ì„¸ìš”.",
     passwordEncryptionTitle: "ì˜ì§€ì‹ ë¹„ë°€ë²ˆí˜¸ ì•”í˜¸í™”",
     passwordEncryptionDesc:
-      "ê°œì¸ ë°ì´í„°ëŠ” ë¹„ë°€ë²ˆí˜¸ì—ì„œ ì§ì ‘ íŒŒìƒëœ í´ë¼ì´ì–¸íŠ¸ ì¸¡ AES-256 ì•”í˜¸í™”ë¡œ ë³´í˜¸ë©ë‹ˆë‹¤. ë¹„ë°€ë²ˆí˜¸ì™€ ì¼ë°˜ í…ìŠ¤íŠ¸ ë°ì´í„°ëŠ” ì„œë²„ì— ì „ì†¡ë˜ì§€ ì•ŠìŠµë‹ˆë‹¤.",
+      "개인 데이터는 비밀번호에서 직접 파생된 클라이언트 측 AES-256 암호화로 보호됩니다. 암호화 API 액세스 권한을 의도적으로 사용하는 경우를 제외하면 비밀번호와 일반 텍스트 데이터는 서버로 전송되지 않습니다. 이 경우 서버가 선택한 카테고리 키를 풀고 요청을 처리하기 위해 해당 데이터를 복호화합니다.",
     activeSessionProtected: "í™œì„± ì„¸ì…˜ ë³´í˜¸ë¨",
     encryptionActiveDesc:
       "ì˜ì§€ì‹ ì•”í˜¸í™”ê°€ í™œì„±í™”ë˜ì–´ ìžˆìŠµë‹ˆë‹¤. ë°ì´í„°ëŠ” ë¹„ë°€ë²ˆí˜¸ì—ì„œ íŒŒìƒëœ 256ë¹„íŠ¸ AES í‚¤ë¥¼ ì‚¬ìš©í•˜ì—¬ ë©”ëª¨ë¦¬ì—ì„œ ì•”í˜¸í™” ë° ë³µí˜¸í™”ë©ë‹ˆë‹¤.",
@@ -1824,7 +1824,7 @@ notificationsTitle: "ì•Œë¦¼",
     failedToVerifyPasskey: "íŒ¨ìŠ¤í‚¤ í™•ì¸ì— ì‹¤íŒ¨í–ˆìŠµë‹ˆë‹¤",
     encryptedApiTitle: "암호화된 API 액세스",
     encryptedApiDesc:
-      "계정 비밀번호를 공유하지 않고 사용자의 애플리케이션이 선택한 데이터를 복호화할 수 있는 범위 지정 토큰을 만드세요.",
+      "계정 비밀번호를 공유하지 않고 사용자의 애플리케이션이 선택한 데이터를 복호화할 수 있는 범위 지정 토큰을 만드세요. 토큰을 사용하면 서버가 선택한 카테고리 키를 풀고 해당 데이터를 복호화하여 요청을 처리합니다.",
     encryptedApiNoPasswordsWarning:
       "암호화된 API 토큰으로는 비밀번호 보관함에 액세스할 수 없습니다. 캐릭터, 데이터 저장, 챗봇 데이터만 선택할 수 있습니다.",
     encryptedApiLocked:
@@ -1856,7 +1856,18 @@ notificationsTitle: "ì•Œë¦¼",
       "이 토큰을 사용하는 애플리케이션은 즉시 액세스 권한을 잃습니다. 이 작업은 취소할 수 없습니다.",
     encryptedApiCancel: "취소",
     encryptedApiConfirmRevoke: "액세스 해지",
+    encryptedApiRevoked: "해지됨",
     encryptedApiLoadError: "암호화된 API 액세스 키를 불러오지 못했습니다.",
+    encryptedApiErrorInvalidName: "100자 이하의 유효한 이름을 입력하세요.",
+    encryptedApiErrorCategory: "데이터 카테고리를 하나 이상 선택하세요.",
+    encryptedApiErrorUnsupportedCategory:
+      "지원되는 데이터 카테고리만 선택하세요.",
+    encryptedApiErrorExpiry: "미래의 만료 날짜를 선택하세요.",
+    encryptedApiErrorExpiryTooFar: "만료일은 1년 이내여야 합니다.",
+    encryptedApiErrorTokenHash:
+      "액세스 키를 안전하게 만들지 못했습니다. 다시 시도하세요.",
+    encryptedApiErrorWrappedKeys:
+      "암호화 키를 준비하지 못했습니다. 다시 시도하세요.",
     encryptedApiNameRequired: "이 액세스 키의 이름을 입력하세요.",
     encryptedApiCategoryRequired: "데이터 카테고리를 하나 이상 선택하세요.",
     encryptedApiExpiryRequired: "미래의 만료 날짜를 선택하세요.",

@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import type { Context, Next } from "hono";
 import { Buffer } from "node:buffer";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 import { resolveUserFromToken, localAuthMiddleware } from "../lib/auth.ts";
 import {
   getTableFilePath,
@@ -11,6 +13,7 @@ import {
   deleteTable,
   readJsonFile,
   getAllUserIds,
+  getUserById,
 } from "../lib/dataStore.ts";
 import { rateLimiter } from "../lib/rateLimiter.ts";
 import {
@@ -58,10 +61,12 @@ const CATEGORY_DECRYPT_FIELDS: Record<EncryptedApiCategory, Record<string, strin
   },
 };
 
+/** Check whether a bearer token uses the encrypted-access prefix. */
 function isGrantToken(token: string): boolean {
   return token.startsWith(ENCRYPTED_API_TOKEN_PREFIX);
 }
 
+/** Split a grant token into its grant ID and secret components. */
 function parseGrantToken(token: string): { grantId: string; secretB64Url: string } | null {
   if (!isGrantToken(token)) return null;
   const rest = token.slice(ENCRYPTED_API_TOKEN_PREFIX.length);
@@ -70,25 +75,81 @@ function parseGrantToken(token: string): { grantId: string; secretB64Url: string
   return { grantId: rest.slice(0, dotIndex), secretB64Url: rest.slice(dotIndex + 1) };
 }
 
+/** Decode padded or unpadded base64url data into bytes. */
 function base64UrlToBytes(b64url: string): Buffer {
   const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
   const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
   return Buffer.from(padded, "base64");
 }
 
+/** Encode bytes as a lowercase hexadecimal string. */
 function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+const TOKEN_HASH_PATTERN = /^[0-9a-f]{64}$/;
+const GRANT_INDEX_TABLE = "encrypted_api_grant_index";
+
+/** Treat a JSON null (or any non-object) body as an empty object. */
+function normalizeJsonBody(body: unknown): Record<string, any> {
+  return body && typeof body === "object" && !Array.isArray(body)
+    ? (body as Record<string, any>)
+    : {};
+}
+
+/**
+ * Build the global grant-ID index once for data that predates it. The index
+ * lets grant authentication find an owner without scanning every user folder.
+ */
+function ensureGrantIndexSeeded(): void {
+  const indexPath = getTableFilePath(GRANT_INDEX_TABLE);
+  if (!indexPath || fs.existsSync(indexPath)) return;
+
+  const entries: Array<Record<string, any>> = [];
+  for (const userId of getAllUserIds()) {
+    for (const grant of getTableRows("encrypted_api_grants", userId)) {
+      if (grant?.id) {
+        entries.push({
+          id: grant.id,
+          user_id: userId,
+          created_at: grant.created_at || new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  if (entries.length === 0) {
+    fs.mkdirSync(path.dirname(indexPath), { recursive: true });
+    fs.writeFileSync(indexPath, "[]", "utf-8");
+    return;
+  }
+  for (const entry of entries) {
+    insertTable(GRANT_INDEX_TABLE, entry, entry.user_id);
+  }
+}
+
+/** Resolve a grant owner through the global index without scanning users. */
+function findGrantOwner(grantId: string): string | null {
+  const entry = getTableRows(GRANT_INDEX_TABLE).find(
+    (row: any) => row.id === grantId,
+  );
+  return entry ? String(entry.user_id) : null;
+}
+
+// Seed legacy grants once at startup so authentication never scans user folders.
+ensureGrantIndexSeeded();
 
 const subtle = crypto.webcrypto?.subtle;
 if (!subtle) {
   throw new Error("Web Crypto API is not available in this Node.js runtime");
 }
 
+/** Hash bytes with SHA-256 and return lowercase hexadecimal. */
 function sha256Hex(data: Uint8Array): string {
   return crypto.createHash("sha256").update(data).digest("hex");
 }
 
+/** Derive the grant wrapping key from its token secret using HKDF. */
 async function deriveGrantWrappingKey(secretB64Url: string): Promise<CryptoKey> {
   const secretBytes = base64UrlToBytes(secretB64Url);
   const baseKey = await subtle.importKey("raw", secretBytes as any, "HKDF", false, ["deriveBits"]);
@@ -105,6 +166,7 @@ async function deriveGrantWrappingKey(secretB64Url: string): Promise<CryptoKey> 
   return (await subtle.importKey("raw", new Uint8Array(bits as ArrayBuffer), { name: "AES-GCM" }, false, ["decrypt", "encrypt"])) as unknown as CryptoKey;
 }
 
+/** Decrypt an IV-prefixed AES-256-GCM ciphertext into UTF-8 text. */
 async function aesGcmDecrypt(ciphertextB64: string, key: CryptoKey): Promise<string> {
   const raw = base64UrlToBytes(ciphertextB64);
   if (raw.length < 12 + 16) throw new Error("Ciphertext too short");
@@ -118,6 +180,7 @@ async function aesGcmDecrypt(ciphertextB64: string, key: CryptoKey): Promise<str
   return new TextDecoder().decode(decrypted);
 }
 
+/** Unwrap a base64url-encoded category key into an AES-GCM key. */
 async function unwrapWrappedKey(wrappedKeyB64: string, wrappingKey: CryptoKey): Promise<CryptoKey> {
   const plaintext = await aesGcmDecrypt(wrappedKeyB64, wrappingKey);
   const keyBytes = base64UrlToBytes(plaintext);
@@ -125,6 +188,7 @@ async function unwrapWrappedKey(wrappedKeyB64: string, wrappingKey: CryptoKey): 
   return (await subtle.importKey("raw", keyBytes as any, { name: "AES-GCM" }, false, ["decrypt", "encrypt"])) as unknown as CryptoKey;
 }
 
+/** Decrypt one encrypted field value, preserving values that cannot be read. */
 async function decryptFieldValue(value: unknown, category: EncryptedApiCategory, table: string, field: string, dek: CryptoKey): Promise<any> {
   if (value === null || value === undefined || value === "") return value;
   if (typeof value !== "string") return value;
@@ -137,6 +201,7 @@ async function decryptFieldValue(value: unknown, category: EncryptedApiCategory,
   }
 }
 
+/** Decrypt all category fields for a single record. */
 async function decryptRecord(
   record: any,
   category: EncryptedApiCategory,
@@ -178,24 +243,24 @@ async function authenticateGrant(c: Context, next: Next) {
   const parsed = parseGrantToken(token);
   if (!parsed) return c.json({ error: "Unauthorized" }, 401);
 
-  // Find the grant across all user directories (grant ID is a UUID, no caller-supplied userId)
-  let foundGrant: any = null;
-  let foundUserId: string | null = null;
-  for (const userId of getAllUserIds()) {
-    const grants = getTableRows("encrypted_api_grants", userId);
-    const match = grants.find((g: any) => g.id === parsed.grantId);
-    if (match) {
-      foundGrant = match;
-      foundUserId = userId;
-      break;
-    }
-  }
-  if (!foundGrant || !foundUserId) return c.json({ error: "Unauthorized" }, 401);
+  // Resolve the owner through the grant index instead of scanning every user.
+  const foundUserId = findGrantOwner(parsed.grantId);
+  if (!foundUserId) return c.json({ error: "Unauthorized" }, 401);
+  const foundGrant = getTableRows("encrypted_api_grants", foundUserId).find(
+    (grant: any) => grant.id === parsed.grantId,
+  );
+  if (!foundGrant) return c.json({ error: "Unauthorized" }, 401);
 
-  // Verify token hash (SHA-256 of secret)
+  // Verify token hash (SHA-256 of secret), rejecting malformed stored hashes.
+  if (
+    typeof foundGrant.token_hash !== "string" ||
+    !TOKEN_HASH_PATTERN.test(foundGrant.token_hash)
+  ) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
   const secretBytes = base64UrlToBytes(parsed.secretB64Url);
   const tokenHash = await sha256Hex(secretBytes);
-  if (tokenHash.length !== foundGrant.token_hash.length || !crypto.timingSafeEqual(Buffer.from(tokenHash), Buffer.from(foundGrant.token_hash))) {
+  if (!crypto.timingSafeEqual(Buffer.from(tokenHash), Buffer.from(foundGrant.token_hash))) {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
@@ -214,6 +279,16 @@ async function authenticateGrant(c: Context, next: Next) {
     return c.json({ error: "Invalid grant categories" }, 401);
   }
 
+  const owner = getUserById(foundUserId);
+  if (
+    !owner ||
+    owner.suspended ||
+    owner.status === "suspended" ||
+    !owner.auth_verifier
+  ) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
   c.set("userId", foundUserId);
   c.set("grant", {
     user_id: foundUserId,
@@ -222,6 +297,16 @@ async function authenticateGrant(c: Context, next: Next) {
   });
   c.set("secretB64Url", parsed.secretB64Url);
   await next();
+
+  // Only record usage after the downstream read succeeds.
+  if (c.res.status < 400) {
+    updateTable(
+      "encrypted_api_grants",
+      [{ field: "id", operator: "eq", value: foundGrant.id }],
+      { last_used_at: new Date().toISOString() },
+      foundUserId,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -255,7 +340,7 @@ router.put(
     if (!ENCRYPTED_API_CATEGORIES.includes(category)) {
       return c.json({ error: "Unsupported category" }, 400);
     }
-    const body = await c.req.json().catch(() => ({}));
+    const body = normalizeJsonBody(await c.req.json().catch(() => ({})));
     const { version, wrapped_key } = body;
     if (version !== 1 || typeof wrapped_key !== "string") {
       return c.json({ error: "Invalid wrapped key envelope" }, 400);
@@ -319,7 +404,7 @@ router.post(
   requireSession,
   async (c) => {
     const userId = c.get("userId");
-    const body = await c.req.json().catch(() => ({}));
+    const body = normalizeJsonBody(await c.req.json().catch(() => ({})));
     const { name, categories, expires_at, token_hash, token_prefix, wrapped_keys } =
       body as Partial<CreateEncryptedApiGrantRequest> & {
         token_hash?: string;
@@ -348,14 +433,22 @@ router.post(
     if (!token_hash || typeof token_hash !== "string") {
       return c.json({ error: "Token hash is required" }, 400);
     }
+    if (!TOKEN_HASH_PATTERN.test(token_hash)) {
+      return c.json({ error: "Invalid token hash" }, 400);
+    }
     if (!token_prefix || typeof token_prefix !== "string") {
       return c.json({ error: "Token prefix is required" }, 400);
     }
-    if (!wrapped_keys || typeof wrapped_keys !== "object") {
+    if (
+      !wrapped_keys ||
+      typeof wrapped_keys !== "object" ||
+      Array.isArray(wrapped_keys)
+    ) {
       return c.json({ error: "Wrapped keys are required" }, 400);
     }
     for (const category of categories) {
-      if (!(category in wrapped_keys)) {
+      const wrappedKey = (wrapped_keys as Record<string, unknown>)[category];
+      if (typeof wrappedKey !== "string" || wrappedKey.length === 0) {
         return c.json({ error: `Missing wrapped key for ${category}` }, 400);
       }
     }
@@ -375,7 +468,17 @@ router.post(
       revoked_at: null,
       last_used_at: null,
     };
+    ensureGrantIndexSeeded();
     insertTable("encrypted_api_grants", grant, userId);
+    insertTable(
+      GRANT_INDEX_TABLE,
+      {
+        id: grantId,
+        user_id: userId,
+        created_at: now,
+      },
+      userId,
+    );
 
     const safe: EncryptedApiGrant = {
       id: grantId,
@@ -425,7 +528,8 @@ router.get(
     if (!grant.categories.includes("characters")) {
       return c.json({ error: "Category not authorized" }, 403);
     }
-    return c.json(await readCategoryData(c, "characters", grant));
+    const result = await readCategoryData(c, "characters", grant);
+    return result instanceof Response ? result : c.json(result);
   },
 );
 
@@ -438,7 +542,8 @@ router.get(
     if (!grant.categories.includes("data_save")) {
       return c.json({ error: "Category not authorized" }, 403);
     }
-    return c.json(await readCategoryData(c, "data_save", grant));
+    const result = await readCategoryData(c, "data_save", grant);
+    return result instanceof Response ? result : c.json(result);
   },
 );
 
@@ -451,10 +556,15 @@ router.get(
     if (!grant.categories.includes("chatbot")) {
       return c.json({ error: "Category not authorized" }, 403);
     }
-    return c.json(await readCategoryData(c, "chatbot", grant));
+    const result = await readCategoryData(c, "chatbot", grant);
+    return result instanceof Response ? result : c.json(result);
   },
 );
 
+/**
+ * Collect, sort, paginate and decrypt the records visible to a grant.
+ * Returns a 403 Response when the grant has no key for the category.
+ */
 async function readCategoryData(
   c: Context,
   category: EncryptedApiCategory,
@@ -466,11 +576,17 @@ async function readCategoryData(
 ) {
   const userId = grant.user_id;
   const tables = CATEGORY_TABLES[category];
-  const limit = Math.min(
-    parseInt(c.req.query("limit") || String(ENCRYPTED_API_DEFAULT_PAGE_SIZE), 10),
-    ENCRYPTED_API_MAX_PAGE_SIZE,
+  const rawLimit = Number.parseInt(
+    c.req.query("limit") || String(ENCRYPTED_API_DEFAULT_PAGE_SIZE),
+    10,
   );
-  const offset = Math.max(parseInt(c.req.query("offset") || "0", 10), 0);
+  const limit = Number.isFinite(rawLimit)
+    ? rawLimit < 0
+      ? ENCRYPTED_API_DEFAULT_PAGE_SIZE
+      : Math.min(rawLimit, ENCRYPTED_API_MAX_PAGE_SIZE)
+    : ENCRYPTED_API_DEFAULT_PAGE_SIZE;
+  const rawOffset = Number.parseInt(c.req.query("offset") || "0", 10);
+  const offset = Number.isFinite(rawOffset) && rawOffset > 0 ? rawOffset : 0;
 
   // Derive wrapping key from the grant secret, unwrap the category DEK
   const secretB64Url = c.get("secretB64Url");
@@ -481,28 +597,33 @@ async function readCategoryData(
   }
   const dek = await unwrapWrappedKey(wrappedB64, wrappingKey);
 
-  const allData: any[] = [];
+  const allData: Array<{ record: any; table: string }> = [];
   for (const table of tables) {
     const filePath = getTableFilePath(table, userId);
     if (!filePath) continue;
     const rows = readJsonFile<any[]>(filePath, []);
     for (const row of rows) {
       if (String(row.user_id) !== userId) continue;
-      allData.push(await decryptRecord(row, category, table, dek));
+      allData.push({ record: row, table });
     }
   }
 
   // Deterministic ordering by created_at desc, then id
   allData.sort((a, b) => {
-    const aa = a.created_at || "";
-    const bb = b.created_at || "";
+    const aa = a.record.created_at || "";
+    const bb = b.record.created_at || "";
     if (bb > aa) return -1;
     if (aa > bb) return 1;
-    return String(a.id || "").localeCompare(String(b.id || ""));
+    return String(a.record.id || "").localeCompare(String(b.record.id || ""));
   });
 
-  const paginated = allData.slice(offset, offset + limit);
-  const hasMore = offset + limit < allData.length;
+  const pagedEntries = allData.slice(offset, offset + limit);
+  const paginated: any[] = [];
+  for (const { record, table } of pagedEntries) {
+    const decrypted = await decryptRecord(record, category, table, dek);
+    paginated.push({ ...decrypted, table });
+  }
+  const hasMore = limit > 0 && offset + limit < allData.length;
 
   return {
     data: paginated,
