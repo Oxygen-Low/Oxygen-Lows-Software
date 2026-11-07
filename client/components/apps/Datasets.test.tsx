@@ -69,9 +69,14 @@ describe("DatasetsApp", () => {
     fireEvent.click(screen.getByText("Create Dataset"));
 
     expect(screen.getByText("Generate with AI")).toBeDefined();
+    expect(screen.getByText("Import from ModelScope")).toBeDefined();
     expect(screen.getByText("Import from HuggingFace")).toBeDefined();
     expect(screen.getByText("Queue")).toBeDefined();
     expect(screen.getByText("Refine")).toBeDefined();
+
+    // Switch to ModelScope tab
+    fireEvent.click(screen.getByText("Import from ModelScope"));
+    expect(screen.getByText(/ModelScope Dataset Path/i)).toBeDefined();
 
     // Switch to HuggingFace tab
     fireEvent.click(screen.getByText("Import from HuggingFace"));
