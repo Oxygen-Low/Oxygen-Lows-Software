@@ -98,42 +98,58 @@ function normalizeJsonBody(body: unknown): Record<string, any> {
 }
 
 /**
- * Build the global grant-ID index once for data that predates it. The index
- * lets grant authentication find an owner without scanning every user folder.
+ * In-memory copy of the persisted grant-ID index. Authentication can then
+ * resolve an owner in constant time instead of reading the index file.
+ */
+const grantOwnerIndex = new Map<string, string>();
+let grantIndexSeeded = false;
+
+/**
+ * Build the global grant-ID index once for data that predates it, then load
+ * the persisted index into memory. The persisted index remains the source of
+ * truth across restarts.
  */
 function ensureGrantIndexSeeded(): void {
-  const indexPath = getTableFilePath(GRANT_INDEX_TABLE);
-  if (!indexPath || fs.existsSync(indexPath)) return;
+  if (grantIndexSeeded) return;
 
-  const entries: Array<Record<string, any>> = [];
-  for (const userId of getAllUserIds()) {
-    for (const grant of getTableRows("encrypted_api_grants", userId)) {
-      if (grant?.id) {
-        entries.push({
-          id: grant.id,
-          user_id: userId,
-          created_at: grant.created_at || new Date().toISOString(),
-        });
+  const indexPath = getTableFilePath(GRANT_INDEX_TABLE);
+  if (indexPath && !fs.existsSync(indexPath)) {
+    const entries: Array<Record<string, any>> = [];
+    for (const userId of getAllUserIds()) {
+      for (const grant of getTableRows("encrypted_api_grants", userId)) {
+        if (grant?.id) {
+          entries.push({
+            id: grant.id,
+            user_id: userId,
+            created_at: grant.created_at || new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    if (entries.length === 0) {
+      fs.mkdirSync(path.dirname(indexPath), { recursive: true });
+      fs.writeFileSync(indexPath, "[]", "utf-8");
+    } else {
+      for (const entry of entries) {
+        insertTable(GRANT_INDEX_TABLE, entry, entry.user_id);
       }
     }
   }
 
-  if (entries.length === 0) {
-    fs.mkdirSync(path.dirname(indexPath), { recursive: true });
-    fs.writeFileSync(indexPath, "[]", "utf-8");
-    return;
+  grantOwnerIndex.clear();
+  for (const row of getTableRows(GRANT_INDEX_TABLE)) {
+    if (row?.id && row?.user_id) {
+      grantOwnerIndex.set(String(row.id), String(row.user_id));
+    }
   }
-  for (const entry of entries) {
-    insertTable(GRANT_INDEX_TABLE, entry, entry.user_id);
-  }
+  grantIndexSeeded = true;
 }
 
-/** Resolve a grant owner through the global index without scanning users. */
+/** Resolve a grant owner from the in-memory index without scanning users. */
 function findGrantOwner(grantId: string): string | null {
-  const entry = getTableRows(GRANT_INDEX_TABLE).find(
-    (row: any) => row.id === grantId,
-  );
-  return entry ? String(entry.user_id) : null;
+  ensureGrantIndexSeeded();
+  return grantOwnerIndex.get(grantId) ?? null;
 }
 
 // Seed legacy grants once at startup so authentication never scans user folders.
@@ -479,6 +495,7 @@ router.post(
       },
       userId,
     );
+    grantOwnerIndex.set(grantId, userId);
 
     const safe: EncryptedApiGrant = {
       id: grantId,
@@ -511,6 +528,7 @@ router.delete(
       { revoked_at: new Date().toISOString() },
       userId,
     );
+    grantOwnerIndex.delete(grantId);
     return c.json({ success: true });
   },
 );
@@ -589,13 +607,19 @@ async function readCategoryData(
   const offset = Number.isFinite(rawOffset) && rawOffset > 0 ? rawOffset : 0;
 
   // Derive wrapping key from the grant secret, unwrap the category DEK
-  const secretB64Url = c.get("secretB64Url");
-  const wrappingKey = await deriveGrantWrappingKey(secretB64Url);
   const wrappedB64 = grant.wrapped_keys[category];
   if (!wrappedB64) {
     return c.json({ error: "No wrapped key for category" }, 403);
   }
-  const dek = await unwrapWrappedKey(wrappedB64, wrappingKey);
+  let dek: CryptoKey;
+  try {
+    const secretB64Url = c.get("secretB64Url");
+    const wrappingKey = await deriveGrantWrappingKey(secretB64Url);
+    dek = await unwrapWrappedKey(wrappedB64, wrappingKey);
+  } catch (error) {
+    console.error("Unable to unwrap encrypted API category key", error);
+    return c.json({ error: "Unable to decrypt category key" }, 403);
+  }
 
   const allData: Array<{ record: any; table: string }> = [];
   for (const table of tables) {
@@ -618,11 +642,12 @@ async function readCategoryData(
   });
 
   const pagedEntries = allData.slice(offset, offset + limit);
-  const paginated: any[] = [];
-  for (const { record, table } of pagedEntries) {
-    const decrypted = await decryptRecord(record, category, table, dek);
-    paginated.push({ ...decrypted, table });
-  }
+  const paginated = await Promise.all(
+    pagedEntries.map(async ({ record, table }) => {
+      const decrypted = await decryptRecord(record, category, table, dek);
+      return { ...decrypted, table };
+    }),
+  );
   const hasMore = limit > 0 && offset + limit < allData.length;
 
   return {

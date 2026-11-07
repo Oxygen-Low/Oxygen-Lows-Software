@@ -289,8 +289,13 @@ export default function EncryptedApiAccess({
             ),
         );
       }
+      const revokedAt = new Date().toISOString();
       setGrants((current) =>
-        current.filter((grant) => grant.id !== grantToRevoke.id),
+        current.map((grant) =>
+          grant.id === grantToRevoke.id
+            ? { ...grant, revoked_at: revokedAt }
+            : grant,
+        ),
       );
       setGrantToRevoke(null);
     } catch (err: any) {
