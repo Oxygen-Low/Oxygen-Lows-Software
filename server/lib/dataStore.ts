@@ -2,7 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 
-export const DATA_DIR = path.join(process.cwd(), "Data");
+export const DATA_DIR = process.env.OXYGEN_DATA_DIR
+  ? path.resolve(process.env.OXYGEN_DATA_DIR)
+  : path.join(process.cwd(), "Data");
 
 // ---------------------------------------------------------------------------
 // Real-time broadcast hook
@@ -33,6 +35,7 @@ export const GLOBAL_TABLE_NAMES = new Set([
   "agent_post_comments",
   "agent_messages",
   "agent_storage_files",
+  "encrypted_api_grant_index",
 ]);
 
 export function isGlobalTable(table: string): boolean {
@@ -479,6 +482,7 @@ export function initUserFolder(
   ensureDir(path.join(userDir, "models"));
   ensureDir(path.join(userDir, "games"));
   ensureDir(path.join(userDir, "oauth"));
+  ensureDir(path.join(userDir, "encrypted_api"));
 
   // Also ensure upload directories exist
   ensureDir(path.join(process.cwd(), "uploads", "Storage", userId));
@@ -553,6 +557,8 @@ export function initUserFolder(
   writeJsonFile(path.join(userDir, "passwords", "passwords.json"), []);
   writeJsonFile(path.join(userDir, "passkeys.json"), []);
   writeJsonFile(path.join(userDir, "vpn", "configs.json"), []);
+  writeJsonFile(path.join(userDir, "encrypted_api", "category-keys.json"), []);
+  writeJsonFile(path.join(userDir, "encrypted_api", "grants.json"), []);
   writeJsonFile(path.join(userDir, "support", "tickets.json"), []);
   writeJsonFile(path.join(userDir, "support", "messages.json"), []);
   writeJsonFile(path.join(userDir, "friends", "friends.json"), []);
@@ -877,6 +883,11 @@ export function getTableFilePath(
     return path.join(DATA_DIR, "chat", "messages.json");
   }
 
+  // Global encrypted API grant index stored under DATA_DIR/encrypted_api/
+  if (normTable === "encrypted_api_grant_index") {
+    return path.join(DATA_DIR, "encrypted_api", "grant-index.json");
+  }
+
   // Global agent tables stored under DATA_DIR/agents/
   if (normTable === "agent_accounts") {
     return path.join(DATA_DIR, "agents", "accounts.json");
@@ -1019,6 +1030,12 @@ export function getTableFilePath(
         break;
       case "user_api_keys":
         filePath = path.join(userDir, "models", "api_keys.json");
+        break;
+      case "encrypted_api_category_keys":
+        filePath = path.join(userDir, "encrypted_api", "category-keys.json");
+        break;
+      case "encrypted_api_grants":
+        filePath = path.join(userDir, "encrypted_api", "grants.json");
         break;
       case "user_games":
       case "games":

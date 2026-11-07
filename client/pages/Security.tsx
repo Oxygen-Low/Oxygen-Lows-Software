@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
+import EncryptedApiAccess from "@/components/security/EncryptedApiAccess";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -1475,6 +1476,8 @@ export default function Security() {
             </div>
           </CardContent>
         </Card>
+
+        <EncryptedApiAccess masterKey={keyBytes} userId={session?.user?.id} />
 
         {/* Section 3: OAuth Accounts */}
         <Card className="bg-slate-900/50 border-slate-800">

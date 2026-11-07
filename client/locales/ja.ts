@@ -1732,7 +1732,7 @@ notificationsTitle: "é€šçŸ¥",
       "ç¾åœ¨ã®ã‚»ãƒƒã‚·ãƒ§ãƒ³ã¯ãƒ­ãƒƒã‚¯ã•ã‚Œã¦ã„ã¾ã™ã€‚æš—å·åŒ–è¨­å®šã‚’å¤‰æ›´ã™ã‚‹ã«ã¯ã€ä¸Šè¨˜ã§ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰ã‚’å…¥åŠ›ã—ã¦ãã ã•ã„ã€‚",
     passwordEncryptionTitle: "ã‚¼ãƒ­çŸ¥è­˜ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰æš—å·åŒ–",
     passwordEncryptionDesc:
-      "å€‹äººãƒ‡ãƒ¼ã‚¿ã¯ã€ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰ã‹ã‚‰ç›´æŽ¥å°Žå‡ºã•ã‚ŒãŸã‚¯ãƒ©ã‚¤ã‚¢ãƒ³ãƒˆå´ã® AES-256 æš—å·åŒ–ã«ã‚ˆã£ã¦ä¿è­·ã•ã‚Œã¾ã™ã€‚ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰ã¨å¹³æ–‡ãƒ‡ãƒ¼ã‚¿ãŒã‚µãƒ¼ãƒãƒ¼ã«é€ä¿¡ã•ã‚Œã‚‹ã“ã¨ã¯ã‚ã‚Šã¾ã›ã‚“ã€‚",
+      "個人データは、パスワードから直接導出されたクライアント側の AES-256 暗号化によって保護されます。暗号化 API アクセス権を意図的に使用した場合を除き、パスワードと平文データがサーバーに送信されることはありません。その場合、サーバーは選択したカテゴリのキーを展開し、リクエストを処理するためにデータを復号します。",
     activeSessionProtected: "ã‚¢ã‚¯ãƒ†ã‚£ãƒ–ã‚»ãƒƒã‚·ãƒ§ãƒ³ä¿è­·ä¸­",
     encryptionActiveDesc:
       "ã‚¼ãƒ­çŸ¥è­˜æš—å·åŒ–ãŒæœ‰åŠ¹ã§ã™ã€‚ãƒ‡ãƒ¼ã‚¿ã¯ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰ã‹ã‚‰å°Žå‡ºã•ã‚ŒãŸ 256 ãƒ“ãƒƒãƒˆ AES ã‚­ãƒ¼ã‚’ä½¿ç”¨ã—ã¦ãƒ¡ãƒ¢ãƒªå†…ã§æš—å·åŒ–ãŠã‚ˆã³å¾©å·ã•ã‚Œã¾ã™ã€‚",
@@ -1842,6 +1842,60 @@ notificationsTitle: "é€šçŸ¥",
     passkeyRenamedSuccess: "ãƒ‘ã‚¹ã‚­ãƒ¼ã®åå‰ãŒæ­£å¸¸ã«å¤‰æ›´ã•ã‚Œã¾ã—ãŸï¼",
     failedToGetRegisterOptions: "ç™»éŒ²ã‚ªãƒ—ã‚·ãƒ§ãƒ³ã®å–å¾—ã«å¤±æ•—ã—ã¾ã—ãŸ",
     failedToVerifyPasskey: "ãƒ‘ã‚¹ã‚­ãƒ¼ã®æ¤œè¨¼ã«å¤±æ•—ã—ã¾ã—ãŸ",
+    encryptedApiTitle: "暗号化APIアクセス",
+    encryptedApiDesc:
+      "アカウントのパスワードを共有せずに、独自のアプリケーションで選択したデータを復号できる、スコープ付きトークンを作成します。トークンを使用すると、サーバーが選択したカテゴリのキーを展開し、リクエストを処理するためにそのデータを復号します。",
+    encryptedApiNoPasswordsWarning:
+      "暗号化APIトークンではパスワードボールトへのアクセスは利用できません。選択できるのはキャラクター、データ保存、チャットボットのデータのみです。",
+    encryptedApiLocked:
+      "暗号化APIアクセスキーを作成・管理するには、上で暗号化セッションのロックを解除してください。",
+    encryptedApiName: "キー名",
+    encryptedApiNamePlaceholder: "例：マイデスクトップアプリ",
+    encryptedApiExpiry: "有効期限",
+    encryptedApiScopes: "許可するデータカテゴリ",
+    encryptedApiCreating: "キーを作成中...",
+    encryptedApiCreate: "アクセスキーを作成",
+    encryptedApiEndpointsTitle: "APIエンドポイント",
+    encryptedApiEndpointsDesc:
+      "すべてのリクエストのAuthorizationヘッダーにトークンを含めてください：",
+    encryptedApiExistingKeys: "アクセスキー",
+    encryptedApiRefresh: "更新",
+    encryptedApiLoading: "キーを読み込み中...",
+    encryptedApiNoKeys: "暗号化APIアクセスキーはまだ作成されていません。",
+    encryptedApiExpires: "有効期限",
+    encryptedApiLastUsed: "最終使用",
+    encryptedApiNeverUsed: "未使用",
+    encryptedApiRevoke: "失効",
+    encryptedApiTokenTitle: "今すぐアクセストークンをコピーしてください",
+    encryptedApiTokenDesc:
+      "セキュリティのため、このトークンは一度だけ表示されます。このダイアログを閉じる前に安全な場所へ保存してください。",
+    encryptedApiCopied: "コピーしました",
+    encryptedApiCopyToken: "トークンをコピー",
+    encryptedApiRevokeTitle: "このアクセスキーを失効しますか？",
+    encryptedApiRevokeDesc:
+      "このトークンを使用しているアプリケーションは直ちにアクセスできなくなります。この操作は元に戻せません。",
+    encryptedApiCancel: "キャンセル",
+    encryptedApiConfirmRevoke: "アクセスを失効",
+    encryptedApiRevoked: "失効済み",
+    encryptedApiLoadError: "暗号化APIアクセスキーの読み込みに失敗しました。",
+    encryptedApiErrorInvalidName:
+      "100文字以内の有効な名前を入力してください。",
+    encryptedApiErrorCategory: "データカテゴリを少なくとも1つ選択してください。",
+    encryptedApiErrorUnsupportedCategory:
+      "サポートされているデータカテゴリのみを選択してください。",
+    encryptedApiErrorExpiry: "将来の有効期限を選択してください。",
+    encryptedApiErrorExpiryTooFar: "有効期限は1年以内にしてください。",
+    encryptedApiErrorTokenHash:
+      "アクセスキーを安全に作成できませんでした。もう一度お試しください。",
+    encryptedApiErrorWrappedKeys:
+      "暗号化キーを準備できませんでした。もう一度お試しください。",
+    encryptedApiNameRequired: "このアクセスキーの名前を入力してください。",
+    encryptedApiCategoryRequired: "データカテゴリを少なくとも1つ選択してください。",
+    encryptedApiExpiryRequired: "将来の有効期限を選択してください。",
+    encryptedApiCreateError: "暗号化APIアクセスキーの作成に失敗しました。",
+    encryptedApiRevokeError: "アクセスキーの失効に失敗しました。",
+    encryptedApiCopyError:
+      "トークンをコピーできませんでした。選択して手動でコピーしてください。",
   },
   passwords: {
     appTitle: "ãƒ‘ã‚¹ãƒ¯ãƒ¼ãƒ‰ãƒžãƒãƒ¼ã‚¸ãƒ£ãƒ¼",

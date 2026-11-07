@@ -1656,10 +1656,10 @@ export const en = {
       "Manage zero-knowledge password encryption and protect your private data.",
     passwordEncryptionTitle: "Zero-Knowledge Password Encryption",
     passwordEncryptionDesc:
-      "Your private data is secured with client-side AES-256 encryption derived directly from your password. Your password and plaintext data never touch the server.",
+      "Your private data is secured with client-side AES-256 encryption derived directly from your password. Your password and plaintext data never touch the server, except when you deliberately use an encrypted API access grant, which lets the server unwrap the selected category key and decrypt that data to serve the request.",
     masterKeyTitle: "Zero-Knowledge Password Encryption",
     masterKeyDesc:
-      "Your private data is secured with client-side AES-256 encryption derived directly from your password. Your password and plaintext data never touch the server.",
+      "Your private data is secured with client-side AES-256 encryption derived directly from your password. Your password and plaintext data never touch the server, except when you deliberately use an encrypted API access grant, which lets the server unwrap the selected category key and decrypt that data to serve the request.",
     keyActiveBadge: "Encryption Active",
     keyNotSetBadge: "Session Locked",
     activeSessionProtected: "Active Session Protected",
@@ -1844,6 +1844,60 @@ export const en = {
     passkeyRenamedSuccess: "Passkey renamed successfully!",
     failedToGetRegisterOptions: "Failed to get registration options",
     failedToVerifyPasskey: "Failed to verify passkey",
+    encryptedApiTitle: "Encrypted API Access",
+    encryptedApiDesc:
+      "Create scoped tokens that let your own applications decrypt selected data without sharing your account password. When a token is used, the server unwraps the selected category key and decrypts that data to fulfil the request.",
+    encryptedApiNoPasswordsWarning:
+      "Password Vault access is not available through encrypted API tokens. Only Characters, Data Save, and Chatbot data can be selected.",
+    encryptedApiLocked:
+      "Unlock your encryption session above to create and manage encrypted API access keys.",
+    encryptedApiName: "Key name",
+    encryptedApiNamePlaceholder: "e.g. My desktop app",
+    encryptedApiExpiry: "Expires at",
+    encryptedApiScopes: "Allowed data categories",
+    encryptedApiCreating: "Creating key...",
+    encryptedApiCreate: "Create access key",
+    encryptedApiEndpointsTitle: "API endpoints",
+    encryptedApiEndpointsDesc:
+      "Send the token in the Authorization header of every request:",
+    encryptedApiExistingKeys: "Your access keys",
+    encryptedApiRefresh: "Refresh",
+    encryptedApiLoading: "Loading keys...",
+    encryptedApiNoKeys: "No encrypted API access keys have been created.",
+    encryptedApiExpires: "Expires",
+    encryptedApiLastUsed: "Last used",
+    encryptedApiNeverUsed: "Never",
+    encryptedApiRevoke: "Revoke",
+    encryptedApiTokenTitle: "Copy your access token now",
+    encryptedApiTokenDesc:
+      "For your security, this token is shown only once. Store it somewhere safe before closing this dialog.",
+    encryptedApiCopied: "Copied",
+    encryptedApiCopyToken: "Copy token",
+    encryptedApiRevokeTitle: "Revoke this access key?",
+    encryptedApiRevokeDesc:
+      "Applications using this token will immediately lose access. This action cannot be undone.",
+    encryptedApiCancel: "Cancel",
+    encryptedApiConfirmRevoke: "Revoke access",
+    encryptedApiRevoked: "Revoked",
+    encryptedApiLoadError: "Failed to load encrypted API access keys.",
+    encryptedApiErrorInvalidName:
+      "Enter a valid name of 100 characters or fewer.",
+    encryptedApiErrorCategory: "Select at least one data category.",
+    encryptedApiErrorUnsupportedCategory:
+      "Select only supported data categories.",
+    encryptedApiErrorExpiry: "Choose an expiry date in the future.",
+    encryptedApiErrorExpiryTooFar: "Expiry must be within one year.",
+    encryptedApiErrorTokenHash:
+      "The access key could not be created securely. Please try again.",
+    encryptedApiErrorWrappedKeys:
+      "The encryption key could not be prepared. Please try again.",
+    encryptedApiNameRequired: "Enter a name for this access key.",
+    encryptedApiCategoryRequired: "Select at least one data category.",
+    encryptedApiExpiryRequired: "Choose an expiry date in the future.",
+    encryptedApiCreateError: "Failed to create the encrypted API access key.",
+    encryptedApiRevokeError: "Failed to revoke the access key.",
+    encryptedApiCopyError:
+      "Failed to copy the token. Select and copy it manually.",
   },
   passwords: {
     appTitle: "Password Manager",
