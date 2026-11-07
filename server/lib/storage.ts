@@ -1,10 +1,36 @@
 import fs from "fs";
 import path from "path";
 import { HIDDEN_STORAGE_DIR } from "../../shared/trackBackgrounds.ts";
+import { DATA_DIR } from "./dataStore.ts";
 
 export const STORAGE_DIR = path.join(process.cwd(), "uploads");
-export const DATASETS_STORAGE_DIR = path.join(process.cwd(), "Data", "datasets");
+const LEGACY_DATASETS_STORAGE_DIR = path.join(process.cwd(), "Data", "datasets");
+export const DATASETS_STORAGE_DIR = path.join(DATA_DIR, "datasets");
 export const MAX_USER_QUOTA = 500 * 1024 * 1024; // 500 MB
+
+/**
+ * Copy datasets created before the data directory was configurable into the
+ * configured data directory. A marker prevents deleted datasets from being
+ * resurrected from the legacy location on later startups.
+ */
+export function migrateLegacyDatasetsStorage(): void {
+  const legacyDir = path.resolve(LEGACY_DATASETS_STORAGE_DIR);
+  const targetDir = path.resolve(DATASETS_STORAGE_DIR);
+  if (legacyDir === targetDir || !fs.existsSync(legacyDir)) return;
+
+  const markerPath = path.join(targetDir, ".legacy-datasets-migrated");
+  if (fs.existsSync(markerPath)) return;
+
+  fs.mkdirSync(targetDir, { recursive: true });
+  fs.cpSync(legacyDir, targetDir, {
+    recursive: true,
+    force: false,
+    errorOnExist: false,
+  });
+  fs.writeFileSync(markerPath, new Date().toISOString(), "utf-8");
+}
+
+migrateLegacyDatasetsStorage();
 
 /**
  * Returns true if a (sanitized) storage path points into a user's hidden
