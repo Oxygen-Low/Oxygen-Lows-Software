@@ -3,9 +3,20 @@ import {
   parseDelimitedText,
   parseModelScopeFile,
   pickModelScopeDataFile,
+  resolveModelScopeEndpoint,
 } from "./datasets.ts";
 
 describe("ModelScope dataset import helpers", () => {
+  it("resolves the ModelScope endpoint with a safe default", () => {
+    expect(resolveModelScopeEndpoint("modelscope.cn")).toBe("modelscope.cn");
+    expect(resolveModelScopeEndpoint("modelscope.ai")).toBe("modelscope.ai");
+    expect(resolveModelScopeEndpoint("https://modelscope.ai")).toBe(
+      "modelscope.cn",
+    );
+    expect(resolveModelScopeEndpoint(undefined)).toBe("modelscope.cn");
+    expect(resolveModelScopeEndpoint("evil.example.com")).toBe("modelscope.cn");
+  });
+
   it("parses CSV with quoted fields and embedded newlines", () => {
     const rows = parseDelimitedText(
       'instruction,input,output\n"Say ""hi""",,"Hello, world!"\nLine 1,,Line 2\nMulti,,"Line 1\nLine 2"\n',

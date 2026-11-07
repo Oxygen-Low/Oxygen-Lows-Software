@@ -172,6 +172,7 @@ export function DatasetsApp() {
   const [msFilePath, setMsFilePath] = useState<string>("");
   const [msMaxRows, setMsMaxRows] = useState<number>(1000);
   const [msToken, setMsToken] = useState<string>("");
+  const [msEndpoint, setMsEndpoint] = useState<string>("modelscope.cn");
   const [msImporting, setMsImporting] = useState<boolean>(false);
 
   // Queue state
@@ -876,6 +877,7 @@ export function DatasetsApp() {
           filePath: msFilePath.trim() || undefined,
           maxRows: msMaxRows,
           modelscopeToken: msToken.trim() || undefined,
+          endpoint: msEndpoint,
         }),
       });
       const data = await res.json();
@@ -1944,19 +1946,38 @@ export function DatasetsApp() {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">
-                  {t("datasets.msToken")}
-                </label>
-                <Input
-                  type="password"
-                  value={msToken}
-                  onChange={(e) => setMsToken(e.target.value)}
-                  placeholder={t("datasets.msTokenPlaceholder")}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t("datasets.msTokenHint")}
-                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    {t("datasets.msEndpoint")}
+                  </label>
+                  <select
+                    value={msEndpoint}
+                    onChange={(e) => setMsEndpoint(e.target.value)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  >
+                    <option value="modelscope.cn">modelscope.cn</option>
+                    <option value="modelscope.ai">modelscope.ai</option>
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    {t("datasets.msEndpointHint")}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    {t("datasets.msToken")}
+                  </label>
+                  <Input
+                    type="password"
+                    value={msToken}
+                    onChange={(e) => setMsToken(e.target.value)}
+                    placeholder={t("datasets.msTokenPlaceholder")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("datasets.msTokenHint")}
+                  </p>
+                </div>
               </div>
 
               {msImporting && (

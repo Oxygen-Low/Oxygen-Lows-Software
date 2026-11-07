@@ -740,6 +740,13 @@ export function convertRawItemsToDatasetRows(
 // ---------------------------------------------------------------------------
 
 const MAX_MODELSCOPE_FILE_BYTES = 100 * 1024 * 1024;
+
+export function resolveModelScopeEndpoint(
+  value: unknown,
+): "modelscope.cn" | "modelscope.ai" {
+  return value === "modelscope.ai" ? "modelscope.ai" : "modelscope.cn";
+}
+
 const MODELSCOPE_DATA_EXTENSIONS = [
   ".parquet",
   ".jsonl",
@@ -2142,8 +2149,10 @@ datasetsRouter.post("/import-modelscope", async (c) => {
       modelscopeToken,
       description: customDesc,
       revision,
+      endpoint,
     } = body;
     const rawDatasetId = datasetId || modelscopeDataset;
+    const modelscopeEndpoint = resolveModelScopeEndpoint(endpoint);
 
     if (
       !rawDatasetId ||
@@ -2216,8 +2225,15 @@ datasetsRouter.post("/import-modelscope", async (c) => {
         : "";
     if (!effectiveToken) {
       effectiveToken =
-        (await getUserApiKey(userKey, "modelscope")) ||
-        process.env.MODELSCOPE_TOKEN ||
+        (await getUserApiKey(
+          userKey,
+          modelscopeEndpoint === "modelscope.ai"
+            ? "modelscope-ai"
+            : "modelscope",
+        )) ||
+        (modelscopeEndpoint === "modelscope.ai"
+          ? process.env.MODELSCOPE_AI_TOKEN
+          : process.env.MODELSCOPE_TOKEN) ||
         "";
     }
 
@@ -2231,7 +2247,7 @@ datasetsRouter.post("/import-modelscope", async (c) => {
 
     // 1. Validate the dataset exists on ModelScope.
     const infoRes = await fetch(
-      `https://modelscope.cn/api/v1/datasets/${trimmedDatasetId}`,
+      `https://${modelscopeEndpoint}/api/v1/datasets/${trimmedDatasetId}`,
       { headers: fetchHeaders },
     );
     if (infoRes.status === 404) {
@@ -2267,7 +2283,7 @@ datasetsRouter.post("/import-modelscope", async (c) => {
     }
 
     // 2. List repository files and pick a supported data file.
-    const treeUrl = `https://modelscope.cn/api/v1/datasets/${trimmedDatasetId}/repo/tree?Revision=${encodeURIComponent(safeRevision)}&Root=/`;
+    const treeUrl = `https://${modelscopeEndpoint}/api/v1/datasets/${trimmedDatasetId}/repo/tree?Revision=${encodeURIComponent(safeRevision)}&Root=/`;
     const treeRes = await fetch(treeUrl, { headers: fetchHeaders });
     if (!treeRes.ok) {
       return c.json(
@@ -2310,7 +2326,7 @@ datasetsRouter.post("/import-modelscope", async (c) => {
     }
 
     const selectedPath = String(selectedFile.Path || selectedFile.Name || "");
-    const downloadUrl = `https://modelscope.cn/api/v1/datasets/${trimmedDatasetId}/repo?Revision=${encodeURIComponent(safeRevision)}&FilePath=${encodeURIComponent(selectedPath)}`;
+    const downloadUrl = `https://${modelscopeEndpoint}/api/v1/datasets/${trimmedDatasetId}/repo?Revision=${encodeURIComponent(safeRevision)}&FilePath=${encodeURIComponent(selectedPath)}`;
     const fileRes = await fetch(downloadUrl, { headers: fetchHeaders });
     if (!fileRes.ok) {
       return c.json(
@@ -2416,7 +2432,7 @@ datasetsRouter.post("/import-modelscope", async (c) => {
     );
     fs.writeFileSync(
       path.join(datasetDir, "README.md"),
-      `# ${datasetName}\n\n${description}\n\nDataset containing ${rows.length} imported rows (~${totalTokens} tokens).\n\nSource: [${trimmedDatasetId}](https://modelscope.cn/datasets/${trimmedDatasetId})\n`,
+      `# ${datasetName}\n\n${description}\n\nDataset containing ${rows.length} imported rows (~${totalTokens} tokens).\n\nSource: [${trimmedDatasetId}](https://${modelscopeEndpoint}/datasets/${trimmedDatasetId})\n`,
       { mode: 0o600 },
     );
 
