@@ -1,6 +1,19 @@
-import { Agent } from "undici";
+import { Agent, fetch as undiciFetch } from "undici";
 import { lookup } from "node:dns";
 import { assertPublicHostname, isPrivateIP } from "./safeAiUrl.ts";
+
+// Node's built-in fetch uses its own bundled copy of undici, which is not
+// binary-compatible with Agent dispatchers created by the npm `undici`
+// package. Passing one to the global fetch throws "invalid onRequestStart
+// method" for every request. Use the npm package's fetch so the dispatcher and
+// client always come from the same implementation.
+const builtInFetch = globalThis.fetch;
+
+function getFetch(): typeof fetch {
+  // Tests and callers may replace global fetch to intercept public requests.
+  if (globalThis.fetch !== builtInFetch) return globalThis.fetch;
+  return undiciFetch as unknown as typeof fetch;
+}
 
 // Resolve at connection time, preserving the hostname for TLS and Host headers.
 // A separate preflight DNS lookup cannot protect against DNS rebinding.
@@ -32,7 +45,7 @@ export async function fetchPublicUrl(input: string, init: RequestInit = {}, maxB
         throw new Error("Invalid public URL");
       }
       assertPublicHostname(url.hostname);
-      const response = await fetch(url.href, {
+      const response = await getFetch()(url.href, {
         ...init, method: "GET", body: undefined, credentials: "omit", redirect: "manual", signal, dispatcher,
       } as RequestInit);
       if ([301, 302, 303, 307, 308].includes(response.status)) {
