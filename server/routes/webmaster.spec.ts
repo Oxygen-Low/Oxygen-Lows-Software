@@ -689,6 +689,92 @@ describe("Webmaster Router & DNS Verification", () => {
     clearCrawlQueue();
   });
 
+  it("follows sitemap index files and indexes pages from nested sitemaps", async () => {
+    vi.spyOn(authLib, "resolveUserFromToken").mockResolvedValue({
+      id: "1",
+      email: "admin@oxygenlow.com",
+      role: "admin",
+    } as any);
+
+    setDefaultDomainDelayMs(0);
+    setBatchCrawlDelayMs(0);
+
+    const requestedUrls: string[] = [];
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      requestedUrls.push(url);
+      if (url.includes("/robots.txt")) {
+        return new Response("User-agent: *\nAllow: /\nCrawl-delay: 0\n", {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+        });
+      }
+      if (url === "https://nested-sitemap.com/sitemap.xml") {
+        return new Response(
+          `<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
+            `<sitemap><loc>https://nested-sitemap.com/sitemap-a.xml</loc></sitemap>` +
+            `<sitemap><loc>https://nested-sitemap.com/sitemap-b.xml</loc></sitemap>` +
+            `</sitemapindex>`,
+          { status: 200, headers: { "content-type": "application/xml" } }
+        );
+      }
+      if (url === "https://nested-sitemap.com/sitemap-a.xml") {
+        return new Response(
+          `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
+            `<url><loc>https://nested-sitemap.com/a-1</loc></url>` +
+            `<url><loc>https://nested-sitemap.com/a-2</loc></url>` +
+            `</urlset>`,
+          { status: 200, headers: { "content-type": "application/xml" } }
+        );
+      }
+      if (url === "https://nested-sitemap.com/sitemap-b.xml") {
+        return new Response(
+          `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
+            `<url><loc>https://nested-sitemap.com/b-1</loc></url>` +
+            `</urlset>`,
+          { status: 200, headers: { "content-type": "application/xml" } }
+        );
+      }
+      return new Response(`<html><head><title>Title for ${url}</title></head><body>Content</body></html>`, {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
+    }) as any;
+
+    const res = await webmasterRouter.fetch(
+      new Request("http://localhost/admin/sites", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer test-admin-token",
+        },
+        body: JSON.stringify({ url: "https://nested-sitemap.com" }),
+      })
+    );
+    expect(res.status).toBe(201);
+    const siteId = (await res.json()).site.id;
+
+    const startWait = Date.now();
+    while (Date.now() - startWait < 3000) {
+      const s = getSites().find((item) => item.id === siteId);
+      if (s && (s.status === "indexed" || s.status === "error")) break;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+
+    const site = getSites().find((s) => s.id === siteId);
+    expect(site?.status).toBe("indexed");
+    // Homepage + a-1 + a-2 + b-1
+    expect(site?.pageCount).toBe(4);
+    // Nested sitemap files must be parsed, not queued and skipped as pages.
+    expect(site?.logs.some((l) => l.message.includes("Skipping non-HTML page"))).toBe(false);
+
+    const pageFetches = requestedUrls.filter(
+      (u) => !u.includes("/robots.txt") && !u.includes("/sitemap")
+    );
+    expect(pageFetches).toHaveLength(4);
+
+    clearCrawlQueue();
+  });
+
   it("strictly stops crawler from indexing when robots.txt disallows oxylow-search even if * is allowed", async () => {
     vi.spyOn(authLib, "resolveUserFromToken").mockResolvedValue({
       id: "1",
