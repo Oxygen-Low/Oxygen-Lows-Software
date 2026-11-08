@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import * as parquetModule from "@dsnp/parquetjs";
@@ -732,6 +733,242 @@ export function convertRawItemsToDatasetRows(
     datasetType: "standard",
     detectedType: "standard",
   };
+}
+
+// ---------------------------------------------------------------------------
+// ModelScope Import Helpers
+// ---------------------------------------------------------------------------
+
+const MAX_MODELSCOPE_FILE_BYTES = 100 * 1024 * 1024;
+
+export function resolveModelScopeEndpoint(
+  value: unknown,
+): "modelscope.cn" | "modelscope.ai" {
+  return value === "modelscope.ai" ? "modelscope.ai" : "modelscope.cn";
+}
+
+const MODELSCOPE_DATA_EXTENSIONS = [
+  ".parquet",
+  ".jsonl",
+  ".ndjson",
+  ".csv",
+  ".tsv",
+  ".json",
+];
+const MODELSCOPE_METADATA_FILES = new Set([
+  "dataset_infos.json",
+  "readme.md",
+  ".gitattributes",
+  ".gitignore",
+]);
+
+export function parseDelimitedText(
+  text: string,
+  delimiter: string,
+): Record<string, string>[] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += char;
+      }
+      continue;
+    }
+
+    if (char === '"' && field.length === 0) {
+      inQuotes = true;
+    } else if (char === delimiter) {
+      row.push(field);
+      field = "";
+    } else if (char === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else if (char !== "\r") {
+      field += char;
+    }
+  }
+
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  const header = (rows.shift() || []).map((h) => h.trim());
+  if (header.length === 0) return [];
+
+  const items: Record<string, string>[] = [];
+  for (const cells of rows) {
+    if (cells.every((c) => c.trim().length === 0)) continue;
+    const item: Record<string, string> = {};
+    header.forEach((key, idx) => {
+      if (key) item[key] = cells[idx] ?? "";
+    });
+    items.push(item);
+  }
+  return items;
+}
+
+function extractRawItemsFromJson(value: any): Record<string, any>[] {
+  if (Array.isArray(value)) {
+    return value.filter((item) => item && typeof item === "object");
+  }
+  if (value && typeof value === "object") {
+    for (const key of ["data", "rows", "items", "records", "examples"]) {
+      if (Array.isArray(value[key])) {
+        return value[key].filter((item: any) => item && typeof item === "object");
+      }
+    }
+  }
+  return [];
+}
+
+async function readParquetRawItems(
+  buffer: Buffer,
+): Promise<Record<string, any>[]> {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "modelscope-"));
+  const tmpPath = path.join(tmpDir, "data.parquet");
+  fs.writeFileSync(tmpPath, buffer);
+  let reader: any = null;
+  try {
+    reader = await parquet.ParquetReader.openFile(tmpPath);
+    const cursor = reader.getCursor();
+    const items: Record<string, any>[] = [];
+    let record: any;
+    while ((record = await cursor.next())) {
+      if (record && typeof record === "object") items.push(record);
+    }
+    return items;
+  } finally {
+    if (reader) {
+      try {
+        await reader.close();
+      } catch {
+        // ignore
+      }
+    }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+export async function parseModelScopeFile(
+  buffer: Buffer,
+  filePath: string,
+): Promise<Record<string, any>[]> {
+  const ext = path.extname(filePath).toLowerCase();
+
+  if (ext === ".parquet") {
+    return readParquetRawItems(buffer);
+  }
+
+  const text = buffer.toString("utf-8");
+
+  if (ext === ".csv") return parseDelimitedText(text, ",");
+  if (ext === ".tsv") return parseDelimitedText(text, "\t");
+
+  if (ext === ".jsonl" || ext === ".ndjson") {
+    const items: Record<string, any>[] = [];
+    for (const line of text.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object") items.push(parsed);
+      } catch {
+        // skip malformed line
+      }
+    }
+    return items;
+  }
+
+  if (ext === ".json") {
+    try {
+      return extractRawItemsFromJson(JSON.parse(text));
+    } catch {
+      // Some .json files are actually JSONL; try line by line.
+      const items: Record<string, any>[] = [];
+      for (const line of text.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === "object") items.push(parsed);
+        } catch {
+          // skip malformed line
+        }
+      }
+      return items;
+    }
+  }
+
+  throw new Error(`Unsupported ModelScope file type: ${ext || "unknown"}`);
+}
+
+export function pickModelScopeDataFile(
+  files: any[],
+  requestedPath?: string,
+): any | null {
+  const dataFiles = (Array.isArray(files) ? files : []).filter((file) => {
+    if (!file || file.Type !== "blob") return false;
+    const name = String(file.Name || "").toLowerCase();
+    const filePath = String(file.Path || file.Name || "").toLowerCase();
+    if (!name || MODELSCOPE_METADATA_FILES.has(name)) return false;
+    if (name.startsWith(".") || name.endsWith(".md")) return false;
+    return MODELSCOPE_DATA_EXTENSIONS.some((ext) => filePath.endsWith(ext));
+  });
+
+  if (requestedPath) {
+    const normalized = requestedPath.replace(/^\/+/, "").toLowerCase();
+    return (
+      dataFiles.find(
+        (file) =>
+          String(file.Path || "").toLowerCase() === normalized ||
+          String(file.Name || "").toLowerCase() === normalized,
+      ) || null
+    );
+  }
+
+  const extensionScore: Record<string, number> = {
+    ".parquet": 40,
+    ".jsonl": 35,
+    ".ndjson": 34,
+    ".csv": 30,
+    ".tsv": 28,
+    ".json": 20,
+  };
+
+  const scored = dataFiles
+    .map((file) => {
+      const name = String(file.Name || "").toLowerCase();
+      const filePath = String(file.Path || name).toLowerCase();
+      const ext = path.extname(filePath);
+      let score = extensionScore[ext] ?? 0;
+      if (name.startsWith("train.")) score += 100;
+      else if (name.includes("train")) score += 70;
+      if (name.startsWith("validation") || name.startsWith("test")) score += 20;
+      score -= filePath.split("/").length * 3;
+      if (typeof file.Size === "number" && file.Size > MAX_MODELSCOPE_FILE_BYTES) {
+        score -= 1000;
+      }
+      return { file, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  return scored.length > 0 ? scored[0].file : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1891,6 +2128,358 @@ datasetsRouter.post("/import-huggingface", async (c) => {
       {
         success: false,
         error: "Failed to import dataset from HuggingFace",
+      },
+      500,
+    );
+  }
+});
+
+// POST /api/datasets/import-modelscope - Import a dataset from ModelScope Hub
+datasetsRouter.post("/import-modelscope", async (c) => {
+  try {
+    const user = c.get("user" as any);
+    const userKey = String(user.id);
+    const body = await c.req.json().catch(() => ({}));
+    const {
+      datasetId,
+      modelscopeDataset,
+      name,
+      filePath,
+      maxRows,
+      modelscopeToken,
+      description: customDesc,
+      revision,
+      endpoint,
+    } = body;
+    const rawDatasetId = datasetId || modelscopeDataset;
+    const modelscopeEndpoint = resolveModelScopeEndpoint(endpoint);
+
+    if (
+      !rawDatasetId ||
+      typeof rawDatasetId !== "string" ||
+      !rawDatasetId.trim()
+    ) {
+      return c.json(
+        {
+          success: false,
+          error: 'datasetId is required (e.g. "AI-ModelScope/alpaca-gpt4-data-zh")',
+        },
+        400,
+      );
+    }
+
+    const trimmedDatasetId = rawDatasetId.trim();
+    if (!/^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/.test(trimmedDatasetId)) {
+      return c.json(
+        {
+          success: false,
+          error:
+            'Invalid datasetId format. Expected "owner/dataset" (e.g. "AI-ModelScope/alpaca-gpt4-data-zh")',
+        },
+        400,
+      );
+    }
+
+    const datasetName = (
+      name?.trim() ||
+      trimmedDatasetId.split("/").pop() ||
+      trimmedDatasetId
+    ).substring(0, 100);
+    if (!REPO_NAME_REGEX.test(datasetName)) {
+      return c.json(
+        {
+          success: false,
+          error:
+            "Invalid dataset name. Use letters, digits, hyphens, underscores, or dots (1–100 chars).",
+        },
+        400,
+      );
+    }
+
+    const safeMaxRows =
+      typeof maxRows === "number" && Number.isInteger(maxRows) && maxRows > 0
+        ? Math.min(maxRows, 50000)
+        : 1000;
+    const safeRevision =
+      typeof revision === "string" && revision.trim()
+        ? revision.trim().substring(0, 100)
+        : "master";
+    const requestedFilePath =
+      typeof filePath === "string" && filePath.trim()
+        ? filePath.trim().replace(/^\/+/, "").substring(0, 500)
+        : "";
+
+    const datasets = readUserDatasets(userKey);
+    if (
+      datasets.some((d) => d.name === datasetName && d.status !== "archived")
+    ) {
+      return c.json(
+        { success: false, error: "A dataset with this name already exists" },
+        409,
+      );
+    }
+
+    let effectiveToken =
+      typeof modelscopeToken === "string" && modelscopeToken.trim()
+        ? modelscopeToken.trim()
+        : "";
+    if (!effectiveToken) {
+      effectiveToken =
+        (await getUserApiKey(
+          userKey,
+          modelscopeEndpoint === "modelscope.ai"
+            ? "modelscope-ai"
+            : "modelscope",
+        )) ||
+        (modelscopeEndpoint === "modelscope.ai"
+          ? process.env.MODELSCOPE_AI_TOKEN
+          : process.env.MODELSCOPE_TOKEN) ||
+        "";
+    }
+
+    const fetchHeaders: Record<string, string> = {
+      "User-Agent": "Oxygen-Lows-Software/1.0",
+    };
+    if (effectiveToken) {
+      fetchHeaders["Authorization"] = `Bearer ${effectiveToken}`;
+      fetchHeaders["Cookie"] = `m_session_id=${effectiveToken}`;
+    }
+
+    // 1. Validate the dataset exists on ModelScope.
+    const infoRes = await fetch(
+      `https://${modelscopeEndpoint}/api/v1/datasets/${trimmedDatasetId}`,
+      { headers: fetchHeaders },
+    );
+    if (infoRes.status === 404) {
+      return c.json(
+        {
+          success: false,
+          error: `Dataset '${trimmedDatasetId}' not found on ModelScope`,
+        },
+        404,
+      );
+    }
+    if (!infoRes.ok) {
+      return c.json(
+        {
+          success: false,
+          error: `Failed to access ModelScope dataset '${trimmedDatasetId}' (HTTP ${infoRes.status})`,
+        },
+        502,
+      );
+    }
+    const infoData: any = await infoRes.json().catch(() => null);
+    if (infoData && typeof infoData.Code === "number" && infoData.Code !== 200) {
+      return c.json(
+        {
+          success: false,
+          error:
+            typeof infoData.Message === "string" && infoData.Message
+              ? infoData.Message
+              : `Dataset '${trimmedDatasetId}' not found on ModelScope`,
+        },
+        infoData.Code === 10020101002 || infoRes.status === 404 ? 404 : 400,
+      );
+    }
+
+    // 2. List repository files and pick a supported data file.
+    const treeUrl = `https://${modelscopeEndpoint}/api/v1/datasets/${trimmedDatasetId}/repo/tree?Revision=${encodeURIComponent(safeRevision)}&Root=/`;
+    const treeRes = await fetch(treeUrl, { headers: fetchHeaders });
+    if (!treeRes.ok) {
+      return c.json(
+        {
+          success: false,
+          error: `Failed to list files for ModelScope dataset '${trimmedDatasetId}' (HTTP ${treeRes.status})`,
+        },
+        502,
+      );
+    }
+    const treeData: any = await treeRes.json().catch(() => null);
+    const files: any[] = Array.isArray(treeData?.Data?.Files)
+      ? treeData.Data.Files
+      : [];
+    const selectedFile = pickModelScopeDataFile(files, requestedFilePath);
+
+    if (!selectedFile) {
+      return c.json(
+        {
+          success: false,
+          error: requestedFilePath
+            ? `File '${requestedFilePath}' was not found or is not a supported data file in ModelScope dataset '${trimmedDatasetId}'`
+            : `No supported data file (.json, .jsonl, .csv, .tsv, or .parquet) found in ModelScope dataset '${trimmedDatasetId}'`,
+        },
+        404,
+      );
+    }
+
+    if (
+      typeof selectedFile.Size === "number" &&
+      selectedFile.Size > MAX_MODELSCOPE_FILE_BYTES
+    ) {
+      return c.json(
+        {
+          success: false,
+          error: `The selected ModelScope file is too large to import (${Math.round(selectedFile.Size / (1024 * 1024))} MB). The maximum is ${MAX_MODELSCOPE_FILE_BYTES / (1024 * 1024)} MB.`,
+        },
+        400,
+      );
+    }
+
+    const selectedPath = String(selectedFile.Path || selectedFile.Name || "");
+    const downloadUrl = `https://${modelscopeEndpoint}/api/v1/datasets/${trimmedDatasetId}/repo?Revision=${encodeURIComponent(safeRevision)}&FilePath=${encodeURIComponent(selectedPath)}`;
+    const fileRes = await fetch(downloadUrl, { headers: fetchHeaders });
+    if (!fileRes.ok) {
+      return c.json(
+        {
+          success: false,
+          error: `Failed to download '${selectedPath}' from ModelScope (HTTP ${fileRes.status})`,
+        },
+        502,
+      );
+    }
+
+    const fileBuffer = Buffer.from(await fileRes.arrayBuffer());
+    if (fileBuffer.byteLength > MAX_MODELSCOPE_FILE_BYTES) {
+      return c.json(
+        {
+          success: false,
+          error: `The selected ModelScope file is too large to import (${Math.round(fileBuffer.byteLength / (1024 * 1024))} MB). The maximum is ${MAX_MODELSCOPE_FILE_BYTES / (1024 * 1024)} MB.`,
+        },
+        400,
+      );
+    }
+
+    let rawItems: Record<string, any>[];
+    try {
+      rawItems = await parseModelScopeFile(fileBuffer, selectedPath);
+    } catch (parseErr: any) {
+      return c.json(
+        {
+          success: false,
+          error: `Failed to parse '${selectedPath}' from ModelScope: ${parseErr?.message || "unknown error"}`,
+        },
+        400,
+      );
+    }
+
+    rawItems = rawItems.slice(0, safeMaxRows);
+    const { rows, datasetType: detectedType } =
+      convertRawItemsToDatasetRows(rawItems);
+    if (rows.length === 0) {
+      return c.json(
+        {
+          success: false,
+          error: `No valid rows returned from ModelScope file '${selectedPath}'`,
+        },
+        502,
+      );
+    }
+
+    const isPostTraining = detectedType === "post-training";
+    const totalTokens = rows.reduce((sum, r) => {
+      if (isPostTraining) {
+        const pt = r as PostTrainingRow;
+        return (
+          sum +
+          estimateTokenCount(pt.prompt) +
+          estimateTokenCount(pt.chosen) +
+          estimateTokenCount(pt.rejected)
+        );
+      }
+      const st = r as DatasetRow;
+      return (
+        sum +
+        estimateTokenCount(st.instruction) +
+        estimateTokenCount(st.input) +
+        estimateTokenCount(st.output)
+      );
+    }, 0);
+
+    const maxTokens = getMaxDatasetTokens();
+    if (totalTokens > maxTokens) {
+      return c.json(
+        {
+          success: false,
+          error: `Dataset exceeds the maximum token limit of ${maxTokens} tokens (${DEFAULT_MAX_DATASET_TOKENS_GB} GB)`,
+        },
+        400,
+      );
+    }
+
+    const estimatedBytes = totalTokens * BYTES_PER_TOKEN + 4096;
+    if (getUserTotalSize(userKey) + estimatedBytes > MAX_USER_QUOTA) {
+      return c.json(
+        {
+          success: false,
+          error: "Quota exceeded. Maximum 500MB allowed per user.",
+        },
+        400,
+      );
+    }
+
+    const dsId = crypto.randomUUID();
+    const datasetDir = getUserDatasetDir(userKey, dsId);
+    fs.mkdirSync(datasetDir, { recursive: true });
+    const description =
+      typeof customDesc === "string" && customDesc.trim()
+        ? customDesc.trim()
+        : `Imported from ModelScope: ${trimmedDatasetId} (file: ${selectedPath})`;
+
+    await writeDatasetParquet(
+      path.join(datasetDir, "dataset.parquet"),
+      rows,
+      isPostTraining,
+    );
+    fs.writeFileSync(
+      path.join(datasetDir, "README.md"),
+      `# ${datasetName}\n\n${description}\n\nDataset containing ${rows.length} imported rows (~${totalTokens} tokens).\n\nSource: [${trimmedDatasetId}](https://${modelscopeEndpoint}/datasets/${trimmedDatasetId})\n`,
+      { mode: 0o600 },
+    );
+
+    const datasetEntry: DatasetEntry = {
+      id: dsId,
+      name: datasetName,
+      description,
+      status: "active",
+      username: user.username || user.email || userKey,
+      userId: userKey,
+      rowCount: rows.length,
+      totalTokens,
+      createdAt: new Date().toISOString(),
+      archivedAt: null,
+      datasetType: detectedType,
+    };
+
+    datasets.push(datasetEntry);
+    writeUserDatasets(userKey, datasets);
+
+    const bytesOnDisk = getDatasetBytesOnDisk(userKey, dsId);
+    const metadata = {
+      ...datasetEntry,
+      tokenCount: totalTokens,
+      archived: false,
+      updatedAt: datasetEntry.createdAt,
+      model: "ModelScope",
+      prompt: description,
+      bytesOnDisk,
+    };
+
+    return c.json({
+      success: true,
+      datasetId: dsId,
+      datasetName,
+      rowCount: rows.length,
+      totalTokens,
+      tokenCount: totalTokens,
+      datasetType: detectedType,
+      metadata,
+    });
+  } catch (err: any) {
+    console.error("ModelScope dataset import error:", err);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to import dataset from ModelScope",
       },
       500,
     );

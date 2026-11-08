@@ -118,7 +118,7 @@ export function DatasetsApp() {
   // Navigation state
   const [viewMode, setViewMode] = useState<"list" | "view" | "create">("list");
   const [createTab, setCreateTab] = useState<
-    "generate" | "huggingface" | "queue" | "refine"
+    "generate" | "modelscope" | "huggingface" | "queue" | "refine"
   >("generate");
   const [archiveFilter, setArchiveFilter] = useState<"all" | "active" | "archived">(
     "all",
@@ -164,6 +164,16 @@ export function DatasetsApp() {
   const [hfMaxRows, setHfMaxRows] = useState<number>(1000);
   const [hfToken, setHfToken] = useState<string>("");
   const [importing, setImporting] = useState<boolean>(false);
+
+  // ModelScope import form state
+  const [msName, setMsName] = useState<string>("");
+  const [msDescription, setMsDescription] = useState<string>("");
+  const [msDatasetPath, setMsDatasetPath] = useState<string>("");
+  const [msFilePath, setMsFilePath] = useState<string>("");
+  const [msMaxRows, setMsMaxRows] = useState<number>(1000);
+  const [msToken, setMsToken] = useState<string>("");
+  const [msEndpoint, setMsEndpoint] = useState<string>("modelscope.cn");
+  const [msImporting, setMsImporting] = useState<boolean>(false);
 
   // Queue state
   const [queue, setQueue] = useState<DatasetQueueItem[]>(() => {
@@ -841,6 +851,57 @@ export function DatasetsApp() {
     }
   };
 
+  // ModelScope Import handler
+  const canImportFromModelScope =
+    msName.trim().length > 0 &&
+    msDatasetPath.trim().length > 0 &&
+    msDatasetPath.includes("/") &&
+    msMaxRows >= 1 &&
+    msMaxRows <= 10000;
+
+  const handleImportFromModelScope = async () => {
+    if (!canImportFromModelScope || msImporting) return;
+    setMsImporting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/datasets/import-modelscope", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          name: msName.trim(),
+          description: msDescription.trim(),
+          modelscopeDataset: msDatasetPath.trim(),
+          filePath: msFilePath.trim() || undefined,
+          maxRows: msMaxRows,
+          modelscopeToken: msToken.trim() || undefined,
+          endpoint: msEndpoint,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setErrorMessage(data.error || "Failed to import dataset");
+        return;
+      }
+
+      setSuccessMessage(
+        `${t("datasets.importSuccess")} (${data.metadata.rowCount} ${t("datasets.rows")}, ~${data.metadata.tokenCount.toLocaleString()} ${t("datasets.tokens")})`,
+      );
+      toast.success(t("datasets.importSuccess"));
+      await loadDatasets();
+      setMsName("");
+      setMsDescription("");
+      setMsDatasetPath("");
+      setMsFilePath("");
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Failed to import dataset");
+    } finally {
+      setMsImporting(false);
+    }
+  };
+
   // Refine handler
   const canRefine =
     refineDatasetId.trim().length > 0 && refineModel.trim().length > 0;
@@ -1386,6 +1447,19 @@ export function DatasetsApp() {
               {t("datasets.tabGenerate")}
             </Button>
             <Button
+              variant={createTab === "modelscope" ? "default" : "outline"}
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                setCreateTab("modelscope");
+                setErrorMessage("");
+                setSuccessMessage("");
+              }}
+            >
+              <CloudDownload className="w-4 h-4" />
+              {t("datasets.tabModelscope")}
+            </Button>
+            <Button
               variant={createTab === "huggingface" ? "default" : "outline"}
               size="sm"
               className="gap-2"
@@ -1793,7 +1867,165 @@ export function DatasetsApp() {
             </div>
           )}
 
-          {/* ---------- TAB 2: IMPORT FROM HUGGINGFACE ---------- */}
+          {/* ---------- TAB 2: IMPORT FROM MODELSCOPE ---------- */}
+          {createTab === "modelscope" && (
+            <div className="rounded-xl border border-border bg-card p-6 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    {t("datasets.datasetName")} *
+                  </label>
+                  <Input
+                    value={msName}
+                    onChange={(e) => setMsName(e.target.value)}
+                    placeholder={t("datasets.datasetNamePlaceholder")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("datasets.datasetNameHint")}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    {t("datasets.msDatasetPath")} *
+                  </label>
+                  <Input
+                    value={msDatasetPath}
+                    onChange={(e) => setMsDatasetPath(e.target.value)}
+                    placeholder={t("datasets.msDatasetPathPlaceholder")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("datasets.msDatasetPathHint")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">
+                  {t("datasets.description")}
+                </label>
+                <Input
+                  value={msDescription}
+                  onChange={(e) => setMsDescription(e.target.value)}
+                  placeholder={t("datasets.descriptionPlaceholder")}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    {t("datasets.msFilePath")}
+                  </label>
+                  <Input
+                    value={msFilePath}
+                    onChange={(e) => setMsFilePath(e.target.value)}
+                    placeholder={t("datasets.msFilePathPlaceholder")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("datasets.msFilePathHint")}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    {t("datasets.msMaxRows")}
+                  </label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={10000}
+                    step={100}
+                    value={msMaxRows}
+                    onChange={(e) =>
+                      setMsMaxRows(parseInt(e.target.value, 10) || 100)
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("datasets.msMaxRowsHint")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    {t("datasets.msEndpoint")}
+                  </label>
+                  <select
+                    value={msEndpoint}
+                    onChange={(e) => setMsEndpoint(e.target.value)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  >
+                    <option value="modelscope.cn">modelscope.cn</option>
+                    <option value="modelscope.ai">modelscope.ai</option>
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    {t("datasets.msEndpointHint")}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">
+                    {t("datasets.msToken")}
+                  </label>
+                  <Input
+                    type="password"
+                    value={msToken}
+                    onChange={(e) => setMsToken(e.target.value)}
+                    placeholder={t("datasets.msTokenPlaceholder")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("datasets.msTokenHint")}
+                  </p>
+                </div>
+              </div>
+
+              {msImporting && (
+                <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-4 flex items-center gap-3">
+                  <Loader2 className="w-5 h-5 animate-spin text-cyan-500 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {t("datasets.importingDataset")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("datasets.importingFromMs")}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {errorMessage && (
+                <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {errorMessage}
+                </div>
+              )}
+
+              {successMessage && (
+                <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-400 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  {successMessage}
+                </div>
+              )}
+
+              <Button
+                disabled={!canImportFromModelScope || msImporting}
+                onClick={handleImportFromModelScope}
+                className="gap-2"
+              >
+                {msImporting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CloudDownload className="w-4 h-4" />
+                )}
+                {msImporting
+                  ? t("datasets.importingDataset")
+                  : t("datasets.importDataset")}
+              </Button>
+            </div>
+          )}
+
+          {/* ---------- TAB 3: IMPORT FROM HUGGINGFACE ---------- */}
           {createTab === "huggingface" && (
             <div className="rounded-xl border border-border bg-card p-6 space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1947,7 +2179,7 @@ export function DatasetsApp() {
             </div>
           )}
 
-          {/* ---------- TAB 3: QUEUE ---------- */}
+          {/* ---------- TAB 4: QUEUE ---------- */}
           {createTab === "queue" && (
             <div className="rounded-xl border border-border bg-card p-6 space-y-5">
               {queue.length === 0 ? (
@@ -2113,7 +2345,7 @@ export function DatasetsApp() {
             </div>
           )}
 
-          {/* ---------- TAB 4: REFINE ---------- */}
+          {/* ---------- TAB 5: REFINE ---------- */}
           {createTab === "refine" && (
             <div className="rounded-xl border border-border bg-card p-6 space-y-5">
               <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-4">

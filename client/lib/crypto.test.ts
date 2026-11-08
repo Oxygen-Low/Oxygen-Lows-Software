@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   AES_KEY_BYTES,
   generateAes256Key,
@@ -317,6 +317,10 @@ describe("Crypto Utilities (AES-256)", () => {
   });
 
   describe("Character data transformers", () => {
+    beforeEach(() => {
+      setCategoryEncryptionEnabled("characters", true);
+    });
+
     it("should encrypt and decrypt character data correctly", async () => {
       const key = generateAes256Key();
       const char = {
@@ -387,6 +391,10 @@ describe("Crypto Utilities (AES-256)", () => {
   });
 
   describe("DataSave data transformers", () => {
+    beforeEach(() => {
+      setCategoryEncryptionEnabled("data_save", true);
+    });
+
     it("should encrypt and decrypt data save fields correctly", async () => {
       const key = generateAes256Key();
       const save = {
@@ -419,6 +427,10 @@ describe("Crypto Utilities (AES-256)", () => {
   });
 
   describe("Chat data transformers", () => {
+    beforeEach(() => {
+      setCategoryEncryptionEnabled("chatbot", true);
+    });
+
     it("should encrypt and decrypt chat title correctly", async () => {
       const key = generateAes256Key();
       const chat = { id: "chat-1", title: "My Chat Title", user_id: "u1" };
