@@ -17,6 +17,7 @@ export const MAX_SITE_INDEX_PAGES = 1000;
 export const CRAWL_BATCH_SIZE = 20;
 export let BATCH_CRAWL_DELAY_MS = 500;
 export const MAX_SITE_LOGS = 100;
+const MAX_SITEMAP_DEPTH = 5;
 
 export function setDefaultDomainDelayMs(ms: number) {
   DEFAULT_DOMAIN_DELAY_MS = ms;
@@ -697,12 +698,36 @@ export async function getRobotsRules(
   }
 }
 
+interface ParseSitemapOptions {
+  /** Optional robots.txt check applied to this sitemap and nested sitemaps. */
+  isAllowed?: (url: URL) => boolean;
+  visited?: Set<string>;
+  depth?: number;
+  maxPages?: number;
+}
+
 /**
- * Parses XML sitemap to discover URLs.
+ * Parses XML sitemap to discover page URLs.
+ * Sitemap index files are followed recursively so nested sitemaps are parsed
+ * instead of being queued as if they were HTML pages.
  */
-export async function parseSitemap(sitemapUrl: string, domain: string, crawlDelayMs: number): Promise<string[]> {
-  const discoveredUrls: string[] = [];
+export async function parseSitemap(
+  sitemapUrl: string,
+  domain: string,
+  crawlDelayMs: number,
+  options: ParseSitemapOptions = {}
+): Promise<string[]> {
+  const visited = options.visited ?? new Set<string>();
+  const depth = options.depth ?? 0;
+  const maxPages = options.maxPages ?? MAX_SITE_INDEX_PAGES;
+
+  if (depth > MAX_SITEMAP_DEPTH || visited.has(sitemapUrl)) return [];
+  visited.add(sitemapUrl);
+
   try {
+    const sitemapTarget = new URL(sitemapUrl);
+    if (options.isAllowed && !options.isAllowed(sitemapTarget)) return [];
+
     await waitForDomainSlot(domain, crawlDelayMs);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
@@ -721,18 +746,41 @@ export async function parseSitemap(sitemapUrl: string, domain: string, crawlDela
     const xml = await res.text();
 
     // Look for <loc>https://...</loc> tags
+    const locations: string[] = [];
     const locRegex = /<loc>(https?:\/\/[^<]+)<\/loc>/gi;
     let match: RegExpExecArray | null;
-    while ((match = locRegex.exec(xml)) !== null && discoveredUrls.length < MAX_SITE_INDEX_PAGES) {
-      const u = match[1].trim();
-      if (!discoveredUrls.includes(u)) {
-        discoveredUrls.push(u);
+    while ((match = locRegex.exec(xml)) !== null) {
+      const loc = match[1].trim();
+      if (loc && !locations.includes(loc)) {
+        locations.push(loc);
       }
     }
+
+    // A sitemap index points to other sitemaps, not pages. Follow each child
+    // sitemap recursively and collect the page URLs it contains.
+    if (/<sitemapindex[\s>]/i.test(xml)) {
+      const discoveredUrls = new Set<string>();
+      for (const childSitemap of locations) {
+        if (discoveredUrls.size >= maxPages) break;
+        const childUrls = await parseSitemap(childSitemap, domain, crawlDelayMs, {
+          isAllowed: options.isAllowed,
+          visited,
+          depth: depth + 1,
+          maxPages,
+        });
+        for (const url of childUrls) {
+          if (discoveredUrls.size >= maxPages) break;
+          discoveredUrls.add(url);
+        }
+      }
+      return [...discoveredUrls];
+    }
+
+    return locations.slice(0, maxPages);
   } catch {
-    // Ignore sitemap fetch error
+    // Ignore sitemap fetch/parse errors
+    return [];
   }
-  return discoveredUrls;
 }
 
 const HTML_ENTITY_MAP: Record<string, string> = {
@@ -1136,7 +1184,9 @@ export async function crawlSite(
             continue;
           }
           log(`Checking sitemap at ${sitemapTarget}...`, "info");
-          const sitemapUrls = await parseSitemap(sitemapTarget, domain, robots.crawlDelayMs);
+          const sitemapUrls = await parseSitemap(sitemapTarget, domain, robots.crawlDelayMs, {
+            isAllowed: (target) => isPathAllowed(target.pathname, robots),
+          });
           if (sitemapUrls.length > 0) {
             log(`Found ${sitemapUrls.length} URLs in sitemap (${sitemapTarget}).`, "info");
             for (const u of sitemapUrls) {
