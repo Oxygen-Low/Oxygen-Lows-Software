@@ -539,6 +539,16 @@ export const ko = {
     webDefenderFalseSensitiveFiles: "ê°€ì§œ ë¯¼ê°í•œ íŒŒì¼ (ë¯¸ë¼ í—ˆë‹ˆíŒŸ)",
     webDefenderFalseSensitiveFilesDesc:
       "ë¯¼ê°í•œ íŒŒì¼ ìš”ì²­ì— ëŒ€í•´ í‘œì¤€ 403 ì°¨ë‹¨ íŽ˜ì´ì§€ ëŒ€ì‹  ê°€ì§œ ìžê²© ì¦ëª…ê³¼ ëª¨ì˜ ì„¤ì •ì„ ë°˜í™˜í•˜ì—¬ ê³µê²©ìžë¥¼ ì†ìž…ë‹ˆë‹¤.",
+    webDefenderDecoyRandomize: "앱별 고유 디코이 페르소나",
+    webDefenderDecoyRandomizeDesc:
+      "앱별로 안정적인 가짜 조직과 자격 증명 세트를 생성하여 디코이는 일관되게 유지하면서 앱마다 다르게 만듭니다.",
+    webDefenderDecoyIncludeCanary: "카나리 마커 포함",
+    webDefenderDecoyIncludeCanaryDesc:
+      "유출된 자격 증명을 이 허니팟까지 추적할 수 있도록 디코이 파일에 연관 가능한 서비스 토큰을 포함합니다.",
+    webDefenderDecoySeed: "디코이 교체 시드",
+    webDefenderDecoySeedPlaceholder: "선택 사항, 예: 2026-02",
+    webDefenderDecoySeedDesc:
+      "이 값을 변경하면 이 앱에 생성된 모든 디코이 자격 증명이 교체됩니다.",
     webDefenderAutoBlockSensitivePaths: "ë°˜ë³µ íƒìƒ‰ ì‹œ IP ìžë™ ì°¨ë‹¨",
     webDefenderAutoBlockSensitivePathsDesc:
       "ì§§ì€ ì‹œê°„ ë‚´ì— ë¯¼ê°í•œ ê²½ë¡œ ì ‘ê·¼ì„ ë°˜ë³µ ì‹œë„í•œ IPë¥¼ ì• í”Œë¦¬ì¼€ì´ì…˜ ì „ì²´ì—ì„œ ìžë™ìœ¼ë¡œ ì°¨ë‹¨í•©ë‹ˆë‹¤.",

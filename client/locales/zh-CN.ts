@@ -519,6 +519,16 @@ export const zhCN = {
     webDefenderFalseSensitiveFiles: "è™šå‡æ•æ„Ÿæ–‡ä»¶ï¼ˆè¯±é¥µèœœç½ï¼‰",
     webDefenderFalseSensitiveFilesDesc:
       "å¯¹æ•æ„Ÿæ–‡ä»¶è¯·æ±‚è¿”å›žé€¼çœŸçš„è™šå‡å‡­æ®å’Œæ¨¡æ‹Ÿé…ç½®ï¼Œè€Œéžæ ‡å‡†çš„ 403 æ‹¦æˆªé¡µé¢ï¼Œä»Žè€Œè¿·æƒ‘æ”»å‡»è€…ã€‚",
+    webDefenderDecoyRandomize: "每个应用独立的诱饵身份",
+    webDefenderDecoyRandomizeDesc:
+      "基于应用生成稳定且专属的虚假组织和凭据集，使诱饵保持一致，同时在不同应用间有所区别。",
+    webDefenderDecoyIncludeCanary: "嵌入金丝雀标记",
+    webDefenderDecoyIncludeCanaryDesc:
+      "在诱饵文件中包含可关联的服务令牌，以便将泄露的凭据追溯到此蜜罐。",
+    webDefenderDecoySeed: "诱饵轮换种子",
+    webDefenderDecoySeedPlaceholder: "可选，例如 2026-02",
+    webDefenderDecoySeedDesc:
+      "更改此值可轮换此应用生成的所有诱饵凭据。",
     webDefenderAutoBlockSensitivePaths: "é‡å¤æŽ¢æµ‹æ—¶è‡ªåŠ¨å°ç¦ IP",
     webDefenderAutoBlockSensitivePathsDesc:
       "åœ¨çŸ­æ—¶é—´å†…å¤šæ¬¡å°è¯•è®¿é—®æ•æ„Ÿè·¯å¾„æ—¶ï¼Œè‡ªåŠ¨åœ¨æ•´ä¸ªåº”ç”¨ç¨‹åºä¸­å°ç¦è¯¥ IPã€‚",

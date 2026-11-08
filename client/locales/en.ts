@@ -546,6 +546,16 @@ export const en = {
     webDefenderFalseSensitiveFiles: "False Sensitive Files (Decoy Honeypots)",
     webDefenderFalseSensitiveFilesDesc:
       "Return realistic decoy credentials and dummy configs for sensitive file requests instead of standard 403 blocked pages, keeping attackers misled.",
+    webDefenderDecoyRandomize: "Unique Decoy Persona per App",
+    webDefenderDecoyRandomizeDesc:
+      "Derive a stable, app-specific fake organization and credential set so decoys stay consistent while differing between apps.",
+    webDefenderDecoyIncludeCanary: "Embed Canary Marker",
+    webDefenderDecoyIncludeCanaryDesc:
+      "Include a correlatable service token in decoy files so leaked credentials can be traced back to this honeypot.",
+    webDefenderDecoySeed: "Decoy Rotation Seed",
+    webDefenderDecoySeedPlaceholder: "Optional, e.g. 2026-02",
+    webDefenderDecoySeedDesc:
+      "Change this value to rotate all generated decoy credentials for this app.",
     webDefenderAutoBlockSensitivePaths: "Auto-block IP on Repeated Probes",
     webDefenderAutoBlockSensitivePathsDesc:
       "Automatically ban an IP across all application requests after repeated sensitive path attempts within a short time window.",

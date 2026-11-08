@@ -254,4 +254,67 @@ describe("False Sensitive Files (Decoy Honeypots)", () => {
     expressClient.destroy();
     cfDefender.client.destroy();
   });
+
+  it("applies decoy headers and omits bodies for HEAD requests", async () => {
+    // 1. Express
+    const expressClient = new DefenderClient({ apiKey: "", offlineMode: true });
+    (expressClient as any).appConfig = { ...baseConfig };
+    const expressMiddleware = createExpressMiddleware(expressClient);
+
+    let expressStatus = 0;
+    let expressEnded = false;
+    let expressSent: any = null;
+    const expressHeaders: Record<string, string> = {};
+    const mockExpressReq = {
+      path: "/.env",
+      method: "HEAD",
+      headers: { "x-forwarded-for": "192.0.2.30" },
+      query: {},
+      body: "",
+    };
+    const mockExpressRes = {
+      setHeader: (k: string, v: string) => {
+        expressHeaders[k] = v;
+      },
+      status: (code: number) => {
+        expressStatus = code;
+        return {
+          send: (body: any) => {
+            expressSent = body;
+          },
+          end: () => {
+            expressEnded = true;
+          },
+        };
+      },
+    };
+
+    await expressMiddleware(mockExpressReq, mockExpressRes, () => {});
+
+    expect(expressStatus).toBe(200);
+    expect(expressEnded).toBe(true);
+    expect(expressSent).toBeNull();
+    expect(expressHeaders["Cache-Control"]).toBe("no-store");
+    expect(expressHeaders["X-Content-Type-Options"]).toBe("nosniff");
+    expect(expressHeaders["Content-Length"]).toBeTruthy();
+    expect(expressHeaders["Content-Type"]).toContain("text/plain");
+
+    // 2. Cloudflare
+    const cfDefender = createCloudflareDefender({ apiKey: "test", offlineMode: true });
+    (cfDefender.client as any).appConfig = { ...baseConfig };
+    const mockCfReq = new Request("https://example.com/.env", {
+      method: "HEAD",
+      headers: { "cf-connecting-ip": "192.0.2.31" },
+    });
+    const cfResponse = await cfDefender.protect(mockCfReq);
+
+    expect(cfResponse?.status).toBe(200);
+    expect(cfResponse?.headers.get("Cache-Control")).toBe("no-store");
+    expect(cfResponse?.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(cfResponse?.headers.get("Content-Length")).toBeTruthy();
+    expect(await cfResponse?.text()).toBe("");
+
+    expressClient.destroy();
+    cfDefender.client.destroy();
+  });
 });

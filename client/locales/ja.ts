@@ -543,6 +543,16 @@ export const ja = {
     webDefenderFalseSensitiveFiles: "å½ã®æ©Ÿå¯†ãƒ•ã‚¡ã‚¤ãƒ«ï¼ˆãŠã¨ã‚Šãƒãƒ‹ãƒ¼ãƒãƒƒãƒˆï¼‰",
     webDefenderFalseSensitiveFilesDesc:
       "æ©Ÿå¯†ãƒ•ã‚¡ã‚¤ãƒ«ã¸ã®ãƒªã‚¯ã‚¨ã‚¹ãƒˆã«å¯¾ã—ã¦é€šå¸¸ã®403ãƒ–ãƒ­ãƒƒã‚¯ã®ä»£ã‚ã‚Šã«å½ã®èªè¨¼æƒ…å ±ã‚„ãƒ€ãƒŸãƒ¼è¨­å®šã‚’è¿”ã—ã€æ”»æ’ƒè€…ã‚’æ¬ºãã¾ã™ã€‚",
+    webDefenderDecoyRandomize: "アプリごとに固有のデコイペルソナ",
+    webDefenderDecoyRandomizeDesc:
+      "アプリ固有の偽組織と認証情報セットを安定的に生成し、デコイの一貫性を保ちながらアプリ間で異なる内容にします。",
+    webDefenderDecoyIncludeCanary: "カナリアマーカーを埋め込む",
+    webDefenderDecoyIncludeCanaryDesc:
+      "デコイファイルに関連付け可能なサービストークンを含め、漏洩した認証情報をこのハニーポットまで追跡できるようにします。",
+    webDefenderDecoySeed: "デコイローテーションシード",
+    webDefenderDecoySeedPlaceholder: "任意、例: 2026-02",
+    webDefenderDecoySeedDesc:
+      "この値を変更すると、このアプリで生成されるすべてのデコイ認証情報がローテーションされます。",
     webDefenderAutoBlockSensitivePaths: "ãƒ—ãƒ­ãƒ¼ãƒ–åå¾©æ™‚ã®IPè‡ªå‹•ãƒ–ãƒ­ãƒƒã‚¯",
     webDefenderAutoBlockSensitivePathsDesc:
       "çŸ­æ™‚é–“å†…ã«æ©Ÿå¯†ãƒ‘ã‚¹ã¸ã®ã‚¢ã‚¯ã‚»ã‚¹è©¦è¡Œã‚’ç¹°ã‚Šè¿”ã—ãŸIPã‚’ã€ã‚¢ãƒ—ãƒªå…¨ä½“ã§è‡ªå‹•çš„ã«ãƒ–ãƒ­ãƒƒã‚¯ã—ã¾ã™ã€‚",

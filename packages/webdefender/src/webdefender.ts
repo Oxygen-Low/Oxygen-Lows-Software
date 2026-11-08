@@ -49,6 +49,10 @@ export interface RequestResult {
   isDecoy?: boolean;
   decoyContent?: string;
   decoyContentType?: string;
+  decoyHeaders?: Record<string, string>;
+  decoyTemplateId?: string;
+  decoyKind?: string;
+  decoyPersonaId?: string;
 }
 
 class RouteTrieNode {
@@ -180,6 +184,11 @@ export class DefenderClient {
         this.config.falseSensitiveFiles ??
         cfg.false_sensitive_files ??
         true,
+      decoyRandomize:
+        this.config.decoyRandomize ?? cfg.decoy_randomize ?? true,
+      decoySeed: this.config.decoySeed ?? cfg.decoy_seed ?? "",
+      decoyIncludeCanary:
+        this.config.decoyIncludeCanary ?? cfg.decoy_include_canary ?? true,
       blockTor: cfg.block_tor ?? true,
       blockVpn: cfg.block_vpn ?? true,
       blockCountries: cfg.block_countries ?? [],
@@ -564,6 +573,10 @@ export class DefenderClient {
       path: event.path,
       blocked: event.blocked,
       status: event.status || (event.blocked ? "blocked" : "allowed"),
+      reason: event.reason || null,
+      decoyKind: event.decoyKind || null,
+      decoyTemplate: event.decoyTemplate || null,
+      personaId: event.personaId || null,
       requestBodySnippet: req?.body ? req.body.substring(0, 500) : null,
     };
 
@@ -712,16 +725,25 @@ export class DefenderClient {
           this.appConfig.blockModeEnabled && !this.config.logOnly;
 
         if (this.appConfig.falseSensitiveFiles && isBlockMode) {
-          const decoy = generateDecoyContent(path, sensitiveMatch.category);
+          const decoy = generateDecoyContent(path, sensitiveMatch.category, {
+            appId: this.appConfig.appId,
+            seed: this.appConfig.decoySeed,
+            randomize: this.appConfig.decoyRandomize,
+            includeCanary: this.appConfig.decoyIncludeCanary,
+          });
+          const decoyReason = `Sensitive path intercepted with false credentials: ${sensitiveMatch.path} (category: ${sensitiveMatch.category})`;
           const logPromise = this.logEvent(
             {
               type: "sensitive_path",
               ip,
               method,
               path,
-              reason: `Sensitive path intercepted with false credentials: ${sensitiveMatch.path} (category: ${sensitiveMatch.category})`,
+              reason: decoyReason,
               blocked: false,
               status: "decoy",
+              decoyKind: decoy.templateKind,
+              decoyTemplate: decoy.templateId,
+              personaId: decoy.personaId,
             },
             req,
           );
@@ -731,16 +753,24 @@ export class DefenderClient {
             isDecoy: true,
             decoyContent: decoy.content,
             decoyContentType: decoy.contentType,
-            statusCode: 200,
+            decoyHeaders: decoy.headers,
+            decoyTemplateId: decoy.templateId,
+            decoyKind: decoy.templateKind,
+            decoyPersonaId: decoy.personaId,
+            statusCode: decoy.statusCode ?? 200,
             eventType: "sensitive_path",
             reason: `Sensitive path probe decoy served: ${sensitiveMatch.path}`,
             logPromise: logPromise instanceof Promise ? logPromise : undefined,
           };
-        } else if (!this.appConfig.falseSensitiveFiles) {
+        } else if (isBlockMode) {
           fail(
             "sensitive_path",
             `Sensitive path probe detected: ${sensitiveMatch.path} (category: ${sensitiveMatch.category})`,
           );
+        } else {
+          // Log-only / block mode disabled: surface the probe without blocking.
+          eventType = "sensitive_path";
+          blockReason = `Sensitive path probe detected (log only): ${sensitiveMatch.path} (category: ${sensitiveMatch.category})`;
         }
       }
     }

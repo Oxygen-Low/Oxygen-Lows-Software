@@ -246,6 +246,9 @@ type AppConfig = {
   sensitive_path_window_seconds: number;
   sensitive_path_ban_duration_seconds: number;
   false_sensitive_files?: boolean;
+  decoy_randomize?: boolean;
+  decoy_seed?: string;
+  decoy_include_canary?: boolean;
   block_tor: boolean;
   block_vpn: boolean;
   ddos_protection: boolean;
@@ -1908,6 +1911,10 @@ const defaultDefenderConfig: AppConfig = {
   sensitive_path_threshold: 3,
   sensitive_path_window_seconds: 20,
   sensitive_path_ban_duration_seconds: 600,
+  false_sensitive_files: true,
+  decoy_randomize: true,
+  decoy_seed: "",
+  decoy_include_canary: true,
   block_tor: true,
   block_vpn: true,
   ddos_protection: true,
@@ -1983,6 +1990,9 @@ export function SettingsTab({
   const [uniqueIpCooldownInput, setUniqueIpCooldownInput] = useState<string>(() =>
     String(getAppConfig(app.defender_config).unique_ip_cooldown_seconds ?? 300),
   );
+  const [decoySeedInput, setDecoySeedInput] = useState<string>(() =>
+    String(getAppConfig(app.defender_config).decoy_seed ?? ""),
+  );
   const [newKey, setNewKey] = useState<string | null>(null);
   const [isRotating, setIsRotating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -2049,6 +2059,14 @@ export function SettingsTab({
     }
   };
 
+  const handleSaveDecoySeed = () => {
+    const trimmed = decoySeedInput.trim().slice(0, 128);
+    if (trimmed !== (config.decoy_seed ?? "")) {
+      setDecoySeedInput(trimmed);
+      updateConfig({ decoy_seed: trimmed });
+    }
+  };
+
   useEffect(() => {
     const updated = getAppConfig(app.defender_config);
     setConfig(updated);
@@ -2066,6 +2084,7 @@ export function SettingsTab({
     setBatchIntervalInput(String(batchInterval));
     const ipCooldown = updated.unique_ip_cooldown_seconds ?? 300;
     setUniqueIpCooldownInput(String(ipCooldown));
+    setDecoySeedInput(String(updated.decoy_seed ?? ""));
   }, [app.defender_config]);
 
   const updateConfig = async (updates: Partial<AppConfig>) => {
@@ -2415,6 +2434,94 @@ export function SettingsTab({
               />
             </div>
           ))}
+
+          {config.false_sensitive_files !== false && (
+            <div className="space-y-4 rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-base text-white">
+                    {t(
+                      "apps.webDefenderDecoyRandomize",
+                      undefined,
+                      "Unique Decoy Persona per App",
+                    )}
+                  </Label>
+                  <p className="text-sm text-slate-400">
+                    {t(
+                      "apps.webDefenderDecoyRandomizeDesc",
+                      undefined,
+                      "Derive a stable, app-specific fake organization and credential set so decoys stay consistent while differing between apps.",
+                    )}
+                  </p>
+                </div>
+                <Switch
+                  checked={config.decoy_randomize !== false}
+                  onCheckedChange={(c) =>
+                    updateConfig({ decoy_randomize: c })
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-base text-white">
+                    {t(
+                      "apps.webDefenderDecoyIncludeCanary",
+                      undefined,
+                      "Embed Canary Marker",
+                    )}
+                  </Label>
+                  <p className="text-sm text-slate-400">
+                    {t(
+                      "apps.webDefenderDecoyIncludeCanaryDesc",
+                      undefined,
+                      "Include a correlatable service token in decoy files so leaked credentials can be traced back to this honeypot.",
+                    )}
+                  </p>
+                </div>
+                <Switch
+                  checked={config.decoy_include_canary !== false}
+                  onCheckedChange={(c) =>
+                    updateConfig({ decoy_include_canary: c })
+                  }
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-300">
+                  {t(
+                    "apps.webDefenderDecoySeed",
+                    undefined,
+                    "Decoy Rotation Seed",
+                  )}
+                </Label>
+                <Input
+                  value={decoySeedInput}
+                  onChange={(e) => setDecoySeedInput(e.target.value)}
+                  onBlur={handleSaveDecoySeed}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSaveDecoySeed();
+                    }
+                  }}
+                  placeholder={t(
+                    "apps.webDefenderDecoySeedPlaceholder",
+                    undefined,
+                    "Optional, e.g. 2026-02",
+                  )}
+                  className="bg-slate-950 border-slate-800 font-mono text-sm"
+                />
+                <p className="text-[11px] text-slate-500">
+                  {t(
+                    "apps.webDefenderDecoySeedDesc",
+                    undefined,
+                    "Change this value to rotate all generated decoy credentials for this app.",
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
 
           <Separator className="bg-slate-800" />
 

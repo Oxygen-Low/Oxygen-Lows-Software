@@ -61,11 +61,12 @@ export async function createDefender(
       const result = await client.handleRequest(reqInfo);
 
       if (result.isDecoy) {
-        const headers: Record<string, string> = {};
-        if (result.decoyContentType) {
+        const headers: Record<string, string> = { ...(result.decoyHeaders || {}) };
+        if (result.decoyContentType && !headers["Content-Type"]) {
           headers["Content-Type"] = result.decoyContentType;
         }
-        return c.body(result.decoyContent ?? "", result.statusCode || 200, headers);
+        const body = c.req.method === "HEAD" ? "" : (result.decoyContent ?? "");
+        return c.body(body, result.statusCode || 200, headers);
       }
 
       if (result.blocked) {

@@ -183,11 +183,14 @@ export function createCloudflareDefender(
       }
 
       if (result.isDecoy) {
-        const responseHeaders: Record<string, string> = {};
-        if (result.decoyContentType) {
+        const responseHeaders: Record<string, string> = {
+          ...(result.decoyHeaders || {}),
+        };
+        if (result.decoyContentType && !responseHeaders["Content-Type"]) {
           responseHeaders["Content-Type"] = result.decoyContentType;
         }
-        return new Response(result.decoyContent ?? "", {
+        const body = request.method === "HEAD" ? null : (result.decoyContent ?? "");
+        return new Response(body, {
           status: result.statusCode || 200,
           headers: responseHeaders,
         });

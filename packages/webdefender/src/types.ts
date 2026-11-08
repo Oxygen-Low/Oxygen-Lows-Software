@@ -13,6 +13,9 @@ export interface DefenderConfig {
   sensitivePathWindowSeconds?: number;
   sensitivePathBanDurationSeconds?: number;
   falseSensitiveFiles?: boolean; // When true, returns fake credentials/information for sensitive file probes instead of 403 blocks
+  decoyRandomize?: boolean; // Generate a unique but stable persona per app (default true)
+  decoySeed?: string; // Optional rotation seed for the decoy persona
+  decoyIncludeCanary?: boolean; // Embed a correlatable canary marker in decoys (default true)
   batchLogging?: boolean;
   batchLoggingIntervalSeconds?: number;
   onlyLogThreats?: boolean;
@@ -32,6 +35,9 @@ export interface BlockedEvent {
   reason: string;
   blocked: boolean;
   status?: string;
+  decoyKind?: string;
+  decoyTemplate?: string;
+  personaId?: string;
 }
 
 export type EventType =
@@ -89,6 +95,9 @@ export interface AppConfig {
   sensitivePathWindowSeconds: number;
   sensitivePathBanDurationSeconds: number;
   falseSensitiveFiles: boolean;
+  decoyRandomize: boolean;
+  decoySeed: string;
+  decoyIncludeCanary: boolean;
   blockTor: boolean;
   blockVpn: boolean;
   blockCountries: string[];

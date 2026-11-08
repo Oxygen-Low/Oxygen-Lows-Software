@@ -517,6 +517,10 @@ defenderRouter.post("/event", eventLimiter, requireApiKey, async (c) => {
       path: item.path,
       blocked: Boolean(item.blocked),
       status: item.status || (item.blocked ? "blocked" : "allowed"),
+      reason: item.reason || null,
+      decoy_kind: item.decoyKind || null,
+      decoy_template: item.decoyTemplate || null,
+      persona_id: item.personaId || null,
       request_body_snippet: item.requestBodySnippet || null,
       created_at: now,
     };
@@ -645,6 +649,9 @@ defenderRouter.post("/apps", uiLimiter, requireAuth, async (c) => {
     sensitive_path_window_seconds: 20,
     sensitive_path_ban_duration_seconds: 600,
     false_sensitive_files: true,
+    decoy_randomize: true,
+    decoy_seed: "",
+    decoy_include_canary: true,
     block_tor: true,
     block_vpn: true,
     block_countries: [],
@@ -794,6 +801,9 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
     "sensitive_path_window_seconds",
     "sensitive_path_ban_duration_seconds",
     "false_sensitive_files",
+    "decoy_randomize",
+    "decoy_seed",
+    "decoy_include_canary",
     "block_tor",
     "block_vpn",
     "block_countries",
@@ -848,9 +858,13 @@ defenderRouter.put("/apps/:id/config", uiLimiter, requireAuth, async (c) => {
       } else if (
         key === "batch_logging_enabled" ||
         key === "only_log_threats" ||
-        key === "log_unique_ips_only"
+        key === "log_unique_ips_only" ||
+        key === "decoy_randomize" ||
+        key === "decoy_include_canary"
       ) {
         updatePayload[key] = Boolean(body[key]);
+      } else if (key === "decoy_seed") {
+        updatePayload[key] = String(body[key] ?? "").trim().slice(0, 128);
       } else if (key === "allowlist_ips" || key === "block_ips" || key === "block_countries") {
         updatePayload[key] = Array.isArray(body[key])
           ? body[key].map((item: any) => String(item).trim()).filter(Boolean)

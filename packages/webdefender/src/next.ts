@@ -58,11 +58,12 @@ export function createNextDefender(config: DefenderConfig) {
       const result = await client.handleRequest(reqInfo);
 
       if (result.isDecoy) {
-        const headers: Record<string, string> = {};
-        if (result.decoyContentType) {
+        const headers: Record<string, string> = { ...(result.decoyHeaders || {}) };
+        if (result.decoyContentType && !headers["Content-Type"]) {
           headers["Content-Type"] = result.decoyContentType;
         }
-        return new NextResponse(result.decoyContent ?? "", {
+        const body = request.method === "HEAD" ? null : (result.decoyContent ?? "");
+        return new NextResponse(body, {
           status: result.statusCode || 200,
           headers,
         });

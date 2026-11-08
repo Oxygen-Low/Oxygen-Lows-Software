@@ -58,10 +58,19 @@ export function createExpressMiddleware(client: DefenderClient) {
       const result = await client.handleRequest(defenderReq);
 
       if (result.isDecoy) {
-        if (result.decoyContentType) {
+        if (result.decoyHeaders) {
+          for (const [key, value] of Object.entries(result.decoyHeaders)) {
+            res.setHeader(key, value);
+          }
+        }
+        if (result.decoyContentType && !result.decoyHeaders?.["Content-Type"]) {
           res.setHeader("Content-Type", result.decoyContentType);
         }
-        return res.status(result.statusCode || 200).send(result.decoyContent ?? "");
+        const status = result.statusCode || 200;
+        if (req.method === "HEAD") {
+          return res.status(status).end();
+        }
+        return res.status(status).send(result.decoyContent ?? "");
       }
 
       if (result.blocked) {

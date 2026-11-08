@@ -143,6 +143,9 @@ export default {
 | `syncIntervalMs` | `number`   | `60000`      | Interval in ms to automatically sync security configuration from the dashboard. Set to 0 to disable. |
 | `onBlocked`      | `function` | `undefined`  | Callback fired when a request is blocked locally.                                                    |
 | `onError`        | `function` | `undefined`  | Callback fired when an internal defender error occurs.                                               |
+| `decoyRandomize` | `boolean`  | `true`       | Generate a unique but stable decoy persona per app. Disable to share one deterministic persona.     |
+| `decoySeed`      | `string`   | `""`         | Optional rotation seed for the decoy persona. Change it to rotate all generated decoy credentials.   |
+| `decoyIncludeCanary` | `boolean` | `true`    | Embed a correlatable canary service token in decoy files to trace leaked credentials.                |
 
 ## How it works
 
@@ -158,7 +161,7 @@ On every incoming request, it executes the following pipeline:
 6. **Known Threat Actor Check**: Cross-references with real-time threat intelligence feeds.
 7. **Bot Detection**: Scans the User-Agent string against known bot signatures.
 8. **Threat & Injection Scanning**: Analyzes the request method, path, query parameters, headers, and body for SQLi, Shell Injection, Path Traversal, SSRF, XSS, NoSQL injection, and Prototype Pollution.
-9. **Sensitive Path Auto-Block**: Detects probes to credentials, config files, and debug endpoints.
+9. **Sensitive Path Auto-Block & Decoys**: Detects probes to credentials, config files, and debug endpoints. When enabled, returns realistic, per-app fake credentials and configuration files instead of a blocked page.
 10. **DDoS Protection**: Enforces global API rate limits (returns HTTP 429 with IETF rate-limit headers).
 11. **Route Rate Limiting**: Applies route-specific token-bucket rate limiting based on central configuration (returns HTTP 429 with IETF rate-limit headers).
 

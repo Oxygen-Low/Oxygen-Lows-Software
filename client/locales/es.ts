@@ -552,6 +552,16 @@ export const es = {
     webDefenderFalseSensitiveFiles: "Archivos confidenciales falsos (SeÃ±uelos Honeypot)",
     webDefenderFalseSensitiveFilesDesc:
       "Devuelve credenciales ficticias y configuraciones simuladas realistas en lugar de pÃ¡ginas bloqueadas 403 para engaÃ±ar a los atacantes.",
+    webDefenderDecoyRandomize: "Persona señuelo única por aplicación",
+    webDefenderDecoyRandomizeDesc:
+      "Genera una organización falsa y un conjunto de credenciales estables y específicos de cada aplicación para que los señuelos sean coherentes pero distintos entre aplicaciones.",
+    webDefenderDecoyIncludeCanary: "Incrustar marcador canario",
+    webDefenderDecoyIncludeCanaryDesc:
+      "Incluye un token de servicio correlacionable en los archivos señuelo para rastrear credenciales filtradas hasta este honeypot.",
+    webDefenderDecoySeed: "Semilla de rotación de señuelos",
+    webDefenderDecoySeedPlaceholder: "Opcional, p. ej. 2026-02",
+    webDefenderDecoySeedDesc:
+      "Cambia este valor para rotar todas las credenciales señuelo generadas para esta aplicación.",
     webDefenderAutoBlockSensitivePaths: "Bloqueo automÃ¡tico de IP por sondeos repetidos",
     webDefenderAutoBlockSensitivePathsDesc:
       "Bloquea automÃ¡ticamente una IP en todas las solicitudes tras repetidos intentos de acceso a rutas confidenciales.",
