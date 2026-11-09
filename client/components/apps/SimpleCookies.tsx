@@ -41,6 +41,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+} from "recharts";
+import {
   Cookie,
   Copy,
   ArrowLeft,
@@ -52,6 +61,7 @@ import {
   X,
   RefreshCw,
   ScanSearch,
+  Eye,
 } from "lucide-react";
 
 type Project = {
@@ -494,13 +504,16 @@ function ProjectDashboard({
   const [isScanning, setIsScanning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [rotatedKey, setRotatedKey] = useState<string | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleteText, setDeleteText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const load = useCallback(async () => {
     try {
       setIsLoading(true);
       const [projRes, consRes, statsRes] = await Promise.all([
         authFetch(`/api/simplecookies/projects/${projectId}`),
-        authFetch(`/api/simplecookies/projects/${projectId}/consents?limit=100`).catch(() => ({
+        authFetch(`/api/simplecookies/projects/${projectId}/consents?limit=200`).catch(() => ({
           json: async () => ({ consents: [] }),
         })),
         authFetch(`/api/simplecookies/projects/${projectId}/stats`).catch(() => ({
@@ -604,6 +617,53 @@ function ProjectDashboard({
     ];
   }, [consents, stats, declaration, draft, t]);
 
+  // Heartbeat: consent activity per hour over the last 24h (like WebDefender's traffic chart).
+  const consentChartData = useMemo(() => {
+    const buckets = new Map<string, { name: string; accepted: number; rejected: number }>();
+    const now = Date.now();
+    for (let i = 23; i >= 0; i--) {
+      const d = new Date(now - i * 3600000);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`;
+      if (!buckets.has(key)) buckets.set(key, { name: `${d.getHours()}:00`, accepted: 0, rejected: 0 });
+    }
+    for (const c of consents) {
+      const end = new Date(c.created_at).getTime();
+      if (Number.isNaN(end) || now - end > 24 * 3600000) continue;
+      const d = new Date(end);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`;
+      const bucket = buckets.get(key);
+      if (!bucket) continue;
+      const fullyAccepted = c.preferences && c.statistics && c.marketing && c.custom;
+      if (fullyAccepted) bucket.accepted++;
+      else bucket.rejected++;
+    }
+    return [...buckets.values()];
+  }, [consents]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of consents) {
+      for (const key of CATEGORY_KEYS) {
+        if ((c as any)[key]) counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [consents]);
+
+  const handleDeleteProject = async () => {
+    if (!project) return;
+    setIsDeleting(true);
+    try {
+      await authFetch(`/api/simplecookies/projects/${projectId}`, { method: "DELETE" });
+      toast.success(t("simpleCookies.deleted", undefined, "Project deleted."));
+      onBack();
+    } catch {
+      toast.error(t("simpleCookies.deleteFailed", undefined, "Failed to delete project."));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (isLoading && !project) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -623,10 +683,23 @@ function ProjectDashboard({
           </Button>
           <h2 className="text-xl sm:text-2xl font-bold text-white">{project.name}</h2>
         </div>
-        <Button variant="outline" size="sm" onClick={load}>
-          <RefreshCw className="w-4 h-4 mr-2" />
-          {t("common.refresh", undefined, "Refresh")}
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={load}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            {t("common.refresh", undefined, "Refresh")}
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => {
+              setDeleteText("");
+              setIsDeleteOpen(true);
+            }}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            {t("simpleCookies.deleteButton", undefined, "Delete")}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 shrink-0">
@@ -648,11 +721,97 @@ function ProjectDashboard({
             <TabsTrigger value="declaration">{t("simpleCookies.tabDeclaration", undefined, "Cookies")}</TabsTrigger>
             <TabsTrigger value="consents">{t("simpleCookies.tabConsents", undefined, "Consents")}</TabsTrigger>
             <TabsTrigger value="settings">{t("simpleCookies.tabSettings", undefined, "Settings")}</TabsTrigger>
+            <TabsTrigger value="preview">
+              <Eye className="w-4 h-4 mr-1.5" />
+              {t("simpleCookies.tabPreview", undefined, "Preview")}
+            </TabsTrigger>
           </TabsList>
         </div>
 
         <div className="flex-1 overflow-auto mt-6">
           <TabsContent value="overview" className="m-0 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <Card className="bg-slate-900 border-slate-800">
+                  <CardHeader>
+                    <CardTitle>{t("simpleCookies.consentActivity", undefined, "Consent Activity (24h)")}</CardTitle>
+                    <CardDescription>
+                      {t("simpleCookies.consentActivityDesc", undefined, "Accepted (all categories) vs partial / rejected consents per hour.")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {consents.length === 0 ? (
+                      <div className="text-center text-slate-500 py-8">
+                        {t("simpleCookies.noConsents", undefined, "No consents logged yet.")}
+                      </div>
+                    ) : (
+                      <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart
+                            data={consentChartData}
+                            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                          >
+                            <defs>
+                              <linearGradient id="scColorAccepted" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                              </linearGradient>
+                              <linearGradient id="scColorRejected" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                            <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                            <RechartsTooltip
+                              contentStyle={{ backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: "8px" }}
+                              itemStyle={{ color: "#e2e8f0" }}
+                            />
+                            <Area type="monotone" dataKey="accepted" name={t("simpleCookies.accepted", undefined, "Accepted")} stroke="#10b981" fillOpacity={1} fill="url(#scColorAccepted)" />
+                            <Area type="monotone" dataKey="rejected" name={t("simpleCookies.rejected", undefined, "Rejected / partial")} stroke="#f43f5e" fillOpacity={1} fill="url(#scColorRejected)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="space-y-6">
+                <Card className="bg-slate-900 border-slate-800">
+                  <CardHeader>
+                    <CardTitle className="text-lg">{t("simpleCookies.categoryBreakdown", undefined, "Category breakdown")}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {categoryCounts.length === 0 ? (
+                      <div className="text-center text-slate-500 py-8">
+                        {t("simpleCookies.noConsents", undefined, "No consents logged yet.")}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {categoryCounts.map(([category, count]) => {
+                          const max = categoryCounts[0][1] || 1;
+                          const pct = Math.round((count / max) * 100);
+                          return (
+                            <div key={category}>
+                              <div className="flex items-center justify-between text-sm mb-1">
+                                <span className="capitalize text-slate-300">{category}</span>
+                                <span className="font-mono text-slate-300">{count}</span>
+                              </div>
+                              <div className="h-2 rounded-full bg-slate-800">
+                                <div className="h-2 rounded-full bg-cyan-500" style={{ width: `${pct}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
             <Card className="bg-slate-900 border-slate-800">
               <CardHeader>
                 <CardTitle>{t("simpleCookies.installation", undefined, "Installation")}</CardTitle>
@@ -671,7 +830,7 @@ function ProjectDashboard({
                   {`<script src="https://oxygenlow.com/simplecookies.js" data-api-key="sk_..." defer></script>`}
                 </pre>
                 <Alert className="bg-slate-950 border-slate-800">
-                  <Cookie className="h-4 w-4 text-amber-500" />
+                  <Cookie className="h-4 w-4 text-cyan-500" />
                   <AlertTitle>{t("simpleCookies.scannerNote", undefined, "Auto-scanner")}</AlertTitle>
                   <AlertDescription className="text-slate-400">
                     {t("simpleCookies.scannerNoteDesc", undefined, "Use the Cookies tab to scan a public URL and generate the declaration. Static scan infers JS cookies from tracker scripts — review before publishing.")}
@@ -912,9 +1071,240 @@ function ProjectDashboard({
                 </p>
               </CardContent>
             </Card>
+
+            <Card className="border-rose-500/30 bg-slate-900">
+              <CardHeader>
+                <CardTitle className="text-rose-500">{t("simpleCookies.dangerZone", undefined, "Danger zone")}</CardTitle>
+                <CardDescription>
+                  {t("simpleCookies.dangerZoneDesc", undefined, "Deleting this project cannot be undone.")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    setDeleteText("");
+                    setIsDeleteOpen(true);
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {t("simpleCookies.deleteProject", undefined, "Delete project")}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="preview" className="m-0 space-y-4">
+            <BannerPreview draft={draft} />
           </TabsContent>
         </div>
       </Tabs>
+
+      <Dialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+      >
+        <DialogContent className="sm:max-w-md bg-slate-950 border-slate-800">
+          <DialogHeader>
+            <DialogTitle>{t("simpleCookies.deleteTitle", undefined, "Delete Project")}</DialogTitle>
+            <DialogDescription>
+              {t(
+                "simpleCookies.deleteDesc",
+                undefined,
+                "This permanently deletes the project, its config, declaration, and consent log.",
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>
+                {t("simpleCookies.typeToConfirm", undefined, "Type")}{" "}
+                <strong className="text-white">{project.name}</strong>
+                {" "}
+                {t("simpleCookies.toConfirm", undefined, "to confirm")}
+              </Label>
+              <Input
+                value={deleteText}
+                onChange={(e) => setDeleteText(e.target.value)}
+                className="bg-slate-900 border-slate-800"
+                placeholder={project.name}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>
+                {t("common.cancel", undefined, "Cancel")}
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteProject}
+                disabled={deleteText !== project.name || isDeleting}
+              >
+                {isDeleting
+                  ? t("simpleCookies.deleting", undefined, "Deleting...")
+                  : t("simpleCookies.deleteButton", undefined, "Delete")}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+function BannerPreview({ draft }: { draft: Record<string, any> }) {
+  const { t } = useTranslation();
+  const [customizing, setCustomizing] = useState(false);
+  const [toggles, setToggles] = useState<Record<string, boolean>>({
+    preferences: true,
+    statistics: false,
+    marketing: false,
+    custom: false,
+  });
+  const [acted, setActed] = useState<string | null>(null);
+  const position = (draft.position ?? "bottom") as string;
+  const categories = (draft.categories ?? {}) as Record<string, { label?: string; description?: string; enabled?: boolean }>;
+
+  const wrapperClass =
+    position === "top"
+      ? "justify-center items-start pt-4"
+      : position === "left"
+        ? "justify-start items-end pl-4"
+        : position === "right"
+          ? "justify-end items-end pr-4"
+          : position === "center"
+            ? "justify-center items-center"
+            : "justify-center items-end pb-4";
+
+  const previewAction = (action: string) => {
+    setActed(action);
+    toast.success(t("simpleCookies.previewToast", undefined, `Preview: “${action}” (not saved)`));
+  };
+
+  return (
+    <Card className="bg-slate-900 border-slate-800">
+      <CardHeader>
+        <CardTitle>{t("simpleCookies.previewTitle", undefined, "Banner preview")}</CardTitle>
+        <CardDescription>
+          {t("simpleCookies.previewDesc", undefined, "Live preview of your banner with unsaved changes. Buttons are for preview only.")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="rounded-xl border border-slate-800 bg-slate-950 overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-slate-800 px-4 py-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-500/70" />
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-500/70" />
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/70" />
+            <span className="ml-2 font-mono text-xs text-slate-500">
+              {(draft.domain as string | null) || "your-site.com"}
+            </span>
+            <Badge variant="outline" className="ml-auto text-[10px]">
+              {position}
+            </Badge>
+          </div>
+          <div className={cn("relative flex h-[420px] p-4", wrapperClass)}>
+            <div
+              className="w-full max-w-[560px] rounded-xl p-4 shadow-2xl"
+              style={{
+                background: draft.background ?? "#0f172a",
+                color: draft.text_color ?? "#f1f5f9",
+                fontFamily: "system-ui, sans-serif",
+                fontSize: "14px",
+                lineHeight: "1.5",
+              }}
+              role="dialog"
+              aria-live="polite"
+            >
+              <div className="mb-1.5 text-base font-bold">
+                {draft.title || t("simpleCookies.previewDefaultTitle", undefined, "We value your privacy")}
+              </div>
+              <div className="opacity-90">
+                {draft.text || t("simpleCookies.previewDefaultText", undefined, "We use cookies to improve your experience.")}
+              </div>
+
+              {customizing && (
+                <div className="mt-3 space-y-2">
+                  {CATEGORY_KEYS.map((key) => {
+                    const cat = categories[key];
+                    const visible = key === "necessary" || cat?.enabled !== false;
+                    if (!visible) return null;
+                    const checked = key === "necessary" ? true : Boolean(toggles[key]);
+                    return (
+                      <label key={key} className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={key === "necessary"}
+                          onChange={(e) => setToggles((v) => ({ ...v, [key]: e.target.checked }))}
+                          className="mt-1"
+                        />
+                        <span>
+                          <strong className="capitalize">{cat?.label || key}</strong>{" "}
+                          <span className="opacity-80">{cat?.description || ""}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => previewAction(draft.accept_label || "Accept all")}
+                  className="rounded-lg px-3.5 py-2 font-semibold"
+                  style={{ background: draft.accent ?? "#06b6d4", color: "#0b0f19", border: `1px solid ${draft.accent ?? "#06b6d4"}` }}
+                >
+                  {draft.accept_label || "Accept all"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => previewAction(draft.reject_label || "Reject all")}
+                  className="rounded-lg px-3.5 py-2 font-semibold bg-transparent"
+                  style={{ color: "inherit", border: "1px solid rgba(128,128,128,0.5)" }}
+                >
+                  {draft.reject_label || "Reject all"}
+                </button>
+                {draft.show_customize !== false && !customizing && (
+                  <button
+                    type="button"
+                    onClick={() => setCustomizing(true)}
+                    className="rounded-lg px-3.5 py-2 font-semibold bg-transparent"
+                    style={{ color: "inherit", border: "1px solid rgba(128,128,128,0.5)" }}
+                  >
+                    {draft.customize_label || "Customize"}
+                  </button>
+                )}
+                {customizing && (
+                  <button
+                    type="button"
+                    onClick={() => previewAction(draft.save_label || "Save selection")}
+                    className="rounded-lg px-3.5 py-2 font-semibold"
+                    style={{ background: draft.accent ?? "#06b6d4", color: "#0b0f19", border: `1px solid ${draft.accent ?? "#06b6d4"}` }}
+                  >
+                    {draft.save_label || "Save selection"}
+                  </button>
+                )}
+              </div>
+
+              {draft.show_powered_by !== false && (
+                <div className="mt-2 text-[11px] opacity-60">Powered by SimpleCookies</div>
+              )}
+              {acted && (
+                <div className="mt-2 flex items-center gap-1.5 text-xs opacity-80">
+                  <Check className="h-3.5 w-3.5" /> {acted}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <Alert className="bg-slate-950 border-slate-800">
+          <Eye className="h-4 w-4 text-cyan-500" />
+          <AlertTitle>{t("simpleCookies.previewTip", undefined, "Preview tip")}</AlertTitle>
+          <AlertDescription className="text-slate-400">
+            {t("simpleCookies.previewTipDesc", undefined, "Edit the Banner tab and return here — the preview updates instantly without saving.")}
+          </AlertDescription>
+        </Alert>
+      </CardContent>
+    </Card>
   );
 }
