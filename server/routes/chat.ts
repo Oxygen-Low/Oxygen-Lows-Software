@@ -21,6 +21,44 @@ import {
 
 export const chatRouter = new Hono();
 
+function isServerMemberOrPublic(server: any, userId: string): boolean {
+  return (
+    String(server.owner_id) === userId ||
+    (Array.isArray(server.members) &&
+      server.members.some((m: any) => String(m) === userId)) ||
+    server.is_public !== false
+  );
+}
+
+function isServerMember(server: any, userId: string): boolean {
+  return (
+    String(server.owner_id) === userId ||
+    (Array.isArray(server.members) &&
+      server.members.some((m: any) => String(m) === userId))
+  );
+}
+
+/** Resolve a channel's server. Returns { channel, server } or null. */
+function findChannelServer(channelId: string): { channel: any; server: any } | null {
+  const allChannels = (queryTable({ table: "chat_channels" }) as any[]) || [];
+  const channel = allChannels.find((ch: any) => ch.id === channelId);
+  if (!channel) return null;
+  const allServers = (queryTable({ table: "chat_servers" }) as any[]) || [];
+  const server = allServers.find((s: any) => s.id === channel.server_id);
+  if (!server) return null;
+  return { channel, server };
+}
+
+function isDmParticipant(dmId: string, userId: string): boolean {
+  const allDms = (queryTable({ table: "chat_dms" }) as any[]) || [];
+  const dm = allDms.find((d: any) => d.id === dmId);
+  return Boolean(
+    dm &&
+      Array.isArray(dm.participants) &&
+      dm.participants.some((p: any) => String(p) === userId),
+  );
+}
+
 // Auth helper
 async function authenticate(c: any) {
   const token =
@@ -137,6 +175,15 @@ chatRouter.post("/servers/:id/channels", async (c) => {
   if (!user) return c.json({ error: "Unauthorized" }, 401);
   const serverId = c.req.param("id");
 
+  // SECURITY: only a server owner/member may add channels (previously any
+  // authenticated user who guessed a srv_* id could inject channels).
+  const allServers = (queryTable({ table: "chat_servers" }) as any[]) || [];
+  const server = allServers.find((s: any) => s.id === serverId);
+  if (!server) return c.json({ error: "Server not found" }, 404);
+  if (!isServerMember(server, String(user.id))) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
   const body = await c.req.json();
   const name = (body.name || "new-channel").toLowerCase().replace(/\s+/g, "-");
   const type = body.type === "voice" ? "voice" : "text";
@@ -226,6 +273,22 @@ chatRouter.get("/messages", async (c) => {
 
   const targetId = c.req.query("targetId"); // channel_id or dm_id
   if (!targetId) return c.json({ error: "Missing targetId" }, 400);
+
+  // SECURITY: verify membership before disclosing messages (IDOR). Any
+  // authenticated user previously could read any DM/server channel by id.
+  const userId = String(user.id);
+  if (targetId.startsWith("dm_")) {
+    if (!isDmParticipant(targetId, userId)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+  } else if (targetId.startsWith("chan_")) {
+    const found = findChannelServer(targetId);
+    if (!found || !isServerMemberOrPublic(found.server, userId)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+  } else {
+    return c.json({ error: "Forbidden" }, 403);
+  }
 
   const allMessages = (queryTable({
     table: "chat_messages",
@@ -318,6 +381,14 @@ chatRouter.post("/messages", async (c) => {
     if (otherParticipant) {
       recipientUserId = String(otherParticipant);
     }
+  } else if (targetId.startsWith("chan_")) {
+    // SECURITY: channel posts require server membership (or a public server).
+    const found = findChannelServer(targetId);
+    if (!found || !isServerMemberOrPublic(found.server, userId)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+  } else {
+    return c.json({ error: "Forbidden" }, 403);
   }
 
   const message = {

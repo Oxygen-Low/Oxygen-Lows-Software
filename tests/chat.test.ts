@@ -253,7 +253,8 @@ describe("Chat Server Routes", () => {
     });
 
     it("automatically removes chat when a friend is blocked", async () => {
-      // Re-create friendship
+      // Re-create friendship via the legitimate consent flow: inserts are
+      // always stored "pending"; only the recipient may accept.
       const addRes = await app.request("/api/data/insert", {
         method: "POST",
         headers: {
@@ -265,11 +266,25 @@ describe("Chat Server Routes", () => {
           data: {
             user_id: userIdA,
             friend_id: userIdB,
-            status: "accepted",
+            status: "pending",
           },
         }),
       });
       expect(addRes.status).toBe(200);
+      const reCreatedId = (await addRes.json()).data.id;
+      const acceptRes = await app.request("/api/data/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tokenB}`,
+        },
+        body: JSON.stringify({
+          table: "friendships",
+          filters: [{ field: "id", operator: "eq", value: reCreatedId }],
+          data: { status: "accepted" },
+        }),
+      });
+      expect(acceptRes.status).toBe(200);
 
       // Verify DM was auto-added
       const stateCheck = await app.request("/api/chat/state", {

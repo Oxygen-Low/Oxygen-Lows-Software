@@ -32,6 +32,7 @@ import {
   getAllFreeModelsUsage,
   createFreeAiTrackingStream,
 } from "../lib/freeAiLimits.ts";
+import { validateAiUrl } from "../lib/safeAiUrl.ts";
 
 export const aiRouter = new Hono();
 
@@ -595,33 +596,15 @@ aiRouter.post("/proxy", apiLimiter, async (c) => {
   }
   let integration: any = effectiveApiKey ? { api_key: effectiveApiKey } : null;
   if (baseUrl) {
+    // SECURITY: use DNS-aware SSRF validation instead of a hostname
+    // blocklist. The old blocklist missed IPv6, 0x7f/decimal encodings,
+    // and DNS rebinding (public names resolving to private IPs).
     try {
-      const parsed = new URL(baseUrl);
-      if (parsed.protocol !== "https:") {
-        return c.json({ error: "Custom base URL must use HTTPS" }, 400);
-      }
-      const blockedHosts = [
-        "localhost",
-        "127.0.0.1",
-        "::1",
-        "169.254.169.254",
-        "metadata.google.internal",
-      ];
-      if (
-        blockedHosts.includes(parsed.hostname) ||
-        parsed.hostname.startsWith("10.") ||
-        parsed.hostname.startsWith("192.168.") ||
-        /^172\.(1[6-9]|2\d|3[01])\./.test(parsed.hostname)
-      ) {
-        return c.json(
-          { error: "Custom base URL must point to a public server" },
-          400,
-        );
-      }
-      integration = { ...integration, base_url: baseUrl };
+      await validateAiUrl(baseUrl);
     } catch {
       return c.json({ error: "Invalid custom base URL" }, 400);
     }
+    integration = { ...integration, base_url: baseUrl };
   }
 
   if (

@@ -52,6 +52,19 @@ dataRouter.use("*", async (c, next) => {
       if (["characters", "universes", "races"].includes(body.table)) {
         if (item.is_public === true || item.is_verified_public === true) return c.json({ error: "Unauthorized" }, 403);
       }
+      if (["friendships", "friends"].includes(body.table) && (c.req.path.endsWith("/insert") || c.req.path.endsWith("/upsert"))) {
+        // SECURITY: new friendships always start "pending". Without this, any
+        // user could insert status:"accepted" and instantly become a victim's
+        // friend (granted DM + shared-model access) without victim consent.
+        // Only the recipient may flip to "accepted" via /update (see below).
+        item.status = "pending";
+      }
+      if (body.table === "blocks") {
+        // SECURITY: only the caller can block as themselves; ignore any
+        // caller-supplied blocker_id/user_id mismatch.
+        item.blocker_id = String(user!.id);
+        item.user_id = String(user!.id);
+      }
       if (body.table === "support_messages") item.sender_id = String(user!.id);
       if (body.table === "asset_verifications" && (item.status || item.verified || item.is_verified)) return c.json({ error: "Unauthorized" }, 403);
     }
@@ -154,6 +167,32 @@ dataRouter.post("/update", localAuthMiddleware, async (c) => {
 
     if (!table || data === undefined) {
       return c.json({ data: null, error: "Table and data are required" }, 400);
+    }
+
+    // SECURITY: only the recipient (friend_id) may mark a friendship
+    // "accepted". A sender must not self-accept (insertTable mirrors the
+    // accepted row to the victim, silently granting DMs).
+    if (
+      ["friendships", "friends"].includes(String(table).toLowerCase()) &&
+      data &&
+      typeof data === "object" &&
+      !Array.isArray(data) &&
+      data.status === "accepted"
+    ) {
+      const matched = queryTable({
+        table,
+        filters: Array.isArray(filters) ? filters : [],
+        orFilters: Array.isArray(orFilters) ? orFilters : [],
+        userId: String(userId),
+      }) as any[];
+      const allRecipient = Array.isArray(matched) && matched.length > 0 &&
+        matched.every((r: any) => String(r.friend_id) === String(userId));
+      if (!allRecipient) {
+        return c.json(
+          { data: null, error: "Only the recipient can accept a friend request" },
+          403,
+        );
+      }
     }
 
     const result = updateTable(table, filters, data, userId, orFilters);

@@ -1459,13 +1459,17 @@ export function matchesFilter(row: any, filter: DataFilter): boolean {
       );
     case "in":
       return Array.isArray(value) && value.map(String).includes(String(rowVal));
-    case "like": {
-      const pattern = String(value).replace(/%/g, ".*");
-      return new RegExp(`^${pattern}$`).test(String(rowVal ?? ""));
-    }
+    case "like":
     case "ilike": {
-      const pattern = String(value).replace(/%/g, ".*");
-      return new RegExp(`^${pattern}$`, "i").test(String(rowVal ?? ""));
+      // SECURITY: `value` is attacker-controlled. Escape RegExp metacharacters
+      // before translating SQL-LIKE wildcards (% -> .*, _ -> .) so a malicious
+      // pattern like "(a+)+$" cannot cause ReDoS or change matching semantics.
+      const escaped = String(value).replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
+      const pattern = escaped.replace(/%/g, ".*").replace(/_/g, ".");
+      if (pattern.length > 500) return false;
+      return new RegExp(`^${pattern}$`, operator === "ilike" ? "i" : "").test(
+        String(rowVal ?? ""),
+      );
     }
     default:
       return true;
@@ -1555,24 +1559,12 @@ export function queryTable(options: QueryOptions): any {
   let rows: any[];
   if (isGlobalTable) {
     rows = getTableRows(table);
-  } else if (normTable === "friendships" || normTable === "friends") {
-    const filterStrings = [
-      ...filters.map((f) => `${f.field}.${f.operator}.${f.value}`),
-      ...orFilters,
-    ].join(" ");
-    const hasOtherUserFilter =
-      userId &&
-      (filterStrings.includes("user_id.eq.") ||
-        filterStrings.includes("friend_id.eq.")) &&
-      !filterStrings.includes(`user_id.eq.${userId}`) &&
-      !filterStrings.includes(`friend_id.eq.${userId}`);
-
-    if (hasOtherUserFilter) {
-      rows = getTableRows(table);
-    } else {
-      rows = getTableRows(table, userId);
-    }
   } else {
+    // SECURITY: always scope user tables (incl. friendships) to the requester.
+    // Loading all users' rows when filters mention another user_id let any
+    // authenticated caller enumerate other users' friendships by filtering.
+    // getTableRows(table, userId) already merges rows where the user is a
+    // participant, so cross-user filter values are correctly handled.
     rows = getTableRows(table, userId);
   }
 
@@ -1743,7 +1735,10 @@ export function insertTable(
 
   if (normTable === "blocks") {
     for (const item of prepared) {
-      const blockerId = String(item.blocker_id || item.user_id || userIdStr);
+      // SECURITY: only the caller can block as themselves. Ignore any
+      // caller-supplied blocker_id/user_id mismatch, to stop forging a
+      // victim's block record that deletes the victim's friendships.
+      const blockerId = userIdStr;
       const blockedId = String(
         item.blocked_id || item.blocked_user_id || item.target_id || "",
       );

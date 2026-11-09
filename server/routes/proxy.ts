@@ -158,7 +158,9 @@ proxyRouter.post("/fetch", async (c) => {
         return c.json({ error: "Request aborted" }, 499 as any);
       }
       console.error("Proxy fetch error:", error);
-      return c.json({ error: error.message }, 500);
+      // SECURITY: never reflect upstream/internal error detail to the client
+      // (DNS errors, fetch internals). Log server-side; return generic.
+      return c.json({ error: "Proxy fetch failed" }, 500);
     }
     console.error("Proxy fetch error:", error);
     return c.json({ error: "Unknown error" }, 500);

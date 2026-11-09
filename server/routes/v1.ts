@@ -19,6 +19,7 @@ import {
   moderateImage,
   handleModerationEnforcement,
 } from "../lib/safety/openAiModeration.ts";
+import { fetchPublicUrl } from "../lib/publicFetch.ts";
 
 export const v1Router = new Hono();
 
@@ -638,6 +639,16 @@ function buildValidatedUrl(baseUrl: string): string {
   }
 }
 
+// SECURITY: `gen.img` comes from a Horde worker (untrusted). Never `fetch()`
+// it directly — a malicious worker could return a private/internal URL
+// (SSRF to metadata services) or an unbounded response. fetchPublicUrl
+// validates every redirect hop, pins DNS at connect time, and caps size.
+async function fetchGeneratedImage(url: string, signal?: AbortSignal): Promise<Response> {
+  const init: RequestInit = {};
+  if (signal) init.signal = signal;
+  return fetchPublicUrl(url, init, 10 * 1024 * 1024);
+}
+
 /**
  * POST /images/generations
  * OpenAI-compatible image generation with transparent server-side polling to AI Horde
@@ -1016,7 +1027,7 @@ v1Router.post("/images/generations", async (c) => {
     let imageBuffer: Buffer | null = null;
     if (rawImg.startsWith("http")) {
       try {
-        const imgRes = await fetch(rawImg);
+        const imgRes = await fetchGeneratedImage(rawImg, c.req.raw.signal);
         if (imgRes.ok) {
           imageBuffer = Buffer.from(await imgRes.arrayBuffer());
         }
@@ -1090,8 +1101,10 @@ v1Router.post("/images/generations", async (c) => {
     if (response_format === "b64_json") {
       let b64 = rawImg;
       if (rawImg.startsWith("http")) {
-        // Download remote image and convert to base64
-        const imgRes = await fetch(buildValidatedUrl(rawImg));
+        // Download remote image and convert to base64. Only allowlist
+        // Horde hosts here; fetchPublicUrl still blocks private IPs and
+        // caps the response size (SSRF defense).
+        const imgRes = await fetchGeneratedImage(buildValidatedUrl(rawImg), c.req.raw.signal);
         if (!imgRes.ok) {
           return c.json(
             {

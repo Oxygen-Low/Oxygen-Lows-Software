@@ -270,6 +270,10 @@ export const serverStorage = {
       if (!fs.existsSync(fullPath)) {
         // Fallback: check if filePath contains a duplicated/nested user directory
         // e.g. "1/3cb76293-8c6c-49b9-b431-1ff5fce471ee/testsong.mp3"
+        // SECURITY: only allow fallbacks that preserve the leading owner segment.
+        // Dropping the first segment (e.g. "<attackerId>/<victimId>/<file>") would
+        // let any authenticated user read any other user's file (IDOR), since the
+        // route-level canReadPath check only validates the requested path prefix.
         const parts = filePath.split("/");
         if (parts.length > 2) {
           // Try removing middle UUID/segment: "1/uuid/file.mp3" -> "1/file.mp3"
@@ -277,13 +281,6 @@ export const serverStorage = {
           const tryPath1 = assertSafeStoragePath(STORAGE_DIR, cleanBucket, withoutMiddle);
           if (fs.existsSync(tryPath1)) {
             const buffer = fs.readFileSync(tryPath1);
-            return { data: buffer, error: null };
-          }
-          // Try removing first part: "1/uuid/file.mp3" -> "uuid/file.mp3"
-          const withoutFirst = parts.slice(1).join("/");
-          const tryPath2 = assertSafeStoragePath(STORAGE_DIR, cleanBucket, withoutFirst);
-          if (fs.existsSync(tryPath2)) {
-            const buffer = fs.readFileSync(tryPath2);
             return { data: buffer, error: null };
           }
         }

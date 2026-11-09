@@ -48,6 +48,11 @@ import {
   findUserByPasskeyId,
   type StoredPasskey,
 } from "../lib/passkeys.ts";
+import { rateLimiter } from "../lib/rateLimiter.ts";
+
+// SECURITY: quick sign-in codes are 6 chars and valid for 5 minutes;
+// without throttling an authenticated caller could brute-force codes.
+const quickSignInLimiter = rateLimiter(30, 60 * 1000, "quick-sign-in");
 
 export const authRouter = new Hono();
 
@@ -1031,7 +1036,7 @@ authRouter.post(
 /**
  * Create a new Quick Sign In session (called by unauthenticated device)
  */
-authRouter.post("/quick-sign-in/create", async (c) => {
+authRouter.post("/quick-sign-in/create", quickSignInLimiter, async (c) => {
   try {
     const rawIp =
       c.req.header("x-forwarded-for") ||
@@ -1057,7 +1062,7 @@ authRouter.post("/quick-sign-in/create", async (c) => {
 /**
  * Poll quick sign in status (called by unauthenticated device)
  */
-authRouter.get("/quick-sign-in/poll", async (c) => {
+authRouter.get("/quick-sign-in/poll", quickSignInLimiter, async (c) => {
   try {
     const sessionId = c.req.query("sessionId");
     if (!sessionId) {
@@ -1093,7 +1098,7 @@ authRouter.get("/quick-sign-in/poll", async (c) => {
 /**
  * Verify a 6-character code (called by authenticated device)
  */
-authRouter.post("/quick-sign-in/verify", localAuthMiddleware, async (c: any) => {
+authRouter.post("/quick-sign-in/verify", quickSignInLimiter, localAuthMiddleware, async (c: any) => {
   try {
     const body = await c.req.json().catch(() => ({}));
     const { code } = body;
@@ -1129,7 +1134,7 @@ authRouter.post("/quick-sign-in/verify", localAuthMiddleware, async (c: any) => 
 /**
  * Approve a quick sign in request (called by authenticated device)
  */
-authRouter.post("/quick-sign-in/approve", localAuthMiddleware, async (c: any) => {
+authRouter.post("/quick-sign-in/approve", quickSignInLimiter, localAuthMiddleware, async (c: any) => {
   try {
     const user = c.get("user");
     const body = await c.req.json().catch(() => ({}));
@@ -1186,7 +1191,7 @@ authRouter.post("/quick-sign-in/approve", localAuthMiddleware, async (c: any) =>
 /**
  * Reject a quick sign in request (called by authenticated device)
  */
-authRouter.post("/quick-sign-in/reject", localAuthMiddleware, async (c: any) => {
+authRouter.post("/quick-sign-in/reject", quickSignInLimiter, localAuthMiddleware, async (c: any) => {
   try {
     const body = await c.req.json().catch(() => ({}));
     const { code } = body;
