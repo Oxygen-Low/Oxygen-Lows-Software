@@ -34,6 +34,7 @@ import {
   Paintbrush,
   ImagePlus,
   Scissors,
+  HardDrive,
   Search,
   X,
   Cpu,
@@ -198,6 +199,11 @@ const CustomGamesApp = lazy(() =>
 const DatasetsApp = lazy(() =>
   import("@/components/apps/Datasets").then((m) => ({
     default: m.DatasetsApp,
+  })),
+);
+const DiskSpaceSaverApp = lazy(() =>
+  import("@/components/apps/DiskSpaceSaver").then((m) => ({
+    default: m.DiskSpaceSaverApp,
   })),
 );
 
@@ -657,6 +663,18 @@ const APPS: AppMetadata[] = [
     component: DatasetsApp,
     authRequired: true,
   },
+  {
+    id: "disk-space-saver",
+    nameKey: "apps.diskSpaceSaverTitle",
+    defaultName: "Disk Space Saver",
+    descKey: "apps.diskSpaceSaverDesc",
+    defaultDesc:
+      "Analyze disk usage, find large folders and files, and free up space on your drives.",
+    categories: ["All", "Utility"],
+    availability: "desktop-only",
+    icon: <HardDrive className="w-8 h-8 text-cyan-500" />,
+    component: DiskSpaceSaverApp,
+  },
 ];
 
 export default function Apps() {
@@ -848,6 +866,7 @@ export default function Apps() {
       activeApp.id === "llm-agent" ||
       activeApp.id === "vpn" ||
       activeApp.id === "game-library" ||
+      activeApp.id === "disk-space-saver" ||
       activeApp.id === "image-studio" ||
       activeApp.id === "music-studio" ||
       activeApp.id === "3d-background";
