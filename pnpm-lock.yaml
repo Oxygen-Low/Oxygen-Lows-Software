@@ -330,8 +330,8 @@ importers:
         specifier: ^1.2.1
         version: 1.2.1(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@radix-ui/react-label':
-        specifier: ^2.1.15
-        version: 2.1.15(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: ^2.1.17
+        version: 2.1.17(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@radix-ui/react-menubar':
         specifier: ^1.1.24
         version: 1.1.24(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -387,8 +387,8 @@ importers:
         specifier: ^9.8.2
         version: 9.8.2(@types/react@19.2.18)(immer@11.1.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.186.1)
       '@swc/core':
-        specifier: ^1.16.13
-        version: 1.16.13
+        specifier: ^1.16.22
+        version: 1.16.22
       '@tailwindcss/typography':
         specifier: ^0.5.20
         version: 0.5.20(tailwindcss@4.3.3)
@@ -396,8 +396,8 @@ importers:
         specifier: 4.3.3
         version: 4.3.3(vite@8.3.3(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
       '@tanstack/react-query':
-        specifier: ^5.104.0
-        version: 5.104.0(react@19.2.8)
+        specifier: ^5.106.1
+        version: 5.106.1(@types/react@19.2.18)(react@19.2.8)
       '@testing-library/dom':
         specifier: ^10.4.2
         version: 10.4.2
@@ -480,8 +480,8 @@ importers:
         specifier: ^8.5.31
         version: 8.5.31
       prettier:
-        specifier: ^3.9.8
-        version: 3.9.8
+        specifier: ^3.9.10
+        version: 3.9.10
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -523,7 +523,7 @@ importers:
         version: 0.186.1
       ts-node:
         specifier: ^10.9.2
-        version: 10.9.2(@swc/core@1.16.13)(@types/node@26.6.3)(typescript@7.0.2)
+        version: 10.9.2(@swc/core@1.16.22)(@types/node@26.6.3)(typescript@7.0.2)
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
@@ -1481,8 +1481,8 @@ packages:
       '@types/react':
         optional: true
 
-  '@radix-ui/react-label@2.1.15':
-    resolution: {integrity: sha512-o/rdYEwZTTo5tjknnPeyQFU45kUC4i/XyeDPP+HGyi6XqpOP6Zf5Ya5vh/Yfe9Id5JiuWnnAx2XqIeD3UYZt0g==}
+  '@radix-ui/react-label@2.1.17':
+    resolution: {integrity: sha512-xmj7MN/drx1oUAXkfiFIvyDmGNUIN/omGobvA5oAoNqu9zO2MkISYGZOkBcqSzs/UZXXwV+/3ACRE7q7mGcmkA==}
     peerDependencies:
       '@types/react': '*'
       '@types/react-dom': '*'
@@ -2210,86 +2210,86 @@ packages:
   '@standard-schema/utils@0.3.0':
     resolution: {integrity: sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g==}
 
-  '@swc/core-darwin-arm64@1.16.13':
-    resolution: {integrity: sha512-JrMH2h7ohd4mOIneNRx/diqTmCDSdWfp9uOdQ8VJ2V2CA7jOJ1jWb+qp8RoZLqgiVmwDDC7eySKB1kbvZ+jVXQ==}
+  '@swc/core-darwin-arm64@1.16.22':
+    resolution: {integrity: sha512-PddkOjOK3MK01AVOvqG309iAJ0hn5vK37ug9g5Zt5e2aWF3IhVLdDLjMePXts1zi8yc4ild2h9FYCkVYb5+Qcw==}
     engines: {node: '>=10'}
     cpu: [arm64]
     os: [darwin]
 
-  '@swc/core-darwin-x64@1.16.13':
-    resolution: {integrity: sha512-HauZMRxpOImRxgY6GXjw5gbD8ts2NcPZuLMM8htY8Mic7j1Izt/lxkXrKYUwqyU56YLwQZ4dHRT+6jFHkztcag==}
+  '@swc/core-darwin-x64@1.16.22':
+    resolution: {integrity: sha512-Zzia5cuIQFLTfZyf5mC1JvRMPW1VlxbvkZ0qNESoD4okE6T6Us2ZNVZ5XMVELqkYNw9eL2GeuMJgDIHBdYo7Gg==}
     engines: {node: '>=10'}
     cpu: [x64]
     os: [darwin]
 
-  '@swc/core-linux-arm-gnueabihf@1.16.13':
-    resolution: {integrity: sha512-tUSojGIythnHJKrElDM9OvuhBnK+FF39eM9iIBgj9kdfbAm6PhAM7dKbaSDcnX2gOLG2slkasjD0Z8m/YUlzOA==}
+  '@swc/core-linux-arm-gnueabihf@1.16.22':
+    resolution: {integrity: sha512-GI6VICiuYc7mb61XenLtiEGoOXTXDdUda8w0bu29Mh3Z6rhuTkAiBAdDFpdww2QNV0iACY5ylUSL127I6Nx8yQ==}
     engines: {node: '>=10'}
     cpu: [arm]
     os: [linux]
 
-  '@swc/core-linux-arm64-gnu@1.16.13':
-    resolution: {integrity: sha512-qS3bk/ezRrLXGn1b764S/EG3/oKj6uRhnTNRAALpnuu8d9I0YwSiUkQghnX7lOH9X/yRr+qrFI3R0wAruO47Tg==}
+  '@swc/core-linux-arm64-gnu@1.16.22':
+    resolution: {integrity: sha512-Ic+qrMmV78QdlG9irJuc/37xSqY7+5ZFhg4kaYbF82UQkaEfWgqGSUbU75Y4To21eaBB07c05kbXmTWTrvPURA==}
     engines: {node: '>=10'}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
 
-  '@swc/core-linux-arm64-musl@1.16.13':
-    resolution: {integrity: sha512-aeoYoG6fQsOS3mFOuTKvnJo1aaaxYNI0aRRlhdHaGP4q1YQx4XOc5Hkd35IFduWCBG3eZl3fPTjRuYvxpl7eTA==}
+  '@swc/core-linux-arm64-musl@1.16.22':
+    resolution: {integrity: sha512-ophleEwlj0SqkzYPDJ7xMPK0+MnWfc4+u9GzDYLLFG1TkIJuwj0rHNWto4MmKo00TylHFwGx9+5bLs/+YZ00IQ==}
     engines: {node: '>=10'}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
 
-  '@swc/core-linux-ppc64-gnu@1.16.13':
-    resolution: {integrity: sha512-eEFoueZXWZ2S1lsqL8Ve2C8RjhzH9+Ktj8U4IGTUQL6CNG04+VhQiYQWJOf5xfVBU6I+PbH80yvsYegqZOOSZQ==}
+  '@swc/core-linux-ppc64-gnu@1.16.22':
+    resolution: {integrity: sha512-/4kR7SafFsVqY8N4HSepTs4Ni9YA0OY6n/SVBk/V15PhDiw97stG9SVqvgc8EzC+3XOe4pTmwlvFLWzNYfuNWg==}
     engines: {node: '>=10'}
     cpu: [ppc64]
     os: [linux]
     libc: [glibc]
 
-  '@swc/core-linux-s390x-gnu@1.16.13':
-    resolution: {integrity: sha512-K0q1ReVXL3d5bzBgZxS+yJq5q2xRjg4k2XXGj9yiCEpE5ZqJGQ4Gtk1sRrk8W2lo3KY0DCJD3Myt6x2SMvGArQ==}
+  '@swc/core-linux-s390x-gnu@1.16.22':
+    resolution: {integrity: sha512-b3GQqKmHBHUFQby1sh/QLtNQMMXTSBUhnmXcJ5qSrWbkYnhljIW3Y+30eMrrxCfy7HXLLDug1sjlhJDhf3tPhA==}
     engines: {node: '>=10'}
     cpu: [s390x]
     os: [linux]
     libc: [glibc]
 
-  '@swc/core-linux-x64-gnu@1.16.13':
-    resolution: {integrity: sha512-Qvpihw30irhIjy2f91BR1pamcJBCgf8hmr9XWenztAX1YLkneRkkTB/PFGWQubhaBqQhY2uZKViMj/xV61uMBQ==}
+  '@swc/core-linux-x64-gnu@1.16.22':
+    resolution: {integrity: sha512-u9hdfNEI3oI/dTRJ+In8G32EgfFpZDvMoI5elIERl6/XfaIzE9gpv4WomhKblAXA1+EYyLfDCS1EFFKQlBXTQQ==}
     engines: {node: '>=10'}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-  '@swc/core-linux-x64-musl@1.16.13':
-    resolution: {integrity: sha512-iCGxHbh3Cq5vqRvCPlw3XkkDz4RlkPSyQwfFKbOKTMj5tiEuojY/rLmf4BMfI9Z8yPJTf9VB07t3NbKInoC97g==}
+  '@swc/core-linux-x64-musl@1.16.22':
+    resolution: {integrity: sha512-C3YVRL717kKSSU8n6HaC7sesFSGnHjRuHN3609Wl4epPYVDDutzD6aj7CMcx9cg3WWJ/oE8woDZ8qrCfzmxvnw==}
     engines: {node: '>=10'}
     cpu: [x64]
     os: [linux]
     libc: [musl]
 
-  '@swc/core-win32-arm64-msvc@1.16.13':
-    resolution: {integrity: sha512-iOabn6cd+hg3cnoKlAC8j3Yufv8nQHBVU5OIDX8dCPA95PjAZ0B0TlDn9sWivk8ezo/cLJux7p9n0B9vRej+1Q==}
+  '@swc/core-win32-arm64-msvc@1.16.22':
+    resolution: {integrity: sha512-+MpNuE45LMFo+6RF8vMUqZPmaOfRQIuzCUHJ+jSXwEhiR5KHeZiQ9MaJglZRDeMuML67voCiFLrxqYTqGCbcCQ==}
     engines: {node: '>=10'}
     cpu: [arm64]
     os: [win32]
 
-  '@swc/core-win32-ia32-msvc@1.16.13':
-    resolution: {integrity: sha512-+1b/3xBNuVbpnJIZUCAaSdscOPYRWq85eohKx44y/3qbPp56UMiCJWBiWtyr7K5F1nf1JENXm2IBSEJaLgWq6Q==}
+  '@swc/core-win32-ia32-msvc@1.16.22':
+    resolution: {integrity: sha512-z1p/CMDSRqvsE5Gs7axHVl6p+2zjoQTYuGcZ/q+3PMjAxx2bo/+lkpG9ot+725e6lj9os3WwYQrncmOWKVDrEQ==}
     engines: {node: '>=10'}
     cpu: [ia32]
     os: [win32]
 
-  '@swc/core-win32-x64-msvc@1.16.13':
-    resolution: {integrity: sha512-6kEJhYshk7OVoVIWryiHqjCNuwZeOlPTS6et+bKV/WhtHs8fLA01wyTLrQGi+4ultgRe/o0M4b25K/KKdvl0dQ==}
+  '@swc/core-win32-x64-msvc@1.16.22':
+    resolution: {integrity: sha512-IyBPJn/SpXsh7i5ZLfQUPJ+R+fuELPI7Sz51igmYMTv2wdnDn/tqnIlAUwQe6AgnclbuJdbOb6crUbyN/zwMzw==}
     engines: {node: '>=10'}
     cpu: [x64]
     os: [win32]
 
-  '@swc/core@1.16.13':
-    resolution: {integrity: sha512-k4uUsIMS0IwOKVsrQs48IZK75O4roV3FnuJEdL7ES+DFESftdgvz73QBqN3VUAbUmUr78We4tzG0kgYj36M22Q==}
+  '@swc/core@1.16.22':
+    resolution: {integrity: sha512-kFqhtSmmNSZqJXIK0l9rF+oNg2efaZoeNbN/4qwbNTWfMRKApc6n7rKx827bw8K+4kmu7iH0LZ144QJTQzulHw==}
     engines: {node: '>=10'}
     peerDependencies:
       '@swc/helpers': '>=0.5.17'
@@ -2402,13 +2402,17 @@ packages:
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7 || ^8
 
-  '@tanstack/query-core@5.104.0':
-    resolution: {integrity: sha512-JrC2r/JQlXt7khBSdUpsgxNvybzOg+aITa+ARRMlP2AFo93Y8vIqz077rp+e61mJetSZ0T6AJbwW1JHer1vrPQ==}
+  '@tanstack/query-core@5.106.1':
+    resolution: {integrity: sha512-erYv/UACddcdgjOL2ixmFdK6tO/AVBeUcTCOtX2N51yZpDQ2U7KJ+xgB/bCNfsF3uoCDTqGHEEbDiFsIO9YUmQ==}
 
-  '@tanstack/react-query@5.104.0':
-    resolution: {integrity: sha512-e1TZmDCQnWIfiDVryIHeA6Idj+Lfx1hORLOhXS/l5wcgvtVD4yYqbTDl378sGQKIi2cSgb0TEMC9cKK8GGoJEw==}
+  '@tanstack/react-query@5.106.1':
+    resolution: {integrity: sha512-ORDvJG/DSfmlFL9lQ8GDkE0VjtQbLeRDY7BL8xjKkQFGLfjFGfNWNuteWgPqA2gPJgLLuWfQ7IX0FlsHCJriyg==}
     peerDependencies:
+      '@types/react': ^18 || ^19
       react: ^18 || ^19
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   '@testing-library/dom@10.4.2':
     resolution: {integrity: sha512-yzr2S9HyAIdhz2/6qHgbs665Q7PKVcDF05vsOlHPxG1mo36gKVesdYVeDLnXgfjJ03CrKRk08knc6+E/9m8v2Q==}
@@ -3757,8 +3761,8 @@ packages:
   potpack@1.0.2:
     resolution: {integrity: sha512-choctRBIV9EMT9WGAZHn3V7t0Z2pMQyl0EZE6pFc/6ml3ssw7Dlf/oAOvFwjm1HVsqfQN8GfeFyJ+d8tRzqueQ==}
 
-  prettier@3.9.8:
-    resolution: {integrity: sha512-WRFq3Wn3WId7LLROfMLdH7xaFr2jR62wU8nLO6rQUOLOxNZUviyJQs1M0iIhLexSFy+L+w0ch66wtoO2jRjG0A==}
+  prettier@3.9.10:
+    resolution: {integrity: sha512-skGHTH1Yb9QvaTC4hWnRTzEYtCpApF0UMBPz+t/0ZPzP8ihefo/btKd+QA7pUE0fEwA1SbS/NmhyEcstdXOIdA==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -5406,9 +5410,9 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.18
 
-  '@radix-ui/react-label@2.1.15(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@radix-ui/react-label@2.1.17(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
-      '@radix-ui/react-primitive': 2.1.10(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@radix-ui/react-primitive': 2.2.0(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
     optionalDependencies:
@@ -6140,59 +6144,59 @@ snapshots:
 
   '@standard-schema/utils@0.3.0': {}
 
-  '@swc/core-darwin-arm64@1.16.13':
+  '@swc/core-darwin-arm64@1.16.22':
     optional: true
 
-  '@swc/core-darwin-x64@1.16.13':
+  '@swc/core-darwin-x64@1.16.22':
     optional: true
 
-  '@swc/core-linux-arm-gnueabihf@1.16.13':
+  '@swc/core-linux-arm-gnueabihf@1.16.22':
     optional: true
 
-  '@swc/core-linux-arm64-gnu@1.16.13':
+  '@swc/core-linux-arm64-gnu@1.16.22':
     optional: true
 
-  '@swc/core-linux-arm64-musl@1.16.13':
+  '@swc/core-linux-arm64-musl@1.16.22':
     optional: true
 
-  '@swc/core-linux-ppc64-gnu@1.16.13':
+  '@swc/core-linux-ppc64-gnu@1.16.22':
     optional: true
 
-  '@swc/core-linux-s390x-gnu@1.16.13':
+  '@swc/core-linux-s390x-gnu@1.16.22':
     optional: true
 
-  '@swc/core-linux-x64-gnu@1.16.13':
+  '@swc/core-linux-x64-gnu@1.16.22':
     optional: true
 
-  '@swc/core-linux-x64-musl@1.16.13':
+  '@swc/core-linux-x64-musl@1.16.22':
     optional: true
 
-  '@swc/core-win32-arm64-msvc@1.16.13':
+  '@swc/core-win32-arm64-msvc@1.16.22':
     optional: true
 
-  '@swc/core-win32-ia32-msvc@1.16.13':
+  '@swc/core-win32-ia32-msvc@1.16.22':
     optional: true
 
-  '@swc/core-win32-x64-msvc@1.16.13':
+  '@swc/core-win32-x64-msvc@1.16.22':
     optional: true
 
-  '@swc/core@1.16.13':
+  '@swc/core@1.16.22':
     dependencies:
       '@swc/counter': 0.1.3
       '@swc/types': 0.1.28
     optionalDependencies:
-      '@swc/core-darwin-arm64': 1.16.13
-      '@swc/core-darwin-x64': 1.16.13
-      '@swc/core-linux-arm-gnueabihf': 1.16.13
-      '@swc/core-linux-arm64-gnu': 1.16.13
-      '@swc/core-linux-arm64-musl': 1.16.13
-      '@swc/core-linux-ppc64-gnu': 1.16.13
-      '@swc/core-linux-s390x-gnu': 1.16.13
-      '@swc/core-linux-x64-gnu': 1.16.13
-      '@swc/core-linux-x64-musl': 1.16.13
-      '@swc/core-win32-arm64-msvc': 1.16.13
-      '@swc/core-win32-ia32-msvc': 1.16.13
-      '@swc/core-win32-x64-msvc': 1.16.13
+      '@swc/core-darwin-arm64': 1.16.22
+      '@swc/core-darwin-x64': 1.16.22
+      '@swc/core-linux-arm-gnueabihf': 1.16.22
+      '@swc/core-linux-arm64-gnu': 1.16.22
+      '@swc/core-linux-arm64-musl': 1.16.22
+      '@swc/core-linux-ppc64-gnu': 1.16.22
+      '@swc/core-linux-s390x-gnu': 1.16.22
+      '@swc/core-linux-x64-gnu': 1.16.22
+      '@swc/core-linux-x64-musl': 1.16.22
+      '@swc/core-win32-arm64-msvc': 1.16.22
+      '@swc/core-win32-ia32-msvc': 1.16.22
+      '@swc/core-win32-x64-msvc': 1.16.22
 
   '@swc/counter@0.1.3': {}
 
@@ -6273,12 +6277,14 @@ snapshots:
       tailwindcss: 4.3.3
       vite: 8.3.3(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
 
-  '@tanstack/query-core@5.104.0': {}
+  '@tanstack/query-core@5.106.1': {}
 
-  '@tanstack/react-query@5.104.0(react@19.2.8)':
+  '@tanstack/react-query@5.106.1(@types/react@19.2.18)(react@19.2.8)':
     dependencies:
-      '@tanstack/query-core': 5.104.0
+      '@tanstack/query-core': 5.106.1
       react: 19.2.8
+    optionalDependencies:
+      '@types/react': 19.2.18
 
   '@testing-library/dom@10.4.2':
     dependencies:
@@ -7661,7 +7667,7 @@ snapshots:
 
   potpack@1.0.2: {}
 
-  prettier@3.9.8: {}
+  prettier@3.9.10: {}
 
   pretty-format@27.5.1:
     dependencies:
@@ -8096,7 +8102,7 @@ snapshots:
 
   trough@2.2.0: {}
 
-  ts-node@10.9.2(@swc/core@1.16.13)(@types/node@26.6.3)(typescript@7.0.2):
+  ts-node@10.9.2(@swc/core@1.16.22)(@types/node@26.6.3)(typescript@7.0.2):
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
       '@tsconfig/node10': 1.0.13
@@ -8114,7 +8120,7 @@ snapshots:
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
     optionalDependencies:
-      '@swc/core': 1.16.13
+      '@swc/core': 1.16.22
 
   tslib@1.14.1: {}
 
