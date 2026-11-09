@@ -43,6 +43,7 @@ vi.mock("../lib/storage.ts", async original => ({
 }));
 
 vi.mock("../lib/dataStore.ts", () => ({
+  DATA_DIR: "/tmp/test-data",
   queryTable: vi.fn((opts: any) => {
     if (opts.table === "asset_verifications") {
       if (opts.filters?.some((f: any) => f.field === "id")) {

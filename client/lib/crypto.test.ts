@@ -589,13 +589,17 @@ describe("Crypto Utilities (AES-256)", () => {
       );
 
       const mockDb = {
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          update: vi.fn().mockReturnThis(),
-          then: vi.fn((resolve: any) =>
-            resolve({ data: [encChar], error: null }),
-          ),
+        from: vi.fn((table: string) => {
+          const data = table === "characters" ? [encChar] : [];
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            in: vi.fn().mockReturnThis(),
+            update: vi.fn().mockReturnThis(),
+            then: vi.fn((resolve: any) =>
+              resolve({ data, error: null }),
+            ),
+          };
         }),
       };
 
