@@ -110,7 +110,7 @@
     "embla-carousel-react": "^8.6.0",
     "esbuild": "^0.28.2",
     "framer-motion": "^14.10.1",
-    "globals": "^17.12.0",
+    "globals": "^17.14.0",
     "input-otp": "^1.5.0",
     "jsdom": "^30.1.3",
     "lucide-react": "^1.70.0",
