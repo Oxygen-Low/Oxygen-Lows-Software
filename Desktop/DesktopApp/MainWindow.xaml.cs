@@ -1109,7 +1109,105 @@ public partial class MainWindow : Window
                         .Take(100)
                         .ToList();
 
-                    SendWebMessage(new { id, success = true, data = new { folders = sortedFolders, topFiles = sortedTopFiles, totalScanned } });
+                    // Safe-to-delete system caches inside normally-skipped
+                    // folders (shader caches, temp, update download, etc.).
+                    // Only verified-regenerable locations are measured;
+                    // driver/system files are never listed. Delete CONTENTS
+                    // only — folders themselves must remain.
+                    var safeEntries = new List<(string id, string path, string name, long sizeBytes, long fileCount)>();
+                    try
+                    {
+                        var candidates = new List<(string id, string path, bool explorerCacheOnly)>();
+                        var usersRoot = Path.Combine(rootPath, "Users");
+                        if (Directory.Exists(usersRoot))
+                        {
+                            string[] userDirs = Array.Empty<string>();
+                            try { userDirs = Directory.GetDirectories(usersRoot); } catch { }
+                            foreach (var userDir in userDirs)
+                            {
+                                var local = Path.Combine(userDir, "AppData", "Local");
+                                var localLow = Path.Combine(userDir, "AppData", "LocalLow");
+                                // NVIDIA shader compilation caches (officially regenerable)
+                                candidates.Add(("nvidia-dxcache", Path.Combine(local, "NVIDIA", "DXCache"), false));
+                                candidates.Add(("nvidia-glcache", Path.Combine(local, "NVIDIA", "GLCache"), false));
+                                candidates.Add(("nvidia-nv-cache", Path.Combine(local, "NVIDIA Corporation", "NV_Cache"), false));
+                                candidates.Add(("nvidia-perdriver-dxcache", Path.Combine(localLow, "NVIDIA", "PerDriverVersion", "DXCache"), false));
+                                candidates.Add(("nvidia-optix-cache", Path.Combine(local, "NVIDIA", "OptixCache"), false));
+                                // AMD shader caches
+                                candidates.Add(("amd-dxcache", Path.Combine(local, "AMD", "DxCache"), false));
+                                candidates.Add(("amd-dxccache", Path.Combine(local, "AMD", "DxcCache"), false));
+                                candidates.Add(("amd-vkcache", Path.Combine(local, "AMD", "VkCache"), false));
+                                // Intel shader cache
+                                candidates.Add(("intel-shader-cache", Path.Combine(localLow, "Intel", "ShaderCache"), false));
+                                // Windows DirectX Shader Cache (vendor-neutral)
+                                candidates.Add(("d3d-shader-cache", Path.Combine(local, "D3DSCache"), false));
+                                // Per-user temp
+                                candidates.Add(("user-temp", Path.Combine(local, "Temp"), false));
+                                // Explorer thumbnail/icon caches (thumbcache_*.db / iconcache_*.db only)
+                                candidates.Add(("thumbnail-cache", Path.Combine(local, "Microsoft", "Windows", "Explorer"), true));
+                            }
+                        }
+                        candidates.Add(("windows-temp", Path.Combine(rootPath, "Windows", "Temp"), false));
+                        candidates.Add(("windows-update-download", Path.Combine(rootPath, "Windows", "SoftwareDistribution", "Download"), false));
+                        candidates.Add(("recycle-bin", Path.Combine(rootPath, "$Recycle.Bin"), false));
+                        candidates.Add(("programdata-nvidia-nv-cache", Path.Combine(rootPath, "ProgramData", "NVIDIA Corporation", "NV_Cache"), false));
+                        candidates.Add(("windows-old", Path.Combine(rootPath, "Windows.old"), false));
+                        candidates.Add(("windows-bt", Path.Combine(rootPath, "$Windows.~BT"), false));
+                        candidates.Add(("windows-ws", Path.Combine(rootPath, "$Windows.~WS"), false));
+                        candidates.Add(("windows-winreagent", Path.Combine(rootPath, "$WinREAgent"), false));
+
+                        foreach (var (cid, cpath, explorerOnly) in candidates)
+                        {
+                            try
+                            {
+                                if (!Directory.Exists(cpath)) continue;
+                                long size = 0;
+                                long count = 0;
+                                if (explorerOnly)
+                                {
+                                    foreach (var file in new DirectoryInfo(cpath).EnumerateFiles())
+                                    {
+                                        try
+                                        {
+                                            var fn = file.Name;
+                                            if (!fn.StartsWith("thumbcache_", StringComparison.OrdinalIgnoreCase)
+                                                && !fn.StartsWith("iconcache_", StringComparison.OrdinalIgnoreCase))
+                                                continue;
+                                            size += file.Length;
+                                            count++;
+                                        }
+                                        catch { }
+                                    }
+                                }
+                                else
+                                {
+                                    foreach (var file in new DirectoryInfo(cpath).EnumerateFiles("*", SearchOption.AllDirectories))
+                                    {
+                                        try
+                                        {
+                                            size += file.Length;
+                                            count++;
+                                        }
+                                        catch { }
+                                    }
+                                }
+                                if (count > 0 && size > 0)
+                                {
+                                    safeEntries.Add((cid, cpath, Path.GetFileName(cpath) ?? cpath, size, count));
+                                    Interlocked.Add(ref totalScanned, count);
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                    catch { }
+
+                    var sortedSafeCleanup = safeEntries
+                        .OrderByDescending(e => e.sizeBytes)
+                        .Select(e => new { id = e.id, path = e.path, name = e.name, sizeBytes = e.sizeBytes, fileCount = e.fileCount })
+                        .ToList();
+
+                    SendWebMessage(new { id, success = true, data = new { folders = sortedFolders, topFiles = sortedTopFiles, totalScanned, safeCleanup = sortedSafeCleanup } });
                 }
                 else if (cmd == "open_in_explorer")
                 {

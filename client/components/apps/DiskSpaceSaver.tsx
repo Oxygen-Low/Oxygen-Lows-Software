@@ -8,6 +8,7 @@ import {
   DriveInfo,
   DiskFolderEntry,
   DiskFileEntry,
+  DiskSafeCleanupEntry,
   DiskScanResult,
 } from "@/lib/desktopBridge";
 import {
@@ -19,6 +20,7 @@ import {
   Loader2,
   AlertTriangle,
   RefreshCw,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -112,7 +114,7 @@ export function DiskSpaceSaverApp() {
   const [scanning, setScanning] = useState(false);
   const [loadingDrives, setLoadingDrives] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"folders" | "files">("folders");
+  const [activeTab, setActiveTab] = useState<"folders" | "files" | "safe">("folders");
   const [driveDropdownOpen, setDriveDropdownOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const scanAbortRef = useRef(false);
@@ -219,6 +221,9 @@ export function DiskSpaceSaverApp() {
 
   const maxFolderSize = scanResult?.folders?.[0]?.sizeBytes ?? 1;
   const maxFileSize = scanResult?.topFiles?.[0]?.sizeBytes ?? 1;
+  const safeCleanup: DiskSafeCleanupEntry[] = scanResult?.safeCleanup ?? [];
+  const maxSafeSize = safeCleanup[0]?.sizeBytes ?? 1;
+  const totalSafeBytes = safeCleanup.reduce((sum, e) => sum + e.sizeBytes, 0);
 
   return (
     <div className="flex flex-col h-full min-h-0 gap-4 p-4">
@@ -379,7 +384,7 @@ export function DiskSpaceSaverApp() {
               {t(
                 "diskSpaceSaver.scanningHint",
                 undefined,
-                "This may take a few minutes for large drives. Non-system files only.",
+                "This may take a few minutes for large drives. Includes safe system caches (shader/temp/update). Driver/system files are never listed.",
               )}
             </p>
           </div>
@@ -398,7 +403,7 @@ export function DiskSpaceSaverApp() {
       {scanResult && !scanning && (
         <div className="flex flex-col flex-1 min-h-0 gap-3">
           {/* Stats */}
-          <div className="flex gap-3 text-xs text-muted-foreground">
+          <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
             <span>
               {scanResult.totalScanned.toLocaleString()}{" "}
               {t("diskSpaceSaver.filesScanned", undefined, "files scanned")}
@@ -413,7 +418,30 @@ export function DiskSpaceSaverApp() {
               {scanResult.topFiles.length}{" "}
               {t("diskSpaceSaver.largeFiles", undefined, "large files")}
             </span>
+            {safeCleanup.length > 0 && (
+              <>
+                <span>·</span>
+                <span className="font-medium text-emerald-500">
+                  {formatBytes(totalSafeBytes)}{" "}
+                  {t("diskSpaceSaver.safeTotal", undefined, "safe to delete")}
+                </span>
+              </>
+            )}
           </div>
+
+          {/* Safe cleanup hint */}
+          {activeTab === "safe" && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs">
+              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>
+                {t(
+                  "diskSpaceSaver.safeHint",
+                  undefined,
+                  "Verified regenerable caches only — delete CONTENTS, not folders. Close games/apps first, skip locked files, empty the Recycle Bin to free space. Windows.old removes the rollback option. Driver and system files are never listed.",
+                )}
+              </span>
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="flex border-b border-border gap-4">
@@ -445,6 +473,24 @@ export function DiskSpaceSaverApp() {
               <span className="flex items-center gap-1">
                 <File className="w-4 h-4" />
                 {t("diskSpaceSaver.tabFiles", undefined, "Largest Files")}
+              </span>
+            </button>
+            <button
+              className={`pb-2 text-sm font-medium transition-colors ${
+                activeTab === "safe"
+                  ? "border-b-2 border-emerald-500 text-emerald-500"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setActiveTab("safe")}
+            >
+              <span className="flex items-center gap-1">
+                <ShieldCheck className="w-4 h-4" />
+                {t("diskSpaceSaver.tabSafe", undefined, "Safe to Delete")}
+                {safeCleanup.length > 0 && (
+                  <span className="text-xs font-normal opacity-80">
+                    ({formatBytes(totalSafeBytes)})
+                  </span>
+                )}
               </span>
             </button>
           </div>
@@ -541,6 +587,54 @@ export function DiskSpaceSaverApp() {
                             {file.extension.replace(".", "")}
                           </span>
                         )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {activeTab === "safe" && (
+              <div className="space-y-1">
+                {safeCleanup.length === 0 ? (
+                  <p className="text-muted-foreground text-sm text-center py-8">
+                    {t(
+                      "diskSpaceSaver.noSafeCleanup",
+                      undefined,
+                      "No safe cleanup found. Shader, temp and update caches may be empty — or the desktop app needs updating.",
+                    )}
+                  </p>
+                ) : (
+                  safeCleanup.map((entry: DiskSafeCleanupEntry, i: number) => (
+                    <div
+                      key={entry.path}
+                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted cursor-default group"
+                      onContextMenu={(e) => handleContextMenu(e, entry.path)}
+                    >
+                      <span className="text-xs text-muted-foreground w-6 shrink-0 text-right">
+                        {i + 1}
+                      </span>
+                      <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className="text-sm font-medium truncate"
+                          title={entry.path}
+                        >
+                          {entry.name || entry.path}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {entry.path}
+                        </p>
+                        <SizeBar sizeBytes={entry.sizeBytes} maxBytes={maxSafeSize} />
+                      </div>
+                      <div className="flex flex-col items-end shrink-0 gap-0.5">
+                        <span className="text-sm font-mono font-semibold text-emerald-500">
+                          {formatBytes(entry.sizeBytes)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {entry.fileCount.toLocaleString()}{" "}
+                          {t("diskSpaceSaver.filesCount", undefined, "files")}
+                        </span>
                       </div>
                     </div>
                   ))

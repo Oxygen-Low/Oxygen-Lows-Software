@@ -351,10 +351,19 @@ export interface DiskFileEntry {
   extension: string;
 }
 
+export interface DiskSafeCleanupEntry {
+  id: string;
+  path: string;
+  name: string;
+  sizeBytes: number;
+  fileCount: number;
+}
+
 export interface DiskScanResult {
   folders: DiskFolderEntry[];
   topFiles: DiskFileEntry[];
   totalScanned: number;
+  safeCleanup?: DiskSafeCleanupEntry[];
 }
 
 export async function getDrives(): Promise<DriveInfo[]> {
