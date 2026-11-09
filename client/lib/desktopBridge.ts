@@ -327,3 +327,45 @@ export async function pickModelFolder(): Promise<{
   );
 }
 
+export interface DriveInfo {
+  name: string;
+  label: string;
+  driveType: string;
+  totalBytes: number;
+  freeBytes: number;
+  usedBytes: number;
+  rootPath: string;
+}
+
+export interface DiskFolderEntry {
+  path: string;
+  name: string;
+  sizeBytes: number;
+}
+
+export interface DiskFileEntry {
+  path: string;
+  name: string;
+  directory: string;
+  sizeBytes: number;
+  extension: string;
+}
+
+export interface DiskScanResult {
+  folders: DiskFolderEntry[];
+  topFiles: DiskFileEntry[];
+  totalScanned: number;
+}
+
+export async function getDrives(): Promise<DriveInfo[]> {
+  return callDesktopBridge<DriveInfo[]>("get_drives");
+}
+
+export async function scanDiskUsage(rootPath: string): Promise<DiskScanResult> {
+  return callDesktopBridge<DiskScanResult>("scan_disk_usage", { rootPath }, 300000); // 5 min timeout for large drives
+}
+
+export async function openInExplorer(path: string): Promise<void> {
+  await callDesktopBridge("open_in_explorer", { path });
+}
+
