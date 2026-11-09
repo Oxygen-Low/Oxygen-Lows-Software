@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -957,6 +957,194 @@ public partial class MainWindow : Window
                     });
 
                     SendWebMessage(new { id, success = true, data = selectedFolder != null ? new { path = selectedFolder, name = Path.GetFileName(selectedFolder) } : null });
+                }
+                else if (cmd == "get_drives")
+                {
+                    var drives = await Task.Run(() =>
+                    {
+                        var result = new List<object>();
+                        foreach (var drive in DriveInfo.GetDrives())
+                        {
+                            try
+                            {
+                                if (drive.IsReady)
+                                {
+                                    result.Add(new
+                                    {
+                                        name = drive.Name,
+                                        label = string.IsNullOrWhiteSpace(drive.VolumeLabel) ? drive.Name : drive.VolumeLabel,
+                                        driveType = drive.DriveType.ToString(),
+                                        totalBytes = drive.TotalSize,
+                                        freeBytes = drive.TotalFreeSpace,
+                                        usedBytes = drive.TotalSize - drive.TotalFreeSpace,
+                                        rootPath = drive.RootDirectory.FullName
+                                    });
+                                }
+                            }
+                            catch { }
+                        }
+                        return result;
+                    });
+                    SendWebMessage(new { id, success = true, data = drives });
+                }
+                else if (cmd == "scan_disk_usage")
+                {
+                    string rootPath = doc.RootElement.TryGetProperty("rootPath", out var rpProp) ? rpProp.GetString() ?? "" : "";
+                    if (string.IsNullOrEmpty(rootPath)) throw new Exception("rootPath is required");
+
+                    // System folders to skip (non-system files only)
+                    var systemFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        "Windows", "Program Files", "Program Files (x86)", "ProgramData",
+                        "$Recycle.Bin", "Recovery", "System Volume Information", "boot", "EFI"
+                    };
+
+                    var folderSizes = new System.Collections.Concurrent.ConcurrentDictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+                    var topFiles = new System.Collections.Concurrent.ConcurrentBag<object>();
+                    long totalScanned = 0;
+
+                    await Task.Run(() =>
+                    {
+                        // Build list of top-level non-system dirs to scan
+                        var rootDir = new DirectoryInfo(rootPath);
+                        var dirsToScan = new List<DirectoryInfo>();
+
+                        try
+                        {
+                            foreach (var subDir in rootDir.EnumerateDirectories())
+                            {
+                                if (systemFolders.Contains(subDir.Name)) continue;
+                                if (subDir.Attributes.HasFlag(FileAttributes.System)) continue;
+                                dirsToScan.Add(subDir);
+                            }
+                            // Also include files directly at root
+                            dirsToScan.Add(rootDir);
+                        }
+                        catch { }
+
+                        void ScanDirectory(DirectoryInfo dir, bool isRoot)
+                        {
+                            long dirSize = 0;
+                            try
+                            {
+                                foreach (var file in dir.EnumerateFiles("*", SearchOption.AllDirectories))
+                                {
+                                    try
+                                    {
+                                        if (file.Attributes.HasFlag(FileAttributes.System)) continue;
+                                        long size = file.Length;
+                                        dirSize += size;
+                                        Interlocked.Add(ref totalScanned, 1);
+
+                                        // Track top files (keep any file > 10MB for top files list)
+                                        if (size > 10 * 1024 * 1024)
+                                        {
+                                            topFiles.Add(new
+                                            {
+                                                path = file.FullName,
+                                                name = file.Name,
+                                                directory = file.DirectoryName ?? "",
+                                                sizeBytes = size,
+                                                extension = file.Extension.ToLowerInvariant()
+                                            });
+                                        }
+                                    }
+                                    catch { }
+                                }
+                            }
+                            catch { }
+
+                            if (!isRoot && dirSize > 0)
+                            {
+                                folderSizes.TryAdd(dir.FullName, dirSize);
+                            }
+                        }
+
+                        // Also enumerate files at root level for top files
+                        try
+                        {
+                            foreach (var file in rootDir.EnumerateFiles())
+                            {
+                                try
+                                {
+                                    if (file.Attributes.HasFlag(FileAttributes.System)) continue;
+                                    long size = file.Length;
+                                    if (size > 10 * 1024 * 1024)
+                                    {
+                                        topFiles.Add(new
+                                        {
+                                            path = file.FullName,
+                                            name = file.Name,
+                                            directory = file.DirectoryName ?? "",
+                                            sizeBytes = size,
+                                            extension = file.Extension.ToLowerInvariant()
+                                        });
+                                    }
+                                }
+                                catch { }
+                            }
+                        }
+                        catch { }
+
+                        // Parallel scan of non-system directories
+                        var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
+                        try
+                        {
+                            Parallel.ForEach(dirsToScan.Where(d => d.FullName != rootDir.FullName), parallelOptions, dir =>
+                            {
+                                ScanDirectory(dir, false);
+                            });
+                        }
+                        catch { }
+                    });
+
+                    var sortedFolders = folderSizes
+                        .OrderByDescending(kv => kv.Value)
+                        .Take(200)
+                        .Select(kv => new { path = kv.Key, name = Path.GetFileName(kv.Key), sizeBytes = kv.Value })
+                        .ToList();
+
+                    var sortedTopFiles = topFiles
+                        .OrderByDescending(f => ((dynamic)f).sizeBytes)
+                        .Take(100)
+                        .ToList();
+
+                    SendWebMessage(new { id, success = true, data = new { folders = sortedFolders, topFiles = sortedTopFiles, totalScanned } });
+                }
+                else if (cmd == "open_in_explorer")
+                {
+                    string explorerPath = doc.RootElement.TryGetProperty("path", out var epProp) ? epProp.GetString() ?? "" : "";
+                    if (!string.IsNullOrEmpty(explorerPath))
+                    {
+                        await Task.Run(() =>
+                        {
+                            try
+                            {
+                                // If it's a file, select it in explorer. If directory, open it.
+                                bool isFile = File.Exists(explorerPath);
+                                if (isFile)
+                                {
+                                    Process.Start(new ProcessStartInfo
+                                    {
+                                        FileName = "explorer.exe",
+                                        Arguments = $"/select,\"{explorerPath}\"",
+                                        UseShellExecute = true
+                                    });
+                                }
+                                else
+                                {
+                                    Process.Start(new ProcessStartInfo
+                                    {
+                                        FileName = "explorer.exe",
+                                        Arguments = $"\"{explorerPath}\"",
+                                        UseShellExecute = true
+                                    });
+                                }
+                            }
+                            catch { }
+                        });
+                    }
+                    SendWebMessage(new { id, success = true });
                 }
             }
             catch (Exception ex)
