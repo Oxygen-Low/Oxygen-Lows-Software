@@ -193,8 +193,8 @@ export function SimpleCookiesApp() {
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
-        <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center">
-          <Cookie className="w-10 h-10 text-amber-500" />
+        <div className="w-20 h-20 bg-cyan-500/10 rounded-full flex items-center justify-center">
+          <Cookie className="w-10 h-10 text-cyan-500" />
         </div>
         <h2 className="text-4xl font-bold text-white tracking-tight">
           {t("simpleCookies.title", undefined, "SimpleCookies")}
@@ -206,14 +206,11 @@ export function SimpleCookiesApp() {
             "Free cookie consent manager. No limits — banners, scanner, and consent receipts for every site.",
           )}
         </p>
-        <Badge className="bg-emerald-500/10 text-emerald-500">
-          {t("simpleCookies.freeBadge", undefined, "100% free · Unlimited projects")}
-        </Badge>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-12">
-          <Activity className="w-8 h-8 text-amber-500 animate-spin" />
+          <Activity className="w-8 h-8 text-cyan-500 animate-spin" />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -224,7 +221,7 @@ export function SimpleCookiesApp() {
               key={p.id}
             >
               <Card
-                className="group cursor-pointer border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-amber-500/50 transition-all"
+                className="group cursor-pointer border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-cyan-500/50 transition-all"
                 onClick={() => setSelectedId(p.id)}
               >
                 <CardHeader>
@@ -285,7 +282,7 @@ export function SimpleCookiesApp() {
             }}
           >
             <DialogTrigger asChild>
-              <Card className="cursor-pointer border-dashed border-2 border-slate-800 bg-transparent hover:border-amber-500/50 hover:bg-slate-900/30 transition-all flex flex-col items-center justify-center min-h-[200px]">
+              <Card className="cursor-pointer border-dashed border-2 border-slate-800 bg-transparent hover:border-cyan-500/50 hover:bg-slate-900/30 transition-all flex flex-col items-center justify-center min-h-[200px]">
                 <Plus className="w-10 h-10 text-slate-500 mb-2" />
                 <span className="text-slate-400 font-medium">
                   {t("simpleCookies.createProject", undefined, "Create Project")}
@@ -610,7 +607,7 @@ function ProjectDashboard({
   if (isLoading && !project) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Activity className="w-8 h-8 text-amber-500 animate-spin" />
+        <Activity className="w-8 h-8 text-cyan-500 animate-spin" />
       </div>
     );
   }
@@ -625,7 +622,6 @@ function ProjectDashboard({
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h2 className="text-xl sm:text-2xl font-bold text-white">{project.name}</h2>
-          <Badge className="bg-emerald-500/10 text-emerald-500">Free · Unlimited</Badge>
         </div>
         <Button variant="outline" size="sm" onClick={load}>
           <RefreshCw className="w-4 h-4 mr-2" />

@@ -480,7 +480,7 @@ const APPS: AppMetadata[] = [
       "Free, unlimited cookie consent: banner, script blocking, auto cookie scanner, and consent receipts for any site.",
     categories: ["All", "Security", "Development"],
     availability: "web-and-desktop",
-    icon: <Cookie className="w-8 h-8 text-amber-500" />,
+    icon: <Cookie className="w-8 h-8 text-cyan-500" />,
     component: SimpleCookiesApp,
     authRequired: true,
   },

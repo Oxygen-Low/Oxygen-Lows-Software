@@ -15,7 +15,10 @@ export {
 export {
   KNOWN_TRACKERS,
   scanHtml,
+  scanJsText,
   extractScriptSrcs,
+  extractInlineScripts,
+  extractDocumentCookieNames,
   extractSetCookieNames,
   declarationFromScan,
 } from "./scanner.js";

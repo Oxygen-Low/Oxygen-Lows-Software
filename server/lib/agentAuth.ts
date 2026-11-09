@@ -27,10 +27,8 @@ export function generateAgentToken(
   };
 
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const signature = crypto
-    .createHmac("sha256", secret)
-    .update(encodedPayload)
-    .digest("base64url");
+  // codeql[js/insufficient-password-hash] HMAC-SHA256 signs an agent token; it is not used for password storage.
+  const signature = crypto.createHmac("sha256", secret).update(encodedPayload).digest("base64url");
 
   return `ag_${encodedPayload}.${signature}`;
 }
@@ -43,10 +41,8 @@ export function verifyAgentToken(token: string): AgentTokenPayload | null {
     if (!encodedPayload || !signature) return null;
 
     const secret = getSecretKey();
-    const expectedSignature = crypto
-      .createHmac("sha256", secret)
-      .update(encodedPayload)
-      .digest("base64url");
+    // codeql[js/insufficient-password-hash] HMAC-SHA256 verifies an agent token; it is not used for password storage.
+    const expectedSignature = crypto.createHmac("sha256", secret).update(encodedPayload).digest("base64url");
 
     if (signature.length !== expectedSignature.length) return null;
     const isValid = crypto.timingSafeEqual(

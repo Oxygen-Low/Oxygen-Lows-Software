@@ -100,17 +100,258 @@ export const KNOWN_TRACKERS: KnownTracker[] = [
 ];
 
 const MAX_HTML_CHARS = 2_000_000;
+const MAX_JS_CHARS = 5_000_000;
 
 export function extractScriptSrcs(html: string): string[] {
   const srcs: string[] = [];
-  const lower = html.slice(0, MAX_HTML_CHARS).toLowerCase();
-  // Static pattern — never built from user input.
-  const re = /<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/g;
+  const slice = html.slice(0, MAX_HTML_CHARS);
+  // Case-insensitive match but preserve original case (asset paths are case-sensitive).
+  const re = /<script\b[^>]*\ssrc\s*=\s*["']([^"']+)["']/gi;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(lower)) !== null && srcs.length < 500) {
+  while ((m = re.exec(slice)) !== null && srcs.length < 500) {
     srcs.push(m[1].trim());
   }
   return srcs;
+}
+
+export function extractInlineScripts(html: string): string[] {
+  const bodies: string[] = [];
+  const slice = html.slice(0, MAX_JS_CHARS);
+  // Static pattern (never built from user input). Skip tags that have src=.
+  const re = /<script\b(?![^>]*\bsrc\s*=)[^>]*>([\s\S]*?)<\/script>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(slice)) !== null && bodies.length < 200) {
+    const body = m[1].trim();
+    if (body) bodies.push(body);
+  }
+  return bodies;
+}
+
+/**
+ * Cookie names written via `document.cookie="name=..."`, `cookieStore.set("name")`,
+ * `Cookies.set("name")` and `setCookie("name")` in JS text.
+ */
+export function extractDocumentCookieNames(jsText: string): string[] {
+  const names = new Set<string>();
+  const slice = jsText.slice(0, MAX_JS_CHARS);
+  const patterns: RegExp[] = [
+    /document\.cookie\s*=\s*["'`]([A-Za-z0-9_\-\.\[\]]+)=/g,
+    /cookieStore\s*\.\s*set\(\s*["']([A-Za-z0-9_\-\.\[\]]+)["']/g,
+    /\bCookies\s*\.\s*set\(\s*["']([A-Za-z0-9_\-\.\[\]]+)["']/g,
+    /\bsetCookie\s*\(\s*["']([A-Za-z0-9_\-\.\[\]]+)["']/g,
+  ];
+  for (const re of patterns) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(slice)) !== null && names.size < 300) {
+      const name = m[1].trim();
+      if (name && name.length <= 120) names.add(name);
+    }
+  }
+  return [...names];
+}
+
+/** Tracker whose cookie entry matches `name` (exact or wildcard prefix). */
+export function trackerForCookieName(
+  name: string,
+): { tracker: KnownTracker; entry: KnownTracker["cookies"][number] } | null {
+  const lower = name.toLowerCase();
+  for (const tracker of KNOWN_TRACKERS) {
+    for (const entry of tracker.cookies) {
+      const expected = entry.name.toLowerCase();
+      if (expected.includes("*")) {
+        if (lower.startsWith(expected.replace("*", ""))) return { tracker, entry };
+      } else if (lower === expected) {
+        return { tracker, entry };
+      }
+    }
+  }
+  return null;
+}
+
+function inferCategory(name: string): CookieCategory {
+  const lower = name.toLowerCase();
+  if (
+    lower.startsWith("_ga") ||
+    lower.startsWith("_gid") ||
+    lower.startsWith("_gat") ||
+    lower.startsWith("_hj") ||
+    lower.startsWith("_clck") ||
+    lower.startsWith("_ym") ||
+    lower.startsWith("_mk_") ||
+    lower.startsWith("_fbp") ||
+    lower.startsWith("_ttp") ||
+    lower.startsWith("_gac") ||
+    lower.startsWith("li_") ||
+    lower === "ide" ||
+    lower.startsWith("_pk_") ||
+    lower.startsWith("_uetvid")
+  ) {
+    return "statistics";
+  }
+  if (
+    lower.startsWith("fr") && name === "fr" ||
+    lower.startsWith("_fb") ||
+    lower.startsWith("cto") ||
+    lower.startsWith("tt_") ||
+    lower.startsWith("td_")
+  ) {
+    return "marketing";
+  }
+  return "necessary";
+}
+
+function inferPurpose(name: string): string {
+  const lower = name.toLowerCase();
+  if (
+    /session|auth|token|csrf|xsrf|jwt|sid|login|_session/i.test(name) ||
+    lower.endsWith("_session") ||
+    lower === "phpsessid" ||
+    lower.startsWith("jsessionid")
+  ) {
+    return "Authentication / session (auto-detected from JS)";
+  }
+  if (/^(theme|lang|locale|preferred|settings|consent|cookie_consent|simplecookies)/i.test(name)) {
+    return "Preferences (auto-detected from JS)";
+  }
+  if (
+    lower.startsWith("_ga") ||
+    lower.startsWith("_gid") ||
+    lower.startsWith("_gat") ||
+    lower.startsWith("_hj") ||
+    lower.startsWith("_clck") ||
+    lower.startsWith("_ym") ||
+    lower.startsWith("_pk_")
+  ) {
+    return "Analytics / statistics (auto-detected from JS)";
+  }
+  return "First-party cookie (auto-detected from JS)";
+}
+
+function firstPartyCookie(name: string, source: string): ScanResultCookie {
+  const known = trackerForCookieName(name);
+  if (known) {
+    return {
+      name,
+      provider: known.tracker.provider,
+      purpose: known.entry.purpose,
+      expiry: known.entry.expiry,
+      category: known.tracker.category,
+      source,
+    };
+  }
+  return {
+    name,
+    provider: "First-party (JS)",
+    purpose: inferPurpose(name),
+    expiry: "Session",
+    category: inferCategory(name),
+    source,
+  };
+}
+
+/**
+ * Scan a blob of JS/HTML text for tracker hosts, inline markers,
+ * known cookie literals, and `document.cookie` writes.
+ */
+export function scanJsText(
+  text: string,
+  source: string = "js",
+): { cookies: ScanResultCookie[]; trackers: string[] } {
+  const cookies: ScanResultCookie[] = [];
+  const trackers: string[] = [];
+  const slice = text.slice(0, MAX_JS_CHARS);
+  const lower = slice.toLowerCase();
+
+  for (const tracker of KNOWN_TRACKERS) {
+    if (tracker.match.some((p) => lower.includes(p.toLowerCase()))) {
+      if (!trackers.includes(tracker.provider)) trackers.push(tracker.provider);
+      for (const entry of tracker.cookies) {
+        cookies.push({
+          name: entry.name,
+          provider: tracker.provider,
+          purpose: entry.purpose,
+          expiry: entry.expiry,
+          category: tracker.category,
+          source: "tracker",
+        });
+      }
+    }
+  }
+
+  const inlineMarkers: Array<[string, string]> = [
+    ["gtag(", "Google Analytics"],
+    ["fbq(", "Meta Pixel"],
+    ["hj(", "Hotjar"],
+  ];
+  for (const [marker, provider] of inlineMarkers) {
+    if (lower.includes(marker) && !trackers.includes(provider)) {
+      trackers.push(provider);
+      const tracker = KNOWN_TRACKERS.find((x) => x.provider === provider);
+      if (tracker) {
+        for (const entry of tracker.cookies) {
+          cookies.push({
+            name: entry.name,
+            provider: tracker.provider,
+            purpose: entry.purpose,
+            expiry: entry.expiry,
+            category: tracker.category,
+            source: "tracker",
+          });
+        }
+      }
+    }
+  }
+
+  for (const name of extractDocumentCookieNames(slice)) {
+    cookies.push(firstPartyCookie(name, source));
+  }
+
+  // Known cookie names appearing as quoted literals (handles bundled code).
+  for (const tracker of KNOWN_TRACKERS) {
+    for (const entry of tracker.cookies) {
+      if (entry.name.includes("*")) {
+        const prefix = entry.name.split("*")[0];
+        if (lower.includes(`${prefix}`)) {
+          // Only add the wildcard entry when a quoted prefix literal exists.
+          if (lower.includes(`"${prefix}`) || lower.includes(`'${prefix}`)) {
+            cookies.push({
+              name: entry.name,
+              provider: tracker.provider,
+              purpose: entry.purpose,
+              expiry: entry.expiry,
+              category: tracker.category,
+              source: "js",
+            });
+          }
+        }
+      } else {
+        const quoted = entry.name.toLowerCase();
+        if (lower.includes(`"${quoted}"`) || lower.includes(`'${quoted}'`)) {
+          cookies.push({
+            name: entry.name,
+            provider: tracker.provider,
+            purpose: entry.purpose,
+            expiry: entry.expiry,
+            category: tracker.category,
+            source: "js",
+          });
+        }
+      }
+    }
+  }
+
+  // Dedupe by name|provider (keep first).
+  const seen = new Set<string>();
+  return {
+    cookies: cookies.filter((c) => {
+      const key = `${c.name}|${c.provider}`.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }),
+    trackers,
+  };
 }
 
 export function extractSetCookieNames(headers: Headers | Record<string, string>): string[] {
@@ -135,20 +376,8 @@ export function extractSetCookieNames(headers: Headers | Record<string, string>)
   return [...names];
 }
 
-function cookieForTracker(t: KnownTracker, c: KnownTracker["cookies"][number]): ScanResultCookie {
-  return {
-    name: c.name,
-    provider: t.provider,
-    purpose: c.purpose,
-    expiry: c.expiry,
-    category: t.category,
-    source: "tracker",
-  };
-}
-
 export function scanHtml(html: string, baseUrl: string, setCookieNames: string[] = []): ScanResult {
   const srcs = extractScriptSrcs(html);
-  const lowerHtml = html.slice(0, MAX_HTML_CHARS).toLowerCase();
   const cookies: ScanResultCookie[] = [];
   const trackers: string[] = [];
   const notes: string[] = [];
@@ -160,30 +389,21 @@ export function scanHtml(html: string, baseUrl: string, setCookieNames: string[]
     seen.add(key);
     cookies.push(c);
   };
-
-  for (const src of srcs) {
-    const lowerSrc = src.toLowerCase();
-    for (const t of KNOWN_TRACKERS) {
-      if (t.match.some((p) => lowerSrc.includes(p.toLowerCase()))) {
-        if (!trackers.includes(t.provider)) trackers.push(t.provider);
-        for (const c of t.cookies) addCookie(cookieForTracker(t, c));
-      }
+  const addTrackers = (found: string[]) => {
+    for (const t of found) {
+      if (!trackers.includes(t)) trackers.push(t);
     }
-  }
+  };
+  const mergeJs = (found: { cookies: ScanResultCookie[]; trackers: string[] }) => {
+    addTrackers(found.trackers);
+    for (const c of found.cookies) addCookie(c);
+  };
 
-  // Inline markers (gtag config, fbq, hotjar snippets) without src.
-  const inlineMarkers: Array<[string, string]> = [
-    ["gtag(", "Google Analytics"],
-    ["ga(", "Google Analytics"],
-    ["fbq(", "Meta Pixel"],
-    ["hj(", "Hotjar"],
-  ];
-  for (const [marker, provider] of inlineMarkers) {
-    if (lowerHtml.includes(marker) && !trackers.includes(provider)) {
-      trackers.push(provider);
-      const t = KNOWN_TRACKERS.find((x) => x.provider === provider);
-      if (t) for (const c of t.cookies) addCookie(cookieForTracker(t, c));
-    }
+  // Whole HTML (covers script src URLs + inline snippets + writes).
+  mergeJs(scanJsText(html, "html"));
+  // Inline script bodies explicitly (defense in depth; dedupe handles overlap).
+  for (const body of extractInlineScripts(html)) {
+    mergeJs(scanJsText(body, "inline"));
   }
 
   // Server-set cookies from Set-Cookie headers.
@@ -202,7 +422,8 @@ export function scanHtml(html: string, baseUrl: string, setCookieNames: string[]
   }
 
   notes.push(
-    "Static scan: JavaScript-set cookies are inferred from third-party scripts and may differ from runtime.",
+    "Static scan: cookies are detected from HTML, inline scripts, and downloaded JS bundles where available.",
+    "JavaScript-set cookies are inferred without executing scripts and may differ from runtime.",
     "Review the declaration and edit it in the dashboard before publishing."
   );
 
