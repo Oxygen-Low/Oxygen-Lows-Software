@@ -40,6 +40,7 @@ import {
   Headphones,
   Database,
   Terminal,
+  Cookie,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -117,6 +118,11 @@ const JsonFormatterApp = lazy(() =>
 const DefenderApp = lazy(() =>
   import("@/components/apps/WebDefender").then((m) => ({
     default: m.DefenderApp,
+  })),
+);
+const SimpleCookiesApp = lazy(() =>
+  import("@/components/apps/SimpleCookies").then((m) => ({
+    default: m.SimpleCookiesApp,
   })),
 );
 const PasswordManagerApp = lazy(() =>
@@ -463,6 +469,19 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <ShieldCheck className="w-8 h-8 text-cyan-500" />,
     component: DefenderApp,
+    authRequired: true,
+  },
+  {
+    id: "simplecookies",
+    nameKey: "apps.simpleCookiesTitle",
+    defaultName: "SimpleCookies",
+    descKey: "apps.simpleCookiesDesc",
+    defaultDesc:
+      "Free, unlimited cookie consent: banner, script blocking, auto cookie scanner, and consent receipts for any site.",
+    categories: ["All", "Security", "Development"],
+    availability: "web-and-desktop",
+    icon: <Cookie className="w-8 h-8 text-amber-500" />,
+    component: SimpleCookiesApp,
     authRequired: true,
   },
   {

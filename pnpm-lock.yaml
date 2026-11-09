@@ -211,6 +211,9 @@ importers:
       '@hono/node-server':
         specifier: ^2.1.6
         version: 2.1.6(hono@4.13.13)
+      '@oxygenlow/simplecookies':
+        specifier: workspace:*
+        version: link:packages/simplecookies
       '@oxygenlow/webdefender':
         specifier: workspace:*
         version: link:packages/webdefender
@@ -545,6 +548,22 @@ importers:
       '@types/node':
         specifier: ^26.6.3
         version: 26.6.3
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+
+  packages/simplecookies:
+    dependencies:
+      react:
+        specifier: '>=16.0.0'
+        version: 19.2.8
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      '@types/react':
+        specifier: ^19.2.18
+        version: 19.2.18
       typescript:
         specifier: 7.0.2
         version: 7.0.2

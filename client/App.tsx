@@ -312,6 +312,14 @@ const App = () => (
                       path="/datasets"
                       element={<Navigate to="/apps/datasets" replace />}
                     />
+                    <Route
+                      path="/simplecookies"
+                      element={<Navigate to="/apps/simplecookies" replace />}
+                    />
+                    <Route
+                      path="/cookies"
+                      element={<Navigate to="/apps/simplecookies" replace />}
+                    />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

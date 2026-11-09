@@ -13,6 +13,7 @@ import { aiRouter } from "./routes/ai.ts";
 import { imageGenRouter } from "./routes/imageGen.ts";
 import { vpnRouter } from "./routes/vpn.ts";
 import { defenderRouter } from "./routes/webdefender.ts";
+import { simplecookiesRouter } from "./routes/simplecookies.ts";
 import { storageRouter } from "./routes/storage.ts";
 import { agentSearchRouter } from "./routes/agentSearch.ts";
 import { authRouter } from "./routes/auth.ts";
@@ -105,7 +106,8 @@ app.use("*", async (c, next) => {
     c.req.path.startsWith("/api/chess") ||
     c.req.path.startsWith("/api/agents") ||
     c.req.path.startsWith("/api/custom-games") ||
-    c.req.path.startsWith("/api/datasets")
+    c.req.path.startsWith("/api/datasets") ||
+    c.req.path.startsWith("/api/simplecookies")
   ) {
     return next();
   }
@@ -391,6 +393,12 @@ app.get("/sitemap.xml", (c) => {
     },
     {
       loc: `${baseUrl}/apps/webdefender`,
+      changefreq: "weekly",
+      priority: "0.8",
+      lastmod: today,
+    },
+    {
+      loc: `${baseUrl}/apps/simplecookies`,
       changefreq: "weekly",
       priority: "0.8",
       lastmod: today,
@@ -1259,6 +1267,7 @@ app.route("/api/ai/agent-search", agentSearchRouter);
 app.route("/api/vpn", vpnRouter);
 app.route("/api/webdefender", defenderRouter);
 app.route("/api/defender", defenderRouter);
+app.route("/api/simplecookies", simplecookiesRouter);
 app.route("/api/storage", storageRouter);
 app.route("/api/auth", authRouter);
 app.route("/api/oauth", oauthRouter);

@@ -1025,6 +1025,18 @@ export function getTableFilePath(
       case "defender_vpn":
         filePath = path.join(userDir, "defender", "vpn.json");
         break;
+      case "simplecookies_projects":
+        filePath = path.join(userDir, "simplecookies", "projects.json");
+        break;
+      case "simplecookies_config":
+        filePath = path.join(userDir, "simplecookies", "config.json");
+        break;
+      case "simplecookies_declaration":
+        filePath = path.join(userDir, "simplecookies", "declaration.json");
+        break;
+      case "simplecookies_consents":
+        filePath = path.join(userDir, "simplecookies", "consents.json");
+        break;
       case "user_models":
         filePath = path.join(userDir, "models", "models.json");
         break;

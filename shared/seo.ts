@@ -85,6 +85,11 @@ export const ALL_INTERNAL_NAV_LINKS: InternalLinkItem[] = [
     description: "API and website threat mitigation",
   },
   {
+    href: "/apps/simplecookies",
+    label: "SimpleCookies",
+    description: "Free unlimited cookie consent",
+  },
+  {
     href: "/apps/base64-encoder",
     label: "Base64 Encoder",
     description: "Encode and decode Base64 strings",
@@ -291,6 +296,11 @@ export const SEO_ROUTES: Record<string, RouteSeoData> = {
         href: "/apps/webdefender",
         label: "Web Defender",
         description: "DDoS and bot protection suite",
+      },
+      {
+        href: "/apps/simplecookies",
+        label: "SimpleCookies",
+        description: "Free unlimited cookie consent",
       },
       {
         href: "/apps/base64-encoder",
@@ -670,6 +680,40 @@ export const SEO_ROUTES: Record<string, RouteSeoData> = {
       { href: "/terms", label: "Terms of Use" },
     ],
     softwareType: "Web Security & Firewall Middleware",
+  },
+  "/apps/simplecookies": {
+    path: "/apps/simplecookies",
+    title: "SimpleCookies - Oxygen Low's Software",
+    description:
+      "100% free unlimited cookie consent manager: consent banner, script blocking, auto cookie scanner, consent receipts, and dashboard for any website.",
+    canonicalPath: "/apps/simplecookies",
+    h1: "SimpleCookies Cookie Consent Manager",
+    h2: [
+      "Free Unlimited Consent Banner",
+      "Auto Cookie Scanner & Declaration",
+      "Script Blocking Until Consent",
+    ],
+    keywords: [
+      "cookie consent",
+      "cookie banner",
+      "gdpr consent",
+      "cookie scanner",
+      "consent manager",
+      "cookiebot free alternative",
+    ],
+    ogType: "website",
+    breadcrumbs: [
+      { name: "Home", url: "/" },
+      { name: "Apps", url: "/apps" },
+      { name: "SimpleCookies", url: "/apps/simplecookies" },
+    ],
+    internalLinks: [
+      { href: "/apps", label: "All Apps" },
+      { href: "/apps/webdefender", label: "Web Defender" },
+      { href: "/privacy", label: "Privacy Policy" },
+      { href: "/terms", label: "Terms of Use" },
+    ],
+    softwareType: "Cookie Consent & Privacy Web Application",
   },
   "/apps/surveys": {
     path: "/apps/surveys",
@@ -1211,6 +1255,9 @@ export function getSeoMetadata(pathname: string): RouteSeoData {
   }
   if (cleanPath === "/apps/public-assets") {
     return SEO_ROUTES["/apps/public-characters"];
+  }
+  if (cleanPath === "/simplecookies" || cleanPath === "/cookies") {
+    return SEO_ROUTES["/apps/simplecookies"];
   }
 
   // Handle /apps/:appId
