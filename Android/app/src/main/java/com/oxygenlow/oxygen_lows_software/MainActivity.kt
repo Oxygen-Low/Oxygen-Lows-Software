@@ -15,6 +15,7 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import android.webkit.WebChromeClient
 import android.webkit.WebView
+import androidx.webkit.WebMessageCompat
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -264,6 +265,14 @@ class MainActivity : AppCompatActivity() {
                         });
                     }
                 };
+
+                // Receive replies through the safe WebMessage channel instead
+                // of evaluating JavaScript strings in the page.
+                if (window.AndroidApp) {
+                    window.AndroidApp.onmessage = function(event) {
+                        window.dispatchAndroidMessage(event.data);
+                    };
+                }
             }
             }
         """.trimIndent()
@@ -297,7 +306,7 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
                         val response = JSONObject().apply {
                             put("id", id)
                             put("success", false)
-                            put("error", e.message)
+                            put("error", "Unable to play ringtone")
                         }
                         sendResponse(response.toString())
                     }
@@ -315,7 +324,7 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
                         val response = JSONObject().apply {
                             put("id", id)
                             put("success", false)
-                            put("error", e.message)
+                            put("error", "Unable to stop ringtone")
                         }
                         sendResponse(response.toString())
                     }
@@ -345,7 +354,7 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
                         val response = JSONObject().apply {
                             put("id", id)
                             put("success", false)
-                            put("error", e.message)
+                            put("error", "Unable to import VPN configuration")
                         }
                         sendResponse(response.toString())
                     }
@@ -390,7 +399,7 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
                             val response = JSONObject().apply {
                                 put("id", id)
                                 put("success", false)
-                                put("error", e.message)
+                                put("error", "Unable to check for updates")
                             }
                             sendResponse(response.toString())
                         }
@@ -412,7 +421,7 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
                                 val response = JSONObject().apply {
                                     put("id", id)
                                     put("success", false)
-                                    put("error", e.message)
+                                    put("error", "Unable to install update")
                                 }
                                 sendResponse(response.toString())
                             }
@@ -431,7 +440,7 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
                     val response = JSONObject().apply {
                         put("id", id)
                         put("success", false)
-                        put("error", "Command not supported on Android: ${'$'}command")
+                        put("error", "Command not supported on Android")
                     }
                     sendResponse(response.toString())
                 }
@@ -469,8 +478,21 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
 
     private fun sendResponse(jsonResponse: String) {
         context.runOnUiThread {
-            if (NativeSecurity.isTrustedOrigin(webView.url)) {
-                webView.evaluateJavascript("window.dispatchAndroidMessage(${JSONObject.quote(jsonResponse)});", null)
+            val currentUrl = webView.url
+            if (NativeSecurity.isTrustedOrigin(currentUrl)) {
+                try {
+                    val parsed = Uri.parse(currentUrl)
+                    val origin = Uri.parse("${parsed.scheme}://${parsed.authority}")
+                    // WebMessage delivery keeps the response out of the
+                    // JavaScript source and avoids evaluateJavascript entirely.
+                    WebViewCompat.postWebMessage(
+                        webView,
+                        WebMessageCompat(jsonResponse),
+                        origin,
+                    )
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
     }

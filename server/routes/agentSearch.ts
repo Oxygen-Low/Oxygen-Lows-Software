@@ -17,6 +17,7 @@ import {
 } from "../lib/hordeContinuation.ts";
 import { safeParseJson } from "../../shared/jsonRepair.ts";
 import { getUserApiKey } from "../lib/userApiKeys.ts";
+import { removeHtmlElementBlocks } from "../lib/htmlText.ts";
 
 export const agentSearchRouter = new Hono();
 
@@ -55,19 +56,17 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
       String.fromCharCode(parseInt(hex, 16)),
     )
-    .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#039;/g, "'")
-    .replace(/&nbsp;/g, " ");
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&");
 }
 
 function stripHtmlTags(input: unknown): string {
   if (typeof input !== "string") return "";
-  let text = input
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, " ")
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, " ");
+  let text = removeHtmlElementBlocks(input, ["script", "style"]);
 
   // Prefer main content container if present
   const mainMatch =

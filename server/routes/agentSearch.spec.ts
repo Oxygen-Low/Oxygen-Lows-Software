@@ -9,6 +9,7 @@ import {
   parseHordeAction,
 } from "./agentSearch.ts";
 import { generateToken } from "../lib/auth.ts";
+import { isHostnameForUrl } from "../lib/urlHost.ts";
 import {
   DATA_DIR,
   initUserFolder,
@@ -144,7 +145,7 @@ describe("Agent Search Route", () => {
       .spyOn(globalThis, "fetch")
       .mockImplementation(async (url, init) => {
         const urlStr = String(url);
-        if (urlStr.includes("stablehorde.net")) {
+        if (isHostnameForUrl(urlStr, "stablehorde.net")) {
           const reqBody = JSON.parse((init?.body as string) || "{}");
           capturedHordeModel = reqBody.model;
           return new Response(
@@ -195,7 +196,7 @@ describe("Agent Search Route", () => {
       .spyOn(globalThis, "fetch")
       .mockImplementation(async (url, init) => {
         const urlStr = String(url);
-        if (urlStr.includes("stablehorde.net")) {
+        if (isHostnameForUrl(urlStr, "stablehorde.net")) {
           const reqBody = JSON.parse((init?.body as string) || "{}");
           capturedHordeModel = reqBody.model;
           return new Response(
@@ -235,7 +236,7 @@ describe("Agent Search Route", () => {
       .spyOn(globalThis, "fetch")
       .mockImplementation(async (url, init) => {
         const urlStr = String(url);
-        if (urlStr.includes("stablehorde.net")) {
+        if (isHostnameForUrl(urlStr, "stablehorde.net")) {
           const reqBody = JSON.parse((init?.body as string) || "{}");
           capturedHordeModel = reqBody.model;
           return new Response(
@@ -276,7 +277,7 @@ describe("Agent Search Route", () => {
       .spyOn(globalThis, "fetch")
       .mockImplementation(async (url, init) => {
         const urlStr = String(url);
-        if (urlStr.includes("stablehorde.net")) {
+        if (isHostnameForUrl(urlStr, "stablehorde.net")) {
           callCount++;
           const reqBody = JSON.parse((init?.body as string) || "{}");
           if (callCount > 1) {
@@ -327,7 +328,7 @@ describe("Agent Search Route", () => {
     let callCount = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
       const urlStr = String(url);
-      if (urlStr.includes("stablehorde.net")) {
+      if (isHostnameForUrl(urlStr, "stablehorde.net")) {
         callCount++;
         if (callCount > 1) {
           summarizerCalled = true;
@@ -376,7 +377,7 @@ describe("Agent Search Route", () => {
     let capturedHordeModel = "";
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
       const urlStr = String(url);
-      if (urlStr.includes("stablehorde.net")) {
+      if (isHostnameForUrl(urlStr, "stablehorde.net")) {
         const reqBody = JSON.parse((init?.body as string) || "{}");
         capturedHordeModel = reqBody.model;
         return new Response(
@@ -417,7 +418,7 @@ describe("Agent Search Route", () => {
     let capturedHordeModel = "";
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
       const urlStr = String(url);
-      if (urlStr.includes("stablehorde.net")) {
+      if (isHostnameForUrl(urlStr, "stablehorde.net")) {
         const reqBody = JSON.parse((init?.body as string) || "{}");
         capturedHordeModel = reqBody.model;
         return new Response(
@@ -479,7 +480,7 @@ describe("Agent Search Route", () => {
   test("Streams generic status messages rather than hardcoding 'fast'", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
       const urlStr = String(url);
-      if (urlStr.includes("stablehorde.net")) {
+      if (isHostnameForUrl(urlStr, "stablehorde.net")) {
         return new Response(
           JSON.stringify({
             choices: [{ message: { content: '{"action": "done"}' } }],
@@ -518,13 +519,13 @@ describe("Agent Search Route", () => {
     let hordeCallCount = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init?: any) => {
       const urlStr = String(url);
-      if (urlStr.includes("html.duckduckgo.com")) {
+      if (isHostnameForUrl(urlStr, "html.duckduckgo.com")) {
         return new Response('<a class="result__snippet" href="https://example.com">Sample search result</a>', {
           status: 200,
           headers: { "Content-Type": "text/html" },
         });
       }
-      if (urlStr.includes("stablehorde.net")) {
+      if (isHostnameForUrl(urlStr, "stablehorde.net")) {
         hordeCallCount++;
         const reqBody = init?.body ? JSON.parse(init.body) : {};
         if (reqBody.tools) {
@@ -602,7 +603,7 @@ describe("Agent Search Route", () => {
 
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
       const urlStr = String(url);
-      if (urlStr.includes("openrouter.ai")) {
+      if (isHostnameForUrl(urlStr, "openrouter.ai")) {
         capturedHeaders = init?.headers;
         return new Response(
           JSON.stringify({
@@ -645,7 +646,7 @@ describe("Agent Search Route", () => {
   test("Allows keyless Pollinations AI provider without requiring API key", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
       const urlStr = String(url);
-      if (urlStr.includes("pollinations.ai")) {
+      if (isHostnameForUrl(urlStr, "pollinations.ai")) {
         return new Response(
           JSON.stringify({
             choices: [{ message: { content: '{"action": "done"}' } }],

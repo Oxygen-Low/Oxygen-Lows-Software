@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { sanitizeUrlForAttribute } from "@/lib/safeUrl";
 import { Slider } from "@/components/ui/slider";
 import {
   Dialog,
@@ -641,6 +642,25 @@ const BIP39_WORDS = [
 
 // ─── Password Generator ────────────────────────────────────────────────────────
 
+function secureRandomIndex(max: number): number {
+  if (!Number.isInteger(max) || max <= 0) {
+    throw new Error("secureRandomIndex requires a positive integer bound");
+  }
+
+  // Rejection sampling removes the modulo bias from mapping random bytes onto
+  // an arbitrary alphabet size.
+  const range = 0x1_0000_0000;
+  const limit = Math.floor(range / max) * max;
+  const buffer = new Uint32Array(1);
+  let value: number;
+  do {
+    crypto.getRandomValues(buffer);
+    value = buffer[0];
+  } while (value >= limit);
+
+  return value % max;
+}
+
 function generatePassword(opts: GeneratorOptions): string {
   const {
     length,
@@ -654,16 +674,14 @@ function generatePassword(opts: GeneratorOptions): string {
   const amb = "l1IO0";
   if (mode === "pin") {
     const digits = avoidAmbiguous ? "23456789" : "0123456789";
-    return Array.from(crypto.getRandomValues(new Uint8Array(length)))
-      .map((b) => digits[b % digits.length])
-      .join("");
+    return Array.from({ length }, () => digits[secureRandomIndex(digits.length)]).join("");
   }
   if (mode === "passphrase") {
     const wordCount = Math.max(3, Math.min(10, Math.round(length / 5)));
-    const arr = crypto.getRandomValues(new Uint32Array(wordCount));
-    return Array.from(arr)
-      .map((n) => BIP39_WORDS[n % BIP39_WORDS.length])
-      .join("-");
+    return Array.from(
+      { length: wordCount },
+      () => BIP39_WORDS[secureRandomIndex(BIP39_WORDS.length)],
+    ).join("-");
   }
   let chars = "";
   if (uppercase) {
@@ -695,9 +713,7 @@ function generatePassword(opts: GeneratorOptions): string {
   }
   if (symbols) chars += "!@#$%^&*()-_=+[]{}|;:,.<>?";
   if (!chars) chars = "abcdefghijklmnopqrstuvwxyz";
-  return Array.from(crypto.getRandomValues(new Uint8Array(length)))
-    .map((b) => chars[b % chars.length])
-    .join("");
+  return Array.from({ length }, () => chars[secureRandomIndex(chars.length)]).join("");
 }
 
 function extractDomain(url: string | null | undefined): string {
@@ -1159,6 +1175,7 @@ export function PasswordManagerApp() {
   const [fetching, setFetching] = useState(true);
   const [formTitle, setFormTitle] = useState("");
   const [formUrl, setFormUrl] = useState("");
+  const safeFormUrl = sanitizeUrlForAttribute(formUrl, ["http:", "https:"]);
   const [formPassword, setFormPassword] = useState("");
   const [formNotes, setFormNotes] = useState("");
   const [formOtpSecret, setFormOtpSecret] = useState("");
@@ -1574,13 +1591,9 @@ export function PasswordManagerApp() {
                     )}
                     className="bg-slate-950 border-slate-800 text-slate-100 text-sm flex-1"
                   />
-                  {formUrl && (
+                  {safeFormUrl && (
                     <a
-                      href={
-                        formUrl.startsWith("http")
-                          ? formUrl
-                          : "https://" + formUrl
-                      }
+                      href={safeFormUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-cyan-400 transition flex items-center"

@@ -3,6 +3,17 @@ export interface CidrBlock {
   mask: number;
 }
 
+function urlHasHostname(url: string, hostname: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const expected = hostname.toLowerCase();
+    const actual = parsed.hostname.toLowerCase().replace(/\.$/, "");
+    return actual === expected || actual.endsWith(`.${expected}`);
+  } catch {
+    return false;
+  }
+}
+
 export function ipToNumber(ip: string): number | null {
   const parts = ip.split(".");
   if (parts.length !== 4) return null;
@@ -276,7 +287,7 @@ export class VpnDetector {
 
             if (response.ok) {
               const text = await response.text();
-              if (url.includes("mullvad.net") || text.trim().startsWith("[")) {
+              if (urlHasHostname(url, "mullvad.net") || text.trim().startsWith("[")) {
                 try {
                   const data = JSON.parse(text);
                   if (Array.isArray(data)) {

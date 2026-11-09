@@ -161,7 +161,9 @@ describe("SEO Suite - Resolving Audit Issues Across All Pages", () => {
       );
       expect(jsonLdMatches).toBeTruthy();
       for (const match of jsonLdMatches!) {
-        const jsonContent = match.replace(/<\/?script[^>]*>/gi, "");
+        const contentStart = match.indexOf(">") + 1;
+        const contentEnd = match.lastIndexOf("</script>");
+        const jsonContent = match.slice(contentStart, contentEnd);
         const parsed = JSON.parse(jsonContent);
         expect(parsed["@context"]).toBe("https://schema.org");
       }

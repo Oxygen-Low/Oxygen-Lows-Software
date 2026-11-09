@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StorageFileSelector } from "@/components/StorageFileSelector";
+import { sanitizeUrlForAttribute } from "@/lib/safeUrl";
 import { storage } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -478,7 +479,14 @@ export const UploadsPanel: React.FC<UploadsPanelProps> = ({
                 className="group relative aspect-square rounded-lg overflow-hidden border border-border bg-slate-900 cursor-pointer hover:border-primary/80 transition-all hover:scale-[1.02]"
               >
                 <img
-                  src={asset.url}
+                  src={
+                    sanitizeUrlForAttribute(asset.url, [
+                      "http:",
+                      "https:",
+                      "blob:",
+                      "data:",
+                    ]) || undefined
+                  }
                   alt={asset.name}
                   className="w-full h-full object-cover"
                 />

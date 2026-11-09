@@ -6,6 +6,8 @@
  * storage quota) and is never shown in storage listings.
  */
 
+import { normalizeRelativePath } from "./pathUtils.ts";
+
 /** Name of the hidden folder inside `uploads/Storage/<userId>/`. */
 export const HIDDEN_STORAGE_DIR = ".hidden";
 
@@ -43,15 +45,7 @@ export function normalizeTrackKey(
   userId?: string | number | null,
 ): string {
   if (!fileName) return "";
-  let p = String(fileName);
-  let previous: string;
-  do {
-    previous = p;
-    p = p
-      .replace(/\\/g, "/")
-      .replace(/\.\.\//g, "")
-      .replace(/^\/+/, "");
-  } while (p !== previous);
+  let p = normalizeRelativePath(fileName);
 
   const uid =
     userId !== undefined && userId !== null ? String(userId).trim() : "";

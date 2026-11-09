@@ -20,6 +20,7 @@ import {
   HORDE_URL,
 } from "../routes/agentSearch.ts";
 import { generateToken } from "./auth.ts";
+import { isHostnameForUrl } from "./urlHost.ts";
 
 describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
   const testUsers = ["87001", "87002", "87003", "87004", "87005"];
@@ -388,7 +389,7 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
 
       let capturedPayload: any = null;
       vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
-        if (String(url).includes("stablehorde.net")) {
+        if (isHostnameForUrl(String(url), "stablehorde.net")) {
           capturedPayload = JSON.parse((init?.body as string) || "{}");
           return new Response(
             JSON.stringify({
@@ -428,7 +429,7 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
 
       let capturedModel = "";
       vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
-        if (String(url).includes("stablehorde.net")) {
+        if (isHostnameForUrl(String(url), "stablehorde.net")) {
           const body = JSON.parse((init?.body as string) || "{}");
           capturedModel = body.model;
           return new Response(
@@ -529,7 +530,7 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
       let callCount = 0;
       vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
         const urlStr = String(url);
-        if (urlStr.includes("stablehorde.net")) {
+        if (isHostnameForUrl(urlStr, "stablehorde.net")) {
           callCount++;
           const body = JSON.parse((init?.body as string) || "{}");
           if (callCount % 2 === 0) {
@@ -636,7 +637,7 @@ describe("Milestone 1 Challenger Stress & Edge-Case Test Suite", () => {
 
       let capturedModel = "";
       vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
-        if (String(url).includes("stablehorde.net")) {
+        if (isHostnameForUrl(String(url), "stablehorde.net")) {
           const body = JSON.parse((init?.body as string) || "{}");
           capturedModel = body.model;
           return new Response(

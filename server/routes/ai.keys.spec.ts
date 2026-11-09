@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { aiRouter } from "./ai.ts";
 import { getUserApiKey, setUserApiKey, deleteUserApiKey } from "../lib/userApiKeys.ts";
+import { isHostnameForUrl } from "../lib/urlHost.ts";
 import * as authModule from "../lib/auth.ts";
 
 describe("AI Router - Server-Side API Key Management & Proxy Resolution", () => {
@@ -71,7 +72,7 @@ describe("AI Router - Server-Side API Key Management & Proxy Resolution", () => 
   it("resolves stored server-side API key in /proxy when apiKey is omitted", async () => {
     let capturedAuthHeader = "";
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any, init?: any) => {
-      if (url.toString().includes("openai.com")) {
+      if (isHostnameForUrl(url.toString(), "openai.com")) {
         capturedAuthHeader = init?.headers?.["Authorization"] || "";
         return new Response(JSON.stringify({ choices: [{ message: { content: "ok" } }] }), {
           status: 200,
@@ -103,7 +104,7 @@ describe("AI Router - Server-Side API Key Management & Proxy Resolution", () => 
   it("resolves stored server-side API key in /proxy when a masked prefix is sent in body.apiKey", async () => {
     let capturedAuthHeader = "";
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any, init?: any) => {
-      if (url.toString().includes("openai.com")) {
+      if (isHostnameForUrl(url.toString(), "openai.com")) {
         capturedAuthHeader = init?.headers?.["Authorization"] || "";
         return new Response(JSON.stringify({ choices: [{ message: { content: "ok" } }] }), {
           status: 200,
@@ -169,7 +170,7 @@ describe("AI Router - Server-Side API Key Management & Proxy Resolution", () => 
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
       }
-      if (urlStr.includes("gen.pollinations.ai/v1/chat/completions")) {
+      if (isHostnameForUrl(urlStr, "gen.pollinations.ai")) {
         const body = JSON.parse(init?.body || "{}");
         capturedBodies.push(body);
         // Reject short un-prefixed model name with 400

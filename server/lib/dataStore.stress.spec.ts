@@ -19,6 +19,7 @@ import {
   HORDE_FAST_MODEL,
 } from "../routes/agentSearch.ts";
 import { generateToken } from "./auth.ts";
+import { isHostnameForUrl } from "./urlHost.ts";
 
 describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
   const userA = "99901";
@@ -607,7 +608,7 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
       vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
         const urlStr = String(url);
         const reqBody = JSON.parse((init?.body as string) || "{}");
-        if (urlStr.includes("stablehorde.net")) {
+        if (isHostnameForUrl(urlStr, "stablehorde.net")) {
           modelsCalled.push(reqBody.model);
           return new Response(
             JSON.stringify({
@@ -741,7 +742,7 @@ describe("Challenger 2 Empirical Stress & Edge Case Test Suite", () => {
       delete process.env.CLOUDFLARE_TOKEN;
 
       vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
-        if (String(url).includes("stablehorde.net")) {
+        if (isHostnameForUrl(String(url), "stablehorde.net")) {
           return new Response(
             JSON.stringify({
               choices: [{ message: { content: '{"action": "done"}' } }],

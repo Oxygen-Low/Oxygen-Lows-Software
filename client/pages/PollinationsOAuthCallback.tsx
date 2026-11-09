@@ -85,14 +85,6 @@ export default function PollinationsOAuthCallback() {
             },
             window.location.origin,
           );
-          localStorage.setItem(
-            "pollinations_auth_result",
-            JSON.stringify({
-              success: true,
-              apiKey: hashApiKey.trim(),
-              isSupporter,
-            }),
-          );
           setTimeout(() => window.close(), 300);
           return;
         }
@@ -126,14 +118,6 @@ export default function PollinationsOAuthCallback() {
               isSupporter: result.isSupporter,
             },
             window.location.origin,
-          );
-          localStorage.setItem(
-            "pollinations_auth_result",
-            JSON.stringify({
-              success: true,
-              apiKey: result.apiKey,
-              isSupporter: result.isSupporter,
-            }),
           );
           setTimeout(() => window.close(), 300);
           return;

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { aiRouter } from "./ai.ts";
+import { isHostnameForUrl } from "../lib/urlHost.ts";
 import * as authModule from "../lib/auth.ts";
 import {
   _resetFreeAiLimitsForTesting,
@@ -88,7 +89,7 @@ describe("AI Router - Free Models API and Proxy", () => {
   it("POST /proxy allows authenticated free model request and records points based on pricing", async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockImplementation(async (url: any) => {
-      if (typeof url === "string" && url.includes("pollinations.ai")) {
+      if (typeof url === "string" && isHostnameForUrl(url, "pollinations.ai")) {
         return new Response(
           JSON.stringify({
             choices: [{ message: { role: "assistant", content: "Hi there! I am DeepSeek." } }],
@@ -201,11 +202,11 @@ describe("AI Router - Free Models API and Proxy", () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockImplementation(async (url: any, opts: any) => {
       const urlStr = String(url);
-      if (urlStr.includes("pollinations.ai")) {
+      if (isHostnameForUrl(urlStr, "pollinations.ai")) {
         pollinationsCalled = true;
         return new Response(JSON.stringify({ choices: [{ message: { content: "Polli response" } }] }));
       }
-      if (urlStr.includes("stablehorde.net")) {
+      if (isHostnameForUrl(urlStr, "stablehorde.net")) {
         hordeCalled = true;
         try {
           const body = JSON.parse(opts?.body || "{}");
@@ -258,11 +259,11 @@ describe("AI Router - Free Models API and Proxy", () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockImplementation(async (url: any, opts: any) => {
       const urlStr = String(url);
-      if (urlStr.includes("pollinations.ai")) {
+      if (isHostnameForUrl(urlStr, "pollinations.ai")) {
         pollinationsCalled = true;
         return new Response(JSON.stringify({ choices: [{ message: { content: "Polli response" } }] }));
       }
-      if (urlStr.includes("stablehorde.net")) {
+      if (isHostnameForUrl(urlStr, "stablehorde.net")) {
         hordeCalled = true;
         try {
           const body = JSON.parse(opts?.body || "{}");

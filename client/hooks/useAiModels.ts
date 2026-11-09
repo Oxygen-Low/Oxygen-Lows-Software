@@ -385,14 +385,11 @@ export function useAiModels() {
     try {
       localStorage.removeItem(LOCAL_STORAGE_KEY_POLLINATIONS);
       localStorage.removeItem("oxygen_pollinations_api_key");
-      const legacy = localStorage.getItem("oxygen_api_keys");
-      if (legacy) {
-        const parsed = JSON.parse(legacy);
-        if (parsed?.pollinations) {
-          delete parsed.pollinations;
-          localStorage.setItem("oxygen_api_keys", JSON.stringify(parsed));
-        }
-      }
+      // Legacy versions stored provider keys, including Pollinations, in
+      // plaintext here. The current app keeps keys server-side encrypted, so
+      // drop the whole legacy entry rather than re-writing a partially
+      // sanitized copy back to localStorage.
+      localStorage.removeItem("oxygen_api_keys");
     } catch {}
   }, []);
 

@@ -297,11 +297,11 @@ function cleanXmlParamValue(val: string): any {
   // Decode basic XML entities
   if (str.includes("&")) {
     str = str
-      .replace(/&amp;/g, "&")
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
       .replace(/&quot;/g, '"')
-      .replace(/&apos;/g, "'");
+      .replace(/&apos;/g, "'")
+      .replace(/&amp;/g, "&");
   }
 
   const trimmed = str.trim();

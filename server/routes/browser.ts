@@ -82,19 +82,17 @@ function rewriteHtmlUrls(html: string, baseUrlStr: string): string {
 
   const resolveAttrUrl = (val: string): string => {
     const trimmed = val.trim();
-    if (
-      !trimmed ||
-      trimmed.startsWith("javascript:") ||
-      trimmed.startsWith("mailto:") ||
-      trimmed.startsWith("tel:") ||
-      trimmed.startsWith("data:") ||
-      trimmed.startsWith("blob:") ||
-      trimmed.startsWith("#")
-    ) {
+    if (!trimmed || trimmed.startsWith("#")) {
       return val;
     }
     try {
-      return new URL(trimmed, baseUrl).href;
+      // Allow-list HTTP(S) instead of trying to enumerate every executable
+      // scheme (javascript:, vbscript:, data:, ...).
+      const resolved = new URL(trimmed, baseUrl);
+      if (resolved.protocol === "http:" || resolved.protocol === "https:") {
+        return resolved.href;
+      }
+      return val;
     } catch {
       return val;
     }
@@ -178,10 +176,14 @@ browserRouter.get("/proxy", async (c) => {
               const anchor = e.target.closest('a');
               if (anchor) {
                 const href = anchor.getAttribute('href') || anchor.href;
-                if (href && !href.startsWith('javascript:') && !href.startsWith('#') && !href.startsWith('mailto:') && !href.startsWith('tel:')) {
-                  e.preventDefault();
-                  const targetUrl = resolveTarget(href);
-                  window.parent.postMessage({ type: 'OXYLOW_BROWSER_NAVIGATE', url: targetUrl }, '*');
+                if (href) {
+                  try {
+                    const target = new URL(href, document.baseURI || window.location.href);
+                    if (target.protocol === 'http:' || target.protocol === 'https:') {
+                      e.preventDefault();
+                      window.parent.postMessage({ type: 'OXYLOW_BROWSER_NAVIGATE', url: target.href }, '*');
+                    }
+                  } catch (e) { /* ignore invalid URLs */ }
                 }
               }
             }, true);
@@ -191,7 +193,12 @@ browserRouter.get("/proxy", async (c) => {
               if (form) {
                 const action = form.getAttribute('action') || form.action || '';
                 const method = (form.method || 'GET').toUpperCase();
-                if (method === 'GET' && !action.startsWith('javascript:')) {
+                let actionIsHttp = false;
+                try {
+                  const target = new URL(action || window.location.href, document.baseURI || window.location.href);
+                  actionIsHttp = target.protocol === 'http:' || target.protocol === 'https:';
+                } catch (e) { /* ignore invalid URLs */ }
+                if (method === 'GET' && actionIsHttp) {
                   e.preventDefault();
                   const formData = new FormData(form);
                   const params = new URLSearchParams();

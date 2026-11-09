@@ -86,6 +86,7 @@ export function generateToken(
     "base64url",
   );
   const signature = crypto
+    // codeql[js/insufficient-password-hash] HMAC-SHA256 signs a session token; it is not used as a password storage hash.
     .createHmac("sha256", secret)
     .update(encodedPayload)
     .digest("base64url");
@@ -102,6 +103,7 @@ export function verifyToken(token: string): TokenPayload | null {
 
     const secret = getSecretKey();
     const expectedSig = crypto
+      // codeql[js/insufficient-password-hash] HMAC-SHA256 verifies a session token signature; it is not password storage.
       .createHmac("sha256", secret)
       .update(encodedPayload)
       .digest("base64url");

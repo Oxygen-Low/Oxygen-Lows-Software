@@ -4,6 +4,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { lookup, resolveTxt } from "node:dns/promises";
 import { isPrivateIP, assertPublicHostname } from "./safeAiUrl.ts";
+import { removeHtmlElementBlocks, stripHtmlTags } from "./htmlText.ts";
 
 export const DATA_DIR = path.join(process.cwd(), "Data");
 export const SITES_FILE = path.join(DATA_DIR, "webmaster_sites.json");
@@ -861,17 +862,18 @@ export function extractReaderArticle(html: string, currentUrl: string): ReaderAr
   const pageData = extractPageData(html, currentUrl);
   const safeHtml = html.length > 2 * 1024 * 1024 ? html.slice(0, 2 * 1024 * 1024) : html;
 
-  let cleaned = safeHtml
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
-    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, "")
-    .replace(/<nav\b[^>]*>[\s\S]*?<\/nav>/gi, "")
-    .replace(/<header\b[^>]*>[\s\S]*?<\/header>/gi, "")
-    .replace(/<footer\b[^>]*>[\s\S]*?<\/footer>/gi, "")
-    .replace(/<aside\b[^>]*>[\s\S]*?<\/aside>/gi, "")
-    .replace(/<menu\b[^>]*>[\s\S]*?<\/menu>/gi, "")
-    .replace(/<form\b[^>]*>[\s\S]*?<\/form>/gi, "")
-    .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, "");
+  let cleaned = removeHtmlElementBlocks(safeHtml, [
+    "script",
+    "style",
+    "svg",
+    "nav",
+    "header",
+    "footer",
+    "aside",
+    "menu",
+    "form",
+    "iframe",
+  ]);
 
   const articleMatch =
     cleaned.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i) ||
@@ -979,7 +981,7 @@ export function extractPageData(
   const headingRegex = /<h[1-3][^>]*>(.*?)<\/h[1-3]>/gi;
   let hMatch: RegExpExecArray | null;
   while ((hMatch = headingRegex.exec(html)) !== null && headings.length < 10) {
-    const cleanHeading = decodeHtmlEntities(hMatch[1].replace(/<[^>]+>/g, "").trim());
+    const cleanHeading = decodeHtmlEntities(stripHtmlTags(hMatch[1]).trim());
     if (cleanHeading && !headings.includes(cleanHeading)) {
       headings.push(cleanHeading);
     }
@@ -1000,12 +1002,13 @@ export function extractPageData(
   // Clean body text preview with linear-time safe regexes and tag whitespace separation
   const safeHtml = html.length > 2 * 1024 * 1024 ? html.slice(0, 2 * 1024 * 1024) : html;
   const cleanBody = decodeHtmlEntities(
-    safeHtml
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-      .replace(/<nav\b[^>]*>[\s\S]*?<\/nav>/gi, " ")
-      .replace(/<footer\b[^>]*>[\s\S]*?<\/footer>/gi, " ")
-      .replace(/<header\b[^>]*>[\s\S]*?<\/header>/gi, " ")
+    removeHtmlElementBlocks(safeHtml, [
+      "script",
+      "style",
+      "nav",
+      "footer",
+      "header",
+    ])
       .replace(/<\/(?:p|div|section|article|h[1-6]|li)>/gi, " ")
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ")
@@ -1025,13 +1028,6 @@ export function extractPageData(
 
   while ((lMatch = linkRegex.exec(html)) !== null && links.length < 50) {
     const rawHref = lMatch[1].trim();
-    if (
-      rawHref.startsWith("javascript:") ||
-      rawHref.startsWith("mailto:") ||
-      rawHref.startsWith("tel:")
-    ) {
-      continue;
-    }
     try {
       const resolved = new URL(rawHref, currentUrl);
       if (

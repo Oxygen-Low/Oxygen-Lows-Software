@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Hono } from "hono";
-import { oauthRouter, hashApiKey, isValidRedirectUri } from "./oauth.ts";
+import { oauthRouter, hashApiKey, verifyApiKey, isValidRedirectUri } from "./oauth.ts";
 import { generateToken } from "../lib/auth.ts";
 import { initUserFolder } from "../lib/dataStore.ts";
 
@@ -53,11 +53,13 @@ describe("OAuth & Developer Auth Router", () => {
       expect(isValidRedirectUri("not-a-url")).toBe(false);
     });
 
-    it("hashes api keys with sha256", () => {
+    it("hashes api keys with a slow password hash", () => {
       const key = "ol_sec_1234567890";
       const hash = hashApiKey(key);
-      expect(hash).toHaveLength(64);
-      expect(hashApiKey(key)).toBe(hash);
+      expect(hash.startsWith("pbkdf2-sha512$")).toBe(true);
+      expect(hash).not.toBe(hashApiKey(key));
+      expect(verifyApiKey(key, hash)).toBe(true);
+      expect(verifyApiKey("ol_sec_wrong", hash)).toBe(false);
     });
   });
 

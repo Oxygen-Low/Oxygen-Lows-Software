@@ -62,7 +62,7 @@ function fixedParseSteamLibraryFoldersDetailed(vdfContent: string): SteamLibrary
     apps: Record<string, string> = {},
     label?: string
   ) => {
-    const norm = fixedNormalizePath(rawPath.replace(/\\\\/g, "\\").replace(/\\"/g, '"'));
+    const norm = fixedNormalizePath(rawPath.replace(/\\([\\"])/g, "$1"));
     if (!norm || seenPaths.has(norm.toLowerCase())) return;
     seenPaths.add(norm.toLowerCase());
     results.push({ path: norm, appIds, apps, label });

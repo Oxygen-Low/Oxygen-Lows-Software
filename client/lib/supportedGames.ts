@@ -723,7 +723,7 @@ export function validateCustomPath(
  * Unescapes VDF string characters (\\\\ -> \\, \\\" -> \").
  */
 function unescapeVdfString(val: string): string {
-  return val.replace(/\\\\/g, "\\").replace(/\\"/g, '"');
+  return val.replace(/\\([\\"])/g, "$1");
 }
 
 /**

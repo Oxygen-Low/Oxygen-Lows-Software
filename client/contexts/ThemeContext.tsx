@@ -10,6 +10,7 @@ import {
 import { db, getAuthenticatedClient } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
+import { normalizeRelativePath } from "@shared/pathUtils";
 
 // Allow custom string which can be "custom:<primaryHex>-<backgroundHex>"
 export type Theme = "default" | "red" | "yellow" | "black" | "white" | string;
@@ -297,15 +298,7 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       if (newFont.startsWith("font-custom:") && sessionUserId) {
         const fileName = newFont.replace("font-custom:", "");
         try {
-          let path = fileName;
-          let previous: string;
-          do {
-            previous = path;
-            path = path
-              .replace(/\\/g, "/")
-              .replace(/\.\.\//g, "")
-              .replace(/^\/+/, "");
-          } while (path !== previous);
+          let path = normalizeRelativePath(fileName);
 
           const UUID_REGEX =
             /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\//i;

@@ -7,6 +7,7 @@ import { fetchPollinationsClient } from "@/services/pollinationsClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { sanitizeUrlForAttribute } from "@/lib/safeUrl";
 import { toast } from "sonner";
 import {
   Gamepad2,
@@ -48,6 +49,29 @@ import {
   parseEmbeddedToolCalls,
   buildPollinationsImageUrl,
 } from "./game-studio/directorTools";
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function escapeJsString(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '\\"')
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026");
+}
 
 interface DirectorChatMessage {
   id: string;
@@ -216,7 +240,8 @@ function synthesizeFallbackGame(
   }
 
   const generatedTitle = prompt.slice(0, 32).trim() || "AI Custom Game";
-  const safeTitle = generatedTitle.replace(/'/g, "\\'");
+  const safeTitleHtml = escapeHtml(generatedTitle);
+  const safeTitleJs = escapeJsString(generatedTitle);
 
   const generatedCode = is3d
     ? `<!DOCTYPE html>
@@ -224,7 +249,7 @@ function synthesizeFallbackGame(
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${safeTitle}</title>
+<title>${safeTitleHtml}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #020617; color: #f8fafc; font-family: system-ui, sans-serif; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
@@ -258,7 +283,7 @@ function render() {
   ctx.fillStyle = '#38bdf8';
   ctx.font = 'bold 18px system-ui';
   ctx.textAlign = 'center';
-  ctx.fillText('${safeTitle}', 0, -80);
+  ctx.fillText('${safeTitleJs}', 0, -80);
   ctx.fillStyle = '#94a3b8';
   ctx.font = '13px system-ui';
   ctx.fillText('Score: ' + score + ' (Press SPACE)', 0, 80);
@@ -276,7 +301,7 @@ loop();
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${safeTitle}</title>
+<title>${safeTitleHtml}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #020617; color: #f8fafc; font-family: system-ui, sans-serif; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
@@ -312,7 +337,7 @@ function render() {
   ctx.fill();
   ctx.fillStyle = '#f8fafc';
   ctx.font = 'bold 16px system-ui';
-  ctx.fillText('${safeTitle} | Score: ' + score, 20, 30);
+  ctx.fillText('${safeTitleJs} | Score: ' + score, 20, 30);
   ctx.fillStyle = '#64748b';
   ctx.font = '12px system-ui';
   ctx.fillText('Arrows / WASD to move • SPACE to score', 20, 380);
@@ -351,6 +376,12 @@ export const GameStudioApp: React.FC = () => {
   const [gameGenre, setGameGenre] = useState<string>("Arcade");
   const [gameDimension, setGameDimension] = useState<CustomGameDimension>("2d");
   const [gameCoverUrl, setGameCoverUrl] = useState<string>("");
+  const safeGameCoverUrl = sanitizeUrlForAttribute(gameCoverUrl, [
+    "http:",
+    "https:",
+    "blob:",
+    "data:",
+  ]);
   const [gameCode, setGameCode] = useState<string>(BLANK_GAME_CODE);
   const [projectAssets, setProjectAssets] = useState<GameProjectAssets>(
     DEFAULT_PROJECT_ASSETS,
@@ -1339,10 +1370,10 @@ Current project assets:
                 </Button>
               </div>
 
-              {gameCoverUrl && (
+              {safeGameCoverUrl && (
                 <div className="rounded-xl overflow-hidden border border-slate-800 max-h-44 bg-slate-950 flex items-center justify-center">
                   <img
-                    src={gameCoverUrl}
+                    src={safeGameCoverUrl}
                     alt={gameTitle}
                     className="h-40 object-cover rounded-lg"
                   />

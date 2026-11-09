@@ -20,6 +20,7 @@ vi.mock("node:dns/promises", async (importOriginal) => {
 });
 
 import { webmasterRouter } from "./webmaster";
+import { isHostnameForUrl } from "../lib/urlHost";
 import * as authLib from "../lib/auth";
 import {
   verifyDomainDns,
@@ -282,15 +283,15 @@ describe("Webmaster Router & DNS Verification", () => {
       if (url.includes("/sitemap.xml")) {
         return new Response("", { status: 404 });
       }
-      if (url.includes("active-a.com")) {
+      if (isHostnameForUrl(url, "active-a.com")) {
         await new Promise<void>((r) => {
           finishSiteA = r;
         });
-      } else if (url.includes("active-b.com") && !activeBResolved) {
+      } else if (isHostnameForUrl(url, "active-b.com") && !activeBResolved) {
         await new Promise<void>((r) => {
           finishSiteB = r;
         });
-      } else if (url.includes("diff-domain.com")) {
+      } else if (isHostnameForUrl(url, "diff-domain.com")) {
         await new Promise<void>((r) => {
           finishDiff = r;
         });

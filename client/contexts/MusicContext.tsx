@@ -11,6 +11,7 @@ import React, {
 import { db } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
+import { normalizeRelativePath } from "@shared/pathUtils";
 import {
   deleteTrackBackground,
   fetchTrackBackgrounds,
@@ -230,15 +231,7 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (!session?.user?.id) return null;
 
-      let path = fileName;
-      let previous: string;
-      do {
-        previous = path;
-        path = path
-          .replace(/\\/g, "/")
-          .replace(/\.\.\//g, "")
-          .replace(/^\/+/, "");
-      } while (path !== previous);
+      let path = normalizeRelativePath(fileName);
 
       // Handle public assets bucket
       if (path.startsWith("public-assets/")) {

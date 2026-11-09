@@ -26,10 +26,9 @@ const CODE_CHARS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 export function generateQuickSignInCode(): string {
   let code = "";
-  const randomBytes = crypto.randomBytes(6);
   for (let i = 0; i < 6; i++) {
-    const index = randomBytes[i] % CODE_CHARS.length;
-    code += CODE_CHARS[index];
+    // randomInt uses rejection sampling, avoiding modulo bias.
+    code += CODE_CHARS[crypto.randomInt(0, CODE_CHARS.length)];
   }
   return code;
 }

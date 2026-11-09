@@ -1453,15 +1453,20 @@ export function injectSeoTags(
     );
   }
 
-  // Remove existing static OG/Twitter tags if present to avoid duplication
-  modifiedHtml = modifiedHtml
-    .replace(/<meta\s+property=["']og:[^"']+["'][^>]*>\s*/gi, "")
-    .replace(/<meta\s+name=["']twitter:[^"']+["'][^>]*>\s*/gi, "")
-    .replace(/<meta\s+name=["']keywords["'][^>]*>\s*/gi, "")
-    .replace(
-      /<script\s+type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>\s*/gi,
-      "",
-    );
+  // Remove existing static OG/Twitter tags if present to avoid duplication.
+  // Repeat until stable so a stripped tag cannot recombine into another one.
+  let previousHtml: string;
+  do {
+    previousHtml = modifiedHtml;
+    modifiedHtml = modifiedHtml
+      .replace(/<meta\s+property=["']og:[^"']+["'][^>]*>\s*/gi, "")
+      .replace(/<meta\s+name=["']twitter:[^"']+["'][^>]*>\s*/gi, "")
+      .replace(/<meta\s+name=["']keywords["'][^>]*>\s*/gi, "")
+      .replace(
+        /<script\s+type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>\s*/gi,
+        "",
+      );
+  } while (modifiedHtml !== previousHtml);
 
   // Inject OG, Twitter & JSON-LD scripts right after canonical tag
   const jsonLdScripts = jsonLdSchemas

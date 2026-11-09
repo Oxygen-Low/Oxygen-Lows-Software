@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useTranslation } from "@/contexts/LanguageContext";
+import { urlHasHostname } from "@/lib/safeUrl";
 import { toast } from "sonner";
 
 interface Tab {
@@ -105,7 +106,7 @@ export function WebBrowserApp() {
         if (Array.isArray(parsed)) {
           const filtered = parsed.filter(
             (b: BookmarkItem) =>
-              !b.url?.toLowerCase().includes("wikipedia.org") &&
+              !urlHasHostname(b.url, "wikipedia.org") &&
               !b.title?.toLowerCase().includes("wikipedia")
           );
           if (parsed.length > 0 && filtered.length === 0) {

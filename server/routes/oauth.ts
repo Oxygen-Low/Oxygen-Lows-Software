@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Context, Next } from "hono";
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, pbkdf2Sync, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { resolveUserFromToken } from "../lib/auth.ts";
 import {
   getTableRows,
@@ -32,15 +32,55 @@ export const SUPPORTED_SCOPES = [
 
 export type SupportedScope = (typeof SUPPORTED_SCOPES)[number];
 
-export function hashApiKey(key: string): string {
+export function hashApiKey(rawKey: string): string {
+  const iterations =
+    process.env.NODE_ENV === "test" || process.env.VITEST ? 100 : 210_000;
+  const salt = randomBytes(16);
+  const digest = pbkdf2Sync(rawKey, salt, iterations, 32, "sha512").toString(
+    "hex",
+  );
+  return `pbkdf2-sha512$${iterations}$${salt.toString("hex")}$${digest}`;
+}
+
+function legacyHashApiKey(key: string): string {
+  // codeql[js/insufficient-password-hash] Read-only support for API keys issued before the PBKDF2 migration.
   return createHash("sha256").update(key).digest("hex");
 }
 
 export function verifyApiKey(rawKey: string, storedHash: string): boolean {
   try {
-    const computed = hashApiKey(rawKey);
-    const hashBuf = Buffer.from(computed, "hex");
-    const storedBuf = Buffer.from(storedHash, "hex");
+    let computed: string;
+    if (storedHash.startsWith("pbkdf2-sha512$")) {
+      const parts = storedHash.split("$");
+      const iterations = Number(parts[1]);
+      const saltHex = parts[2];
+      const digestHex = parts[3];
+      if (
+        parts.length !== 4 ||
+        !Number.isInteger(iterations) ||
+        iterations < 1 ||
+        iterations > 1_000_000 ||
+        !/^[0-9a-f]{32}$/.test(saltHex) ||
+        !/^[0-9a-f]{64}$/.test(digestHex)
+      ) {
+        return false;
+      }
+      computed = pbkdf2Sync(
+        rawKey,
+        Buffer.from(saltHex, "hex"),
+        iterations,
+        32,
+        "sha512",
+      ).toString("hex");
+    } else {
+      computed = legacyHashApiKey(rawKey);
+    }
+    const hashBuf = Buffer.from(computed);
+    const storedBuf = Buffer.from(
+      storedHash.startsWith("pbkdf2-sha512$")
+        ? storedHash.split("$")[3]
+        : storedHash,
+    );
     if (hashBuf.length !== storedBuf.length) return false;
     return timingSafeEqual(hashBuf, storedBuf);
   } catch {
@@ -871,9 +911,11 @@ oauthRouter.get("/userinfo", authLimiter, async (c) => {
 
   const allTokens = getTableRows("oauth_tokens");
   const tokenRecord = allTokens.find((t: any) => {
-    const actual = createHash('sha256').update(token).digest();
-    const expected = createHash('sha256').update(t.token).digest();
-    return timingSafeEqual(actual, expected);
+    const supplied = Buffer.from(token);
+    const stored = Buffer.from(String(t.token));
+    return (
+      supplied.length === stored.length && timingSafeEqual(supplied, stored)
+    );
   });
 
   if (!tokenRecord) {
@@ -929,9 +971,11 @@ oauthRouter.post("/revoke", authLimiter, async (c) => {
 
   const allTokens = getTableRows("oauth_tokens");
   const tokenRecord = allTokens.find((t: any) => {
-    const actual = createHash('sha256').update(token).digest();
-    const expected = createHash('sha256').update(t.token).digest();
-    return timingSafeEqual(actual, expected);
+    const supplied = Buffer.from(token);
+    const stored = Buffer.from(String(t.token));
+    return (
+      supplied.length === stored.length && timingSafeEqual(supplied, stored)
+    );
   });
 
   if (tokenRecord) {
