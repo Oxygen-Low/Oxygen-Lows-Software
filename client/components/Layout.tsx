@@ -27,7 +27,6 @@ import {
   ExternalLink,
   Download as DownloadIcon,
   Bell,
-  MessageSquare,
   Handshake,
   Sparkles,
   Zap,
@@ -99,13 +98,6 @@ const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
     defaultLabel: "Friends",
     href: "/friends",
     icon: Users,
-  },
-  {
-    key: "chat",
-    labelKey: "nav.chat",
-    defaultLabel: "Chat",
-    href: "/chat",
-    icon: MessageSquare,
   },
   {
     key: "customize",
