@@ -46,7 +46,7 @@
     "prismjs": "^1.30.0",
     "qrcode.react": "^4.2.0",
     "react-chessboard": "^5.12.1",
-    "react-easy-crop": "^6.2.3",
+    "react-easy-crop": "^6.2.4",
     "react-leaflet": "^5.0.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
