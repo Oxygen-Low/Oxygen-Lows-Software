@@ -53,7 +53,62 @@ describe("SimpleCookies with local accounts", () => {
     expect(json.id).toBe(projectId);
     expect(json.config.title).toBeTruthy();
     expect(json.config.policyVersion).toBe(1);
+    expect(json.config.showPoweredBy).toBe(false);
     expect(Array.isArray(json.declaration)).toBe(true);
+  });
+
+  it("defaults showPoweredBy to disabled and allows toggling it", async () => {
+    const getRes = await app.request(`/api/simplecookies/projects/${projectId}`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    expect(getRes.status).toBe(200);
+    const getJson = await getRes.json();
+    expect(getJson.config.showPoweredBy).toBe(false);
+    expect(getJson.config.show_powered_by).toBe(false);
+
+    // Verify endpoint also defaults to disabled
+    const verifyRes = await app.request("/api/simplecookies/verify", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    expect(verifyRes.status).toBe(200);
+    expect((await verifyRes.json()).config.showPoweredBy).toBe(false);
+
+    // Toggle enabled
+    const updateRes = await app.request(`/api/simplecookies/projects/${projectId}/config`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ show_powered_by: true }),
+    });
+    expect(updateRes.status).toBe(200);
+
+    const verifyAfter = await app.request("/api/simplecookies/verify", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    expect(verifyAfter.status).toBe(200);
+    expect((await verifyAfter.json()).config.showPoweredBy).toBe(true);
+
+    // Toggle back to disabled
+    const updateBack = await app.request(`/api/simplecookies/projects/${projectId}/config`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ show_powered_by: false }),
+    });
+    expect(updateBack.status).toBe(200);
+
+    const verifyBack = await app.request("/api/simplecookies/verify", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    expect(verifyBack.status).toBe(200);
+    expect((await verifyBack.json()).config.showPoweredBy).toBe(false);
   });
 
   it("rejects invalid API key", async () => {

@@ -3700,6 +3700,7 @@ export const es = {
     retentionDays: "Retención del consentimiento (días)",
     consentMode: "Modo de consentimiento de Google",
     respectDnt: "Respetar Do Not Track",
+    showPoweredBy: "Powered by SimpleCookies",
     autoScanner: "Escáner automático",
     scanDesc: "Escanea cualquier URL pública para generar la declaración de cookies.",
     scanUrlRequired: "Ingresa una URL para escanear.",

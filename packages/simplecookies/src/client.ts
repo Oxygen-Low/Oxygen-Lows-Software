@@ -141,7 +141,15 @@ export class SimpleCookiesClient {
         name: data.name,
         domain: data.domain ?? null,
         firstRequestAt: data.firstRequestAt ?? null,
-        config: { ...DEFAULT_BANNER_CONFIG, ...(data.config || {}) },
+        config: {
+          ...DEFAULT_BANNER_CONFIG,
+          ...(data.config || {}),
+          showPoweredBy: Boolean(
+            data.config?.showPoweredBy ??
+              (data.config as any)?.show_powered_by ??
+              DEFAULT_BANNER_CONFIG.showPoweredBy,
+          ),
+        },
         declaration: Array.isArray(data.declaration) ? data.declaration : [],
       };
       this.cached = payload;

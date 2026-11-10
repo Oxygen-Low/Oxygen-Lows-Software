@@ -126,7 +126,7 @@ export const DEFAULT_BANNER_CONFIG: BannerConfig = {
   retentionDays: 365,
   consentMode: true,
   respectDnt: true,
-  showPoweredBy: true,
+  showPoweredBy: false,
   categories: {
     necessary: {
       label: "Necessary",

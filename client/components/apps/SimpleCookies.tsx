@@ -896,6 +896,16 @@ function ProjectDashboard({
                   <Label>{t("simpleCookies.respectDnt", undefined, "Respect Do Not Track")}</Label>
                   <Switch checked={Boolean(draft.respect_dnt)} onCheckedChange={(v) => set("respect_dnt", v)} />
                 </div>
+                <div className="flex items-center justify-between">
+                  <Label>{t("simpleCookies.showPoweredBy", undefined, "Powered by SimpleCookies")}</Label>
+                  <Switch
+                    checked={Boolean(draft.show_powered_by ?? draft.showPoweredBy)}
+                    onCheckedChange={(v) => {
+                      set("show_powered_by", v);
+                      set("showPoweredBy", v);
+                    }}
+                  />
+                </div>
               </CardContent>
             </Card>
             <Button onClick={saveConfig} disabled={isSaving}>
@@ -1286,7 +1296,7 @@ function BannerPreview({ draft }: { draft: Record<string, any> }) {
                 )}
               </div>
 
-              {draft.show_powered_by !== false && (
+              {Boolean(draft.show_powered_by ?? draft.showPoweredBy) && (
                 <div className="mt-2 text-[11px] opacity-60">Powered by SimpleCookies</div>
               )}
               {acted && (

@@ -279,7 +279,7 @@ export function renderBanner(client: SimpleCookiesClient): () => void {
 
   mount.append(actions);
 
-  if (config.showPoweredBy) {
+  if (config.showPoweredBy || (config as any).show_powered_by) {
     const powered = el("div", "Powered by SimpleCookies — free & unlimited");
     powered.style.marginTop = "10px";
     powered.style.fontSize = "11px";

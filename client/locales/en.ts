@@ -3718,6 +3718,7 @@ export const en = {
     retentionDays: "Consent retention (days)",
     consentMode: "Google Consent Mode",
     respectDnt: "Respect Do Not Track",
+    showPoweredBy: "Powered by SimpleCookies",
     autoScanner: "Auto-scanner",
     scanDesc: "Scan any public URL to generate the cookie declaration.",
     scanUrlRequired: "Enter a URL to scan.",

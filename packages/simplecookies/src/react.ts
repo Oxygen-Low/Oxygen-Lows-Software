@@ -228,5 +228,12 @@ export function SimpleCookiesBanner({ onDone }: { onDone?: (c: StoredConsent) =>
         ? createElement("button", { style: btn(cfg.saveLabel, true), onClick: () => void save(draft) }, cfg.saveLabel)
         : null,
     ),
+    (cfg.showPoweredBy || (cfg as any)?.show_powered_by)
+      ? createElement(
+          "div",
+          { style: { marginTop: "10px", fontSize: "11px", opacity: 0.6 } },
+          "Powered by SimpleCookies — free & unlimited",
+        )
+      : null,
   );
 }

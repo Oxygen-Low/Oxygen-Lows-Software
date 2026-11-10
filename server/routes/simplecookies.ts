@@ -68,12 +68,21 @@ function loadDeclaration(projectId: string, userId: string): CookieDeclarationEn
 }
 
 function packagePayload(project: any, config: any, declaration: any[]) {
+  const mergedConfig = { ...DEFAULT_BANNER_CONFIG, ...(config || {}) };
+  const showPoweredBy =
+    typeof config?.show_powered_by === "boolean"
+      ? config.show_powered_by
+      : typeof config?.showPoweredBy === "boolean"
+        ? config.showPoweredBy
+        : DEFAULT_BANNER_CONFIG.showPoweredBy;
+  mergedConfig.showPoweredBy = showPoweredBy;
+  mergedConfig.show_powered_by = showPoweredBy;
   return {
     id: project.id,
     name: project.name,
     domain: project.domain ?? null,
     firstRequestAt: project.first_request_at ?? null,
-    config: { ...DEFAULT_BANNER_CONFIG, ...(config || {}) },
+    config: mergedConfig,
     declaration,
   };
 }
@@ -350,6 +359,7 @@ simplecookiesRouter.post("/projects", uiLimiter, requireAuth, async (c) => {
       project_id: projectId,
       user_id: user.id,
       ...DEFAULT_BANNER_CONFIG,
+      show_powered_by: DEFAULT_BANNER_CONFIG.showPoweredBy,
       created_at: now,
       updated_at: now,
     },
@@ -373,9 +383,18 @@ simplecookiesRouter.get("/projects/:id", uiLimiter, requireAuth, async (c) => {
   );
   if (!project) return c.json({ error: "Project not found" }, 404);
   const config = loadConfig(id, user.id);
+  const mergedConfig = { ...DEFAULT_BANNER_CONFIG, ...(config || {}) };
+  const showPoweredBy =
+    typeof config?.show_powered_by === "boolean"
+      ? config.show_powered_by
+      : typeof config?.showPoweredBy === "boolean"
+        ? config.showPoweredBy
+        : DEFAULT_BANNER_CONFIG.showPoweredBy;
+  mergedConfig.showPoweredBy = showPoweredBy;
+  mergedConfig.show_powered_by = showPoweredBy;
   return c.json({
     ...publicProject(project),
-    config: { ...DEFAULT_BANNER_CONFIG, ...(config || {}) },
+    config: mergedConfig,
     declaration: loadDeclaration(id, user.id),
   });
 });
@@ -415,6 +434,7 @@ const CONFIG_ALLOWED_KEYS = [
   "consent_mode",
   "respect_dnt",
   "show_powered_by",
+  "showPoweredBy",
   "categories",
 ] as const;
 
@@ -443,8 +463,13 @@ simplecookiesRouter.put("/projects/:id/config", uiLimiter, requireAuth, async (c
     } else if (key === "position") {
       const pos = String(value || "bottom");
       updatePayload[key] = ["bottom", "top", "left", "right", "center"].includes(pos) ? pos : "bottom";
-    } else if (["show_customize", "dark_mode", "consent_mode", "respect_dnt", "show_powered_by"].includes(key)) {
+    } else if (["show_customize", "dark_mode", "consent_mode", "respect_dnt", "show_powered_by", "showPoweredBy"].includes(key)) {
       updatePayload[key] = Boolean(value);
+      if (key === "show_powered_by") {
+        updatePayload.showPoweredBy = Boolean(value);
+      } else if (key === "showPoweredBy") {
+        updatePayload.show_powered_by = Boolean(value);
+      }
     } else if (key === "categories") {
       // Only merge tenant-provided category configs; keep labels/descriptions bounded.
       if (value && typeof value === "object") {

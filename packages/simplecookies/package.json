@@ -1,6 +1,6 @@
 {
   "name": "@oxygenlow/simplecookies",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Oxygen Low's Software",
   "description": "SimpleCookies: 100% free cookie consent manager. Banner, script blocking, cookie scanner, consent receipts, and dashboard for any site.",
   "type": "module",
