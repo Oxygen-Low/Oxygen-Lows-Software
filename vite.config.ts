@@ -120,7 +120,6 @@ function expressPlugin(): Plugin {
           !url.startsWith("/agent/") &&
           url !== "/auth.md" &&
           url !== "/llms.txt" &&
-          url !== "/robots.txt" &&
           url !== "/sitemap.xml" &&
           !isMarkdown
         ) {

@@ -1242,20 +1242,6 @@ app.get("/llms.txt", (c) => {
   });
 });
 
-app.get("/robots.txt", (c) => {
-  const host = c.req.header("host") || "oxygenlow.com";
-  const protocol = (c.req.header("x-forwarded-proto") || "https")
-    .split(",")[0]
-    .trim();
-  const baseUrl = `${protocol}://${host}`;
-
-  const content = `User-agent: *\nAllow: /\nSitemap: ${baseUrl}/sitemap.xml\nContent-Signal: ai-train=yes, search=yes, ai-input=yes\n`;
-  return c.text(content, 200, {
-    "Content-Type": "text/plain; charset=utf-8",
-    "Cache-Control": "public, max-age=3600",
-  });
-});
-
 app.route("/api/demo", demoRouter);
 app.route("/api/proxy", proxyRouter);
 app.route("/api/admin/support", adminSupportRouter);
