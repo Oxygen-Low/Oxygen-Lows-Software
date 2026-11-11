@@ -312,15 +312,6 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
               </span>
             </Link>
 
-            <a
-              href="https://trello.com/b/OmFTZeVK/oxygen-lows-software-development"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:inline-flex px-2.5 py-0.5 text-xs font-bold text-yellow-900 bg-yellow-400 hover:bg-yellow-300 transition-colors rounded-md uppercase tracking-wide cursor-pointer shrink-0"
-            >
-              {t("nav.beta", undefined, "Beta")}
-            </a>
-
             <Link
               to="/download"
               className="hidden lg:flex items-center justify-center p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 transition-colors text-white shrink-0"
