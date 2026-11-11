@@ -32,6 +32,8 @@ jobs:
         id: calc_version
         run: |
           MAJOR_MINOR="1.5"
+          MAJOR="${MAJOR_MINOR%%.*}"
+          MINOR="${MAJOR_MINOR#*.}"
           PREFIX="v${MAJOR_MINOR}."
 
           TAG_AT_HEAD=$(git tag --points-at HEAD "${PREFIX}*" | head -n 1)
@@ -60,8 +62,11 @@ jobs:
               TAG_NAME="v${APP_VERSION}"
           fi
 
-          if [[ "$PATCH" =~ ^[0-9]+$ ]]; then
-              VERSION_CODE=$((1000 + PATCH))
+          if [[ "$PATCH" =~ ^[0-9]+$ && "$MAJOR" =~ ^[0-9]+$ && "$MINOR" =~ ^[0-9]+$ ]]; then
+              # versionCode must increase across every release line. Restarting at
+              # 1000 for each major.minor makes Android reject the APK as a
+              # downgrade ("App not installed as package appears to be invalid").
+              VERSION_CODE=$((MAJOR * 1000000 + MINOR * 10000 + PATCH))
           else
               VERSION_CODE=1
           fi

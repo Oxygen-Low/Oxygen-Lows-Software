@@ -20,6 +20,7 @@ class UpdateManager(private val context: Context) {
     companion object {
         private const val TAG = "UpdateManager"
         private const val GITHUB_API_URL = "https://api.github.com/repos/Oxygen-Low/Oxygen-Lows-Software/releases/latest"
+        private const val KEY_REJECTED_VERSION = "rejected_version"
 
         fun isNewerVersion(latestVersion: String, currentVersion: String): Boolean {
             return try {
@@ -68,6 +69,36 @@ class UpdateManager(private val context: Context) {
             }
         }
 
+    private fun updatePrefs() =
+        context.getSharedPreferences("update_manager", Context.MODE_PRIVATE)
+
+    private fun isUpdateRejected(version: String?): Boolean =
+        !version.isNullOrEmpty() &&
+            updatePrefs().getString(KEY_REJECTED_VERSION, null) == version
+
+    private fun markUpdateRejected(version: String?) {
+        if (!version.isNullOrEmpty()) {
+            updatePrefs().edit().putString(KEY_REJECTED_VERSION, version).apply()
+        }
+    }
+
+    private fun installedVersionCode(): Long {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                context.packageManager.getPackageInfo(
+                    context.packageName,
+                    android.content.pm.PackageManager.PackageInfoFlags.of(0)
+                ).longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(context.packageName, 0).versionCode.toLong()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Unable to read installed version code", e)
+            0L
+        }
+    }
+
     fun checkForUpdates(): UpdateInfo {
         var connection: HttpURLConnection? = null
         return try {
@@ -92,7 +123,7 @@ class UpdateManager(private val context: Context) {
             val tagName = root.optString("tag_name")
             val latestVersion = tagName.removePrefix("v").removePrefix("V")
 
-            if (!isNewerVersion(latestVersion, currentVersion)) {
+            if (!isNewerVersion(latestVersion, currentVersion) || isUpdateRejected(latestVersion)) {
                 return UpdateInfo(false, null, latestVersion)
             }
 
@@ -223,6 +254,27 @@ class UpdateManager(private val context: Context) {
                 }
                 activity.runOnUiThread {
                     Toast.makeText(activity, activity.getString(R.string.update_failed), Toast.LENGTH_SHORT).show()
+                }
+                return false
+            }
+
+            // Android refuses to install an APK whose versionCode is not higher
+            // than the installed one and only shows a generic "package appears
+            // to be invalid" dialog. Reject it here with a clear message and
+            // remember the version so the 30-second check does not retry it.
+            val installedCode = installedVersionCode()
+            if (archiveInfo.longVersionCode <= installedCode) {
+                Log.w(
+                    TAG,
+                    "Downloaded update versionCode ${archiveInfo.longVersionCode} " +
+                        "is not newer than installed $installedCode"
+                )
+                if (apkFile.exists()) {
+                    apkFile.delete()
+                }
+                markUpdateRejected(release.version)
+                activity.runOnUiThread {
+                    Toast.makeText(activity, activity.getString(R.string.update_not_newer), Toast.LENGTH_SHORT).show()
                 }
                 return false
             }
