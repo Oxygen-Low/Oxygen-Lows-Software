@@ -73,6 +73,14 @@ export const ja = {
     usageTooltip: "1日のアプリ利用ポイント（毎日UTC午前0時にリセット）",
     resetsIn: "{time}後にリセット",
   },
+  releaseStage: {
+    alpha: "アルファ",
+    beta: "ベータ",
+    alphaTooltip:
+      "これはアルファ版です。バグが発生する可能性があります。サポートからフィードバックをお寄せください。",
+    betaTooltip:
+      "これはベータ版です。バグが発生する可能性があります。サポートからフィードバックをお寄せください。",
+  },
   auth: {
     title: "Oxygen Low's Software",
     welcomeBack: "ãŠå¸°ã‚Šãªã•ã„ï¼",

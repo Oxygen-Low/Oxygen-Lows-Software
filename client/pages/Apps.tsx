@@ -44,6 +44,7 @@ import {
   Cookie,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { ReleaseTag, type ReleaseStage } from "@/components/ui/ReleaseTag";
 import { cn } from "@/lib/utils";
 
 const FileCompressorApp = lazy(() =>
@@ -225,6 +226,7 @@ interface AppMetadata {
   authRequired?: boolean;
   requiresAdmin?: boolean;
   androidSupported?: boolean;
+  tag?: ReleaseStage;
 }
 
 const CATEGORY_DEFINITIONS: {
@@ -297,6 +299,7 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <MessageSquare className="w-8 h-8 text-cyan-500" />,
     component: ChatApp,
+    tag: "alpha",
   },
   {
     id: "base64-encoder",
@@ -489,6 +492,7 @@ const APPS: AppMetadata[] = [
     icon: <Cookie className="w-8 h-8 text-cyan-500" />,
     component: SimpleCookiesApp,
     authRequired: true,
+    tag: "alpha",
   },
   {
     id: "developer-auth",
@@ -565,6 +569,7 @@ const APPS: AppMetadata[] = [
     icon: <Palette className="w-8 h-8 text-cyan-500" />,
     component: ImageStudioApp,
     authRequired: true,
+    tag: "beta",
   },
   {
     id: "3d-background",
@@ -612,6 +617,7 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Globe className="w-8 h-8 text-cyan-500" />,
     component: WebBrowserApp,
+    tag: "alpha",
   },
   {
     id: "webmaster",
@@ -637,6 +643,7 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Sparkles className="w-8 h-8 text-cyan-500" />,
     component: GameStudioApp,
+    tag: "alpha",
   },
   {
     id: "custom-games",
@@ -649,6 +656,7 @@ const APPS: AppMetadata[] = [
     availability: "web-and-desktop",
     icon: <Gamepad2 className="w-8 h-8 text-cyan-500" />,
     component: CustomGamesApp,
+    tag: "alpha",
   },
   {
     id: "datasets",
@@ -662,6 +670,7 @@ const APPS: AppMetadata[] = [
     icon: <Database className="w-8 h-8 text-cyan-500" />,
     component: DatasetsApp,
     authRequired: true,
+    tag: "beta",
   },
   {
     id: "disk-space-saver",
@@ -897,6 +906,7 @@ export default function Apps() {
               <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
                 {activeApp.name}
               </h1>
+              {activeApp.tag && <ReleaseTag stage={activeApp.tag} />}
             </div>
           )}
 
@@ -1107,8 +1117,11 @@ export default function Apps() {
                 >
                   <Card className="group cursor-pointer border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-slate-700 transition-all overflow-hidden h-full">
                     <CardHeader className="p-4 sm:p-6">
-                      <div className="mb-3 sm:mb-4 transition-transform group-hover:scale-110">
-                        {app.icon}
+                      <div className="mb-3 sm:mb-4 flex items-start justify-between gap-2">
+                        <div className="transition-transform group-hover:scale-110">
+                          {app.icon}
+                        </div>
+                        {app.tag && <ReleaseTag stage={app.tag} />}
                       </div>
                       <CardTitle className="text-lg sm:text-xl text-white mb-1.5 sm:mb-2">
                         {app.name}

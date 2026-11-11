@@ -73,6 +73,14 @@ export const en = {
     usageTooltip: "Daily app usage points (resets daily at midnight UTC)",
     resetsIn: "Resets in {time}",
   },
+  releaseStage: {
+    alpha: "Alpha",
+    beta: "Beta",
+    alphaTooltip:
+      "This is in Alpha, expect bugs and provide feedback via support.",
+    betaTooltip:
+      "This is in Beta, expect bugs and provide feedback via support.",
+  },
   auth: {
     title: "Oxygen Low's Software",
     welcomeBack: "Welcome back!",

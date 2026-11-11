@@ -114,6 +114,25 @@ describe("Apps", () => {
     expect(elements.length).toBeGreaterThan(0);
   });
 
+  it("shows release tags on alpha and beta apps", () => {
+    render(
+      <MemoryRouter initialEntries={["/apps"]}>
+        <Apps />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getAllByRole("note", {
+        name: "This is in Alpha, expect bugs and provide feedback via support.",
+      }),
+    ).toHaveLength(5);
+    expect(
+      screen.getAllByRole("note", {
+        name: "This is in Beta, expect bugs and provide feedback via support.",
+      }),
+    ).toHaveLength(2);
+  });
+
   it("renders search bar and filters apps dynamically", () => {
     render(
       <MemoryRouter initialEntries={["/apps"]}>

@@ -73,6 +73,14 @@ export const es = {
     usageTooltip: "Puntos de uso diario de la app (se reinicia a medianoche UTC)",
     resetsIn: "Reinicia en {time}",
   },
+  releaseStage: {
+    alpha: "Alfa",
+    beta: "Beta",
+    alphaTooltip:
+      "Esto está en Alfa; espera errores y envía comentarios a través de soporte.",
+    betaTooltip:
+      "Esto está en Beta; espera errores y envía comentarios a través de soporte.",
+  },
   auth: {
     title: "Oxygen Low's Software",
     welcomeBack: "Â¡Bienvenido de nuevo!",

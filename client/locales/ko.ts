@@ -73,6 +73,14 @@ export const ko = {
     usageTooltip: "일일 앱 사용 포인트 (매일 자정 UTC 리셋)",
     resetsIn: "{time} 후 초기화",
   },
+  releaseStage: {
+    alpha: "알파",
+    beta: "베타",
+    alphaTooltip:
+      "이것은 알파 버전입니다. 버그가 발생할 수 있으니 지원을 통해 피드백을 보내주세요.",
+    betaTooltip:
+      "이것은 베타 버전입니다. 버그가 발생할 수 있으니 지원을 통해 피드백을 보내주세요.",
+  },
   auth: {
     title: "Oxygen Low's Software",
     welcomeBack: "ë‹¤ì‹œ ì˜¤ì‹  ê²ƒì„ í™˜ì˜í•©ë‹ˆë‹¤!",

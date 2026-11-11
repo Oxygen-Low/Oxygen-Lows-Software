@@ -72,6 +72,12 @@ export const zhCN = {
     usageTooltip: "每日应用使用积分（每天UTC零点重置）",
     resetsIn: "{time}后重置",
   },
+  releaseStage: {
+    alpha: "Alpha",
+    beta: "Beta",
+    alphaTooltip: "这是 Alpha 版本，可能会出现错误，请通过支持提供反馈。",
+    betaTooltip: "这是 Beta 版本，可能会出现错误，请通过支持提供反馈。",
+  },
   auth: {
     title: "Oxygen Low's Software",
     welcomeBack: "æ¬¢è¿Žå›žæ¥ï¼",

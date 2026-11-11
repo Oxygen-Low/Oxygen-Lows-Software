@@ -27,6 +27,7 @@ import {
   RotateCcw,
   Swords,
 } from "lucide-react";
+import { ReleaseTag, type ReleaseStage } from "@/components/ui/ReleaseTag";
 import { cn } from "@/lib/utils";
 
 const MinesweeperApp = lazy(() =>
@@ -80,6 +81,7 @@ export interface GameMetadata {
   authRequired?: boolean;
   requiresAdmin?: boolean;
   androidSupported?: boolean;
+  tag?: ReleaseStage;
 }
 
 export interface ModeDefinition {
@@ -393,6 +395,7 @@ export default function Games() {
               <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
                 {activeApp.name}
               </h1>
+              {activeApp.tag && <ReleaseTag stage={activeApp.tag} />}
             </div>
           )}
 
@@ -666,6 +669,11 @@ export default function Games() {
                       <CardTitle className="text-lg sm:text-xl text-white mb-1.5 sm:mb-2">
                         {app.name}
                       </CardTitle>
+                      {app.tag && (
+                        <div className="mb-1.5 sm:mb-2">
+                          <ReleaseTag stage={app.tag} />
+                        </div>
+                      )}
                       <CardDescription className="text-xs sm:text-sm text-slate-400 flex-1">
                         {app.description}
                       </CardDescription>

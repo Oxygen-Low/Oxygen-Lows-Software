@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import styles from "./Layout.module.css";
 import { TopbarMusicPlayer } from "./TopbarMusicPlayer";
+import { ReleaseTag, type ReleaseStage } from "@/components/ui/ReleaseTag";
 import { useNotifications } from "@/hooks/useNotifications";
 
 interface LayoutProps {
@@ -47,6 +48,7 @@ interface NavItemDef {
   href: string;
   icon: any;
   external?: boolean;
+  tag?: ReleaseStage;
 }
 
 const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
@@ -541,6 +543,7 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                   >
                     <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400/80" />
                     {item.label}
+                    {item.tag && <ReleaseTag stage={item.tag} />}
                   </a>
                 );
               }
@@ -556,11 +559,14 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
                     <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400/80 shrink-0" />
                     <span className="truncate">{item.label}</span>
                   </div>
-                  {item.key === "notifications" && unreadCount > 0 && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[11px] font-bold shrink-0">
-                      {unreadCount > 99 ? "99+" : unreadCount}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {item.tag && <ReleaseTag stage={item.tag} />}
+                    {item.key === "notifications" && unreadCount > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[11px] font-bold shrink-0">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </div>
                 </Link>
               );
             })}

@@ -73,6 +73,14 @@ export const ru = {
     usageTooltip: "Ежедневные баллы использования (сброс в полночь по UTC)",
     resetsIn: "Сброс через {time}",
   },
+  releaseStage: {
+    alpha: "Альфа",
+    beta: "Бета",
+    alphaTooltip:
+      "Это альфа-версия: ожидайте ошибок и оставляйте отзывы через поддержку.",
+    betaTooltip:
+      "Это бета-версия: ожидайте ошибок и оставляйте отзывы через поддержку.",
+  },
   auth: {
     title: "Oxygen Low's Software",
     welcomeBack: "Ð¡ Ð²Ð¾Ð·Ð²Ñ€Ð°Ñ‰ÐµÐ½Ð¸ÐµÐ¼!",
