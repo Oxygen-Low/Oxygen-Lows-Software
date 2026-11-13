@@ -1,5 +1,0 @@
-# Dependencies for Python background server
-# Place package names below. The desktop app will automatically install them into its isolated virtual environment.
-
-# Process & Hardware Telemetry (used by server.py and python_manager.py)
-psutil>=5.9.0
