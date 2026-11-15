@@ -327,13 +327,6 @@ export default function Support() {
                       </SelectItem>
                       <SelectItem value="User Report">User Report</SelectItem>
                       <SelectItem value="Request">Request</SelectItem>
-                      <SelectItem value="Partner Request">
-                        {t(
-                          "support.typePartnerRequest",
-                          undefined,
-                          "Partner Request",
-                        )}
-                      </SelectItem>
                       <SelectItem value="Account Deletion Request">
                         Account Deletion Request
                       </SelectItem>

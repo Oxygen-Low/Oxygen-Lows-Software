@@ -27,7 +27,6 @@ import {
   ExternalLink,
   Download as DownloadIcon,
   Bell,
-  Handshake,
   Sparkles,
   Zap,
 } from "lucide-react";
@@ -121,13 +120,6 @@ const NAV_ITEM_DEFINITIONS: NavItemDef[] = [
     defaultLabel: "Support",
     href: "/support",
     icon: LifeBuoy,
-  },
-  {
-    key: "partners",
-    labelKey: "nav.partners",
-    defaultLabel: "Partners",
-    href: "/partners",
-    icon: Handshake,
   },
   {
     key: "legal",

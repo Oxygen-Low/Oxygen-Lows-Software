@@ -84,8 +84,6 @@ const OAuthAuthorize = lazyWithRetry(() => import("./pages/OAuthAuthorize"));
 const PollinationsOAuthCallback = lazyWithRetry(
   () => import("./pages/PollinationsOAuthCallback"),
 );
-const Partners = lazyWithRetry(() => import("./pages/Partners"));
-const AdminPartners = lazyWithRetry(() => import("./pages/AdminPartners"));
 const AgentsPortal = lazyWithRetry(() => import("./pages/AgentsPortal"));
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -193,7 +191,6 @@ const App = () => (
                     <Route path="/acceptable-use" element={<AcceptableUse />} />
                     <Route path="/legal" element={<Legal />} />
                     <Route path="/license" element={<License />} />
-                    <Route path="/partners" element={<Partners />} />
                     <Route
                       path="/support"
                       element={
@@ -223,14 +220,6 @@ const App = () => (
                       element={
                         <ProtectedRoute>
                           <AdminPanel />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/admin/partners"
-                      element={
-                        <ProtectedRoute>
-                          <AdminPartners />
                         </ProtectedRoute>
                       }
                     />
