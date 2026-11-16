@@ -1,0 +1,1 @@
+import{V as e}from"./index-BmT-85ZZ.js";var t={name:`check`,size:24,node:[[`path`,{d:`M20 6 9 17l-5-5`,key:`1gmf2c`}]]};t.node;var n=e(t);export{n as t};

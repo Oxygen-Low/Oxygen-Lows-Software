@@ -1,0 +1,34 @@
+User-agent: *
+Allow: /
+
+# https://knownagents.com/agents/bytespider
+User-agent: Bytespider
+Disallow: /
+
+# https://knownagents.com/agents/meta-externalagent
+User-agent: meta-externalagent
+Disallow: /
+
+# https://knownagents.com/agents/applebot
+User-agent: Applebot
+Disallow: /
+
+# https://knownagents.com/agents/atlassian-bot
+User-agent: atlassian-bot
+Disallow: /
+
+# https://knownagents.com/agents/meta-webindexer
+User-agent: meta-webindexer
+Disallow: /
+
+# https://knownagents.com/agents/claude-searchbot
+User-agent: Claude-SearchBot
+Disallow: /
+
+# https://knownagents.com/agents/claude-user
+User-agent: Claude-User
+Disallow: /
+
+# https://knownagents.com/agents/claudebot
+User-agent: ClaudeBot
+Disallow: /
