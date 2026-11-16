@@ -31,7 +31,7 @@
     "@simplewebauthn/server": "^14.1.0",
     "@types/leaflet": "^1.9.22",
     "@types/ping": "^1.0.0",
-    "axios": "^1.21.0",
+    "axios": "^1.21.1",
     "browser-image-compression": "^2.0.2",
     "buffer": "^6.0.3",
     "chess.js": "^1.4.0",
