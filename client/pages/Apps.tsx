@@ -915,7 +915,6 @@ export default function Apps() {
               <h1 className="text-xl sm:text-2xl font-bold text-white truncate">
                 {activeApp.name}
               </h1>
-              {activeApp.tag && <ReleaseTag stage={activeApp.tag} />}
               <button
                 type="button"
                 onClick={() => toggleStar(activeApp.id)}
@@ -960,6 +959,7 @@ export default function Apps() {
                   )}
                 />
               </button>
+              {activeApp.tag && <ReleaseTag stage={activeApp.tag} />}
             </div>
           )}
 
@@ -1183,6 +1183,7 @@ export default function Apps() {
                           {app.icon}
                         </div>
                         <div className="flex items-center gap-2">
+                          {app.tag && <ReleaseTag stage={app.tag} />}
                           <button
                             type="button"
                             aria-label={
@@ -1231,7 +1232,6 @@ export default function Apps() {
                               )}
                             />
                           </button>
-                          {app.tag && <ReleaseTag stage={app.tag} />}
                         </div>
                       </div>
                       <CardTitle className="text-lg sm:text-xl text-white mb-1.5 sm:mb-2">
