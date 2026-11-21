@@ -366,4 +366,167 @@ Disallow: /fallback-blocked`;
     expect(results.filter((r) => r.domain === "example.com")).toHaveLength(1);
     expect(results.filter((r) => r.domain === "another-domain.org")).toHaveLength(1);
   });
+
+  it("returns a useful snippet containing the matched terms", () => {
+    saveIndex([
+      {
+        id: "p-snippet",
+        url: "https://example.com/security",
+        domain: "example.com",
+        title: "Application Security Guide",
+        description: "A practical guide to securing web applications.",
+        headings: ["Security"],
+        keywords: ["security", "web"],
+        bodyPreview: "Short preview.",
+        bodyText:
+          "This long guide explains how to secure a web application. It covers authentication, authorization, input validation, and security headers in depth.",
+        wordCount: 120,
+        indexedAt: new Date().toISOString(),
+      },
+    ]);
+
+    const { results } = searchOxylowIndex("input validation");
+    expect(results).toHaveLength(1);
+    expect(results[0].snippet).toContain("input validation");
+    expect(results[0].matchedTerms).toEqual(
+      expect.arrayContaining(["input", "validation"])
+    );
+  });
+
+  it("handles quoted-only queries", () => {
+    saveIndex([
+      {
+        id: "p-quoted",
+        url: "https://example.com/validation",
+        domain: "example.com",
+        title: "Validation Guide",
+        description: "Guide to validating input.",
+        headings: ["Validation"],
+        keywords: ["validation"],
+        bodyPreview: "Input validation matters.",
+        bodyText: "Good input validation prevents injection attacks.",
+        indexedAt: new Date().toISOString(),
+      },
+    ]);
+
+    const { results } = searchOxylowIndex('"input validation"');
+    expect(results).toHaveLength(1);
+    expect(results[0].domain).toBe("example.com");
+  });
+
+  it("allows multiple pages from the same domain when explicitly requested", () => {
+    const indexedAt = new Date().toISOString();
+    saveIndex([
+      {
+        id: "d1",
+        url: "https://docs.example.com/widget/api",
+        domain: "docs.example.com",
+        title: "Widget API Reference",
+        description: "Widget API reference documentation",
+        headings: ["Widget API"],
+        keywords: ["widget"],
+        bodyPreview: "Widget API reference",
+        bodyText: "The widget API reference documents every endpoint.",
+        indexedAt,
+      },
+      {
+        id: "d2",
+        url: "https://docs.example.com/widget/examples",
+        domain: "docs.example.com",
+        title: "Widget API Examples",
+        description: "Widget API examples and tutorials",
+        headings: ["Widget API"],
+        keywords: ["widget"],
+        bodyPreview: "Widget API examples",
+        bodyText: "Widget API examples show common integration patterns.",
+        indexedAt,
+      },
+      {
+        id: "d3",
+        url: "https://other.example.org/widget",
+        domain: "other.example.org",
+        title: "Widget Guide",
+        description: "A guide to widgets",
+        headings: ["Widgets"],
+        keywords: ["widget"],
+        bodyPreview: "Widget guide",
+        bodyText: "A guide to choosing and using widgets.",
+        indexedAt,
+      },
+    ]);
+
+    const capped = searchOxylowIndex("widget");
+    expect(capped.total).toBe(2);
+    expect(capped.results.filter((r) => r.domain === "docs.example.com")).toHaveLength(1);
+
+    const expanded = searchOxylowIndex("widget", 1, 10, { perDomainLimit: 3 });
+    expect(expanded.total).toBe(3);
+    expect(expanded.results.filter((r) => r.domain === "docs.example.com")).toHaveLength(2);
+  });
+
+  it("suggests a correction for a misspelled query", () => {
+    saveIndex([
+      {
+        id: "p-image",
+        url: "https://images.example.com",
+        domain: "images.example.com",
+        title: "Image Generator",
+        description: "Generate images with AI.",
+        headings: ["Image Generator"],
+        keywords: ["image", "generator"],
+        bodyPreview: "Generate images with AI.",
+        bodyText: "Create high quality images with the image generator.",
+        indexedAt: new Date().toISOString(),
+      },
+    ]);
+
+    const { results, suggestion } = searchOxylowIndex("imges");
+    expect(results.length).toBeGreaterThan(0);
+    expect(suggestion).toBe("image");
+  });
+
+  it("supports the site: operator", () => {
+    const indexedAt = new Date().toISOString();
+    saveIndex([
+      {
+        id: "s1",
+        url: "https://example.com/widget",
+        domain: "example.com",
+        title: "Widget for Example",
+        description: "A widget",
+        headings: ["Widget"],
+        keywords: ["widget"],
+        bodyPreview: "Widget page",
+        bodyText: "This widget belongs to example.com.",
+        indexedAt,
+      },
+      {
+        id: "s2",
+        url: "https://other.com/widget",
+        domain: "other.com",
+        title: "Widget for Other",
+        description: "A widget",
+        headings: ["Widget"],
+        keywords: ["widget"],
+        bodyPreview: "Widget page",
+        bodyText: "This widget belongs to other.com.",
+        indexedAt,
+      },
+    ]);
+
+    const { results } = searchOxylowIndex("site:example.com widget");
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.every((r) => r.domain === "example.com" || r.domain.endsWith(".example.com"))).toBe(
+      true
+    );
+  });
+
+  it("clamps page and page size at the API boundary", async () => {
+    const req = new Request("http://localhost/search?q=oxygen&page=-5&pageSize=9999");
+    const res = await browserRouter.fetch(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.page).toBe(1);
+    expect(body.pageSize).toBe(50);
+  });
 });

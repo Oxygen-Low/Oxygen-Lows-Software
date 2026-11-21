@@ -58,6 +58,11 @@ export interface IndexedPage {
   headings: string[];
   keywords: string[];
   bodyPreview: string;
+  /** Normalized body text used for relevance scoring (kept separate from the short display preview). */
+  bodyText?: string;
+  wordCount?: number;
+  lang?: string;
+  contentHash?: string;
   favicon?: string;
   indexedAt: string;
 }
@@ -68,9 +73,20 @@ export interface SearchResult {
   title: string;
   description: string;
   bodyPreview: string;
+  /** A short excerpt around the best matching term, when available. */
+  snippet?: string;
+  /** Terms (original or stemmed) that appear in the snippet, for safe client-side highlighting. */
+  matchedTerms?: string[];
   favicon?: string;
   score: number;
   indexedAt: string;
+}
+
+export interface SearchOptions {
+  /** Maximum number of results allowed from the same registrable domain. Defaults to 1. */
+  perDomainLimit?: number;
+  /** When false, snippets are not generated. Defaults to true. */
+  includeSnippet?: boolean;
 }
 
 // Track per-domain request delays to respect target servers
@@ -101,6 +117,8 @@ function ensureDataFiles() {
 
 let cachedSites: WebmasterSite[] | null = null;
 let cachedIndex: IndexedPage[] | null = null;
+// Bumped whenever the index changes so derived search structures can be rebuilt.
+let indexRevision = 0;
 let saveSitesTimeout: NodeJS.Timeout | null = null;
 let saveIndexTimeout: NodeJS.Timeout | null = null;
 let isWritingSites = false;
@@ -239,6 +257,7 @@ export function getIndex(): IndexedPage[] {
 
 export function saveIndex(index: IndexedPage[], immediate = false): void {
   cachedIndex = index;
+  indexRevision++;
   if (immediate) {
     flushIndexToDisk();
   } else {
@@ -939,6 +958,9 @@ export function extractPageData(
   headings: string[];
   keywords: string[];
   bodyPreview: string;
+  bodyText: string;
+  wordCount: number;
+  lang?: string;
   favicon?: string;
   links: string[];
 } {
@@ -946,6 +968,12 @@ export function extractPageData(
   const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   if (titleMatch) {
     title = decodeHtmlEntities(titleMatch[1].trim());
+  }
+
+  let lang: string | undefined;
+  const langMatch = html.match(/<html[^>]*\blang=["']([^"']+)["']/i);
+  if (langMatch) {
+    lang = langMatch[1].trim().toLowerCase().slice(0, 20) || undefined;
   }
 
   let description = "";
@@ -1015,7 +1043,11 @@ export function extractPageData(
       .trim()
   );
 
-  const bodyPreview = cleanBody.slice(0, 300);
+  // Keep a longer body for ranking (the index stores it compressed as JSON),
+  // while retaining a short preview for display and older consumers.
+  const bodyText = cleanBody.slice(0, 8000);
+  const bodyPreview = bodyText.slice(0, 300);
+  const wordCount = cleanBody.split(/\s+/).filter(Boolean).length;
   if (!description && bodyPreview) {
     description = bodyPreview.slice(0, 160) + "...";
   }
@@ -1052,6 +1084,9 @@ export function extractPageData(
     headings,
     keywords,
     bodyPreview,
+    bodyText,
+    wordCount,
+    lang,
     favicon,
     links,
   };
@@ -1271,6 +1306,10 @@ export async function crawlSite(
           headings: extracted.headings,
           keywords: extracted.keywords,
           bodyPreview: extracted.bodyPreview,
+          bodyText: extracted.bodyText,
+          wordCount: extracted.wordCount,
+          lang: extracted.lang,
+          contentHash: crypto.createHash("sha1").update(html).digest("hex"),
           favicon: extracted.favicon,
           indexedAt: new Date().toISOString(),
         };
@@ -1664,227 +1703,724 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function countWordOccurrences(text: string, word: string): number {
-  if (!text || !word) return 0;
-  const regex = new RegExp(`\\b${escapeRegex(word)}\\b`, "gi");
-  const matches = text.match(regex);
-  return matches ? matches.length : 0;
+// Function words add noise to relevance scoring, so they are not used as query terms.
+const SEARCH_STOPWORDS = new Set([
+  "a", "an", "and", "are", "as", "at", "be", "been", "but", "by", "can", "could",
+  "did", "do", "does", "for", "from", "had", "has", "have", "he", "her", "here",
+  "him", "his", "how", "i", "if", "in", "into", "is", "it", "its", "me", "my",
+  "no", "not", "of", "on", "or", "our", "out", "she", "should", "so", "than",
+  "that", "the", "their", "them", "then", "there", "these", "they", "this",
+  "those", "to", "too", "up", "us", "very", "was", "we", "were", "what", "when",
+  "where", "which", "who", "why", "will", "with", "would", "you", "your",
+  // Common function words in the other supported languages.
+  "de", "la", "le", "les", "el", "en", "y", "un", "una", "der", "die", "das",
+  "und", "ist", "von", "zu", "den", "des", "du", "et", "est", "une", "los",
+  "las", "por", "para", "con", "il", "lo", "gli", "di", "da", "su", "per",
+]);
+
+const SEARCH_FIELD_WEIGHTS = {
+  title: 3,
+  headings: 2.5,
+  keywords: 2.5,
+  description: 1.5,
+  body: 1,
+  url: 1.5,
+  domain: 2,
+};
+const BM25_K1 = 1.2;
+const BM25_B = 0.75;
+
+function normalizeSearchText(value: string): string {
+  return (value || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\u2018\u2019\u201b]/g, "'")
+    .replace(/[\u201c\u201d]/g, '"')
+    .toLowerCase();
 }
 
-function getWordStems(word: string): string[] {
-  const clean = word.toLowerCase().trim();
-  const stems = [clean];
-  if (clean.endsWith("ies") && clean.length > 4) {
-    stems.push(clean.slice(0, -3) + "y");
-  } else if (clean.endsWith("es") && clean.length > 3) {
-    stems.push(clean.slice(0, -2));
-    stems.push(clean.slice(0, -1));
-  } else if (clean.endsWith("s") && clean.length > 2) {
-    stems.push(clean.slice(0, -1));
-  } else if (clean.endsWith("ing") && clean.length > 4) {
-    stems.push(clean.slice(0, -3));
-  } else if (clean.endsWith("ed") && clean.length > 3) {
-    stems.push(clean.slice(0, -2));
-    stems.push(clean.slice(0, -1));
+function tokenizeSearchText(value: string): string[] {
+  const matches = normalizeSearchText(value).match(/[\p{L}\p{N}]+/gu);
+  return matches ? matches.filter((token) => token.length <= 64) : [];
+}
+
+const STEM_EXCEPTIONS = new Set([
+  "news",
+  "series",
+  "species",
+  "analysis",
+  "basis",
+  "crisis",
+  "thesis",
+]);
+
+/**
+ * Conservative stemming: only handle plurals and possessives. Aggressive
+ * suffix stripping (e.g. turning "this" into "thi") causes false positives.
+ */
+function stemSearchTerm(term: string): string {
+  const clean = normalizeSearchText(term);
+  if (clean.length <= 2) return clean;
+  if (STEM_EXCEPTIONS.has(clean)) return clean;
+  if (clean.endsWith("'s")) return clean.slice(0, -2);
+  if (clean.endsWith("ies") && clean.length > 4) return clean.slice(0, -1);
+  if (clean.endsWith("sses") && clean.length > 5) return clean.slice(0, -2);
+  if (/(?:ses|xes|zes|ches|shes)$/.test(clean) && clean.length > 4) return clean.slice(0, -2);
+  if (clean.endsWith("s") && !/(?:ss|us|is)$/.test(clean) && clean.length > 3) {
+    return clean.slice(0, -1);
   }
-  return Array.from(new Set(stems));
+  return clean;
 }
 
 /**
- * Searches the oxylow search index with high accuracy relevance scoring.
+ * Generates the plural variants that are worth indexing for a token. Keeping
+ * both "cities" -> "city" and "movies" -> "movie" avoids choosing one rule
+ * that silently breaks a whole class of words.
  */
-export function searchOxylowIndex(query: string, page = 1, pageSize = 10): { results: SearchResult[]; total: number } {
-  const index = getIndex();
-  const trimmed = query.trim().toLowerCase();
+function stemVariants(term: string): string[] {
+  const clean = normalizeSearchText(term);
+  const variants = new Set<string>([stemSearchTerm(clean)]);
+  if (clean.endsWith("ies") && clean.length > 4) {
+    variants.add(clean.slice(0, -3) + "y");
+  } else if (clean.endsWith("es") && clean.length > 3) {
+    variants.add(clean.slice(0, -2));
+  }
+  return Array.from(variants).filter(Boolean);
+}
 
-  const deduplicateByDomain = (items: SearchResult[]): SearchResult[] => {
-    const seenDomains = new Set<string>();
-    const deduplicated: SearchResult[] = [];
-    for (const item of items) {
-      const d = (item.domain || "").toLowerCase();
-      if (d && !seenDomains.has(d)) {
-        seenDomains.add(d);
-        deduplicated.push(item);
-      }
-    }
-    return deduplicated;
+function stemSearchTokens(tokens: string[]): string[] {
+  return tokens.flatMap(stemVariants);
+}
+
+function countSearchTokens(tokens: string[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const token of tokens) {
+    counts.set(token, (counts.get(token) || 0) + 1);
+  }
+  return counts;
+}
+
+interface SearchDoc {
+  page: IndexedPage;
+  title: Map<string, number>;
+  headings: Map<string, number>;
+  keywords: Map<string, number>;
+  description: Map<string, number>;
+  body: Map<string, number>;
+  url: Map<string, number>;
+  domain: Map<string, number>;
+  titleTokens: string[];
+  bodyTokens: string[];
+  bodyLength: number;
+}
+
+interface SearchStats {
+  index: IndexedPage[];
+  revision: number;
+  docs: SearchDoc[];
+  documentFrequency: Map<string, number>;
+  averageBodyLength: number;
+}
+
+let searchStatsCache: SearchStats | null = null;
+
+function buildSearchDoc(page: IndexedPage): SearchDoc {
+  const titleTokens = stemSearchTokens(tokenizeSearchText(page.title || ""));
+  const headingTokens = stemSearchTokens(tokenizeSearchText((page.headings || []).join(" ")));
+  const keywordTokens = stemSearchTokens(tokenizeSearchText((page.keywords || []).join(" ")));
+  const descriptionTokens = stemSearchTokens(tokenizeSearchText(page.description || ""));
+  const bodyTokens = stemSearchTokens(tokenizeSearchText(page.bodyText || page.bodyPreview || ""));
+  const urlTokens = stemSearchTokens(tokenizeSearchText(page.url || ""));
+  const domainTokens = stemSearchTokens(tokenizeSearchText(page.domain || ""));
+
+  return {
+    page,
+    titleTokens,
+    bodyTokens,
+    bodyLength: bodyTokens.length,
+    title: countSearchTokens(titleTokens),
+    headings: countSearchTokens(headingTokens),
+    keywords: countSearchTokens(keywordTokens),
+    description: countSearchTokens(descriptionTokens),
+    body: countSearchTokens(bodyTokens),
+    url: countSearchTokens(urlTokens),
+    domain: countSearchTokens(domainTokens),
   };
+}
 
-  if (!trimmed) {
-    const rawResults: SearchResult[] = index.map((item) => ({
-      url: item.url,
-      domain: item.domain,
-      title: decodeHtmlEntities(item.title),
-      description: decodeHtmlEntities(item.description),
-      bodyPreview: decodeHtmlEntities(item.bodyPreview),
-      favicon: item.favicon,
-      score: 1,
-      indexedAt: item.indexedAt,
-    }));
-    const uniqueResults = deduplicateByDomain(rawResults);
-    const start = (page - 1) * pageSize;
-    const results = uniqueResults.slice(start, start + pageSize);
-    return { results, total: uniqueResults.length };
+function getSearchStats(index: IndexedPage[]): SearchStats {
+  if (
+    searchStatsCache &&
+    searchStatsCache.index === index &&
+    searchStatsCache.revision === indexRevision
+  ) {
+    return searchStatsCache;
   }
 
-  const queryTerms = trimmed.split(/\s+/).filter(Boolean);
+  const docs = index.map(buildSearchDoc);
+  const documentFrequency = new Map<string, number>();
+  let totalBodyLength = 0;
 
-  const scored: SearchResult[] = index
-    .map((item) => {
-      let score = 0;
-      const lowerTitle = (item.title || "").toLowerCase();
-      const lowerDesc = (item.description || "").toLowerCase();
-      const lowerDomain = (item.domain || "").toLowerCase();
-      const lowerBody = (item.bodyPreview || "").toLowerCase();
-      const lowerHeadings = (item.headings || []).join(" ").toLowerCase();
-      const lowerKeywords = (item.keywords || []).join(" ").toLowerCase();
-      const lowerUrl = (item.url || "").toLowerCase();
+  for (const doc of docs) {
+    totalBodyLength += doc.bodyLength;
+    const seen = new Set<string>();
+    for (const field of [
+      doc.title,
+      doc.headings,
+      doc.keywords,
+      doc.description,
+      doc.body,
+      doc.url,
+      doc.domain,
+    ]) {
+      for (const term of field.keys()) seen.add(term);
+    }
+    for (const term of seen) {
+      documentFrequency.set(term, (documentFrequency.get(term) || 0) + 1);
+    }
+  }
 
-      // Full phrase matching
-      if (lowerTitle === trimmed) {
-        score += 350;
-      } else if (lowerTitle.startsWith(trimmed)) {
-        score += 200;
-      } else if (countWordOccurrences(lowerTitle, trimmed) > 0 || lowerTitle.includes(trimmed)) {
-        score += 150;
+  searchStatsCache = {
+    index,
+    revision: indexRevision,
+    docs,
+    documentFrequency,
+    averageBodyLength: docs.length ? Math.max(1, totalBodyLength / docs.length) : 1,
+  };
+  return searchStatsCache;
+}
+
+interface ParsedSearchQuery {
+  cleaned: string;
+  terms: string[];
+  displayTerms: string[];
+  phrase: string | null;
+  siteFilter: string | null;
+  titleTerms: string[];
+  excluded: string[];
+}
+
+function parseSearchQuery(rawQuery: string): ParsedSearchQuery {
+  let working = rawQuery.trim();
+  let siteFilter: string | null = null;
+  const titleTerms: string[] = [];
+  const excluded: string[] = [];
+  let phrase: string | null = null;
+
+  const siteMatch = working.match(/\bsite:([^\s]+)/i);
+  if (siteMatch) {
+    siteFilter = normalizeSearchText(siteMatch[1])
+      .replace(/^https?:\/\//, "")
+      .split("/")[0]
+      .replace(/^www\./, "");
+    working = working.replace(siteMatch[0], " ");
+  }
+
+  working = working.replace(/\bintitle:([^\s]+)/gi, (_match, term: string) => {
+    titleTerms.push(normalizeSearchText(term));
+    return " ";
+  });
+
+  working = working.replace(/(^|\s)-([^\s]+)/g, (_match, prefix: string, term: string) => {
+    if (term.length > 0) excluded.push(normalizeSearchText(term));
+    return prefix;
+  });
+
+  const quoted = working.match(/"([^"]+)"/);
+  if (quoted) {
+    phrase = normalizeSearchText(quoted[1]).trim() || null;
+    working = working.replace(quoted[0], " ");
+  }
+
+  const allTokens = tokenizeSearchText(working);
+  const meaningful = allTokens.filter((token) => !SEARCH_STOPWORDS.has(token));
+  let displayTerms = Array.from(new Set(meaningful.length ? meaningful : allTokens));
+  if (displayTerms.length === 0 && phrase) {
+    displayTerms = Array.from(new Set(tokenizeSearchText(phrase)));
+  }
+  const terms = Array.from(new Set(displayTerms.map(stemSearchTerm))).filter(Boolean);
+
+  if (!phrase && displayTerms.length > 1) {
+    phrase = displayTerms.join(" ");
+  }
+
+  return {
+    cleaned: displayTerms.join(" "),
+    terms,
+    displayTerms,
+    phrase,
+    siteFilter,
+    titleTerms: titleTerms.map(stemSearchTerm).filter(Boolean),
+    excluded: excluded.map(stemSearchTerm).filter(Boolean),
+  };
+}
+
+function countFieldTokens(field: Map<string, number>, term: string): number {
+  return field.get(term) || 0;
+}
+
+function containsTokenSequence(haystack: string[], needle: string[]): boolean {
+  if (needle.length === 0 || haystack.length < needle.length) return false;
+  outer: for (let i = 0; i <= haystack.length - needle.length; i++) {
+    for (let j = 0; j < needle.length; j++) {
+      if (haystack[i + j] !== needle[j]) continue outer;
+    }
+    return true;
+  }
+  return false;
+}
+
+function tokenProximityBonus(tokens: string[], terms: string[]): number {
+  if (tokens.length === 0 || terms.length < 2) return 0;
+  let bonus = 0;
+  for (let i = 0; i < terms.length - 1; i++) {
+    const first = terms[i];
+    const second = terms[i + 1];
+    let lastFirst = -1;
+    let closest = Infinity;
+    for (let index = 0; index < tokens.length; index++) {
+      if (tokens[index] === first) {
+        lastFirst = index;
+      } else if (tokens[index] === second && lastFirst >= 0) {
+        closest = Math.min(closest, index - lastFirst);
       }
+    }
+    if (closest <= 8) bonus += 1 / closest;
+  }
+  return bonus;
+}
 
-      if (lowerDomain === trimmed || lowerDomain.startsWith(trimmed + ".")) {
-        score += 140;
-      } else if (lowerDomain.includes(trimmed)) {
-        score += 60;
-      }
+function scoreSearchDoc(
+  doc: SearchDoc,
+  parsed: ParsedSearchQuery,
+  stats: SearchStats
+): number {
+  const page = doc.page;
+  const normalizedDomain = normalizeSearchText(page.domain || "");
 
-      if (lowerUrl.includes(trimmed)) {
-        score += 40;
-      }
+  if (parsed.siteFilter) {
+    if (
+      normalizedDomain !== parsed.siteFilter &&
+      !normalizedDomain.endsWith("." + parsed.siteFilter)
+    ) {
+      return 0;
+    }
+  }
 
-      if (countWordOccurrences(lowerDesc, trimmed) > 0 || lowerDesc.includes(trimmed)) {
-        score += 50;
-      }
+  for (const excluded of parsed.excluded) {
+    if (
+      doc.title.has(excluded) ||
+      doc.headings.has(excluded) ||
+      doc.keywords.has(excluded) ||
+      doc.description.has(excluded) ||
+      doc.body.has(excluded) ||
+      doc.url.has(excluded) ||
+      doc.domain.has(excluded)
+    ) {
+      return 0;
+    }
+  }
 
-      // Per-term whole-word and stem relevance scoring
-      let matchedTermsCount = 0;
+  for (const titleTerm of parsed.titleTerms) {
+    if (!doc.title.has(titleTerm)) return 0;
+  }
 
-      for (const term of queryTerms) {
-        const stems = getWordStems(term);
-        let termFoundOnPage = false;
+  if (parsed.terms.length === 0) return 0;
 
-        let titleMatches = 0;
-        let headingMatches = 0;
-        let keywordMatches = 0;
-        let descMatches = 0;
-        let bodyMatches = 0;
+  let score = 0;
+  let matchedTerms = 0;
+  const documentLength = Math.max(1, doc.bodyLength);
+  const lengthNormalization = documentLength / stats.averageBodyLength;
 
-        for (const stem of stems) {
-          titleMatches += countWordOccurrences(lowerTitle, stem);
-          headingMatches += countWordOccurrences(lowerHeadings, stem);
-          keywordMatches += countWordOccurrences(lowerKeywords, stem);
-          descMatches += countWordOccurrences(lowerDesc, stem);
-          bodyMatches += countWordOccurrences(lowerBody, stem);
-        }
+  for (const term of parsed.terms) {
+    const tf =
+      SEARCH_FIELD_WEIGHTS.title * countFieldTokens(doc.title, term) +
+      SEARCH_FIELD_WEIGHTS.headings * countFieldTokens(doc.headings, term) +
+      SEARCH_FIELD_WEIGHTS.keywords * countFieldTokens(doc.keywords, term) +
+      SEARCH_FIELD_WEIGHTS.description * countFieldTokens(doc.description, term) +
+      SEARCH_FIELD_WEIGHTS.body * countFieldTokens(doc.body, term) +
+      SEARCH_FIELD_WEIGHTS.url * countFieldTokens(doc.url, term) +
+      SEARCH_FIELD_WEIGHTS.domain * countFieldTokens(doc.domain, term);
 
-        if (titleMatches > 0) {
-          score += Math.min(titleMatches, 3) * 60;
-          termFoundOnPage = true;
-        }
+    if (tf <= 0) continue;
 
-        if (lowerDomain.includes(term)) {
-          score += 40;
-          termFoundOnPage = true;
-        }
+    const df = stats.documentFrequency.get(term) || 1;
+    const idf = Math.log(1 + (stats.docs.length - df + 0.5) / (df + 0.5));
+    const denominator = tf + BM25_K1 * (1 - BM25_B + BM25_B * lengthNormalization);
+    score += idf * ((tf * (BM25_K1 + 1)) / denominator);
+    matchedTerms++;
+  }
 
-        if (headingMatches > 0) {
-          score += Math.min(headingMatches, 3) * 30;
-          termFoundOnPage = true;
-        }
+  if (matchedTerms === 0) return 0;
+  if (parsed.terms.length > 1 && matchedTerms < Math.ceil(parsed.terms.length / 2)) {
+    return 0;
+  }
 
-        if (keywordMatches > 0) {
-          score += Math.min(keywordMatches, 3) * 35;
-          termFoundOnPage = true;
-        }
+  // A partial match should rank below a full match.
+  score *= 0.55 + 0.45 * (matchedTerms / parsed.terms.length);
 
-        if (descMatches > 0) {
-          score += Math.min(descMatches, 3) * 20;
-          termFoundOnPage = true;
-        }
+  // Navigational intent: exact domain/title matches win.
+  if (parsed.cleaned) {
+    const normalizedTitle = normalizeSearchText(page.title || "");
+    if (normalizedTitle === parsed.cleaned) score += 120;
+    else if (normalizedTitle.startsWith(parsed.cleaned)) score += 35;
 
-        if (bodyMatches > 0) {
-          score += Math.min(bodyMatches, 5) * 4;
-          termFoundOnPage = true;
-        }
+    if (
+      normalizedDomain === parsed.cleaned ||
+      normalizedDomain === `www.${parsed.cleaned}` ||
+      normalizedDomain.startsWith(parsed.cleaned + ".")
+    ) {
+      score += 90;
+    }
+  }
 
-        if (termFoundOnPage) {
-          matchedTermsCount++;
-        }
-      }
+  // Phrase and proximity bonuses.
+  const phraseTokens = parsed.phrase
+    ? tokenizeSearchText(parsed.phrase).map(stemSearchTerm)
+    : [];
+  if (phraseTokens.length > 1) {
+    if (containsTokenSequence(doc.titleTokens, phraseTokens)) score += 45;
+    if (containsTokenSequence(doc.bodyTokens, phraseTokens)) score += 20;
+  }
+  if (parsed.terms.length > 1) {
+    score += tokenProximityBonus(doc.titleTokens, parsed.terms) * 12;
+    score += tokenProximityBonus(doc.bodyTokens, parsed.terms) * 6;
+  }
 
-      // Multi-term coverage bonus
-      if (queryTerms.length > 1 && matchedTermsCount === queryTerms.length) {
-        score += 100;
-      }
+  // Freshness is a gentle tie-breaker; it must not outrank relevance.
+  const indexedAt = Date.parse(page.indexedAt);
+  if (Number.isFinite(indexedAt)) {
+    const ageDays = Math.max(0, (Date.now() - indexedAt) / 86_400_000);
+    score *= 1 + 0.06 * Math.exp(-ageDays / 120);
+  }
 
-      return {
+  // Small quality signals.
+  if (page.description && page.description !== "No description provided.") score *= 1.01;
+  if (page.wordCount && page.wordCount > 80) score *= 1.01;
+
+  return score;
+}
+
+function editDistanceWithin(left: string, right: string, maxDistance: number): number {
+  if (Math.abs(left.length - right.length) > maxDistance) return maxDistance + 1;
+
+  let previous = new Array<number>(right.length + 1);
+  let current = new Array<number>(right.length + 1);
+  for (let j = 0; j <= right.length; j++) previous[j] = j;
+
+  for (let i = 1; i <= left.length; i++) {
+    current[0] = i;
+    let rowMinimum = current[0];
+    for (let j = 1; j <= right.length; j++) {
+      const substitution = left[i - 1] === right[j - 1] ? 0 : 1;
+      current[j] = Math.min(
+        previous[j] + 1,
+        current[j - 1] + 1,
+        previous[j - 1] + substitution
+      );
+      if (current[j] < rowMinimum) rowMinimum = current[j];
+    }
+    if (rowMinimum > maxDistance) return maxDistance + 1;
+    const swap = previous;
+    previous = current;
+    current = swap;
+  }
+
+  return previous[right.length];
+}
+
+function findTypoCorrection(
+  parsed: ParsedSearchQuery,
+  documentFrequency: Map<string, number>
+): { from: string; to: string } | null {
+  for (const term of parsed.terms) {
+    if ((documentFrequency.get(term) || 0) > 0) continue;
+    if (term.length < 4) continue;
+
+    let bestTerm: string | null = null;
+    let bestFrequency = 0;
+    for (const [candidate, frequency] of documentFrequency) {
+      if (frequency <= bestFrequency) continue;
+      if (candidate.length < 3 || Math.abs(candidate.length - term.length) > 1) continue;
+      if (candidate[0] !== term[0]) continue;
+      if (editDistanceWithin(term, candidate, 1) > 1) continue;
+      bestTerm = candidate;
+      bestFrequency = frequency;
+    }
+    if (bestTerm) return { from: term, to: bestTerm };
+  }
+  return null;
+}
+
+function buildSearchSnippet(
+  page: IndexedPage,
+  terms: string[],
+  displayTerms: string[]
+): { snippet: string; matchedTerms: string[] } {
+  const source = decodeHtmlEntities(
+    (page.bodyText || page.bodyPreview || page.description || "").replace(/\s+/g, " ").trim()
+  );
+  if (!source) {
+    return {
+      snippet: decodeHtmlEntities(page.description || page.bodyPreview || ""),
+      matchedTerms: [],
+    };
+  }
+
+  // Full NFKD normalization can change string length (e.g. accented letters),
+  // so only use it for indexing when it preserves offsets; otherwise fall back
+  // to a plain lowercase copy.
+  const normalizedSource = normalizeSearchText(source);
+  const loweredSource = source.toLowerCase();
+  const searchableSource =
+    normalizedSource.length === loweredSource.length ? normalizedSource : loweredSource;
+
+  let firstMatch = -1;
+  for (const term of terms) {
+    if (term.length < 2) continue;
+    const index = searchableSource.indexOf(term);
+    if (index !== -1 && (firstMatch === -1 || index < firstMatch)) firstMatch = index;
+  }
+  if (firstMatch === -1) firstMatch = 0;
+
+  const radius = 120;
+  let start = Math.max(0, firstMatch - radius);
+  if (start > 0) {
+    const nextSpace = source.indexOf(" ", start);
+    if (nextSpace !== -1 && nextSpace < firstMatch) start = nextSpace + 1;
+  }
+
+  let end = Math.min(source.length, firstMatch + radius + 80);
+  if (end < source.length) {
+    const previousSpace = source.lastIndexOf(" ", end);
+    if (previousSpace > firstMatch) end = previousSpace;
+  }
+
+  let snippet = source.slice(start, end).trim();
+  if (start > 0) snippet = "…" + snippet;
+  if (end < source.length) snippet += "…";
+
+  const normalizedSnippet = normalizeSearchText(snippet);
+  const matchedTerms = new Set<string>();
+  for (const term of [...displayTerms, ...terms]) {
+    if (term.length < 2) continue;
+    if (normalizedSnippet.includes(term)) matchedTerms.add(term);
+  }
+
+  return { snippet, matchedTerms: Array.from(matchedTerms).slice(0, 10) };
+}
+
+function dedupeByDomain<T>(
+  items: T[],
+  getDomain: (item: T) => string,
+  perDomainLimit: number
+): T[] {
+  const counts = new Map<string, number>();
+  const result: T[] = [];
+  for (const item of items) {
+    const domain = (getDomain(item) || "").toLowerCase();
+    if (!domain) {
+      result.push(item);
+      continue;
+    }
+    const count = counts.get(domain) || 0;
+    if (count >= perDomainLimit) continue;
+    counts.set(domain, count + 1);
+    result.push(item);
+  }
+  return result;
+}
+
+/**
+ * Searches the oxylow search index with field-aware BM25-style relevance scoring.
+ */
+export function searchOxylowIndex(
+  query: string,
+  page = 1,
+  pageSize = 10,
+  options: SearchOptions = {}
+): { results: SearchResult[]; total: number; suggestion?: string } {
+  const safePage = Math.max(1, Math.min(1000, Number.isFinite(page) ? Math.floor(page) : 1));
+  const safePageSize = Math.max(
+    1,
+    Math.min(50, Number.isFinite(pageSize) ? Math.floor(pageSize) : 10)
+  );
+  const perDomainLimit = Math.max(
+    1,
+    Math.min(10, Math.floor(options.perDomainLimit ?? 1))
+  );
+  const includeSnippet = options.includeSnippet !== false;
+  const index = getIndex();
+  const trimmed = query.trim();
+
+  if (!trimmed) {
+    const ranked = index
+      .map((item, position) => ({ item, position }))
+      .sort((a, b) => {
+        const aTime = Date.parse(a.item.indexedAt) || 0;
+        const bTime = Date.parse(b.item.indexedAt) || 0;
+        return bTime - aTime || a.position - b.position;
+      })
+      .map((entry) => entry.item);
+
+    const deduped = dedupeByDomain(ranked, (item) => item.domain, perDomainLimit);
+    const start = (safePage - 1) * safePageSize;
+    const pageItems = deduped.slice(start, start + safePageSize);
+
+    return {
+      results: pageItems.map((item) => ({
         url: item.url,
         domain: item.domain,
         title: decodeHtmlEntities(item.title),
         description: decodeHtmlEntities(item.description),
         bodyPreview: decodeHtmlEntities(item.bodyPreview),
+        snippet: includeSnippet
+          ? decodeHtmlEntities(item.description || item.bodyPreview)
+          : undefined,
+        matchedTerms: [],
         favicon: item.favicon,
-        score,
+        score: 1,
         indexedAt: item.indexedAt,
-      };
-    })
-    .filter((res) => res.score > 0)
-    .sort((a, b) => b.score - a.score);
+      })),
+      total: deduped.length,
+    };
+  }
 
-  // Filter so domains can only appear once in search results, retaining highest-scoring page for each domain
-  const uniqueScored = deduplicateByDomain(scored);
+  const stats = getSearchStats(index);
+  const parsed = parseSearchQuery(trimmed);
+  if (parsed.terms.length === 0) {
+    return { results: [], total: 0 };
+  }
 
-  const total = uniqueScored.length;
-  const start = (page - 1) * pageSize;
-  const results = uniqueScored.slice(start, start + pageSize);
+  let suggestion: string | undefined;
+  const correction = findTypoCorrection(parsed, stats.documentFrequency);
+  if (correction) {
+    parsed.terms = Array.from(
+      new Set(parsed.terms.map((term) => (term === correction.from ? correction.to : term)))
+    );
+    suggestion = parsed.displayTerms
+      .map((term) => (stemSearchTerm(term) === correction.from ? correction.to : term))
+      .join(" ")
+      .trim();
+  }
 
-  return { results, total };
+  const scored = stats.docs
+    .map((doc) => ({ doc, score: scoreSearchDoc(doc, parsed, stats) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const aTime = Date.parse(a.doc.page.indexedAt) || 0;
+      const bTime = Date.parse(b.doc.page.indexedAt) || 0;
+      return bTime - aTime || a.doc.page.title.localeCompare(b.doc.page.title);
+    });
+
+  const deduped = dedupeByDomain(scored, (entry) => entry.doc.page.domain, perDomainLimit);
+  const start = (safePage - 1) * safePageSize;
+  const pageEntries = deduped.slice(start, start + safePageSize);
+
+  const results: SearchResult[] = pageEntries.map(({ doc, score }) => {
+    const item = doc.page;
+    const snippetData = includeSnippet
+      ? buildSearchSnippet(item, parsed.terms, parsed.displayTerms)
+      : { snippet: undefined as string | undefined, matchedTerms: [] as string[] };
+
+    return {
+      url: item.url,
+      domain: item.domain,
+      title: decodeHtmlEntities(item.title),
+      description: decodeHtmlEntities(item.description),
+      bodyPreview: decodeHtmlEntities(item.bodyPreview),
+      snippet: snippetData.snippet,
+      matchedTerms: snippetData.matchedTerms,
+      favicon: item.favicon,
+      score,
+      indexedAt: item.indexedAt,
+    };
+  });
+
+  return {
+    results,
+    total: deduped.length,
+    suggestion:
+      suggestion && suggestion !== parsed.displayTerms.join(" ") ? suggestion : undefined,
+  };
 }
 
 /**
- * Autocomplete suggestions for Omnibox with prefix and relevance prioritization.
+ * Autocomplete suggestions for the Omnibox with prefix, keyword and fuzzy matching.
  */
 export function getOxylowSuggestions(query: string, limit = 6): { title: string; url: string }[] {
   const index = getIndex();
-  const trimmed = query.trim().toLowerCase();
-  if (!trimmed) return [];
+  const normalized = normalizeSearchText(query.trim());
+  if (!normalized) return [];
 
-  const matched: { title: string; url: string; score: number }[] = [];
-  const seenDomains = new Set<string>();
+  const queryTokens = tokenizeSearchText(normalized);
+  const matched: { title: string; url: string; domain: string; score: number }[] = [];
 
   for (const item of index) {
-    const lowerTitle = (item.title || "").toLowerCase();
-    const lowerUrl = (item.url || "").toLowerCase();
-    const lowerDomain = (item.domain || "").toLowerCase();
-
+    const title = normalizeSearchText(item.title || "");
+    const domain = normalizeSearchText(item.domain || "");
+    const url = normalizeSearchText(item.url || "");
+    const headings = normalizeSearchText((item.headings || []).join(" "));
+    const keywords = normalizeSearchText((item.keywords || []).join(" "));
     let score = 0;
-    if (lowerTitle.startsWith(trimmed)) score += 100;
-    else if (lowerTitle.includes(trimmed)) score += 50;
 
-    if (lowerDomain.startsWith(trimmed)) score += 80;
-    else if (lowerDomain.includes(trimmed)) score += 40;
+    if (title === normalized) score += 200;
+    else if (title.startsWith(normalized)) score += 120;
+    else if (title.includes(normalized)) score += 60;
 
-    if (lowerUrl.includes(trimmed)) score += 20;
+    if (domain === normalized || domain.startsWith(normalized + ".")) score += 150;
+    else if (domain.includes(normalized)) score += 70;
+
+    if (url.includes(normalized)) score += 25;
+    if (keywords.includes(normalized)) score += 45;
+    if (headings.includes(normalized)) score += 30;
+
+    for (const token of queryTokens) {
+      if (token.length < 2) continue;
+      const prefixPattern = new RegExp(`(^|[\\s\\-_/])${escapeRegex(token)}`, "i");
+      if (prefixPattern.test(title)) score += 25;
+      if (prefixPattern.test(keywords)) score += 15;
+    }
 
     if (score > 0) {
-      if (lowerDomain && !seenDomains.has(lowerDomain)) {
-        seenDomains.add(lowerDomain);
+      matched.push({
+        title: decodeHtmlEntities(item.title),
+        url: item.url,
+        domain,
+        score,
+      });
+    }
+  }
+
+  // If nothing matched exactly, fall back to a single small typo in the title.
+  if (matched.length === 0 && normalized.length >= 4) {
+    for (const item of index) {
+      const titleTokens = tokenizeSearchText(item.title || "");
+      for (const token of titleTokens) {
+        if (token.length < 4 || token[0] !== normalized[0]) continue;
+        if (editDistanceWithin(normalized, token, 1) > 1) continue;
         matched.push({
           title: decodeHtmlEntities(item.title),
           url: item.url,
-          score,
+          domain: normalizeSearchText(item.domain || ""),
+          score: 10,
         });
+        break;
       }
     }
   }
 
   matched.sort((a, b) => b.score - a.score);
-  return matched.slice(0, limit).map(({ title, url }) => ({ title, url }));
+
+  const seenDomains = new Set<string>();
+  const results: { title: string; url: string }[] = [];
+  const safeLimit = Math.max(1, Math.min(10, limit));
+  for (const item of matched) {
+    if (item.domain && seenDomains.has(item.domain)) continue;
+    if (item.domain) seenDomains.add(item.domain);
+    results.push({ title: item.title, url: item.url });
+    if (results.length >= safeLimit) break;
+  }
+  return results;
 }

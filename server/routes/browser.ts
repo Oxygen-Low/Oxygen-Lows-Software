@@ -1,5 +1,6 @@
 import { fetchPublicUrl } from "../lib/publicFetch.ts";
 import { Hono } from "hono";
+import { rateLimiter } from "../lib/rateLimiter.ts";
 import {
   validateCrawlUrl,
   searchOxylowIndex,
@@ -11,19 +12,58 @@ import {
 
 export const browserRouter = new Hono();
 
+const MAX_QUERY_LENGTH = 256;
+const SEARCH_PAGE_SIZE_DEFAULT = 10;
+const SEARCH_PAGE_SIZE_MAX = 50;
+const SEARCH_PAGE_MAX = 1000;
+// The browser shows a few pages per site (e.g. a docs site or blog) while
+// other consumers of the shared index keep the conservative one-per-domain cap.
+const BROWSER_PER_DOMAIN_LIMIT = 3;
+
+function clampInteger(
+  raw: string | undefined,
+  fallback: number,
+  min: number,
+  max: number
+): number {
+  const parsed = Number.parseInt(raw ?? "", 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, parsed));
+}
+
+browserRouter.use("/search", rateLimiter(120, 60_000, "browser-search"));
+browserRouter.use("/suggestions", rateLimiter(240, 60_000, "browser-suggestions"));
+
 // Search endpoint querying the oxylow index with relevance scoring
 browserRouter.get("/search", (c) => {
-  const query = c.req.query("q") || "";
-  const page = parseInt(c.req.query("page") || "1", 10);
-  const pageSize = parseInt(c.req.query("pageSize") || "10", 10);
+  const query = (c.req.query("q") || "").slice(0, MAX_QUERY_LENGTH);
+  const page = clampInteger(c.req.query("page"), 1, 1, SEARCH_PAGE_MAX);
+  const pageSize = clampInteger(
+    c.req.query("pageSize"),
+    SEARCH_PAGE_SIZE_DEFAULT,
+    1,
+    SEARCH_PAGE_SIZE_MAX
+  );
+  const startedAt = Date.now();
 
-  const { results, total } = searchOxylowIndex(query, isNaN(page) ? 1 : page, isNaN(pageSize) ? 10 : pageSize);
-  return c.json({ results, total, page, pageSize, query });
+  const { results, total, suggestion } = searchOxylowIndex(query, page, pageSize, {
+    perDomainLimit: BROWSER_PER_DOMAIN_LIMIT,
+  });
+
+  return c.json({
+    results,
+    total,
+    page,
+    pageSize,
+    query,
+    suggestion,
+    tookMs: Date.now() - startedAt,
+  });
 });
 
 // Autocomplete suggestions for Omnibox
 browserRouter.get("/suggestions", (c) => {
-  const query = c.req.query("q") || "";
+  const query = (c.req.query("q") || "").slice(0, MAX_QUERY_LENGTH);
   const suggestions = getOxylowSuggestions(query, 6);
   return c.json({ suggestions });
 });

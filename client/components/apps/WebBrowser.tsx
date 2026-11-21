@@ -11,6 +11,7 @@ import {
   ExternalLink,
   BookOpen,
   Clock,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,11 @@ interface Tab {
   isLoading: boolean;
   mode: "home" | "browser" | "search" | "reader";
   searchQuery?: string;
+  searchResults?: SearchResultItem[];
+  searchTotal?: number;
+  searchPage?: number;
+  searchSuggestion?: string;
+  searchError?: string;
   readerData?: {
     title: string;
     description: string;
@@ -43,8 +49,87 @@ interface SearchResultItem {
   title: string;
   description: string;
   bodyPreview: string;
+  snippet?: string;
+  matchedTerms?: string[];
   favicon?: string;
   score: number;
+  indexedAt?: string;
+}
+
+const SEARCH_PAGE_SIZE = 10;
+
+function looksLikeNavigationTarget(value: string): boolean {
+  if (/^https?:\/\//i.test(value)) return true;
+  if (/^localhost(?::\d+)?(\/|$)/i.test(value)) return true;
+  if (/^\d{1,3}(\.\d{1,3}){3}(?::\d+)?(\/|$)/.test(value)) return true;
+  return /^[\p{L}\p{N}-]+(\.[\p{L}\p{N}-]+)+(:\d+)?(\/.*)?$/u.test(value);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function HighlightedText({ text, terms }: { text: string; terms?: string[] }) {
+  if (!text) return null;
+  const cleaned = Array.from(
+    new Set((terms || []).map((term) => term.trim()).filter((term) => term.length >= 2))
+  );
+  if (cleaned.length === 0) return <>{text}</>;
+
+  const pattern = new RegExp(`(${cleaned.map(escapeRegExp).join("|")})`, "gi");
+  const parts = text.split(pattern);
+  const termSet = new Set(cleaned.map((term) => term.toLowerCase()));
+
+  return (
+    <>
+      {parts.map((part, index) =>
+        termSet.has(part.toLowerCase()) ? (
+          <mark key={index} className="bg-cyan-500/25 text-foreground rounded-sm px-0.5">
+            {part}
+          </mark>
+        ) : (
+          <span key={index}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
+
+function ResultFavicon({ src, domain }: { src?: string; domain: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return (
+      <span className="flex items-center justify-center w-6 h-6 rounded-md bg-cyan-500/10 text-cyan-500 shrink-0">
+        <Globe className="w-3.5 h-3.5" />
+      </span>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt=""
+      className="w-6 h-6 rounded-md object-contain bg-muted/50 shrink-0"
+      loading="lazy"
+      onError={() => setFailed(true)}
+      title={domain}
+    />
+  );
+}
+
+function formatIndexedDate(value?: string): string {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleDateString();
+}
+
+function formatResultPath(value: string): string {
+  try {
+    const parsed = new URL(value);
+    return `${parsed.pathname === "/" ? "" : parsed.pathname}${parsed.search}`;
+  } catch {
+    return "";
+  }
 }
 
 const DEFAULT_HOME_TAB: Tab = {
@@ -65,13 +150,13 @@ export function WebBrowserApp() {
   const [suggestions, setSuggestions] = useState<{ title: string; url: string }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(-1);
-  const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
-  const [isSearching, setIsSearching] = useState<boolean>(false);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const omniboxInputRef = useRef<HTMLInputElement>(null);
 
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
+  const searchResults = activeTab?.searchResults || [];
+  const searchTotal = activeTab?.searchTotal ?? searchResults.length;
 
   useEffect(() => {
     if (activeTab) {
@@ -122,10 +207,12 @@ export function WebBrowserApp() {
     return () => clearTimeout(timer);
   }, [inputUrl]);
 
+  const updateTabById = (tabId: string, updater: (tab: Tab) => Tab) => {
+    setTabs((prev) => prev.map((tab) => (tab.id === tabId ? updater(tab) : tab)));
+  };
+
   const updateActiveTab = (updater: (tab: Tab) => Tab) => {
-    setTabs((prev) =>
-      prev.map((tab) => (tab.id === activeTabId ? updater(tab) : tab))
-    );
+    updateTabById(activeTabId, updater);
   };
 
   const addTab = (initialUrl = "") => {
@@ -177,14 +264,13 @@ export function WebBrowserApp() {
     let finalUrl = targetUrl.trim();
     if (!finalUrl) return;
 
-    // Check if input is search query or direct URL
+    // Treat explicit search operators, quoted phrases and non-navigational text
+    // as search queries; only real URL shapes are navigated to directly.
     const isSearchQuery =
-      !finalUrl.includes(".") ||
       finalUrl.includes(" ") ||
-      (!finalUrl.startsWith("http://") &&
-        !finalUrl.startsWith("https://") &&
-        !finalUrl.includes("/") &&
-        !finalUrl.includes(":"));
+      /\b(?:site|intitle):/i.test(finalUrl) ||
+      /^-/.test(finalUrl) ||
+      !looksLikeNavigationTarget(finalUrl);
 
     if (isSearchQuery) {
       performSearch(finalUrl);
@@ -215,34 +301,52 @@ export function WebBrowserApp() {
     });
   };
 
-  const performSearch = async (query: string) => {
+  const performSearch = async (query: string, page = 1, append = false) => {
     setShowSuggestions(false);
     setSelectedSuggestionIndex(-1);
-    if (!query.trim()) return;
+    const trimmed = query.trim();
+    if (!trimmed) return;
 
-    setIsSearching(true);
-    updateActiveTab((tab) => ({
+    // Capture the tab id so a response never overwrites a different tab when
+    // the user switches tabs while the request is in flight.
+    const tabId = activeTabId;
+    updateTabById(tabId, (tab) => ({
       ...tab,
-      title: `${t("browserApp.search") || "Search"}: ${query}`,
-      searchQuery: query,
+      title: `${t("browserApp.search") || "Search"}: ${trimmed}`,
+      searchQuery: trimmed,
       mode: "search",
       isLoading: true,
+      searchError: undefined,
+      ...(append ? {} : { searchSuggestion: undefined }),
     }));
 
     try {
-      const res = await fetch(`/api/browser/search?q=${encodeURIComponent(query)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSearchResults(data.results || []);
-      } else {
-        setSearchResults([]);
+      const res = await fetch(
+        `/api/browser/search?q=${encodeURIComponent(trimmed)}&page=${page}&pageSize=${SEARCH_PAGE_SIZE}`
+      );
+      if (!res.ok) {
+        throw new Error(`Search failed with status ${res.status}`);
       }
+
+      const data = await res.json();
+      const incoming: SearchResultItem[] = Array.isArray(data.results) ? data.results : [];
+      updateTabById(tabId, (tab) => ({
+        ...tab,
+        isLoading: false,
+        searchError: undefined,
+        searchResults: append ? [...(tab.searchResults || []), ...incoming] : incoming,
+        searchTotal: typeof data.total === "number" ? data.total : incoming.length,
+        searchPage: page,
+        searchSuggestion: data.suggestion || undefined,
+      }));
     } catch {
       toast.error(t("browserApp.failedSearch") || "Failed to fetch search results");
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-      updateActiveTab((tab) => ({ ...tab, isLoading: false }));
+      updateTabById(tabId, (tab) => ({
+        ...tab,
+        isLoading: false,
+        searchError: t("browserApp.failedSearch") || "Failed to fetch search results",
+        ...(append ? {} : { searchResults: [] }),
+      }));
     }
   };
 
@@ -454,7 +558,17 @@ export function WebBrowserApp() {
                 setShowSuggestions(true);
               }}
               onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 120)}
               onKeyDown={handleKeyDown}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={showSuggestions && suggestions.length > 0}
+              aria-controls="browser-suggestions"
+              aria-activedescendant={
+                selectedSuggestionIndex >= 0
+                  ? `browser-suggestion-${selectedSuggestionIndex}`
+                  : undefined
+              }
               placeholder={t("browserApp.searchPlaceholder") || "Search or enter URL..."}
               className="pl-9 pr-8 h-9 text-sm bg-muted/40 hover:bg-muted/70 focus:bg-background transition-colors w-full rounded-full"
             />
@@ -462,13 +576,21 @@ export function WebBrowserApp() {
 
           {/* Autocomplete Suggestions Dropdown */}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-xl z-50 overflow-hidden">
+            <div
+              id="browser-suggestions"
+              role="listbox"
+              aria-label={t("browserApp.search") || "Search"}
+              className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-xl z-50 overflow-hidden"
+            >
               <div className="p-1 text-[11px] font-semibold text-muted-foreground px-3 py-1 bg-muted/30">
                 {t("browserApp.search") || "Search"}
               </div>
               {suggestions.map((sug, i) => (
                 <div
-                  key={i}
+                  key={`${sug.url}-${i}`}
+                  id={`browser-suggestion-${i}`}
+                  role="option"
+                  aria-selected={i === selectedSuggestionIndex}
                   onMouseDown={() => navigateTo(sug.url)}
                   className={`flex items-center justify-between px-3 py-2 text-sm cursor-pointer transition-colors ${
                     i === selectedSuggestionIndex
@@ -506,11 +628,11 @@ export function WebBrowserApp() {
               </span>
             </Button>
           )}
-          {activeTab.url && (
+          {activeTab.mode !== "search" && activeTab.url && (
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => window.open(activeTab.url, "_blank")}
+              onClick={() => window.open(activeTab.url, "_blank", "noopener,noreferrer")}
               className="h-8 w-8 p-0"
               aria-label={t("browserApp.openNewWindow") || "Open in new window"}
               title={t("browserApp.openNewWindow") || "Open in new window"}
@@ -563,25 +685,80 @@ export function WebBrowserApp() {
         {/* MODE: SEARCH RESULTS */}
         {activeTab.mode === "search" && (
           <div className="h-full overflow-y-auto p-6 md:p-8 max-w-4xl mx-auto space-y-6">
-            <div className="flex items-center justify-between border-b border-border pb-4">
-              <div>
+            <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4">
+              <div className="min-w-0">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <Search className="w-5 h-5 text-cyan-500" />
-                  {t("browserApp.searchResultsFor") || "Search results for"} "{activeTab.searchQuery}"
+                  <Search className="w-5 h-5 text-cyan-500 shrink-0" />
+                  <span className="truncate">
+                    {`${t("browserApp.searchResultsFor") || "Search results for"} "${activeTab.searchQuery}"`}
+                  </span>
                 </h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {(t("browserApp.indexedPagesFound") || "Found {count} indexed pages").replace(
-                    "{count}",
-                    searchResults.length.toString()
-                  )}
-                </p>
+                {!activeTab.isLoading && !activeTab.searchError && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {(t("browserApp.resultsCount") || "About {count} results").replace(
+                      "{count}",
+                      searchTotal.toLocaleString()
+                    )}
+                  </p>
+                )}
               </div>
+              {activeTab.searchQuery && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs gap-1.5"
+                  disabled={activeTab.isLoading}
+                  onClick={() => performSearch(activeTab.searchQuery!, 1, false)}
+                >
+                  <RotateCw className={`w-3.5 h-3.5 ${activeTab.isLoading ? "animate-spin" : ""}`} />
+                  {t("browserApp.reload") || "Reload"}
+                </Button>
+              )}
             </div>
 
-            {isSearching ? (
-              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground space-y-3">
-                <RotateCw className="w-6 h-6 animate-spin text-cyan-500" />
-                <p className="text-sm">{t("browserApp.searching") || "Searching the index..."}</p>
+            {activeTab.searchSuggestion && (
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <span>{t("browserApp.didYouMean") || "Did you mean"}</span>
+                <button
+                  type="button"
+                  onClick={() => performSearch(activeTab.searchSuggestion!, 1, false)}
+                  className="text-cyan-500 hover:underline font-medium"
+                >
+                  {activeTab.searchSuggestion}
+                </button>
+                <span>?</span>
+              </div>
+            )}
+
+            {activeTab.isLoading && searchResults.length === 0 ? (
+              <div className="space-y-3" aria-busy="true">
+                {[0, 1, 2].map((index) => (
+                  <div
+                    key={index}
+                    className="p-4 rounded-xl border border-border bg-card animate-pulse space-y-2"
+                  >
+                    <div className="h-3 w-32 bg-muted rounded" />
+                    <div className="h-4 w-2/3 bg-muted rounded" />
+                    <div className="h-3 w-full bg-muted rounded" />
+                  </div>
+                ))}
+                <p className="text-center text-sm text-muted-foreground">
+                  {t("browserApp.searching") || "Searching the index..."}
+                </p>
+              </div>
+            ) : activeTab.searchError && searchResults.length === 0 ? (
+              <div className="text-center py-12 space-y-4 max-w-md mx-auto">
+                <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
+                <p className="text-muted-foreground font-medium">{activeTab.searchError}</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs gap-1.5"
+                  onClick={() => performSearch(activeTab.searchQuery || "", 1, false)}
+                >
+                  <RotateCw className="w-3.5 h-3.5" />
+                  {t("browserApp.retry") || "Retry"}
+                </Button>
               </div>
             ) : searchResults.length === 0 ? (
               <div className="text-center py-12 space-y-4 max-w-md mx-auto">
@@ -600,32 +777,111 @@ export function WebBrowserApp() {
                       className="text-xs gap-1.5 w-full sm:w-auto"
                     >
                       <Globe className="w-3.5 h-3.5 text-cyan-500" />
-                      {t("browserApp.directNavigate") || "Navigate directly to"} "{activeTab.searchQuery}"
+                      {`${t("browserApp.directNavigate") || "Navigate directly to"} "${activeTab.searchQuery}"`}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        window.open(
+                          `https://duckduckgo.com/?q=${encodeURIComponent(activeTab.searchQuery!)}`,
+                          "_blank",
+                          "noopener,noreferrer"
+                        )
+                      }
+                      className="text-xs gap-1.5 w-full sm:w-auto"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-cyan-500" />
+                      {`${t("browserApp.webSearchExternal") || "Search external web for"} "${activeTab.searchQuery}"`}
                     </Button>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="space-y-4">
-                {searchResults.map((res, i) => (
-                  <div
-                    key={i}
-                    onClick={() => navigateTo(res.url)}
-                    className="p-4 rounded-xl border border-border bg-card hover:border-cyan-500/50 hover:bg-muted/40 cursor-pointer transition-all shadow-sm group"
-                  >
-                    <div className="text-xs text-cyan-500 truncate flex items-center gap-1.5 mb-1 font-mono">
-                      <Globe className="w-3.5 h-3.5 shrink-0" />
-                      {res.domain}
-                    </div>
-                    <h3 className="text-base font-semibold group-hover:text-cyan-400 group-hover:underline transition-colors">
-                      {res.title}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
-                      {res.description || res.bodyPreview}
-                    </p>
+              <>
+                <div className="space-y-4">
+                  {searchResults.map((res, index) => {
+                    const path = formatResultPath(res.url);
+                    const indexed = formatIndexedDate(res.indexedAt);
+                    return (
+                      <div
+                        key={`${res.url}-${index}`}
+                        onClick={() => navigateTo(res.url)}
+                        className="group relative p-4 pr-12 rounded-xl border border-border bg-card hover:border-cyan-500/50 hover:bg-muted/40 cursor-pointer transition-all shadow-sm"
+                      >
+                        <div className="flex items-center gap-2 mb-1 min-w-0">
+                          <ResultFavicon src={res.favicon} domain={res.domain} />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs text-cyan-500 truncate font-mono">
+                              {res.domain}
+                              {path && (
+                                <span className="text-muted-foreground/80">{path}</span>
+                              )}
+                            </div>
+                          </div>
+                          {indexed && (
+                            <span className="text-[11px] text-muted-foreground shrink-0 hidden sm:inline">
+                              {indexed}
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="text-base font-semibold group-hover:text-cyan-400 group-hover:underline transition-colors">
+                          <HighlightedText text={res.title} terms={res.matchedTerms} />
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-3 leading-relaxed">
+                          <HighlightedText
+                            text={res.snippet || res.description || res.bodyPreview}
+                            terms={res.matchedTerms}
+                          />
+                        </p>
+                        <button
+                          type="button"
+                          aria-label={t("browserApp.openInNewTab") || "Open in new tab"}
+                          title={t("browserApp.openInNewTab") || "Open in new tab"}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            window.open(res.url, "_blank", "noopener,noreferrer");
+                          }}
+                          className="absolute top-3 right-3 p-1.5 rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-background hover:text-foreground transition-all"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {searchResults.length < searchTotal && (
+                  <div className="flex justify-center pt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs gap-1.5"
+                      disabled={activeTab.isLoading}
+                      onClick={() =>
+                        performSearch(
+                          activeTab.searchQuery || "",
+                          (activeTab.searchPage || 1) + 1,
+                          true
+                        )
+                      }
+                    >
+                      {activeTab.isLoading ? (
+                        <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Plus className="w-3.5 h-3.5" />
+                      )}
+                      {activeTab.isLoading
+                        ? t("browserApp.searching") || "Searching the index..."
+                        : t("browserApp.loadMore") || "Load more results"}
+                    </Button>
                   </div>
-                ))}
-              </div>
+                )}
+
+                {activeTab.searchError && searchResults.length > 0 && (
+                  <p className="text-center text-xs text-rose-500">{activeTab.searchError}</p>
+                )}
+              </>
             )}
           </div>
         )}
