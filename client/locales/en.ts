@@ -375,6 +375,8 @@ export const en = {
     noDesktopApps: "No desktop-only apps are available yet.",
     searchPlaceholder: "Search apps...",
     clearSearch: "Clear search",
+    starApp: "Star {name}",
+    unstarApp: "Unstar {name}",
     signInToUse: "Sign in to use {name}",
     signInToContinue: "Sign In to Continue",
     backToApps: "Back to apps list",

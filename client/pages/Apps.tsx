@@ -4,6 +4,7 @@ import { Layout } from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useStarredApps } from "@/hooks/useStarredApps";
 import {
   Card,
   CardDescription,
@@ -42,6 +43,7 @@ import {
   Database,
   Terminal,
   Cookie,
+  Star,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ReleaseTag, type ReleaseStage } from "@/components/ui/ReleaseTag";
@@ -576,7 +578,8 @@ const APPS: AppMetadata[] = [
     nameKey: "apps.threeDBackgroundTitle",
     defaultName: "3D Background",
     descKey: "apps.threeDBackgroundDesc",
-    defaultDesc: "Design 3D rooms and set them as your live application background",
+    defaultDesc:
+      "Design 3D rooms and set them as your live application background",
     categories: ["All", "Utility", "Development"],
     availability: "web-and-desktop",
     icon: <Box className="w-8 h-8 text-cyan-500" />,
@@ -624,8 +627,7 @@ const APPS: AppMetadata[] = [
     nameKey: "apps.webmasterTitle",
     defaultName: "Webmaster",
     descKey: "apps.webmasterDesc",
-    defaultDesc:
-      "Submit websites and sitemaps to be crawled and indexed.",
+    defaultDesc: "Submit websites and sitemaps to be crawled and indexed.",
     categories: ["All", "Utility", "Development"],
     availability: "web-and-desktop",
     icon: <Bot className="w-8 h-8 text-cyan-500" />,
@@ -717,6 +719,7 @@ export default function Apps() {
   const [selectedAvailability, setSelectedAvailability] =
     useState<Availability>("web-and-desktop");
   const [searchQuery, setSearchQuery] = useState("");
+  const { isStarred, toggleStar, starredApps } = useStarredApps();
 
   const { appId: paramAppId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
@@ -778,9 +781,7 @@ export default function Apps() {
   const filteredApps = useMemo(() => {
     let list = availableApps;
     if (selectedCategory !== "All") {
-      list = list.filter((app) =>
-        app.categories.includes(selectedCategory),
-      );
+      list = list.filter((app) => app.categories.includes(selectedCategory));
     }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
@@ -794,8 +795,15 @@ export default function Apps() {
           app.categories.some((cat) => cat.toLowerCase().includes(q)),
       );
     }
-    return list;
-  }, [selectedCategory, availableApps, searchQuery]);
+    // Starred apps are always pinned to the top so frequently used tools are
+    // never buried underneath the rest of the catalogue. Keep the original
+    // relative order within each group (stable sort).
+    return [...list].sort((a, b) => {
+      const aStarred = starredApps.includes(a.id) ? 1 : 0;
+      const bStarred = starredApps.includes(b.id) ? 1 : 0;
+      return bStarred - aStarred;
+    });
+  }, [selectedCategory, availableApps, searchQuery, starredApps]);
 
   const categoryAppCounts = useMemo(() => {
     const counts: Record<Category, number> = {
@@ -907,6 +915,50 @@ export default function Apps() {
                 {activeApp.name}
               </h1>
               {activeApp.tag && <ReleaseTag stage={activeApp.tag} />}
+              <button
+                type="button"
+                onClick={() => toggleStar(activeApp.id)}
+                aria-label={
+                  isStarred(activeApp.id)
+                    ? t(
+                        "apps.unstarApp",
+                        { name: activeApp.name },
+                        `Unstar ${activeApp.name}`,
+                      )
+                    : t(
+                        "apps.starApp",
+                        { name: activeApp.name },
+                        `Star ${activeApp.name}`,
+                      )
+                }
+                aria-pressed={isStarred(activeApp.id)}
+                title={
+                  isStarred(activeApp.id)
+                    ? t(
+                        "apps.unstarApp",
+                        { name: activeApp.name },
+                        `Unstar ${activeApp.name}`,
+                      )
+                    : t(
+                        "apps.starApp",
+                        { name: activeApp.name },
+                        `Star ${activeApp.name}`,
+                      )
+                }
+                className={cn(
+                  "p-2 rounded-lg transition shrink-0 focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none",
+                  isStarred(activeApp.id)
+                    ? "text-amber-400 hover:bg-amber-400/10"
+                    : "text-slate-400 hover:text-amber-400 hover:bg-slate-800",
+                )}
+              >
+                <Star
+                  className={cn(
+                    "w-5 h-5 sm:w-6 sm:h-6",
+                    isStarred(activeApp.id) && "fill-current",
+                  )}
+                />
+              </button>
             </div>
           )}
 
@@ -980,8 +1032,16 @@ export default function Apps() {
             <Input
               type="text"
               role="searchbox"
-              aria-label={t("apps.searchPlaceholder", undefined, "Search apps...")}
-              placeholder={t("apps.searchPlaceholder", undefined, "Search apps...")}
+              aria-label={t(
+                "apps.searchPlaceholder",
+                undefined,
+                "Search apps...",
+              )}
+              placeholder={t(
+                "apps.searchPlaceholder",
+                undefined,
+                "Search apps...",
+              )}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-9 py-2 bg-slate-900/80 border-slate-800 text-white placeholder:text-slate-500 rounded-xl focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
@@ -1121,7 +1181,57 @@ export default function Apps() {
                         <div className="transition-transform group-hover:scale-110">
                           {app.icon}
                         </div>
-                        {app.tag && <ReleaseTag stage={app.tag} />}
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            aria-label={
+                              isStarred(app.id)
+                                ? t(
+                                    "apps.unstarApp",
+                                    { name: app.name },
+                                    `Unstar ${app.name}`,
+                                  )
+                                : t(
+                                    "apps.starApp",
+                                    { name: app.name },
+                                    `Star ${app.name}`,
+                                  )
+                            }
+                            aria-pressed={isStarred(app.id)}
+                            title={
+                              isStarred(app.id)
+                                ? t(
+                                    "apps.unstarApp",
+                                    { name: app.name },
+                                    `Unstar ${app.name}`,
+                                  )
+                                : t(
+                                    "apps.starApp",
+                                    { name: app.name },
+                                    `Star ${app.name}`,
+                                  )
+                            }
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toggleStar(app.id);
+                            }}
+                            className={cn(
+                              "p-1.5 rounded-lg transition focus-visible:ring-2 focus-visible:ring-cyan-500/50 focus-visible:outline-none",
+                              isStarred(app.id)
+                                ? "text-amber-400 hover:bg-amber-400/10"
+                                : "text-slate-500 hover:text-amber-400 hover:bg-slate-800",
+                            )}
+                          >
+                            <Star
+                              className={cn(
+                                "w-5 h-5",
+                                isStarred(app.id) && "fill-current",
+                              )}
+                            />
+                          </button>
+                          {app.tag && <ReleaseTag stage={app.tag} />}
+                        </div>
                       </div>
                       <CardTitle className="text-lg sm:text-xl text-white mb-1.5 sm:mb-2">
                         {app.name}

@@ -362,6 +362,8 @@ export const zhCN = {
     noDesktopApps: "ç›®å‰æ²¡æœ‰ä»…é™æ¡Œé¢çš„åº”ç”¨ã€‚",
     searchPlaceholder: "æœç´¢åº”ç”¨...",
     clearSearch: "æ¸…é™¤æœç´¢",
+    starApp: "将 {name} 标为收藏",
+    unstarApp: "取消收藏 {name}",
     signInToUse: "ç™»å½•ä»¥ä½¿ç”¨ {name}",
     signInToContinue: "è¯·ç™»å½•ä»¥ç»§ç»­",
     backToApps: "è¿”å›žåº”ç”¨åˆ—è¡¨",

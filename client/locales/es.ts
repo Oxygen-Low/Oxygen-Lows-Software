@@ -382,6 +382,8 @@ export const es = {
       "TodavÃ­a no hay aplicaciones solo de escritorio disponibles.",
     searchPlaceholder: "Buscar aplicaciones...",
     clearSearch: "Borrar bÃºsqueda",
+    starApp: "Marcar {name} como favorita",
+    unstarApp: "Quitar {name} de favoritas",
     signInToUse: "Inicia sesiÃ³n para usar {name}",
     signInToContinue: "Inicia sesiÃ³n para continuar",
     backToApps: "Volver a la lista de aplicaciones",

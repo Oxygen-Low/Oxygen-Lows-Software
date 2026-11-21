@@ -34,6 +34,7 @@ global.ResizeObserver = class {
 afterEach(() => {
   cleanup();
   sessionStorage.clear();
+  localStorage.clear();
 });
 
 describe("Apps", () => {
@@ -172,11 +173,59 @@ describe("Apps", () => {
       screen.getByText('No apps found matching "nonexistentappxyz123".'),
     ).toBeDefined();
 
-    const resetButtons = screen.getAllByRole("button", { name: "Clear search" });
+    const resetButtons = screen.getAllByRole("button", {
+      name: "Clear search",
+    });
     expect(resetButtons.length).toBe(2);
     fireEvent.click(resetButtons[1]);
 
     expect(screen.getByText("Chatbot")).toBeDefined();
     expect(screen.getByText("File Compressor")).toBeDefined();
+  });
+
+  it("stars an app without navigating and pins it to the top of the catalogue", () => {
+    const { unmount } = render(
+      <MemoryRouter initialEntries={["/apps"]}>
+        <Apps />
+      </MemoryRouter>,
+    );
+
+    // Web Browser is near the bottom of the declaration order.
+    const starButton = screen.getByRole("button", { name: "Star Web Browser" });
+    expect(starButton.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(starButton);
+
+    // Toggling a star must not open the app's detail view.
+    expect(screen.getByRole("searchbox")).toBeDefined();
+
+    // The starred app is now first in the listed apps.
+    const titles = screen
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("href")?.startsWith("/apps/"));
+    expect(titles[0].getAttribute("href")).toBe("/apps/web-browser");
+    expect(
+      screen.getByRole("button", { name: "Unstar Web Browser" }),
+    ).toBeDefined();
+
+    // Persists across a remount.
+    unmount();
+    render(
+      <MemoryRouter initialEntries={["/apps"]}>
+        <Apps />
+      </MemoryRouter>,
+    );
+    const persistedTitles = screen
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("href")?.startsWith("/apps/"));
+    expect(persistedTitles[0].getAttribute("href")).toBe("/apps/web-browser");
+
+    // Unstarring restores the default order.
+    fireEvent.click(screen.getByRole("button", { name: "Unstar Web Browser" }));
+    const restoredTitles = screen
+      .getAllByRole("link")
+      .filter((link) => link.getAttribute("href")?.startsWith("/apps/"));
+    expect(restoredTitles[0].getAttribute("href")).not.toBe(
+      "/apps/web-browser",
+    );
   });
 });

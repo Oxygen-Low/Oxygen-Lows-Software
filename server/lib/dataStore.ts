@@ -126,6 +126,8 @@ export interface UserPreferencesRecord {
   last_provider?: string;
   share_game_activity?: boolean;
   show_online_status?: boolean;
+  /** App ids the user has starred, pinned to the top of the apps catalogue. */
+  starred_apps?: string[];
   created_at?: string;
   updated_at?: string;
   [key: string]: any;

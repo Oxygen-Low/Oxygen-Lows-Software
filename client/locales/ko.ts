@@ -372,6 +372,8 @@ export const ko = {
     noDesktopApps: "ë°ìŠ¤í¬í†± ì „ìš© ì•±ì€ ì•„ì§ ì´ìš©í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤.",
     searchPlaceholder: "ì•± ê²€ìƒ‰...",
     clearSearch: "ê²€ìƒ‰ ì§€ìš°ê¸°",
+    starApp: "{name} 즐겨찾기에 추가",
+    unstarApp: "{name} 즐겨찾기 해제",
     signInToUse: "{name}ì„(ë¥¼) ì‚¬ìš©í•˜ë ¤ë©´ ë¡œê·¸ì¸í•˜ì„¸ìš”",
     signInToContinue: "ê³„ì†í•˜ë ¤ë©´ ë¡œê·¸ì¸",
     backToApps: "ì•± ëª©ë¡ìœ¼ë¡œ ëŒì•„ê°€ê¸°",
