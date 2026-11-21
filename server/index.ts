@@ -67,7 +67,11 @@ app.use("*", async (c, next) => {
   const storedDocument = path.startsWith("/api/storage/download/") || path.startsWith("/api/storage/public/");
   if (browserDocument || storedDocument) {
     const policy = c.res.headers.get("Content-Security-Policy") || "";
-    c.header("Content-Security-Policy", `${browserDocument ? "sandbox allow-scripts" : "sandbox"}; ${policy}`);
+    const sandbox = browserDocument ? "sandbox allow-scripts" : "sandbox";
+    // The proxy route already emits its own sandbox directive; avoid sending a
+    // duplicate, which browsers warn about and may resolve inconsistently.
+    const alreadySandboxed = /(?:^|;)\s*sandbox\b/i.test(policy);
+    c.header("Content-Security-Policy", alreadySandboxed ? policy : `${sandbox}; ${policy}`);
     c.header("X-Content-Type-Options", "nosniff");
   }
 });
@@ -143,76 +147,86 @@ function isAllowedOrigin(origin: string | undefined): string | undefined {
 
 // A05: explicit Content-Security-Policy — Hono's secureHeaders() does NOT emit
 // CSP by default, so we must configure it manually.
-app.use(
-  secureHeaders({
-    contentSecurityPolicy: {
-      defaultSrc: ["'self'"],
-      scriptSrc: [
-        "'self'",
-        "'unsafe-inline'",
-        "'wasm-unsafe-eval'",
-        "blob:",
-        "https://unpkg.com",
-        "https://cdn.jsdelivr.net",
-      ], // required for Vite HMR in dev and FFmpeg WASM
-      workerSrc: ["'self'", "blob:"],
-      childSrc: ["'self'", "blob:"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com", "blob:", "data:"],
-      imgSrc: ["'self'", "data:", "blob:", "https:"],
-      mediaSrc: ["'self'", "blob:", "data:", "https:"],
-      connectSrc: [
-        "'self'",
-        "blob:",
-        "data:",
-        "http://127.0.0.1:*",
-        "http://localhost:*",
-        "ws://127.0.0.1:*",
-        "ws://localhost:*",
-        "http://127.0.0.1:11434",
-        "http://127.0.0.1:1234",
-        "http://127.0.0.1:5001",
-        "http://127.0.0.1:5000",
-        "http://localhost:11434",
-        "http://localhost:1234",
-        "http://localhost:5001",
-        "http://localhost:5000",
-        "https://unpkg.com",
-        "https://cdn.jsdelivr.net",
-        "https://oai.stablehorde.net",
-        "https://stablehorde.net",
-        "https://api.openai.com",
-        "https://api.anthropic.com",
-        "https://generativelanguage.googleapis.com",
-        "https://openrouter.ai",
-        "https://api.x.ai",
-        "https://gen.pollinations.ai",
-        "https://text.pollinations.ai",
-        "https://image.pollinations.ai",
-        "https://pollinations.ai",
-        "https://*.pollinations.ai",
-        "https://datasets-server.huggingface.co",
-        "https://huggingface.co",
-      ],
-      frameSrc: ["'self'", "blob:"],
-      frameAncestors: ["'self'"],
-      objectSrc: ["'none'"],
-      baseUri: ["'self'"],
-      formAction: ["'self'"],
-    },
-    crossOriginOpenerPolicy: "same-origin",
-    crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: "cross-origin",
-    xFrameOptions: "SAMEORIGIN",
-    xContentTypeOptions: "nosniff",
-    referrerPolicy: "strict-origin-when-cross-origin",
-    // Strict-Transport-Security is managed at the web server / reverse proxy layer (Plesk / Nginx),
-    // which injects `max-age=63072000; includeSubDomains`. Emitting it here in the app layer causes
-    // duplicate HSTS headers in HTTP responses, violating RFC 6797 and causing security scanners
-    // (such as Aikido and hstspreload) to reject the header as invalid / missing.
-    strictTransportSecurity: false,
-  }),
-);
+const secureHeadersMiddleware = secureHeaders({
+  contentSecurityPolicy: {
+  defaultSrc: ["'self'"],
+    scriptSrc: [
+      "'self'",
+      "'unsafe-inline'",
+      "'wasm-unsafe-eval'",
+      "blob:",
+      "https://unpkg.com",
+      "https://cdn.jsdelivr.net",
+    ], // required for Vite HMR in dev and FFmpeg WASM
+    workerSrc: ["'self'", "blob:"],
+    childSrc: ["'self'", "blob:"],
+    styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+    fontSrc: ["'self'", "https://fonts.gstatic.com", "blob:", "data:"],
+    imgSrc: ["'self'", "data:", "blob:", "https:"],
+    mediaSrc: ["'self'", "blob:", "data:", "https:"],
+    connectSrc: [
+      "'self'",
+      "blob:",
+      "data:",
+      "http://127.0.0.1:*",
+      "http://localhost:*",
+      "ws://127.0.0.1:*",
+      "ws://localhost:*",
+      "http://127.0.0.1:11434",
+      "http://127.0.0.1:1234",
+      "http://127.0.0.1:5001",
+      "http://127.0.0.1:5000",
+      "http://localhost:11434",
+      "http://localhost:1234",
+      "http://localhost:5001",
+      "http://localhost:5000",
+      "https://unpkg.com",
+      "https://cdn.jsdelivr.net",
+      "https://oai.stablehorde.net",
+      "https://stablehorde.net",
+      "https://api.openai.com",
+      "https://api.anthropic.com",
+      "https://generativelanguage.googleapis.com",
+      "https://openrouter.ai",
+      "https://api.x.ai",
+      "https://gen.pollinations.ai",
+      "https://text.pollinations.ai",
+      "https://image.pollinations.ai",
+      "https://pollinations.ai",
+      "https://*.pollinations.ai",
+      "https://datasets-server.huggingface.co",
+      "https://huggingface.co",
+    ],
+    frameSrc: ["'self'", "blob:"],
+    frameAncestors: ["'self'"],
+    objectSrc: ["'none'"],
+    baseUri: ["'self'"],
+    formAction: ["'self'"],
+  },
+  crossOriginOpenerPolicy: "same-origin",
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: "cross-origin",
+  xFrameOptions: "SAMEORIGIN",
+  xContentTypeOptions: "nosniff",
+  referrerPolicy: "strict-origin-when-cross-origin",
+  // Strict-Transport-Security is managed at the web server / reverse proxy layer (Plesk / Nginx),
+  // which injects `max-age=63072000; includeSubDomains`. Emitting it here in the app layer causes
+  // duplicate HSTS headers in HTTP responses, violating RFC 6797 and causing security scanners
+  // (such as Aikido and hstspreload) to reject the header as invalid / missing.
+  strictTransportSecurity: false,
+});
+
+// Proxied third-party pages are untrusted documents that must keep the
+// sandboxed, permissive CSP set by the browser proxy route. Applying the
+// app-wide CSP here would block their external stylesheets and scripts, so
+// serve that route with the browser proxy's own policy instead.
+app.use("*", async (c, next) => {
+  if (c.req.path === "/api/browser/proxy") {
+    await next();
+    return;
+  }
+  await secureHeadersMiddleware(c, next);
+});
 
 app.use("*", async (c, next) => {
   await next();
