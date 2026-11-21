@@ -94,12 +94,9 @@ export function WebmasterApp() {
   const user = session?.user;
   const isAdmin = user?.role === "admin" || String(user?.id) === "1";
 
-  const [activeTab, setActiveTab] = useState<"sites" | "admin">("sites");
   const [sites, setSites] = useState<WebmasterSite[]>([]);
-  const [adminSites, setAdminSites] = useState<WebmasterSite[]>([]);
   const [stats, setStats] = useState<WebmasterStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [adminLoading, setAdminLoading] = useState(false);
 
   // User submission form state
   const [urlInput, setUrlInput] = useState("");
@@ -110,6 +107,7 @@ export function WebmasterApp() {
   const [adminUrlInput, setAdminUrlInput] = useState("");
   const [adminSitemapInput, setAdminSitemapInput] = useState("");
   const [adminSubmitting, setAdminSubmitting] = useState(false);
+  const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
 
   // Verification state
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
@@ -126,8 +124,6 @@ export function WebmasterApp() {
 
   const sitesRef = useRef(sites);
   sitesRef.current = sites;
-  const adminSitesRef = useRef(adminSites);
-  adminSitesRef.current = adminSites;
   const selectedSiteRef = useRef(selectedSite);
   selectedSiteRef.current = selectedSite;
   const isDetailsOpenRef = useRef(isDetailsOpen);
@@ -186,35 +182,8 @@ export function WebmasterApp() {
     }
   }, [token]);
 
-  const fetchAdminSites = useCallback(async (isInitial = false) => {
-    if (!token || !isAdmin) return;
-    if (isInitial) setAdminLoading(true);
-    try {
-      const res = await fetch("/api/webmaster/admin/sites", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const aSites: WebmasterSite[] = data.sites || [];
-        setAdminSites(aSites);
-        setSelectedSite((prev) => {
-          if (!prev) return null;
-          const updated = aSites.find((s) => s.id === prev.id);
-          return updated || prev;
-        });
-      }
-    } catch {
-      if (isInitial) toast.error("Failed to load admin domains");
-    } finally {
-      if (isInitial) setAdminLoading(false);
-    }
-  }, [token, isAdmin]);
-
   useEffect(() => {
     fetchSitesAndStats(true);
-    if (isAdmin) {
-      fetchAdminSites(true);
-    }
     const interval = setInterval(() => {
       const isQueued = (s: { status?: string; queuePosition?: number | null; nextCrawlScheduledAt?: string | null }) =>
         s.status === "crawling" || (s.queuePosition !== undefined && s.queuePosition !== null) || Boolean(s.nextCrawlScheduledAt);
@@ -222,17 +191,13 @@ export function WebmasterApp() {
       const isModalBusy = isDetailsOpenRef.current && selectedSiteRef.current && isQueued(selectedSiteRef.current);
 
       const hasCrawlingUser = sitesRef.current.some(isQueued);
-      const hasCrawlingAdmin = adminSitesRef.current.some(isQueued);
 
       if (hasCrawlingUser || isModalBusy) {
         fetchSitesAndStats(false);
       }
-      if (isAdmin && (hasCrawlingAdmin || (activeTab === "admin" && (hasCrawlingUser || isModalBusy)))) {
-        fetchAdminSites(false);
-      }
     }, 4000);
     return () => clearInterval(interval);
-  }, [fetchSitesAndStats, fetchAdminSites, isAdmin, activeTab]);
+  }, [fetchSitesAndStats]);
 
   useEffect(() => {
     if (isDetailsOpen && logsEndRef.current) {
@@ -332,34 +297,12 @@ export function WebmasterApp() {
       toast.success("Domain added without verification and queued for crawling!");
       setAdminUrlInput("");
       setAdminSitemapInput("");
-      fetchAdminSites();
+      setIsAdminDialogOpen(false);
       fetchSitesAndStats();
     } catch (err: any) {
       toast.error(err.message || "Error adding domain");
     } finally {
       setAdminSubmitting(false);
-    }
-  };
-
-  const handleAdminDeleteSite = async (siteId: string) => {
-    if (!token) return;
-    if (!confirm("Are you sure you want to remove this domain and delete its indexed pages?")) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/webmaster/admin/sites/${siteId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to remove domain");
-      }
-      toast.success("Domain removed from search index");
-      fetchAdminSites();
-      fetchSitesAndStats();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to remove domain");
     }
   };
 
@@ -378,10 +321,8 @@ export function WebmasterApp() {
       if (data.site) {
         setSelectedSite((prev) => (prev?.id === siteId ? data.site : prev));
         setSites((prev) => prev.map((s) => (s.id === siteId ? data.site : s)));
-        setAdminSites((prev) => prev.map((s) => (s.id === siteId ? data.site : s)));
       }
       fetchSitesAndStats();
-      if (isAdmin) fetchAdminSites();
     } catch (err: any) {
       toast.error(err.message || "Error starting re-crawl");
     }
@@ -406,7 +347,6 @@ export function WebmasterApp() {
         setIsDetailsOpen(false);
       }
       fetchSitesAndStats();
-      if (isAdmin) fetchAdminSites();
     } catch (err: any) {
       toast.error(err.message || "Error deleting website");
     }
@@ -431,7 +371,7 @@ export function WebmasterApp() {
   };
 
   const getStatusBadge = (site: WebmasterSite) => {
-    if (!site.verified && !site.adminAdded) {
+    if (!site.verified) {
       return (
         <Badge className="bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20 gap-1 font-normal">
           <ShieldAlert className="w-3 h-3" /> Unverified
@@ -501,38 +441,10 @@ export function WebmasterApp() {
           </p>
         </div>
         <div className="flex items-center gap-2 self-start md:self-auto">
-          {isAdmin && (
-            <div className="flex bg-muted p-1 rounded-lg border border-border mr-2">
-              <button
-                onClick={() => setActiveTab("sites")}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
-                  activeTab === "sites"
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                My Sites
-              </button>
-              <button
-                onClick={() => setActiveTab("admin")}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all flex items-center gap-1.5 ${
-                  activeTab === "admin"
-                    ? "bg-card text-cyan-500 font-semibold shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Crown className="w-3.5 h-3.5 text-amber-400" />
-                Admin Panel
-              </button>
-            </div>
-          )}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              fetchSitesAndStats();
-              if (isAdmin) fetchAdminSites();
-            }}
+            onClick={() => fetchSitesAndStats()}
             className="gap-2"
           >
             <RotateCw className="w-4 h-4" /> Refresh
@@ -577,181 +489,8 @@ export function WebmasterApp() {
         </Card>
       </div>
 
-      {/* TAB: ADMIN DOMAIN PANEL */}
-      {isAdmin && activeTab === "admin" && (
-        <div className="space-y-6">
-          <Card className="border-cyan-500/30 bg-cyan-950/10 shadow-sm">
-            <CardHeader className="p-5 pb-3">
-              <CardTitle className="text-lg flex items-center gap-2 text-cyan-400">
-                <Crown className="w-5 h-5 text-amber-400" />
-                Admin Domain Manager: Add Domains Without Verification
-              </CardTitle>
-              <CardDescription className="text-xs">
-                As an administrator, you can add any website or domain directly to the index without DNS verification (e.g. popular platforms, reference sites, search directories).
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-5 pt-0">
-              <form onSubmit={handleAdminAddSite} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-foreground">
-                      Website URL <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <Globe className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
-                      <Input
-                        value={adminUrlInput}
-                        onChange={(e) => setAdminUrlInput(e.target.value)}
-                        placeholder="https://wikipedia.org"
-                        className="pl-9 text-sm"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-foreground">
-                      Sitemap URL <span className="text-muted-foreground text-[11px]">(Optional)</span>
-                    </label>
-                    <div className="relative">
-                      <Layers className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
-                      <Input
-                        value={adminSitemapInput}
-                        onChange={(e) => setAdminSitemapInput(e.target.value)}
-                        placeholder="https://wikipedia.org/sitemap.xml"
-                        className="pl-9 text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2">
-                  <p className="text-[11px] text-muted-foreground">
-                    Admin added domains are instantly verified and immediately queued for crawling.
-                  </p>
-                  <Button type="submit" disabled={adminSubmitting} className="gap-2">
-                    {adminSubmitting ? (
-                      <>
-                        <RotateCw className="w-4 h-4 animate-spin" /> Adding...
-                      </>
-                    ) : (
-                      <>
-                        <Crown className="w-4 h-4 text-amber-400" /> Add & Crawl Directly
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-
-          {/* Admin Domains Table */}
-          <Card className="border-border bg-card shadow-sm">
-            <CardHeader className="p-5 pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Globe className="w-5 h-5 text-cyan-500" />
-                Admin-Added Domains ({adminSites.length})
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Global sites added by administrators without DNS verification.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-5 pt-0">
-              {adminLoading && adminSites.length === 0 ? (
-                <div className="py-12 flex justify-center items-center text-muted-foreground">
-                  <RotateCw className="w-6 h-6 animate-spin text-cyan-500" />
-                </div>
-              ) : adminSites.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground space-y-2">
-                  <Globe className="w-10 h-10 mx-auto text-muted-foreground/50" />
-                  <p className="text-sm font-medium">No admin domains added yet</p>
-                  <p className="text-xs">Use the form above to add popular websites directly.</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-border border rounded-lg overflow-hidden">
-                  {adminSites.map((site) => (
-                    <div
-                      key={site.id}
-                      className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/30 transition-colors"
-                    >
-                      <div className="space-y-1 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <a
-                            href={site.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-medium text-sm hover:text-cyan-400 flex items-center gap-1.5"
-                          >
-                            {site.url}
-                            <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground" />
-                          </a>
-                          <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px]">
-                            Admin Added
-                          </Badge>
-                          {getStatusBadge(site)}
-                        </div>
-                        {site.sitemapUrl && (
-                          <div className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Layers className="w-3 h-3 text-cyan-500 shrink-0" />
-                            Sitemap: {site.sitemapUrl}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-4 text-[11px] text-muted-foreground pt-1">
-                          <span>Pages indexed: <strong className="text-foreground">{site.pageCount}</strong></span>
-                          {site.lastCrawledAt && (
-                            <span>Last crawled: {new Date(site.lastCrawledAt).toLocaleString()}</span>
-                          )}
-                        </div>
-                        {site.error && (
-                          <p className="text-xs text-rose-400 font-mono mt-1">
-                            Error: {site.error}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleOpenDetails(site)}
-                          className="h-8 text-xs gap-1.5"
-                        >
-                          <Terminal className="w-3.5 h-3.5 text-cyan-500" />
-                          Details & Logs
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={isSiteBusy(site)}
-                          onClick={() => handleRecrawl(site.id)}
-                          className="h-8 text-xs gap-1.5"
-                          title="Re-crawl site"
-                        >
-                          <RotateCw className={`w-3.5 h-3.5 ${isSiteBusy(site) ? "animate-spin" : ""}`} />
-                          Re-crawl
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleAdminDeleteSite(site.id)}
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-rose-500"
-                          title="Delete domain"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* TAB: MY SITES (USER VIEW) */}
-      {(!isAdmin || activeTab === "sites") && (
-        <div className="space-y-6">
+      {/* MY SITES (USER VIEW) */}
+      <div className="space-y-6">
           {/* Submission Card */}
           <Card className="border-border bg-card shadow-sm">
             <CardHeader className="p-5 pb-3">
@@ -798,21 +537,33 @@ export function WebmasterApp() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
                   <p className="text-[11px] text-muted-foreground">
                     Domain verification required before crawling. Rate limits & robots.txt strictly honored.
                   </p>
-                  <Button type="submit" disabled={submitting} className="gap-2">
-                    {submitting ? (
-                      <>
-                        <RotateCw className="w-4 h-4 animate-spin" /> Submitting...
-                      </>
-                    ) : (
-                      <>
-                        <Bot className="w-4 h-4" /> Submit Website
-                      </>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isAdmin && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsAdminDialogOpen(true)}
+                        className="gap-2"
+                      >
+                        <Crown className="w-4 h-4 text-amber-400" /> Add Domain
+                      </Button>
                     )}
-                  </Button>
+                    <Button type="submit" disabled={submitting} className="gap-2">
+                      {submitting ? (
+                        <>
+                          <RotateCw className="w-4 h-4 animate-spin" /> Submitting...
+                        </>
+                      ) : (
+                        <>
+                          <Bot className="w-4 h-4" /> Submit Website
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </form>
             </CardContent>
@@ -843,7 +594,7 @@ export function WebmasterApp() {
               ) : (
                 <div className="divide-y divide-border border rounded-lg overflow-hidden">
                   {sites.map((site) => {
-                    const isUnverified = !site.verified && !site.adminAdded;
+                    const isUnverified = !site.verified;
                     return (
                       <div
                         key={site.id}
@@ -862,11 +613,6 @@ export function WebmasterApp() {
                                 <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground" />
                               </a>
                               {getStatusBadge(site)}
-                              {site.adminAdded && (
-                                <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px]">
-                                  Admin Added
-                                </Badge>
-                              )}
                             </div>
                             {site.sitemapUrl && (
                               <div className="text-xs text-muted-foreground flex items-center gap-1">
@@ -1000,7 +746,6 @@ export function WebmasterApp() {
             </CardContent>
           </Card>
         </div>
-      )}
 
       {/* Site Details & Crawl Logs Modal */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
@@ -1135,6 +880,69 @@ export function WebmasterApp() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Admin Add Domain Dialog */}
+      {isAdmin && (
+        <Dialog open={isAdminDialogOpen} onOpenChange={setIsAdminDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-lg flex items-center gap-2">
+                <Crown className="w-5 h-5 text-amber-400" />
+                Add Domain Without Verification
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleAdminAddSite} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-foreground">
+                  Website URL <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <Globe className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
+                  <Input
+                    value={adminUrlInput}
+                    onChange={(e) => setAdminUrlInput(e.target.value)}
+                    placeholder="https://wikipedia.org"
+                    className="pl-9 text-sm"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-foreground">
+                  Sitemap URL <span className="text-muted-foreground text-[11px]">(Optional)</span>
+                </label>
+                <div className="relative">
+                  <Layers className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
+                  <Input
+                    value={adminSitemapInput}
+                    onChange={(e) => setAdminSitemapInput(e.target.value)}
+                    placeholder="https://wikipedia.org/sitemap.xml"
+                    className="pl-9 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 pt-2">
+                <p className="text-[11px] text-muted-foreground">
+                  The domain is instantly verified and queued for crawling.
+                </p>
+                <Button type="submit" disabled={adminSubmitting} className="gap-2 shrink-0">
+                  {adminSubmitting ? (
+                    <>
+                      <RotateCw className="w-4 h-4 animate-spin" /> Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Crown className="w-4 h-4 text-amber-400" /> Add & Crawl
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
