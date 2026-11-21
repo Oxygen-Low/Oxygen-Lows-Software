@@ -886,7 +886,8 @@ export default function Apps() {
       activeApp.id === "disk-space-saver" ||
       activeApp.id === "image-studio" ||
       activeApp.id === "music-studio" ||
-      activeApp.id === "3d-background";
+      activeApp.id === "3d-background" ||
+      activeApp.id === "web-browser";
 
     return (
       <Layout fullWidth={isFullWidthApp}>
