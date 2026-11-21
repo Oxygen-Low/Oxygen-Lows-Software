@@ -17,13 +17,7 @@ vi.mock("@/contexts/LanguageContext", () => ({
         "browserApp.search": "Search",
         "browserApp.readerMode": "Reader Mode",
         "browserApp.liveMode": "Live Web View",
-        "browserApp.bookmarks": "Bookmarks",
-        "browserApp.history": "History",
         "browserApp.closeTab": "Close Tab",
-        "browserApp.quickAccess": "Quick Access",
-        "browserApp.savedBookmarks": "Saved Bookmarks",
-        "browserApp.browsingHistory": "Browsing History",
-        "browserApp.clearHistory": "Clear History",
       };
       return translations[key] || defaultVal || key;
     },
@@ -52,26 +46,20 @@ describe("WebBrowserApp", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Browser" })).toBeDefined();
     expect(screen.queryByText("oxylow Browser")).toBeNull();
     expect(screen.getByPlaceholderText("Search or enter URL...")).toBeDefined();
-    expect(screen.getByText("Quick Access")).toBeDefined();
   });
 
-  it("renders Quick Access with Oxygen Low's Software and without Wikipedia", () => {
+  it("does not show the web crawler tagline", () => {
     render(<WebBrowserApp />);
-    expect(screen.getByText("Oxygen Low's Software")).toBeDefined();
-    expect(screen.queryByText("Wikipedia")).toBeNull();
+    expect(screen.queryByText(/Powered by the autonomous web crawler/i)).toBeNull();
   });
 
-  it("filters out Wikipedia from legacy localStorage bookmarks", () => {
-    localStorage.setItem(
-      "oxylow_browser_bookmarks",
-      JSON.stringify([
-        { title: "Oxygen Low's Software", url: "https://oxygenlow.com" },
-        { title: "Wikipedia", url: "https://www.wikipedia.org" },
-      ])
-    );
+  it("does not show browsing history or bookmarks controls", () => {
     render(<WebBrowserApp />);
-    expect(screen.getByText("Oxygen Low's Software")).toBeDefined();
-    expect(screen.queryByText("Wikipedia")).toBeNull();
+    expect(screen.queryByTitle("History")).toBeNull();
+    expect(screen.queryByTitle("Bookmarks")).toBeNull();
+    expect(screen.queryByText("Quick Access")).toBeNull();
+    expect(screen.queryByText("Browsing History")).toBeNull();
+    expect(screen.queryByText("Saved Bookmarks")).toBeNull();
   });
 
   it("allows adding and switching tabs", () => {
@@ -97,16 +85,5 @@ describe("WebBrowserApp", () => {
       expect(sandbox).toContain("allow-forms");
       expect(sandbox).not.toContain("allow-same-origin");
     }
-  });
-
-  it("allows opening bookmarks and history dialogs", () => {
-    render(<WebBrowserApp />);
-    const bookmarksBtn = screen.getByTitle("Bookmarks");
-    fireEvent.click(bookmarksBtn);
-    expect(screen.getByText("Saved Bookmarks")).toBeDefined();
-
-    const historyBtn = screen.getByTitle("History");
-    fireEvent.click(historyBtn);
-    expect(screen.getByText("Browsing History")).toBeDefined();
   });
 });

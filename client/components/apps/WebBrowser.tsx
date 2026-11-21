@@ -8,24 +8,13 @@ import {
   Home,
   Plus,
   X,
-  Bookmark,
-  BookmarkCheck,
-  History,
   ExternalLink,
   BookOpen,
   Clock,
-  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useTranslation } from "@/contexts/LanguageContext";
-import { urlHasHostname } from "@/lib/safeUrl";
 import { toast } from "sonner";
 
 interface Tab {
@@ -48,18 +37,6 @@ interface Tab {
   };
 }
 
-interface BookmarkItem {
-  title: string;
-  url: string;
-  favicon?: string;
-}
-
-interface HistoryItem {
-  title: string;
-  url: string;
-  timestamp: string;
-}
-
 interface SearchResultItem {
   url: string;
   domain: string;
@@ -80,10 +57,6 @@ const DEFAULT_HOME_TAB: Tab = {
   mode: "home",
 };
 
-const DEFAULT_BOOKMARKS: BookmarkItem[] = [
-  { title: "Oxygen Low's Software", url: "https://oxygenlow.com" },
-];
-
 export function WebBrowserApp() {
   const { t } = useTranslation();
   const [tabs, setTabs] = useState<Tab[]>([DEFAULT_HOME_TAB]);
@@ -94,41 +67,6 @@ export function WebBrowserApp() {
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(-1);
   const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
-  const [isBookmarksOpen, setIsBookmarksOpen] = useState<boolean>(false);
-
-  // Local storage for Bookmarks and History
-  const [bookmarks, setBookmarks] = useState<BookmarkItem[]>(() => {
-    try {
-      const saved = localStorage.getItem("oxylow_browser_bookmarks");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const filtered = parsed.filter(
-            (b: BookmarkItem) =>
-              !urlHasHostname(b.url, "wikipedia.org") &&
-              !b.title?.toLowerCase().includes("wikipedia")
-          );
-          if (parsed.length > 0 && filtered.length === 0) {
-            return DEFAULT_BOOKMARKS;
-          }
-          return filtered;
-        }
-      }
-      return DEFAULT_BOOKMARKS;
-    } catch {
-      return DEFAULT_BOOKMARKS;
-    }
-  });
-
-  const [historyList, setHistoryList] = useState<HistoryItem[]>(() => {
-    try {
-      const saved = localStorage.getItem("oxylow_browser_history");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const omniboxInputRef = useRef<HTMLInputElement>(null);
@@ -146,19 +84,6 @@ export function WebBrowserApp() {
       }
     }
   }, [activeTabId, activeTab?.url, activeTab?.mode, activeTab?.searchQuery]);
-
-  // Persist bookmarks & history
-  useEffect(() => {
-    try {
-      localStorage.setItem("oxylow_browser_bookmarks", JSON.stringify(bookmarks));
-    } catch {}
-  }, [bookmarks]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("oxylow_browser_history", JSON.stringify(historyList));
-    } catch {}
-  }, [historyList]);
 
   // Listen to navigation events from proxied iframe (works cleanly across sandboxed origins)
   useEffect(() => {
@@ -216,9 +141,6 @@ export function WebBrowserApp() {
     };
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(newId);
-    if (initialUrl) {
-      recordHistory(initialUrl, initialUrl);
-    }
   };
 
   const closeTab = (idToClose: string, e?: React.MouseEvent) => {
@@ -249,14 +171,6 @@ export function WebBrowserApp() {
     }
   };
 
-  const recordHistory = (url: string, title: string) => {
-    if (!url) return;
-    setHistoryList((prev) => [
-      { title: title || url, url, timestamp: new Date().toISOString() },
-      ...prev.slice(0, 99),
-    ]);
-  };
-
   const navigateTo = (targetUrl: string) => {
     setShowSuggestions(false);
     setSelectedSuggestionIndex(-1);
@@ -285,8 +199,6 @@ export function WebBrowserApp() {
     try {
       pageTitle = new URL(finalUrl).hostname;
     } catch {}
-
-    recordHistory(finalUrl, pageTitle);
 
     updateActiveTab((tab) => {
       const newHistory = tab.history.slice(0, tab.historyIndex + 1);
@@ -407,22 +319,6 @@ export function WebBrowserApp() {
       mode: "home",
       isLoading: false,
     }));
-  };
-
-  const isCurrentBookmarked = bookmarks.some((b) => b.url === activeTab.url);
-
-  const toggleBookmark = () => {
-    if (!activeTab.url) return;
-    if (isCurrentBookmarked) {
-      setBookmarks((prev) => prev.filter((b) => b.url !== activeTab.url));
-      toast.info(t("browserApp.removedFromBookmarks") || "Removed from bookmarks");
-    } else {
-      setBookmarks((prev) => [
-        ...prev,
-        { title: activeTab.title || activeTab.url, url: activeTab.url },
-      ]);
-      toast.success(t("browserApp.addedToBookmarks") || "Added to bookmarks");
-    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -562,21 +458,6 @@ export function WebBrowserApp() {
               placeholder={t("browserApp.searchPlaceholder") || "Search or enter URL..."}
               className="pl-9 pr-8 h-9 text-sm bg-muted/40 hover:bg-muted/70 focus:bg-background transition-colors w-full rounded-full"
             />
-            {activeTab.url && (
-              <button
-                type="button"
-                onClick={toggleBookmark}
-                className="absolute right-3 text-muted-foreground hover:text-cyan-500 transition-colors"
-                aria-label={isCurrentBookmarked ? (t("browserApp.bookmarked") || "Bookmarked") : (t("browserApp.bookmarkThisPage") || "Bookmark this page")}
-                title={isCurrentBookmarked ? (t("browserApp.bookmarked") || "Bookmarked") : (t("browserApp.bookmarkThisPage") || "Bookmark this page")}
-              >
-                {isCurrentBookmarked ? (
-                  <BookmarkCheck className="w-4 h-4 text-cyan-500 fill-cyan-500" />
-                ) : (
-                  <Bookmark className="w-4 h-4" />
-                )}
-              </button>
-            )}
           </form>
 
           {/* Autocomplete Suggestions Dropdown */}
@@ -637,26 +518,6 @@ export function WebBrowserApp() {
               <ExternalLink className="w-4 h-4" />
             </Button>
           )}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setIsBookmarksOpen(true)}
-            className="h-8 w-8 p-0"
-            aria-label={t("browserApp.bookmarks") || "Bookmarks"}
-            title={t("browserApp.bookmarks") || "Bookmarks"}
-          >
-            <Bookmark className="w-4 h-4" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setIsHistoryOpen(true)}
-            className="h-8 w-8 p-0"
-            aria-label={t("browserApp.history") || "History"}
-            title={t("browserApp.history") || "History"}
-          >
-            <History className="w-4 h-4" />
-          </Button>
         </div>
       </div>
 
@@ -671,9 +532,6 @@ export function WebBrowserApp() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold tracking-tight">Browser</h1>
-                <p className="text-muted-foreground text-sm mt-1">
-                  Powered by the autonomous web crawler & search index
-                </p>
               </div>
 
               {/* Central Search Form */}
@@ -698,38 +556,6 @@ export function WebBrowserApp() {
                   {t("browserApp.search") || "Search"}
                 </Button>
               </form>
-
-              {/* Popular Sites Shortcuts */}
-              <div className="w-full pt-4">
-                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  {t("browserApp.quickAccess") || "Quick Access"}
-                </div>
-                {bookmarks.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-left">
-                    {bookmarks.map((b, i) => (
-                      <div
-                        key={i}
-                        onClick={() => navigateTo(b.url)}
-                        className="p-3 rounded-xl border border-border bg-card hover:bg-muted/60 cursor-pointer transition-all hover:border-cyan-500/40 group shadow-sm"
-                      >
-                        <div className="flex items-center gap-2 font-medium text-sm text-foreground group-hover:text-cyan-500 transition-colors">
-                          <Globe className="w-4 h-4 text-cyan-500 shrink-0" />
-                          <span className="truncate">{b.title}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate mt-1 font-mono">
-                          {b.url}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-6 rounded-xl border border-dashed border-border bg-muted/20 text-center space-y-1">
-                    <p className="text-xs text-muted-foreground">
-                      {t("browserApp.noBookmarks") || "No bookmarks saved yet. Click the bookmark icon in the address bar to bookmark pages!"}
-                    </p>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         )}
@@ -864,109 +690,6 @@ export function WebBrowserApp() {
           />
         )}
       </div>
-
-      {/* Bookmarks Modal */}
-      <Dialog open={isBookmarksOpen} onOpenChange={setIsBookmarksOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Bookmark className="w-5 h-5 text-cyan-500" />
-              {t("browserApp.savedBookmarks") || "Saved Bookmarks"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="max-h-80 overflow-y-auto space-y-2 mt-2">
-            {bookmarks.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground py-6">
-                {t("browserApp.noBookmarks") || "No bookmarks saved yet."}
-              </p>
-            ) : (
-              bookmarks.map((b, i) => (
-                <div
-                  key={i}
-                  onClick={() => {
-                    navigateTo(b.url);
-                    setIsBookmarksOpen(false);
-                  }}
-                  className="flex items-center justify-between p-2.5 rounded-lg border border-border hover:bg-muted/60 cursor-pointer group"
-                >
-                  <div className="truncate flex-1 mr-2">
-                    <div className="text-sm font-medium truncate group-hover:text-cyan-500">
-                      {b.title}
-                    </div>
-                    <div className="text-xs text-muted-foreground truncate font-mono">{b.url}</div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label="Delete bookmark"
-                    title="Delete bookmark"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setBookmarks((prev) => prev.filter((item) => item.url !== b.url));
-                    }}
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* History Modal */}
-      <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader className="flex flex-row items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <History className="w-5 h-5 text-cyan-500" />
-              {t("browserApp.browsingHistory") || "Browsing History"}
-            </DialogTitle>
-            {historyList.length > 0 && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setHistoryList([]);
-                  toast.info(t("browserApp.historyCleared") || "Browsing history cleared");
-                }}
-                className="h-7 text-xs"
-              >
-                {t("browserApp.clearHistory") || "Clear History"}
-              </Button>
-            )}
-          </DialogHeader>
-          <div className="max-h-80 overflow-y-auto space-y-2 mt-2">
-            {historyList.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground py-6">
-                {t("browserApp.noHistory") || "Browsing history is empty."}
-              </p>
-            ) : (
-              historyList.map((h, i) => (
-                <div
-                  key={i}
-                  onClick={() => {
-                    navigateTo(h.url);
-                    setIsHistoryOpen(false);
-                  }}
-                  className="flex items-center justify-between p-2.5 rounded-lg border border-border hover:bg-muted/60 cursor-pointer group"
-                >
-                  <div className="truncate flex-1 mr-2">
-                    <div className="text-sm font-medium truncate group-hover:text-cyan-500">
-                      {h.title}
-                    </div>
-                    <div className="text-xs text-muted-foreground truncate font-mono">{h.url}</div>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground shrink-0">
-                    {new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

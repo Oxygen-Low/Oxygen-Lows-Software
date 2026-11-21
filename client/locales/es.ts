@@ -644,7 +644,7 @@ export const es = {
       "Descubre y juega juegos 2D y 3D de la comunidad creados por otros en el Estudio de Juegos.",
     webBrowserTitle: "Navegador Web",
     webBrowserDesc:
-      "Navega por Internet con pestaÃ±as mÃºltiples, sugerencias de bÃºsqueda, marcadores y modo lectura.",
+      "Navega por Internet con pestaÃ±as mÃºltiples, sugerencias de bÃºsqueda y modo lectura.",
     webmasterTitle: "Webmaster",
     webmasterDesc:
       "EnvÃ­a sitios web y mapas del sitio para ser rastreados e indexados.",
