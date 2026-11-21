@@ -34,9 +34,21 @@ export default defineConfig(({ mode }) => ({
     target: "es2022",
     cssMinify: "lightningcss",
     outDir: "dist/spa",
+    // Keep heavy route-only vendor chunks out of the initial modulepreload
+    // set. They are still fetched on demand when their route is visited.
+    modulePreload: {
+      resolveDependencies: (_filename, deps) =>
+        deps.filter((dep) => !/vendor-(charts|chess|three|leaflet|markdown)-/.test(dep)),
+    },
     rollupOptions: {
       output: {
         manualChunks: (id) => {
+          // Shared class-name helpers are used by both the entry (cn()) and
+          // chart/UI libraries; keep them in their own small chunk so they
+          // are not hoisted into a heavy vendor chunk on the critical path.
+          if (/[\\/]node_modules[\\/](clsx|tailwind-merge)[\\/]/.test(id)) {
+            return "vendor-utils";
+          }
           if (
             /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(
               id,

@@ -4,6 +4,7 @@ import { getLocalSession } from "@/lib/localSession";
 import { fetchPollinationsBalance } from "@/services/pollinationsClient";
 import { llmRunnerService } from "@/services/llmRunnerService";
 import { isDesktopBridgeAvailable } from "@/lib/desktopBridge";
+import { runWhenIdle } from "@/lib/idle";
 import {
   encryptApiKey,
   decryptApiKey,
@@ -284,9 +285,15 @@ export function useAiModels() {
   }, []);
 
   useEffect(() => {
-    checkLocalRunner();
-    const interval = setInterval(checkLocalRunner, 3500);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const cancelIdle = runWhenIdle(() => {
+      checkLocalRunner();
+      interval = setInterval(checkLocalRunner, 3500);
+    });
+    return () => {
+      cancelIdle();
+      if (interval) clearInterval(interval);
+    };
   }, [checkLocalRunner]);
 
   useEffect(() => {
@@ -458,10 +465,15 @@ export function useAiModels() {
   }, []);
 
   useEffect(() => {
+    // localStorage reads are cheap and synchronous — safe on first paint.
     loadCustomModels();
     loadDefaults();
-    loadApiKey();
     setIsMasterKeyActive(!!getActiveMasterKey());
+    // Network-backed key/status lookups are sidebar-only; defer them.
+    const cancelIdle = runWhenIdle(() => {
+      loadApiKey();
+    });
+    return cancelIdle;
   }, [loadCustomModels, loadDefaults, loadApiKey]);
 
   // Combine built-in models, custom models, and active local runner model
@@ -516,9 +528,15 @@ export function useAiModels() {
   }, []);
 
   useEffect(() => {
-    refreshHordeStatus();
-    const interval = setInterval(refreshHordeStatus, 30000);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const cancelIdle = runWhenIdle(() => {
+      refreshHordeStatus();
+      interval = setInterval(refreshHordeStatus, 30000);
+    });
+    return () => {
+      cancelIdle();
+      if (interval) clearInterval(interval);
+    };
   }, [refreshHordeStatus]);
 
   const refreshFreeUsage = useCallback(

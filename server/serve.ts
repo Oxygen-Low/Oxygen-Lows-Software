@@ -24,6 +24,12 @@ if (process.env.NODE_ENV === "production") {
     console.error("Could not load index.html", e);
   }
 
+  // Rendering SEO tags is pure work over (path, baseUrl). Cache the result so
+  // repeat navigations skip string manipulation and can be answered with a
+  // cheap revalidation instead of a full document rebuild.
+  const seoHtmlCache = new Map<string, string>();
+  const SEO_CACHE_LIMIT = 500;
+
   app.get("*", (c) => {
     const reqPath = c.req.path;
     if (
@@ -43,12 +49,18 @@ if (process.env.NODE_ENV === "production") {
       const protocol = protoHeader.split(",")[0].trim();
       const baseUrl = `${protocol}://${host}`;
 
-      const renderedHtml = injectSeoTags(indexHtml, reqPath, baseUrl);
+      const cacheKey = `${baseUrl}${reqPath}`;
+      let renderedHtml = seoHtmlCache.get(cacheKey);
+      if (!renderedHtml) {
+        renderedHtml = injectSeoTags(indexHtml, reqPath, baseUrl);
+        if (seoHtmlCache.size >= SEO_CACHE_LIMIT) {
+          seoHtmlCache.delete(seoHtmlCache.keys().next().value!);
+        }
+        seoHtmlCache.set(cacheKey, renderedHtml);
+      }
 
       return c.html(renderedHtml, 200, {
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        Pragma: "no-cache",
-        Expires: "0",
+        "Cache-Control": "public, max-age=0, must-revalidate",
       });
     }
     return c.text("Not Found", 404);

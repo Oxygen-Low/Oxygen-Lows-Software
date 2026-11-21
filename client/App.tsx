@@ -1,8 +1,6 @@
 import "./global.css";
 
-import { Toaster } from "@/components/ui/toaster";
 import { createRoot } from "react-dom/client";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -43,6 +41,39 @@ const lazyWithRetry = (
       throw error;
     }
   });
+
+// Notification UIs are progressively enhanced — keep their dependency trees
+// (sonner / radix toast) out of the initial JS bundle.
+const Toaster = lazyWithRetry(
+  () => import("@/components/ui/toaster").then((m) => ({ default: m.Toaster })),
+);
+const SonnerToaster = lazyWithRetry(
+  () => import("@/components/ui/sonner").then((m) => ({ default: m.Toaster })),
+);
+
+// Warm the landing route in parallel with the entry chunk instead of waiting
+// for React to render before starting its request.
+void import("./pages/Apps");
+
+/** Shell skeleton shown while the route module is still loading. */
+const AppShellSkeleton = () => (
+  <div className="min-h-screen bg-background" aria-busy="true">
+    <div className="h-[61px] sm:h-[73px] border-b border-border/40 bg-muted/10" />
+    <div className="mx-auto w-full max-w-5xl px-3 sm:px-6 lg:px-8 py-6 sm:py-12">
+      <div className="mb-6 h-8 w-48 animate-pulse rounded bg-muted/40" />
+      <div className="mb-8 h-4 w-72 animate-pulse rounded bg-muted/30" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-32 animate-pulse rounded-xl border border-border/30 bg-muted/20"
+            style={{ animationDelay: `${i * 60}ms` }}
+          />
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
 const Apps = lazyWithRetry(() => import("./pages/Apps"));
@@ -96,16 +127,12 @@ const App = () => (
         <ThemeProvider>
           <BrowserRouter>
             <MusicProvider>
-              <Toaster />
-              <Sonner />
+              <Suspense fallback={null}>
+                <Toaster />
+                <SonnerToaster />
+              </Suspense>
               <ErrorBoundary>
-                  <Suspense
-                    fallback={
-                      <div className="flex h-screen items-center justify-center">
-                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                      </div>
-                    }
-                  >
+                <Suspense fallback={<AppShellSkeleton />}>
                     <Routes>
                       <Route path="/" element={<Apps />} />
                       <Route path="/apps" element={<Apps />} />

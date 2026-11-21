@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "./useAuth";
 import { supabase } from "@/lib/db";
-import { toast } from "sonner";
+import { lazyToast as toast } from "@/lib/lazyToast";
+import { runWhenIdle } from "@/lib/idle";
 
 export type NotificationType =
   | "info"
@@ -81,9 +82,13 @@ export function useNotifications() {
     }
   }, [token]);
 
-  // Initial fetch and on session change
+  // Initial fetch and on session change. The unread badge is progressive
+  // enhancement, so defer the request until after first paint.
   useEffect(() => {
-    fetchNotifications();
+    const cancelIdle = runWhenIdle(() => {
+      fetchNotifications();
+    });
+    return cancelIdle;
   }, [fetchNotifications, currentUserId]);
 
   // Sync component state with global state
@@ -103,9 +108,11 @@ export function useNotifications() {
     };
   }, []);
 
-  // Real-time SSE listener
+  // Real-time SSE listener (deferred — not needed for first paint)
   useEffect(() => {
-    const channel = supabase
+    let channel: ReturnType<typeof supabase.channel> | undefined;
+    const cancelIdle = runWhenIdle(() => {
+      channel = supabase
       .channel("app_realtime_notifications")
       .on(
         "postgres_changes",
@@ -210,9 +217,11 @@ export function useNotifications() {
         },
       )
       .subscribe();
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelIdle();
+      if (channel) supabase.removeChannel(channel);
     };
   }, [currentUserId]);
 

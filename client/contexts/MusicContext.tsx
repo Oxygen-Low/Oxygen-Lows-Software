@@ -23,7 +23,8 @@ import {
   sanitizeTrackBackgroundMap,
   type TrackBackgroundMap,
 } from "@shared/trackBackgrounds";
-import { toast } from "sonner";
+import { lazyToast as toast } from "@/lib/lazyToast";
+import { runWhenIdle } from "@/lib/idle";
 
 export interface PlaylistTrack {
   id?: string;
@@ -553,9 +554,16 @@ export const MusicProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     };
 
-    loadMusicPreferences();
+    // Auto-resuming audio is not required for the first paint. Defer the DB
+    // lookup (and any signed-URL fetch) until the browser is idle.
+    let cancelled = false;
+    const cancelIdle = runWhenIdle(() => {
+      if (!cancelled) void loadMusicPreferences();
+    });
 
     return () => {
+      cancelled = true;
+      cancelIdle();
       isMounted = false;
     };
   }, [session?.user?.id, resolvePlaybackUrl, getAutoResumeState]);

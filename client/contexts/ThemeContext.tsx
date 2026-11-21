@@ -11,6 +11,7 @@ import { db, getAuthenticatedClient } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { normalizeRelativePath } from "@shared/pathUtils";
+import { runWhenIdle } from "@/lib/idle";
 
 // Allow custom string which can be "custom:<primaryHex>-<backgroundHex>"
 export type Theme = "default" | "red" | "yellow" | "black" | "white" | string;
@@ -355,7 +356,9 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
     [],
   );
 
-  // Load preferences from Supabase
+  // Load preferences from the server. Anonymous defaults are applied
+  // synchronously; the authenticated DB lookup is deferred until after the
+  // first paint so it never delays the initial route render.
   useEffect(() => {
     const loadPreferences = async () => {
       if (!session?.user?.id) {
@@ -493,7 +496,14 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
       }
     };
 
-    loadPreferences();
+    if (!session?.user?.id) {
+      void loadPreferences();
+      return;
+    }
+    const cancelIdle = runWhenIdle(() => {
+      void loadPreferences();
+    });
+    return cancelIdle;
   }, [session?.user?.id, session?.access_token, applyTheme, applyFont]);
 
   const setTheme = useCallback(

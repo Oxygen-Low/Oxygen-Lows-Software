@@ -87,7 +87,29 @@ app.use(compress());
 
 let defenderPromise: Promise<any> | null = null;
 
+/**
+ * Paths that never carry user-supplied input and therefore do not need the
+ * WebDefender round-trip. Serving the SPA shell / static assets through the
+ * defender added several cold outbound fetches to the document TTFB (~1s).
+ * All /api/* routes remain fully protected.
+ */
+function isStaticShellPath(path: string): boolean {
+  if (path === "/") return true;
+  if (path.startsWith("/assets/")) return true;
+  // Known static files served from dist/spa (icons, manifests, SEO docs, etc.).
+  if (/\.[a-z0-9]+$/i.test(path)) return true;
+  return (
+    path === "/favicon.svg" ||
+    path === "/favicon.ico" ||
+    path === "/apple-touch-icon.png" ||
+    path.startsWith("/icons/")
+  );
+}
+
 app.use("*", async (c, next) => {
+  if (isStaticShellPath(c.req.path)) {
+    return next();
+  }
   if (
     c.req.path.startsWith("/api/webdefender") ||
     c.req.path.startsWith("/api/defender") ||

@@ -1,4 +1,4 @@
-import { toast } from "sonner";
+import { lazyToast as toast } from "./lazyToast";
 
 export interface ModerationErrorData {
   error?: string;

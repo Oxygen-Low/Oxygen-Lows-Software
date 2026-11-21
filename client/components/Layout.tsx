@@ -5,6 +5,8 @@ import {
   useRef,
   useEffect,
   useMemo,
+  Suspense,
+  lazy,
 } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,7 +33,12 @@ import {
   Zap,
 } from "lucide-react";
 import styles from "./Layout.module.css";
-import { TopbarMusicPlayer } from "./TopbarMusicPlayer";
+
+// The topbar player pulls in the music context, storage and signed-URL
+// helpers — none of that is needed to paint the shell, so load it after paint.
+const TopbarMusicPlayer = lazy(
+  () => import("./TopbarMusicPlayer").then((m) => ({ default: m.TopbarMusicPlayer })),
+);
 import { ReleaseTag, type ReleaseStage } from "@/components/ui/ReleaseTag";
 import { useNotifications } from "@/hooks/useNotifications";
 
@@ -332,7 +339,9 @@ export const Layout = ({ children, fullWidth = false }: LayoutProps) => {
 
           {/* Topbar Music Player / Playlist directly in the middle */}
           <div className="@container/music flex-1 h-full flex items-center justify-center min-w-[92px] max-w-2xl mx-1 sm:mx-2 py-1 sm:py-1.5">
-            <TopbarMusicPlayer />
+            <Suspense fallback={null}>
+              <TopbarMusicPlayer />
+            </Suspense>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
