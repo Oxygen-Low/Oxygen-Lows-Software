@@ -80,13 +80,14 @@ export function DependenciesManagerApp() {
         { id: toastId },
       );
       await refresh();
-    } catch {
+    } catch (error: any) {
       toast.error(
-        t(
-          "dependencies.operationFailed",
-          undefined,
-          "The operation failed. Please try again.",
-        ),
+        error?.message ||
+          t(
+            "dependencies.operationFailed",
+            undefined,
+            "The operation failed. Please try again.",
+          ),
         { id: toastId },
       );
     } finally {

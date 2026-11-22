@@ -202,9 +202,11 @@ jobs:
           for dll in llama-src/build/bin/Release/*.dll llama-src/build/bin/*.dll; do
             [ -f "$dll" ] && cp "$dll" llama-out/ || true
           done
-          if ! tar -a -cf "${{ matrix.asset }}" -C llama-out .; then
-            powershell -NoProfile -Command "Compress-Archive -Path 'llama-out\\*' -DestinationPath '${{ matrix.asset }}' -Force"
-          fi
+          # Git Bash's tar -a does NOT infer zip compression here (it produced
+          # a plain TAR named .zip), so use PowerShell's real ZIP writer.
+          powershell -NoProfile -Command "Compress-Archive -Path 'llama-out\\*' -DestinationPath '${{ matrix.asset }}' -Force -CompressionLevel Optimal"
+          # Fail fast if the artifact is not a real ZIP (PK magic).
+          python3 -c "import sys; d=open('${{ matrix.asset }}','rb').read(2); sys.exit(0 if d==b'PK' else 1)"
 
       - name: Build llama-server (Android)
         if: matrix.platform == 'android'

@@ -772,8 +772,8 @@ public partial class MainWindow : Window
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine("llama_install: " + ex.Message);
-                        SendWebMessage(new { id, success = false, error = "Unable to install llama.cpp" });
+                        Debug.WriteLine("llama_install: " + ex);
+                        SendWebMessage(new { id, success = false, error = DescribeLlamaError(ex) });
                     }
                 }
                 else if (cmd == "llama_uninstall")
@@ -1387,6 +1387,28 @@ public partial class MainWindow : Window
         // It is recommended to further restrict allowed hosts using a whitelist of known-safe domains.
         try { Process.Start(new ProcessStartInfo { FileName = uri.AbsoluteUri, UseShellExecute = true }); }
         catch (Exception ex) { Debug.WriteLine("Could not open browser: " + ex.Message); }
+    }
+
+    private static string DescribeLlamaError(Exception ex)
+    {
+        string message = ex.Message ?? "";
+        if (message.IndexOf("403", StringComparison.Ordinal) >= 0 ||
+            message.IndexOf("rate limit", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "GitHub API rate limit reached. Please try again later.";
+        if (ex is System.Net.Http.HttpRequestException)
+            return "Could not reach GitHub. Check your internet connection and try again.";
+        if (ex is System.Text.Json.JsonException)
+            return "Could not read release information from GitHub. Please try again.";
+        if (ex is System.IO.IOException)
+            return "Could not write llama.cpp files. Check free disk space and antivirus settings.";
+        if (message.IndexOf("No compatible", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "No compatible llama.cpp build is available for this release yet.";
+        if (message.IndexOf("integrity", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            message.IndexOf("size mismatch", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "The downloaded file failed verification. Please try again.";
+        // Strip URLs and keep the message short; the full detail is logged above.
+        message = System.Text.RegularExpressions.Regex.Replace(message, @"https?://\S+", "").Trim();
+        return "Could not install llama.cpp: " + (message.Length > 140 ? message.Substring(0, 140) : message);
     }
 
     private void SendWebMessage(object payload)

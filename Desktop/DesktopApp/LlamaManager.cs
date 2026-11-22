@@ -420,10 +420,22 @@ namespace DesktopApp
                 await DownloadVerifiedAsync(asset, archive, progress, ct).ConfigureAwait(false);
                 string extractDir = Path.Combine(tempDir, "extracted");
                 Directory.CreateDirectory(extractDir);
-                if (asset.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                // Detect by magic bytes, not extension: an earlier release worker
+                // shipped an uncompressed TAR named "llama-win-x64.zip".
+                bool isZip;
+                using (var probe = File.OpenRead(archive))
+                {
+                    var magic = new byte[4];
+                    int read = await probe.ReadAsync(magic, ct).ConfigureAwait(false);
+                    isZip = read >= 2 && magic[0] == (byte)'P' && magic[1] == (byte)'K';
+                }
+                if (isZip)
                     ZipFile.ExtractToDirectory(archive, extractDir);
-                else
+                else if (asset.Name.EndsWith(".gz", StringComparison.OrdinalIgnoreCase) ||
+                         asset.Name.EndsWith(".tgz", StringComparison.OrdinalIgnoreCase))
                     await ExtractTarGzAsync(archive, extractDir, ct).ConfigureAwait(false);
+                else
+                    ExtractTar(archive, extractDir);
 
                 string? serverExe = Directory.GetFiles(extractDir, "llama-server.exe", SearchOption.AllDirectories).FirstOrDefault()
                     ?? Directory.GetFiles(extractDir, "llama-server", SearchOption.AllDirectories).FirstOrDefault();
@@ -531,6 +543,81 @@ namespace DesktopApp
             }
             finally { response?.Dispose(); }
         }
+
+        /// <summary>
+        /// Minimal, dependency-free extraction of uncompressed TAR archives.
+        /// Only regular files and directories are extracted; paths are confined
+        /// to the destination directory.
+        /// </summary>
+        private static void ExtractTar(string archive, string destination)
+        {
+            string root = Path.GetFullPath(destination);
+            using var fs = File.OpenRead(archive);
+            var header = new byte[512];
+            while (ReadBlock(fs, header) == 512)
+            {
+                if (header.All(b => b == 0)) break; // end-of-archive marker
+                string name = ReadAscii(header, 0, 100).TrimEnd('\0');
+                string prefix = ReadAscii(header, 345, 155).TrimEnd('\0');
+                if (prefix.Length > 0) name = prefix + "/" + name;
+                string sizeField = ReadAscii(header, 124, 12).Trim('\0', ' ');
+                long size;
+                try { size = Convert.ToInt64(sizeField, 8); } // TAR sizes are octal
+                catch { throw new InvalidDataException("Invalid TAR entry size"); }
+                if (size < 0) throw new InvalidDataException("Invalid TAR entry size");
+                char type = (char)header[156];
+                name = name.Replace('\\', '/');
+                while (name.StartsWith("./", StringComparison.Ordinal)) name = name.Substring(2);
+                if (string.IsNullOrWhiteSpace(name)) continue;
+
+                string target = Path.GetFullPath(Path.Combine(destination, name));
+                string rootWithSep = root + Path.DirectorySeparatorChar;
+                if (!target.StartsWith(rootWithSep, StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(target, root, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("Invalid path in TAR archive");
+
+                if (type == '5' || name.EndsWith("/", StringComparison.Ordinal))
+                {
+                    Directory.CreateDirectory(target);
+                    continue;
+                }
+                if (type != '0' && type != '\0' && type != '7')
+                    continue; // skip links/devices/other special entries
+
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                using var output = File.Create(target);
+                long remaining = size;
+                var buffer = new byte[81920];
+                while (remaining > 0)
+                {
+                    int toRead = (int)Math.Min(remaining, buffer.Length);
+                    int read = fs.Read(buffer, 0, toRead);
+                    if (read <= 0) throw new InvalidDataException("Truncated TAR archive");
+                    output.Write(buffer, 0, read);
+                    remaining -= read;
+                }
+                long padding = (512 - (size % 512)) % 512;
+                if (padding > 0)
+                {
+                    ReadBlock(fs, new byte[padding]);
+                }
+            }
+        }
+
+        private static int ReadBlock(Stream stream, byte[] buffer)
+        {
+            int total = 0;
+            while (total < buffer.Length)
+            {
+                int read = stream.Read(buffer, total, buffer.Length - total);
+                if (read == 0) break;
+                total += read;
+            }
+            return total;
+        }
+
+        private static string ReadAscii(byte[] data, int offset, int length) =>
+            System.Text.Encoding.ASCII.GetString(data, offset, length);
 
         private static async Task ExtractTarGzAsync(string archive, string destination, CancellationToken ct)
         {
