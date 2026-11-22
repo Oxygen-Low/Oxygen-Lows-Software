@@ -1,0 +1,241 @@
+name: Build Dependency
+
+# Reusable workflow for building native dependency binaries that ship with the
+# apps. It currently builds llama.cpp (with Hy4 Flash GGUF support from
+# ggml-org/llama.cpp PR #32517) for Windows and Android in parallel.
+#
+# To add another dependency later: give it a `resolve-<name>` job for its
+# source revision and a `build-<name>` job (or new matrix entries) that uploads
+# its assets to the same release tag. Release.yml calls this workflow after it
+# creates the release, so every dependency artifact lands on one release.
+
+on:
+  workflow_call:
+    inputs:
+      tag_name:
+        description: GitHub release tag to upload dependency assets to.
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: GitHub release tag to upload assets to (blank = latest release).
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  # ── llama.cpp: resolve the source revision ─────────────────────────────────
+  resolve-llama:
+    name: Resolve llama.cpp source (Hy4 Flash PR)
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+      base_tag: ${{ steps.source.outputs.base_tag }}
+    steps:
+      - name: Resolve source revision
+        id: source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Hy4 Flash GGUF support is in ggml-org/llama.cpp PR #32517 and is not
+          # merged yet. Pin builds to the PR head so shipped binaries can run
+          # Hy4 Flash models. Once merged, switch to the latest release tag.
+          PR_JSON=$(curl -fsSL -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            https://api.github.com/repos/ggml-org/llama.cpp/pulls/32517)
+          SHA=$(printf '%s' "$PR_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["head"]["sha"])')
+          BASE=$(curl -fsSL -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            https://api.github.com/repos/ggml-org/llama.cpp/releases/latest \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "base_tag=$BASE" >> "$GITHUB_OUTPUT"
+          echo "llama.cpp source: PR #32517 @ $SHA (base $BASE)"
+
+  # ── llama.cpp: build Windows + Android in parallel ─────────────────────────
+  build-llama:
+    name: Build llama.cpp (${{ matrix.platform }})
+    needs: resolve-llama
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            runs-on: windows-latest
+            asset: llama-win-x64.zip
+          - platform: android
+            runs-on: ubuntu-latest
+            asset: llama-android-arm64.zip
+    runs-on: ${{ matrix.runs-on }}
+    env:
+      LLAMA_SHA: ${{ needs.resolve-llama.outputs.sha }}
+      LLAMA_BASE_TAG: ${{ needs.resolve-llama.outputs.base_tag }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        if: matrix.platform == 'android'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install Android NDK
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # GitHub-hosted Ubuntu runners already have the Android SDK and
+          # cmdline-tools installed with licenses accepted. Avoid
+          # android-actions/setup-android: older versions try to install the
+          # removed `tools` package and fail on current SDK images.
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager | head -n 1)
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found under $SDK_ROOT" >&2
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" "platforms;android-24" "ndk;27.2.12479018" >/dev/null
+          echo "ANDROID_NDK_ROOT=$SDK_ROOT/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          echo "Installed Android NDK at $SDK_ROOT/ndk/27.2.12479018"
+
+      - name: Checkout llama.cpp PR branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Fetch the PR head ref directly instead of cloning by SHA; public
+          # pull refs are always available and this works with shallow clones.
+          git clone --depth 1 --no-checkout https://github.com/ggml-org/llama.cpp.git llama-src
+          cd llama-src
+          git fetch --depth 1 origin pull/32517/head:hy4-flash
+          git checkout --detach hy4-flash
+          echo "Building llama.cpp at $(git rev-parse HEAD)"
+
+      - name: Patch MSVC move-constructor issue in PR #32517
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The PR declares a destructor on llama_kv_cache_kpool_context, which
+          # suppresses its implicit move constructor. MSVC then rejects the
+          # ternary construction in llama-memory-hybrid-idx.cpp (C2280).
+          # Explicitly default the move operations until the PR is fixed/merged.
+          PYTHON=python3
+          command -v python3 >/dev/null 2>&1 || PYTHON=python
+          "$PYTHON" - <<'PY'
+          from pathlib import Path
+          p = Path("llama-src/src/llama-kv-cache-kpool.h")
+          s = p.read_text(encoding="utf-8")
+          marker = "~llama_kv_cache_kpool_context();"
+          add = (
+              "    llama_kv_cache_kpool_context(llama_kv_cache_kpool_context &&) = default;\n"
+              "    llama_kv_cache_kpool_context & operator=(llama_kv_cache_kpool_context &&) = default;\n"
+          )
+          if marker in s and "operator=(llama_kv_cache_kpool_context &&)" not in s:
+              p.write_text(s.replace(marker, add + marker, 1), encoding="utf-8")
+              print("Patched llama-kv-cache-kpool.h for MSVC")
+          else:
+              print("Patch already applied or marker not found; continuing")
+          PY
+
+      - name: Build llama-server (Windows)
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd llama-src
+          # Use the runner's default Visual Studio generator (VS 18 2026 on
+          # windows-latest) - forcing VS 17 2022 would fail if it isn't installed.
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLLAMA_BUILD_SERVER=ON \
+            -DLLAMA_BUILD_TESTS=OFF \
+            -DLLAMA_BUILD_EXAMPLES=OFF \
+            -DGGML_CUDA=OFF
+          cmake --build build --config Release --target llama-server --parallel 2
+          cd ..
+          mkdir -p llama-out
+          # Multi-config generators put binaries in bin/Release; handle both.
+          cp llama-src/build/bin/Release/llama-server.exe llama-out/ 2>/dev/null \
+            || cp llama-src/build/bin/llama-server.exe llama-out/
+          for dll in llama-src/build/bin/Release/*.dll llama-src/build/bin/*.dll; do
+            [ -f "$dll" ] && cp "$dll" llama-out/ || true
+          done
+          if ! tar -a -cf "${{ matrix.asset }}" -C llama-out .; then
+            powershell -NoProfile -Command "Compress-Archive -Path 'llama-out\\*' -DestinationPath '${{ matrix.asset }}' -Force"
+          fi
+
+      - name: Build llama-server (Android)
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd llama-src
+          NDK="$ANDROID_NDK_ROOT"
+          TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          API=24
+          build_abi() {
+            ABI="$1"; TRIPLE="$2"; OUT="$3"
+            export CC="$TOOLCHAIN/$TRIPLE$API-clang"
+            export CXX="$TOOLCHAIN/$TRIPLE$API-clang++"
+            cmake -S . -B "build-$ABI" \
+              -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
+              -DANDROID_ABI="$ABI" -DANDROID_PLATFORM=android-$API \
+              -DGGML_OPENMP=OFF -DLLAMA_BUILD_SERVER=ON \
+              -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF \
+              -DLLAMA_CURL=OFF -DCMAKE_BUILD_TYPE=Release
+            cmake --build "build-$ABI" --target llama-server --parallel 2
+            mkdir -p "../llama-out-$OUT"
+            cp "build-$ABI/bin/llama-server" "../llama-out-$OUT/llama-server"
+          }
+          build_abi arm64-v8a aarch64-linux-android arm64
+          build_abi armeabi-v7a armv7a-linux-androideabi arm
+          cd ..
+          (cd llama-out-arm64 && tar -czf "../llama-android-arm64.tar.gz" llama-server)
+          (cd llama-out-arm && tar -czf "../llama-android-arm.tar.gz" llama-server)
+          # Keep the .zip asset name expected by the Android app.
+          (cd llama-out-arm64 && zip -q ../llama-android-arm64.zip llama-server)
+          (cd llama-out-arm && zip -q ../llama-android-arm.zip llama-server)
+
+      - name: Write build manifest
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          printf '{"llamaVersion":"%s","source":"pr-32517","sha":"%s","feature":"hy4-flash"}\n' \
+            "$LLAMA_BASE_TAG" "$LLAMA_SHA" > llama-manifest.json
+
+      - name: Resolve release tag
+        id: tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ inputs.tag_name }}"
+          if [ -z "$TAG" ]; then
+            TAG=$(curl -fsSL -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              https://api.github.com/repos/${{ github.repository }}/releases/latest \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Uploading dependency assets to $TAG"
+
+      - name: Upload dependency assets to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ matrix.platform }}" = "windows" ]; then
+            gh release upload "${{ steps.tag.outputs.tag }}" "${{ matrix.asset }}" --clobber
+          else
+            gh release upload "${{ steps.tag.outputs.tag }}" \
+              llama-android-arm64.zip llama-android-arm.zip \
+              llama-android-arm64.tar.gz llama-android-arm.tar.gz \
+              llama-manifest.json --clobber
+          fi
