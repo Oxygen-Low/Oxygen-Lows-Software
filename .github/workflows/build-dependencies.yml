@@ -187,12 +187,20 @@ jobs:
           cd llama-src
           # Use the runner's default Visual Studio generator (VS 18 2026 on
           # windows-latest) - forcing VS 17 2022 would fail if it isn't installed.
+          if command -v nvcc >/dev/null 2>&1; then
+            CUDA_FLAG="-DGGML_CUDA=ON"
+            echo "CUDA toolkit detected - building with GPU support"
+          else
+            CUDA_FLAG="-DGGML_CUDA=OFF"
+            echo "CUDA toolkit not detected - building CPU only"
+          fi
           cmake -Wno-dev -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DLLAMA_BUILD_SERVER=ON \
             -DLLAMA_BUILD_TESTS=OFF \
             -DLLAMA_BUILD_EXAMPLES=OFF \
-            -DGGML_CUDA=OFF
+            -DLLAMA_CURL=OFF \
+            $CUDA_FLAG
           cmake --build build --config Release --target llama-server --parallel 2
           cd ..
           mkdir -p llama-out
@@ -202,6 +210,23 @@ jobs:
           for dll in llama-src/build/bin/Release/*.dll llama-src/build/bin/*.dll; do
             [ -f "$dll" ] && cp "$dll" llama-out/ || true
           done
+          # Older builds linked OpenSSL dynamically. Bundle the runtime DLLs if
+          # the build produced or referenced them so the exe doesn't fail with
+          # "Entry Point not found" on machines without OpenSSL installed.
+          for name in libssl-3-x64.dll libcrypto-3-x64.dll; do
+            [ -f "llama-out/$name" ] && continue
+            found=$(find "$PWD/llama-src/build" -iname "$name" -print -quit 2>/dev/null || true)
+            if [ -z "$found" ]; then found=$(command -v "$name" 2>/dev/null || true); fi
+            [ -n "$found" ] && cp "$found" llama-out/ || true
+          done
+          # CUDA runtime DLLs are needed on machines without a CUDA toolkit.
+          if [ -n "${CUDA_PATH:-}" ] && [ -d "$CUDA_PATH/bin" ]; then
+            for pattern in 'cublas64_*.dll' 'cublasLt64_*.dll' 'cudart64_*.dll'; do
+              for f in "$CUDA_PATH/bin"/$pattern; do
+                [ -f "$f" ] && cp "$f" llama-out/ || true
+              done
+            done
+          fi
           # Git Bash's tar -a does NOT infer zip compression here (it produced
           # a plain TAR named .zip), so use PowerShell's real ZIP writer.
           powershell -NoProfile -Command "Compress-Archive -Path 'llama-out\\*' -DestinationPath '${{ matrix.asset }}' -Force -CompressionLevel Optimal"

@@ -799,6 +799,18 @@ namespace DesktopApp
         }
 
         /// <summary>
+        /// Recognizes both `mmproj-model.gguf` and `model-mmproj.gguf` naming.
+        /// </summary>
+        private static bool IsProjectorName(string fileName)
+        {
+            string lower = fileName.ToLowerInvariant();
+            return lower.StartsWith("mmproj", StringComparison.Ordinal) ||
+                   lower.EndsWith("-mmproj.gguf", StringComparison.Ordinal) ||
+                   lower.EndsWith(".mmproj.gguf", StringComparison.Ordinal) ||
+                   lower.EndsWith("_mmproj.gguf", StringComparison.Ordinal);
+        }
+
+        /// <summary>
         /// Groups .gguf files into models. Split models named
         /// "base-00001-of-00002.gguf" become one group; mmproj files are attached
         /// to the matching model family for vision support.
@@ -818,7 +830,7 @@ namespace DesktopApp
             foreach (var file in files)
             {
                 string name = Path.GetFileName(file);
-                if (name.StartsWith("mmproj", StringComparison.OrdinalIgnoreCase))
+                if (IsProjectorName(name))
                 {
                     projectors.Add(file);
                     continue;
@@ -846,13 +858,15 @@ namespace DesktopApp
                     .ToList();
                 group.Shards = ordered.Select(t => t.name).ToList();
                 group.ShardPaths = ordered.Select(t => t.path).ToList();
-                string family = FamilyOf(group.Id);
-                string? projector = projectors.FirstOrDefault(p => FamilyOf(Path.GetFileName(p)) == family)
-                    ?? projectors.FirstOrDefault(p => Path.GetFileName(p).ToLowerInvariant().Contains(family));
-                if (projector != null)
+                var best = projectors
+                    .Select(p => (path: p, score: FamilyScore(group.Id, Path.GetFileName(p))))
+                    .Where(t => t.score > 0)
+                    .OrderByDescending(t => t.score)
+                    .FirstOrDefault();
+                if (best.path != null)
                 {
-                    group.Mmproj = Path.GetFileName(projector);
-                    group.MmprojPath = projector;
+                    group.Mmproj = Path.GetFileName(best.path);
+                    group.MmprojPath = best.path;
                 }
             }
 
@@ -894,19 +908,66 @@ namespace DesktopApp
                     group.MmprojPath = settings.MmprojPath;
                 else if (!string.IsNullOrWhiteSpace(settings.Mmproj))
                     group.MmprojPath = SafeResolveModelPath(settings.Mmproj);
+
+                // Self-heal registrations created before mmproj pairing worked:
+                // look for a projector beside the model files.
+                if (string.IsNullOrWhiteSpace(group.MmprojPath))
+                {
+                    var best = orderedPaths
+                        .Select(p => Path.GetDirectoryName(p.path))
+                        .Where(d => !string.IsNullOrWhiteSpace(d) && Directory.Exists(d))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .SelectMany(d => Directory.GetFiles(d!, "*.gguf"))
+                        .Where(p => IsProjectorName(Path.GetFileName(p)))
+                        .Select(p => (path: p, score: group.Shards.Max(s => FamilyScore(s, Path.GetFileName(p)))))
+                        .Where(t => t.score > 0)
+                        .OrderByDescending(t => t.score)
+                        .FirstOrDefault();
+                    if (best.path != null)
+                    {
+                        group.Mmproj = Path.GetFileName(best.path);
+                        group.MmprojPath = best.path;
+                    }
+                }
             }
 
             return groups.Values.OrderBy(g => g.Id).ToList();
         }
 
-        private static string FamilyOf(string nameOrId)
+        /// <summary>
+        /// Normalized name tokens used to pair a model with its mmproj. Splitting
+        /// into tokens (instead of comparing a fixed two-token "family") handles
+        /// single-file models such as `model.gguf` + `mmproj-model-bf16.gguf` as
+        /// well as sharded names.
+        /// </summary>
+        private static string[] FamilyTokens(string nameOrId)
         {
             string value = nameOrId;
             if (value.StartsWith("mmproj", StringComparison.OrdinalIgnoreCase))
                 value = value.Substring("mmproj".Length).TrimStart('-', '_', '.');
             if (value.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase))
                 value = value.Substring(0, value.Length - ".gguf".Length);
-            return string.Join("-", value.Split('-').Take(2)).ToLowerInvariant();
+            value = System.Text.RegularExpressions.Regex.Replace(value,
+                @"[-_.]mmproj$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var shard = ShardPattern.Match(value);
+            if (shard.Success) value = shard.Groups["base"].Value;
+            return value.Split(new[] { '-', '_', '.' }, StringSplitOptions.RemoveEmptyEntries)
+                .Where(t => !int.TryParse(t, out _))
+                .ToArray();
+        }
+
+        /// <summary>Higher score means a more likely model/mmproj pair.</summary>
+        private static int FamilyScore(string modelName, string projectorName)
+        {
+            var a = FamilyTokens(modelName);
+            var b = FamilyTokens(projectorName);
+            if (a.Length == 0 || b.Length == 0) return 0;
+            int leading = 0;
+            while (leading < Math.Min(a.Length, b.Length) &&
+                   string.Equals(a[leading], b[leading], StringComparison.OrdinalIgnoreCase))
+                leading++;
+            if (leading > 0) return leading;
+            return a.Any(t => b.Any(u => string.Equals(t, u, StringComparison.OrdinalIgnoreCase))) ? 1 : 0;
         }
 
         private static bool IsInsideModelsDirectory(string path)
@@ -1036,7 +1097,7 @@ namespace DesktopApp
                 if (!File.Exists(full) ||
                     !full.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase)) continue;
                 string name = Path.GetFileName(full);
-                if (name.StartsWith("mmproj", StringComparison.OrdinalIgnoreCase))
+                if (IsProjectorName(name))
                 {
                     projectors.Add(full);
                     continue;
@@ -1059,9 +1120,13 @@ namespace DesktopApp
             var known = BuildModelGroups();
             foreach (var projector in projectors)
             {
-                string family = FamilyOf(Path.GetFileName(projector));
-                string? id = models.Keys.FirstOrDefault(k => FamilyOf(k) == family)
-                    ?? known.FirstOrDefault(g => FamilyOf(g.Id) == family)?.Id;
+                var best = models.Keys
+                    .Select(k => (id: k, score: FamilyScore(k, Path.GetFileName(projector))))
+                    .Concat(known.Select(g => (id: g.Id, score: FamilyScore(g.Id, Path.GetFileName(projector)))))
+                    .Where(t => t.score > 0)
+                    .OrderByDescending(t => t.score)
+                    .FirstOrDefault();
+                string? id = best.id;
                 if (id == null) continue;
                 if (!models.TryGetValue(id, out var entry))
                 {
@@ -1192,10 +1257,11 @@ namespace DesktopApp
             }
             EnsurePortFree(port);
 
-            string args = $"-m \"{modelPath}\" --host 127.0.0.1 --port {port} -c {Math.Clamp(contextSize, 512, 131072)}";
+            string args = $"-m \"{modelPath}\" --host 127.0.0.1 --port {port} -c {Math.Clamp(contextSize, 512, 131072)} --parallel 1";
             // llama.cpp auto-discovers sibling shards from the -0000N-of-0000M
             // naming pattern in the same directory, so only shard 1 is passed.
-            if (mmap) args += " --mmap";
+            // Recent llama.cpp releases replaced --mmap with --load-mode mmap.
+            if (mmap) args += " --load-mode mmap";
             if (gpuLayers >= 0) args += $" -ngl {Math.Min(gpuLayers, 9999)}";
             string mmproj = ResolveMmprojPath(settings, group);
             if (!string.IsNullOrWhiteSpace(mmproj) && File.Exists(mmproj))

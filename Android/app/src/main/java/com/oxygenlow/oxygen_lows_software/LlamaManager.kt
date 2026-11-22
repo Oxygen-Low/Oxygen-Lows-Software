@@ -252,11 +252,31 @@ class LlamaManager(private val context: Context) {
 
     private val shardRegex = Regex("^(.+?)-(\\d{5})-of-(\\d{5})\\.gguf$", RegexOption.IGNORE_CASE)
 
-    private fun familyOf(nameOrId: String): String {
+    private fun isProjectorName(name: String): Boolean {
+        val lower = name.lowercase()
+        return lower.startsWith("mmproj") || lower.endsWith("-mmproj.gguf") ||
+            lower.endsWith(".mmproj.gguf") || lower.endsWith("_mmproj.gguf")
+    }
+
+    private fun familyTokens(nameOrId: String): List<String> {
         var value = nameOrId
         if (value.startsWith("mmproj", true)) value = value.substring(6).trim('-', '_', '.')
         if (value.endsWith(".gguf", true)) value = value.dropLast(5)
-        return value.split('-').take(2).joinToString("-").lowercase()
+        value = value.replace(Regex("[-_.]mmproj$", RegexOption.IGNORE_CASE), "")
+        shardRegex.matchEntire(value)?.groupValues?.getOrNull(1)?.let { value = it }
+        return value.split('-', '_', '.')
+            .filter { it.isNotBlank() && it.toIntOrNull() == null }
+            .map { it.lowercase() }
+    }
+
+    private fun familyScore(modelName: String, projectorName: String): Int {
+        val a = familyTokens(modelName)
+        val b = familyTokens(projectorName)
+        if (a.isEmpty() || b.isEmpty()) return 0
+        var leading = 0
+        while (leading < minOf(a.size, b.size) && a[leading] == b[leading]) leading++
+        if (leading > 0) return leading
+        return if (a.any { it in b }) 1 else 0
     }
 
     private fun isInsideModelsDir(path: String): Boolean = try {
@@ -272,7 +292,7 @@ class LlamaManager(private val context: Context) {
         val files = modelsDir.listFiles { f -> f.extension.equals("gguf", true) }?.toList() ?: emptyList()
         for (file in files) {
             val name = file.name
-            if (name.startsWith("mmproj", true)) { projectors.add(file); continue }
+            if (isProjectorName(name)) { projectors.add(file); continue }
             val match = shardRegex.matchEntire(name)
             val id = match?.groupValues?.get(1) ?: name
             val expected = match?.groupValues?.getOrNull(3)?.toIntOrNull()?.coerceAtLeast(1) ?: 1
@@ -290,9 +310,10 @@ class LlamaManager(private val context: Context) {
             val paths = order.map { group.shardPaths[it] }
             group.shards.clear(); group.shards.addAll(names)
             group.shardPaths.clear(); group.shardPaths.addAll(paths)
-            val family = familyOf(group.id)
-            val projector = projectors.firstOrNull { familyOf(it.name) == family }
-                ?: projectors.firstOrNull { it.name.lowercase().contains(family) }
+            val projector = projectors
+                .map { it to familyScore(group.id, it.name) }
+                .filter { it.second > 0 }
+                .maxByOrNull { it.second }?.first
             if (projector != null) {
                 group.mmproj = projector.name
                 group.mmprojPath = projector.absolutePath
@@ -325,6 +346,19 @@ class LlamaManager(private val context: Context) {
             group.mmprojPath = settings.optString("mmprojPath", "")
             if (group.mmprojPath.isBlank() && group.mmproj.isNotBlank()) {
                 group.mmprojPath = File(modelsDir, File(group.mmproj).name).absolutePath
+            }
+            // Self-heal older registrations that never paired a projector.
+            if (group.mmprojPath.isBlank()) {
+                val best = group.shardPaths.map { File(it).parentFile }
+                    .filterNotNull().distinct()
+                    .flatMap { dir -> dir.listFiles { f -> f.extension.equals("gguf", true) && isProjectorName(f.name) }?.toList() ?: emptyList() }
+                    .map { it to group.shards.maxOf { shard -> familyScore(shard, it.name) } }
+                    .filter { it.second > 0 }
+                    .maxByOrNull { it.second }?.first
+                if (best != null) {
+                    group.mmproj = best.name
+                    group.mmprojPath = best.absolutePath
+                }
             }
         }
         return groups.values.sortedBy { it.id }
@@ -506,9 +540,9 @@ class LlamaManager(private val context: Context) {
         var actualPort = if (port > 0) port else 8100 + (state.length() % 100)
         var args = listOf(
             "-m", model.absolutePath, "--host", "127.0.0.1", "--port", actualPort.toString(),
-            "-c", contextSize.coerceIn(512, 131072).toString()
+            "-c", contextSize.coerceIn(512, 131072).toString(), "--parallel", "1"
         ).toMutableList()
-        if (mmap) args.add("--mmap")
+        if (mmap) args.addAll(listOf("--load-mode", "mmap"))
         if (gpuLayers >= 0) args.addAll(listOf("-ngl", gpuLayers.coerceAtMost(9999).toString()))
         val mmproj = resolveMmprojPath(settings, group)
         if (mmproj.isNotBlank() && File(mmproj).exists())

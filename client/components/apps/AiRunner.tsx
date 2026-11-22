@@ -174,8 +174,13 @@ export function AiRunnerApp() {
         t("aiRunner.started", { port: res.port }, `Model running on port ${res.port}`),
       );
       refresh();
-    } catch {
-      toast.error(t("aiRunner.startFailed", undefined, "Could not start the model."));
+    } catch (error: any) {
+      const detail = typeof error?.message === "string" ? error.message.trim() : "";
+      toast.error(
+        detail
+          ? `${t("aiRunner.startFailed", undefined, "Could not start the model.")} ${detail}`
+          : t("aiRunner.startFailed", undefined, "Could not start the model."),
+      );
     } finally {
       setBusyModel(null);
     }
