@@ -370,6 +370,8 @@ export const ko = {
     viewStorage: "ê³µìœ ëœ íŒŒì¼ ë³´ê¸°",
   },
   apps: {
+    chatbotAttachImage: "Attach image for vision models",
+    chatbotVisionBadge: "Vision",
 
     aiRunnerTitle: "AI 러너",
     aiRunnerDesc: "mmap 지원과 함께 llama.cpp로 로컬 텍스트 모델을 실행합니다.",
@@ -3616,6 +3618,11 @@ notificationsTitle: "ì•Œë¦¼",
   },
 
   aiRunner: {
+    shards: "{have}/{total} shards",
+    missingShards: "missing files",
+    modelSize: "Size: {size}",
+    vision: "Vision (mmproj)",
+    jinja: "Jinja template",
     title: "AI Runner",
     subtitle: "Run text models locally with llama.cpp.",
     desktopOnly: "Running local AI models requires the desktop or mobile app.",

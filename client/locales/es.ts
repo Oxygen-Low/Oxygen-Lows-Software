@@ -379,6 +379,8 @@ export const es = {
     viewStorage: "Ver archivos compartidos",
   },
   apps: {
+    chatbotAttachImage: "Attach image for vision models",
+    chatbotVisionBadge: "Vision",
 
     aiRunnerTitle: "Ejecutor de IA",
     aiRunnerDesc: "Ejecuta modelos de texto locales con llama.cpp, con soporte mmap.",
@@ -3660,6 +3662,11 @@ export const es = {
   },
 
   aiRunner: {
+    shards: "{have}/{total} shards",
+    missingShards: "missing files",
+    modelSize: "Size: {size}",
+    vision: "Vision (mmproj)",
+    jinja: "Jinja template",
     title: "Ejecutor de IA",
     subtitle: "Ejecuta modelos de texto localmente con llama.cpp.",
     desktopOnly: "Ejecutar modelos locales requiere la aplicación de escritorio o móvil.",

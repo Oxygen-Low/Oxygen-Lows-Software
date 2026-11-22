@@ -21,6 +21,7 @@ export interface Model {
   isCustom?: boolean;
   isLocal?: boolean;
   isShared?: boolean;
+  isVision?: boolean;
 }
 
 export interface FreeModelUsageItem {

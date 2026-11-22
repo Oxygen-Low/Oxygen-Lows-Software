@@ -20,6 +20,7 @@ import {
   Globe,
   Sparkles,
   ImagePlus,
+  Image as ImageIcon,
   Download,
   Maximize2,
   Layers,
@@ -515,6 +516,8 @@ interface Message {
   is_image_gen?: boolean;
   image_url?: string;
   image_model?: string;
+  /** User-attached images for vision-capable models (data URLs). */
+  images?: string[];
   usedFallback?: boolean;
   fallbackModel?: string;
   fallbackReason?: string;
@@ -1244,6 +1247,8 @@ export function ChatbotApp() {
     [],
   );
   const [input, setInput] = useState("");
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
+  const visionFileInputRef = useRef<HTMLInputElement>(null);
   const [isTyping, setIsTyping] = useState(false);
   const isTypingRef = useRef(false);
   const [abortController, setAbortController] =
@@ -1409,6 +1414,9 @@ export function ChatbotApp() {
     setUserSelectedModel(modelId);
   }, []);
   const selectedProvider = "pollinations";
+  const selectedModelSupportsVision = !!models.find(
+    (m) => m.model_id === selectedModel,
+  )?.isVision;
 
   const formatModelLabel = useCallback(
     (provider: string, modelId: string) => {
@@ -1747,6 +1755,20 @@ export function ChatbotApp() {
       role: (m.role || "user") as "system" | "user" | "assistant",
       content: m.content || "",
     }));
+
+    // llama.cpp's OpenAI-compatible endpoint accepts image parts in the
+    // message content when a vision projector (mmproj) is loaded.
+    const toVisionMessages = (source: Message[]) =>
+      source.map((m) => {
+        const role = (m.role || "user") as "system" | "user" | "assistant";
+        if (!m.images?.length) return { role, content: m.content || "" };
+        const parts: any[] = [{ type: "text", text: m.content || "" }];
+        for (const image of m.images) {
+          parts.push({ type: "image_url", image_url: { url: image } });
+        }
+        return { role, content: parts };
+      });
+    const localMessages = toVisionMessages(msgs);
 
     const streamResponseData = async (
       response: Response,
@@ -2179,7 +2201,7 @@ export function ChatbotApp() {
         signal,
         body: JSON.stringify({
           model: model,
-          messages: msgs,
+          messages: provider === "local-llamacpp" ? localMessages : msgs,
           stream: true,
         }),
       };
@@ -2701,7 +2723,7 @@ export function ChatbotApp() {
       isVoiceInputRef.current = true;
     }
     const rawInput = typeof textOverride === "string" ? textOverride : input;
-    if (!rawInput.trim() || isTyping) return;
+    if ((!rawInput.trim() && pendingImages.length === 0) || isTyping) return;
 
     const isGuest = !session?.user?.id;
     let activeChatId = currentChatId;
@@ -2768,6 +2790,7 @@ export function ChatbotApp() {
       parent_id: lastMessageId,
       role: "user",
       content: rawInput,
+      images: pendingImages.length ? [...pendingImages] : undefined,
     };
     const isFirstMessage = messages.length === 0;
 
@@ -2790,6 +2813,7 @@ export function ChatbotApp() {
     };
     setActiveChildren(activeChildrenRef.current);
     if (!textOverride) setInput("");
+    setPendingImages([]);
     setIsTyping(true);
     isTypingRef.current = true;
     setQueueStatus(null);
@@ -4546,8 +4570,13 @@ export function ChatbotApp() {
                                     : "",
                                 )}
                               >
-                                <div className="text-sm text-white font-medium">
+                                <div className="text-sm text-white font-medium flex items-center gap-1.5">
                                   {m.name || m.model_id}
+                                  {m.isVision ? (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                                      {t("apps.chatbotVisionBadge", undefined, "Vision")}
+                                    </span>
+                                  ) : null}
                                 </div>
                                 <div className="text-[11px] text-slate-400 truncate w-full pr-4">
                                   {m.model_id}
@@ -4564,6 +4593,64 @@ export function ChatbotApp() {
                   </div>
                 </div>
                 )}
+
+                {selectedModelSupportsVision ? (
+                  <>
+                    <input
+                      ref={visionFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        files.forEach((file) => {
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            const url = String(reader.result || "");
+                            if (url) setPendingImages((prev) => [...prev, url]);
+                          };
+                          reader.readAsDataURL(file);
+                        });
+                        e.target.value = "";
+                      }}
+                    />
+                    {pendingImages.length > 0 ? (
+                      <div className="flex items-center gap-1 mr-1">
+                        {pendingImages.map((src, idx) => (
+                          <div key={idx} className="relative">
+                            <img
+                              src={src}
+                              alt="attachment"
+                              className="w-10 h-10 rounded object-cover border border-white/20"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPendingImages((prev) =>
+                                  prev.filter((_, i) => i !== idx),
+                                )
+                              }
+                              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center"
+                              aria-label="Remove image"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => visionFileInputRef.current?.click()}
+                      className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 mr-1 flex-shrink-0 bg-transparent hover:bg-white/5 text-white/70 hover:text-white"
+                      title={t("apps.chatbotAttachImage", undefined, "Attach image for vision models")}
+                      aria-label={t("apps.chatbotAttachImage", undefined, "Attach image for vision models")}
+                    >
+                      <ImageIcon className="w-5 h-5" />
+                    </button>
+                  </>
+                ) : null}
 
                 <button
                   type="button"
@@ -4631,7 +4718,7 @@ export function ChatbotApp() {
                 ) : (
                   <button
                     onClick={() => handleSendMessage()}
-                    disabled={!input.trim()}
+                    disabled={!input.trim() && pendingImages.length === 0}
                     className="w-10 h-10 rounded-full bg-transparent hover:bg-white/5 flex items-center justify-center text-white transition-colors duration-200 mr-2 flex-shrink-0 disabled:opacity-50"
                     aria-label="Send message"
                   >

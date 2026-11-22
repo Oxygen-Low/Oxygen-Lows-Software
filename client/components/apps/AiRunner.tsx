@@ -14,7 +14,7 @@ import {
   isAndroidRunner,
   llamaListModels,
   llamaPickModel,
-  llamaImportModel,
+  llamaImportModels,
   llamaUploadModel,
   llamaSaveModel,
   llamaDeleteModel,
@@ -117,7 +117,8 @@ export function AiRunnerApp() {
   const pickLocalModel = async () => {
     try {
       const picked = await llamaPickModel();
-      await toast.promise(llamaImportModel(picked.path), {
+      const paths = picked.paths?.length ? picked.paths : [picked.path];
+      await toast.promise(llamaImportModels(paths), {
         loading: t("aiRunner.importing", undefined, "Importing model…"),
         success: t("aiRunner.imported", undefined, "Model imported."),
         error: t("aiRunner.importFailed", undefined, "Could not import the model."),
@@ -130,11 +131,16 @@ export function AiRunnerApp() {
     }
   };
 
-  const onUpload = async (file: File) => {
+  const onUpload = async (files: File[]) => {
     setUploadProgress(0);
     try {
-      const base64 = await readFileAsBase64(file);
-      await llamaUploadModel(file.name, base64, true, setUploadProgress);
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const base64 = await readFileAsBase64(file);
+        await llamaUploadModel(file.name, base64, true, (pct) =>
+          setUploadProgress(Math.round((i * 100 + pct) / files.length)),
+        );
+      }
       toast.success(t("aiRunner.uploaded", undefined, "Model saved to this device."));
       refresh();
     } catch {
@@ -147,9 +153,10 @@ export function AiRunnerApp() {
 
   const updateSettings = async (model: LlamaModelEntry, patch: Partial<LlamaModelEntry>) => {
     const next = { ...model, ...patch };
-    setModels((prev) => prev.map((m) => (m.fileName === model.fileName ? next : m)));
+    setModels((prev) => prev.map((m) => (m.id === model.id ? next : m)));
     try {
       await llamaSaveModel({
+        id: model.id,
         fileName: model.fileName,
         displayName: next.displayName,
         mmap: next.mmap,
@@ -158,6 +165,9 @@ export function AiRunnerApp() {
         port: next.port,
         source: next.source,
         sourceId: next.sourceId,
+        shards: next.shards,
+        mmproj: next.mmproj,
+        useJinja: next.useJinja,
       });
     } catch {
       toast.error(t("aiRunner.saveFailed", undefined, "Could not save model settings."));
@@ -165,10 +175,10 @@ export function AiRunnerApp() {
   };
 
   const startModel = async (model: LlamaModelEntry) => {
-    setBusyModel(model.fileName);
+    setBusyModel(model.id);
     try {
       const res = await llamaStart({
-        fileName: model.fileName,
+        modelId: model.id,
         mmap: model.mmap,
         contextSize: model.contextSize,
         gpuLayers: model.gpuLayers,
@@ -323,7 +333,7 @@ export function AiRunnerApp() {
           <div className="flex flex-wrap gap-2">
             {!android ? (
               <Button variant="secondary" onClick={pickLocalModel}>
-                {t("aiRunner.importLocal", undefined, "Import local GGUF file")}
+                {t("aiRunner.importLocal", undefined, "Import local GGUF files")}
               </Button>
             ) : null}
             <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
@@ -333,10 +343,11 @@ export function AiRunnerApp() {
               ref={fileInputRef}
               type="file"
               accept=".gguf,application/octet-stream"
+              multiple
               className="hidden"
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) onUpload(file);
+                const files = Array.from(e.target.files || []);
+                if (files.length) onUpload(files);
               }}
             />
           </div>
@@ -379,11 +390,38 @@ export function AiRunnerApp() {
             </p>
           ) : (
             models.map((model) => (
-              <div key={model.fileName} className="rounded-lg border p-4 space-y-3">
+              <div key={model.id} className="rounded-lg border p-4 space-y-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-medium truncate">{model.displayName}</p>
                     <p className="text-xs text-muted-foreground truncate">{model.fileName}</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {model.shardExpected > 1 ? (
+                        <Badge variant={model.shardsComplete ? "outline" : "destructive"}>
+                          {t(
+                            "aiRunner.shards",
+                            { have: model.shardCount, total: model.shardExpected },
+                            `${model.shardCount}/${model.shardExpected} shards`,
+                          )}
+                          {model.shardsComplete
+                            ? ""
+                            : ` — ${t("aiRunner.missingShards", undefined, "missing files")}`}
+                        </Badge>
+                      ) : null}
+                      {model.hasVision ? (
+                        <Badge variant="secondary">
+                          {t("aiRunner.vision", undefined, "Vision (mmproj)")}
+                        </Badge>
+                      ) : null}
+                      <Badge variant="outline">
+                        {t("aiRunner.modelSize", { size: formatBytes(model.sizeBytes) }, formatBytes(model.sizeBytes))}
+                      </Badge>
+                    </div>
+                    {model.shardCount > 1 ? (
+                      <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                        {model.shards.join(", ")}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-2">
                     {model.port > 0 ? (
@@ -404,7 +442,7 @@ export function AiRunnerApp() {
                     ) : (
                       <Button
                         size="sm"
-                        disabled={!installed || busyModel === model.fileName}
+                        disabled={!installed || !model.shardsComplete || busyModel === model.id}
                         onClick={() => startModel(model)}
                       >
                         {t("aiRunner.run", undefined, "Run")}
@@ -414,7 +452,7 @@ export function AiRunnerApp() {
                       variant="ghost"
                       size="sm"
                       onClick={async () => {
-                        await llamaDeleteModel(model.fileName);
+                        await llamaDeleteModel(model.id);
                         refresh();
                       }}
                     >
@@ -423,7 +461,7 @@ export function AiRunnerApp() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                   <div className="flex items-center justify-between gap-2">
                     <Label htmlFor={`mmap-${model.fileName}`}>
                       {t("aiRunner.mmap", undefined, "mmap")}
@@ -473,6 +511,16 @@ export function AiRunnerApp() {
                       }
                     />
                   </label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor={`jinja-${model.id}`}>
+                      {t("aiRunner.jinja", undefined, "Jinja template")}
+                    </Label>
+                    <Switch
+                      id={`jinja-${model.id}`}
+                      checked={model.useJinja}
+                      onCheckedChange={(checked) => updateSettings(model, { useJinja: checked })}
+                    />
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {t(
@@ -488,6 +536,13 @@ export function AiRunnerApp() {
       </Card>
     </div>
   );
+}
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / Math.pow(1024, i)).toFixed(i >= 3 ? 1 : 0)} ${units[i]}`;
 }
 
 function readFileAsBase64(file: File): Promise<string> {

@@ -815,10 +815,17 @@ public partial class MainWindow : Window
                     string displayName = doc.RootElement.TryGetProperty("displayName", out var dn) ? dn.GetString() ?? "" : "";
                     string source = doc.RootElement.TryGetProperty("source", out var src) ? src.GetString() ?? "manual" : "manual";
                     string sourceId = doc.RootElement.TryGetProperty("sourceId", out var sid) ? sid.GetString() ?? "" : "";
+                    bool useJinja = doc.RootElement.TryGetProperty("useJinja", out var jj) && jj.GetBoolean();
+                    string mmproj = doc.RootElement.TryGetProperty("mmproj", out var mp) ? mp.GetString() ?? "" : "";
+                    var shards = new List<string>();
+                    if (doc.RootElement.TryGetProperty("shards", out var sh) && sh.ValueKind == JsonValueKind.Array)
+                        foreach (var s in sh.EnumerateArray())
+                            if (s.GetString() is string sv && !string.IsNullOrWhiteSpace(sv)) shards.Add(sv);
                     _llamaManager.SaveModelSettings(fileName, new LlamaManager.ModelSettings
                     {
                         Mmap = mmap, ContextSize = contextSize, GpuLayers = gpuLayers,
-                        Port = port, DisplayName = displayName, Source = source, SourceId = sourceId
+                        Port = port, DisplayName = displayName, Source = source, SourceId = sourceId,
+                        UseJinja = useJinja, Mmproj = mmproj, Shards = shards
                     });
                     SendWebMessage(new { id, success = true });
                 }
@@ -852,41 +859,53 @@ public partial class MainWindow : Window
                 }
                 else if (cmd == "llama_pick_model")
                 {
-                    string? selectedPath = null;
+                    var selectedPaths = new List<string>();
                     await Dispatcher.InvokeAsync(() =>
                     {
                         using var dialog = new System.Windows.Forms.OpenFileDialog
                         {
                             Filter = "GGUF model files (*.gguf)|*.gguf|All files (*.*)|*.*",
-                            Title = "Select a GGUF model file",
-                            Multiselect = false
+                            Title = "Select GGUF model file(s) (select all shards)",
+                            Multiselect = true
                         };
                         if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                            selectedPath = dialog.FileName;
+                            selectedPaths.AddRange(dialog.FileNames);
                     });
-                    if (string.IsNullOrEmpty(selectedPath))
+                    if (selectedPaths.Count == 0)
                         SendWebMessage(new { id, success = false, error = "Canceled" });
                     else
-                        SendWebMessage(new { id, success = true, data = new { path = selectedPath, fileName = Path.GetFileName(selectedPath) } });
+                        SendWebMessage(new { id, success = true, data = new
+                        {
+                            paths = selectedPaths.ToArray(),
+                            fileNames = selectedPaths.Select(Path.GetFileName).ToArray(),
+                            // Backwards-compatible single-file fields.
+                            path = selectedPaths[0],
+                            fileName = Path.GetFileName(selectedPaths[0])
+                        } });
                 }
-                else if (cmd == "llama_import_model")
+                else if (cmd == "llama_import_model" || cmd == "llama_import_models")
                 {
-                    // Copies a local GGUF file selected via llama_pick_model into the models folder.
-                    string sourcePath = doc.RootElement.TryGetProperty("sourcePath", out var sp) ? sp.GetString() ?? "" : "";
+                    var paths = new List<string>();
+                    if (doc.RootElement.TryGetProperty("paths", out var pathsProp) && pathsProp.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var p in pathsProp.EnumerateArray())
+                            if (p.GetString() is string pv && !string.IsNullOrWhiteSpace(pv)) paths.Add(pv);
+                    }
+                    else if (doc.RootElement.TryGetProperty("sourcePath", out var sp))
+                    {
+                        string single = sp.GetString() ?? "";
+                        if (!string.IsNullOrWhiteSpace(single)) paths.Add(single);
+                    }
                     try
                     {
-                        string fullPath = Path.GetFullPath(sourcePath);
-                        if (!File.Exists(fullPath)) throw new InvalidOperationException("Source file not found");
-                        string fileName = Path.GetFileName(fullPath);
-                        string target = _llamaManager.ResolveModelPath(fileName);
-                        await Task.Run(() => File.Copy(fullPath, target, true));
-                        _llamaManager.SaveModelSettings(fileName, new LlamaManager.ModelSettings { Mmap = true, DisplayName = fileName });
-                        SendWebMessage(new { id, success = true, data = new { fileName } });
+                        if (paths.Count == 0) throw new InvalidOperationException("No files selected");
+                        await Task.Run(() => _llamaManager.ImportModels(paths));
+                        SendWebMessage(new { id, success = true, data = new { fileNames = paths.Select(Path.GetFileName).ToArray() } });
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine("llama_import_model: " + ex.Message);
-                        SendWebMessage(new { id, success = false, error = "Unable to import model file" });
+                        Debug.WriteLine("llama_import_models: " + ex.Message);
+                        SendWebMessage(new { id, success = false, error = "Unable to import model files" });
                     }
                 }
                 else if (cmd == "llama_start")

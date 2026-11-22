@@ -81,10 +81,22 @@ namespace DesktopApp
             public string DisplayName { get; set; } = "";
             public string Source { get; set; } = "manual"; // manual | huggingface | modelscope
             public string SourceId { get; set; } = "";
+            public List<string> Shards { get; set; } = new List<string>();
+            public string Mmproj { get; set; } = "";
+            public bool UseJinja { get; set; } = false;
             public bool Mmap { get; set; } = true;
             public int ContextSize { get; set; } = 4096;
             public int GpuLayers { get; set; } = -1;
             public int Port { get; set; } = 0;
+        }
+
+        private sealed class ModelGroup
+        {
+            public string Id { get; set; } = "";
+            public List<string> Shards { get; set; } = new List<string>();
+            public int ExpectedShards { get; set; } = 1;
+            public string Mmproj { get; set; } = "";
+            public long SizeBytes { get; set; }
         }
 
         public sealed class ReleaseInfo
@@ -564,55 +576,188 @@ namespace DesktopApp
             return full;
         }
 
-        public List<object> ListModels()
+        private static readonly System.Text.RegularExpressions.Regex ShardPattern =
+            new System.Text.RegularExpressions.Regex(
+                @"^(?<base>.+?)-(?<idx>\d{5})-of-(?<total>\d{5})\.gguf$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        private static int ShardIndex(string fileName)
+        {
+            var m = ShardPattern.Match(fileName);
+            return m.Success && int.TryParse(m.Groups["idx"].Value, out int n) ? n : int.MaxValue;
+        }
+
+        /// <summary>
+        /// Groups .gguf files into models. Split models named
+        /// "base-00001-of-00002.gguf" become one group; mmproj files are attached
+        /// to the matching model family for vision support.
+        /// </summary>
+        private List<ModelGroup> BuildModelGroups()
         {
             Directory.CreateDirectory(ModelsDirectory);
-            var result = new List<object>();
-            foreach (var file in Directory.GetFiles(ModelsDirectory)
-                         .Where(f => f.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase)))
+            var files = Directory.GetFiles(ModelsDirectory)
+                .Where(f => f.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase)).ToList();
+            var groups = new Dictionary<string, ModelGroup>(StringComparer.OrdinalIgnoreCase);
+            var projectors = new List<string>();
+
+            foreach (var file in files)
             {
                 string name = Path.GetFileName(file);
-                _state.Models.TryGetValue(name, out var settings);
+                long size = new FileInfo(file).Length;
+                if (name.StartsWith("mmproj", StringComparison.OrdinalIgnoreCase))
+                {
+                    projectors.Add(name);
+                    continue;
+                }
+                var match = ShardPattern.Match(name);
+                string id = match.Success ? match.Groups["base"].Value : name;
+                int expected = match.Success && int.TryParse(match.Groups["total"].Value, out int total)
+                    ? Math.Max(1, total) : 1;
+                if (!groups.TryGetValue(id, out var group))
+                {
+                    group = new ModelGroup { Id = id, ExpectedShards = expected };
+                    groups[id] = group;
+                }
+                group.ExpectedShards = Math.Max(group.ExpectedShards, expected);
+                group.Shards.Add(name);
+                group.SizeBytes += size;
+            }
+
+            foreach (var group in groups.Values)
+            {
+                group.Shards.Sort((a, b) => ShardIndex(a).CompareTo(ShardIndex(b)));
+                string family = string.Join("-", group.Id.Split('-').Take(2)).ToLowerInvariant();
+                var projector = projectors.FirstOrDefault(p => p.ToLowerInvariant().Contains(family));
+                if (projector != null) group.Mmproj = projector;
+            }
+            return groups.Values.OrderBy(g => g.Id).ToList();
+        }
+
+        private ModelSettings? FindSettings(string id, ModelGroup group)
+        {
+            if (_state.Models.TryGetValue(id, out var settings)) return settings;
+            // Migrate legacy settings stored under the first shard's filename.
+            if (group.Shards.Count > 0 && _state.Models.TryGetValue(group.Shards[0], out settings))
+                return settings;
+            return null;
+        }
+
+        public List<object> ListModels()
+        {
+            var result = new List<object>();
+            foreach (var group in BuildModelGroups())
+            {
+                var settings = FindSettings(group.Id, group);
+                string mmproj = string.IsNullOrWhiteSpace(settings?.Mmproj) ? group.Mmproj : settings.Mmproj;
+                bool hasVision = !string.IsNullOrWhiteSpace(mmproj) && File.Exists(ResolveModelPath(mmproj));
+                bool complete = group.Shards.Count >= group.ExpectedShards &&
+                                group.Shards.All(s => File.Exists(ResolveModelPath(s)));
                 result.Add(new
                 {
-                    id = settings?.Id ?? name,
-                    fileName = name,
-                    displayName = settings?.DisplayName ?? name,
+                    id = group.Id,
+                    fileName = group.Shards[0],
+                    displayName = settings?.DisplayName ?? group.Id,
                     source = settings?.Source ?? "manual",
                     sourceId = settings?.SourceId ?? "",
                     mmap = settings?.Mmap ?? true,
                     contextSize = settings?.ContextSize ?? 4096,
                     gpuLayers = settings?.GpuLayers ?? -1,
                     port = settings?.Port ?? 0,
-                    sizeBytes = new FileInfo(file).Length,
-                    isRunning = settings != null && _processes.ContainsKey(settings.Port)
+                    sizeBytes = group.SizeBytes,
+                    isRunning = settings != null && _processes.ContainsKey(settings.Port),
+                    shards = group.Shards.ToArray(),
+                    shardCount = group.Shards.Count,
+                    shardExpected = group.ExpectedShards,
+                    shardsComplete = complete,
+                    hasVision = hasVision,
+                    mmproj = hasVision ? mmproj : "",
+                    useJinja = settings?.UseJinja ?? false
                 });
             }
             return result;
         }
 
-        public void SaveModelSettings(string fileName, ModelSettings settings)
+        public void SaveModelSettings(string modelId, ModelSettings settings)
         {
-            string safe = Path.GetFileName(fileName);
-            var existing = _state.Models.TryGetValue(safe, out var old) ? old : new ModelSettings();
-            existing.Id = settings.Id ?? existing.Id ?? safe;
-            existing.FileName = safe;
-            existing.DisplayName = string.IsNullOrWhiteSpace(settings.DisplayName) ? existing.DisplayName ?? safe : settings.DisplayName;
+            var existing = _state.Models.TryGetValue(modelId, out var old) ? old : new ModelSettings();
+            existing.Id = modelId;
+            if (!string.IsNullOrWhiteSpace(settings.FileName)) existing.FileName = Path.GetFileName(settings.FileName);
+            existing.DisplayName = string.IsNullOrWhiteSpace(settings.DisplayName) ? existing.DisplayName ?? modelId : settings.DisplayName;
             existing.Source = settings.Source ?? existing.Source;
             existing.SourceId = settings.SourceId ?? existing.SourceId;
+            if (settings.Shards != null && settings.Shards.Count > 0)
+                existing.Shards = settings.Shards.Select(s => Path.GetFileName(s) ?? s).ToList();
+            if (!string.IsNullOrWhiteSpace(settings.Mmproj)) existing.Mmproj = Path.GetFileName(settings.Mmproj);
+            existing.UseJinja = settings.UseJinja;
             existing.Mmap = settings.Mmap;
             existing.ContextSize = settings.ContextSize > 0 ? settings.ContextSize : 4096;
             existing.GpuLayers = settings.GpuLayers;
             existing.Port = settings.Port;
-            _state.Models[safe] = existing;
+            _state.Models[modelId] = existing;
             SaveState();
         }
 
-        public void DeleteModel(string fileName)
+        public List<string> ImportModels(IEnumerable<string> sourcePaths)
         {
-            string full = ResolveModelPath(fileName);
-            if (File.Exists(full)) File.Delete(full);
-            _state.Models.Remove(Path.GetFileName(fileName));
+            foreach (var source in sourcePaths)
+            {
+                string full = Path.GetFullPath(source);
+                if (!File.Exists(full)) continue;
+                string name = Path.GetFileName(full);
+                string target = ResolveModelPath(name);
+                if (string.Equals(full, target, StringComparison.OrdinalIgnoreCase)) continue;
+                File.Copy(full, target, true);
+            }
+            var ids = new List<string>();
+            foreach (var group in BuildModelGroups())
+            {
+                if (!_state.Models.ContainsKey(group.Id))
+                {
+                    _state.Models[group.Id] = new ModelSettings
+                    {
+                        Id = group.Id,
+                        FileName = group.Shards[0],
+                        DisplayName = group.Id,
+                        Shards = group.Shards.ToList(),
+                        Mmproj = group.Mmproj,
+                        Mmap = true,
+                        // Hy4 Flash requires Jinja chat templates.
+                        UseJinja = group.Id.IndexOf("hy4", StringComparison.OrdinalIgnoreCase) >= 0
+                    };
+                }
+                ids.Add(group.Id);
+            }
+            SaveState();
+            return ids;
+        }
+
+        public void DeleteModel(string modelId)
+        {
+            var group = BuildModelGroups().FirstOrDefault(
+                g => g.Id.Equals(modelId, StringComparison.OrdinalIgnoreCase) ||
+                     g.Shards.Contains(modelId, StringComparer.OrdinalIgnoreCase));
+            if (group != null)
+            {
+                foreach (var shard in group.Shards)
+                {
+                    string path = ResolveModelPath(shard);
+                    if (File.Exists(path)) File.Delete(path);
+                }
+                if (!string.IsNullOrWhiteSpace(group.Mmproj))
+                {
+                    // Only remove the projector if no other model uses it.
+                    bool usedElsewhere = BuildModelGroups().Any(g => !string.Equals(g.Id, group.Id, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(g.Mmproj, group.Mmproj, StringComparison.OrdinalIgnoreCase));
+                    if (!usedElsewhere)
+                    {
+                        string projector = ResolveModelPath(group.Mmproj);
+                        if (File.Exists(projector)) File.Delete(projector);
+                    }
+                }
+                _state.Models.Remove(group.Id);
+            }
+            // Remove any legacy key stored under the file name.
+            _state.Models.Remove(Path.GetFileName(modelId));
             SaveState();
         }
 
@@ -632,7 +777,12 @@ namespace DesktopApp
             }
             if (File.Exists(full)) File.Delete(full);
             File.Move(full + ".upload", full);
-            if (settings != null) SaveModelSettings(fileName, settings);
+            if (settings != null)
+            {
+                if (fileName.IndexOf("hy4", StringComparison.OrdinalIgnoreCase) >= 0)
+                    settings.UseJinja = true;
+                SaveModelSettings(fileName, settings);
+            }
             progress?.Invoke(100);
         }
 
@@ -645,11 +795,18 @@ namespace DesktopApp
 
         // ─── Process lifecycle ───────────────────────────────────────────────
 
-        public int Start(string modelFileName, int port, bool mmap, int contextSize, int gpuLayers)
+        public int Start(string modelId, int port, bool mmap, int contextSize, int gpuLayers)
         {
             string serverExe = FindServerExecutable() ?? throw new InvalidOperationException("llama.cpp is not installed");
-            string modelPath = ResolveModelPath(modelFileName);
+            var group = BuildModelGroups().FirstOrDefault(
+                g => g.Id.Equals(modelId, StringComparison.OrdinalIgnoreCase) ||
+                     g.Shards.Contains(modelId, StringComparer.OrdinalIgnoreCase))
+                ?? throw new InvalidOperationException("Model not found");
+            if (group.Shards.Count < group.ExpectedShards)
+                throw new InvalidOperationException($"Model is incomplete: {group.Shards.Count}/{group.ExpectedShards} shards present");
+            string modelPath = ResolveModelPath(group.Shards[0]);
             if (!File.Exists(modelPath)) throw new InvalidOperationException("Model file not found");
+            var settings = FindSettings(group.Id, group);
 
             int instanceId = _nextInstanceId++;
             if (port <= 0) port = 8100 + (instanceId % 100);
@@ -662,8 +819,14 @@ namespace DesktopApp
             EnsurePortFree(port);
 
             string args = $"-m \"{modelPath}\" --host 127.0.0.1 --port {port} -c {Math.Clamp(contextSize, 512, 131072)}";
+            // llama.cpp auto-discovers sibling shards from the -0000N-of-0000M
+            // naming pattern in the same directory, so only shard 1 is passed.
             if (mmap) args += " --mmap";
             if (gpuLayers >= 0) args += $" -ngl {Math.Min(gpuLayers, 9999)}";
+            string mmproj = string.IsNullOrWhiteSpace(settings?.Mmproj) ? group.Mmproj : settings.Mmproj;
+            if (!string.IsNullOrWhiteSpace(mmproj) && File.Exists(ResolveModelPath(mmproj)))
+                args += $" --mmproj \"{ResolveModelPath(mmproj)}\"";
+            if (settings?.UseJinja == true) args += " --jinja";
 
             var psi = new ProcessStartInfo
             {
@@ -680,16 +843,17 @@ namespace DesktopApp
             if (!process.Start()) throw new InvalidOperationException("Failed to start llama-server");
             _processes[port] = process;
 
-            _state.Models.TryGetValue(Path.GetFileName(modelFileName), out var settings);
             if (settings == null) settings = new ModelSettings();
             settings.Port = port;
             settings.Mmap = mmap;
             settings.ContextSize = contextSize;
             settings.GpuLayers = gpuLayers;
-            settings.DisplayName = string.IsNullOrEmpty(settings.DisplayName) ? Path.GetFileName(modelFileName) : settings.DisplayName;
-            settings.FileName = Path.GetFileName(modelFileName);
-            settings.Id = string.IsNullOrEmpty(settings.Id) ? Path.GetFileName(modelFileName) : settings.Id;
-            _state.Models[Path.GetFileName(modelFileName)] = settings;
+            settings.DisplayName = string.IsNullOrEmpty(settings.DisplayName) ? group.Id : settings.DisplayName;
+            settings.FileName = group.Shards[0];
+            settings.Shards = group.Shards.ToList();
+            if (string.IsNullOrWhiteSpace(settings.Mmproj)) settings.Mmproj = group.Mmproj;
+            settings.Id = group.Id;
+            _state.Models[group.Id] = settings;
             SaveState();
 
             return port;
@@ -749,7 +913,9 @@ namespace DesktopApp
                     baseUrl = $"http://127.0.0.1:{port}",
                     mmap = kv.Value.Mmap,
                     contextSize = kv.Value.ContextSize,
-                    gpuLayers = kv.Value.GpuLayers
+                    gpuLayers = kv.Value.GpuLayers,
+                    hasVision = !string.IsNullOrWhiteSpace(kv.Value.Mmproj),
+                    useJinja = kv.Value.UseJinja
                 });
             }
             return result;

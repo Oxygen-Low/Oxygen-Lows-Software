@@ -360,6 +360,8 @@ export const zhCN = {
     viewStorage: "æŸ¥çœ‹åˆ†äº«çš„æ–‡ä»¶",
   },
   apps: {
+    chatbotAttachImage: "Attach image for vision models",
+    chatbotVisionBadge: "Vision",
 
     aiRunnerTitle: "AI 运行器",
     aiRunnerDesc: "使用 llama.cpp 运行本地文本模型，支持 mmap。",
@@ -3538,6 +3540,11 @@ notificationsTitle: "é€šçŸ¥",
   },
 
   aiRunner: {
+    shards: "{have}/{total} shards",
+    missingShards: "missing files",
+    modelSize: "Size: {size}",
+    vision: "Vision (mmproj)",
+    jinja: "Jinja template",
     title: "AI Runner",
     subtitle: "Run text models locally with llama.cpp.",
     desktopOnly: "Running local AI models requires the desktop or mobile app.",

@@ -506,7 +506,7 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
                 "llama_start" -> {
                     try {
                         val port = llamaManager.start(
-                            json.optString("fileName", ""),
+                            json.optString("modelId", "").ifBlank { json.optString("fileName", "") },
                             json.optInt("port", 0),
                             !json.has("mmap") || json.optBoolean("mmap", true),
                             json.optInt("contextSize", 4096),

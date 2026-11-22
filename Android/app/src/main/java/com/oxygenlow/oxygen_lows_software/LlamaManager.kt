@@ -242,41 +242,95 @@ class LlamaManager(private val context: Context) {
         saveConfig()
     }
 
+    private data class ModelGroup(
+        val id: String,
+        val shards: MutableList<String> = mutableListOf(),
+        var expectedShards: Int = 1,
+        var mmproj: String = "",
+        var sizeBytes: Long = 0
+    )
+
+    private val shardRegex = Regex("^(.+?)-(\\d{5})-of-(\\d{5})\\.gguf$", RegexOption.IGNORE_CASE)
+
+    /** Groups GGUF files into models; split files become one model. */
+    private fun buildModelGroups(): List<ModelGroup> {
+        val files = modelsDir.listFiles { f -> f.extension.equals("gguf", true) }?.toList() ?: emptyList()
+        val groups = LinkedHashMap<String, ModelGroup>()
+        val projectors = mutableListOf<String>()
+        for (file in files) {
+            val name = file.name
+            if (name.startsWith("mmproj", true)) { projectors.add(name); continue }
+            val match = shardRegex.matchEntire(name)
+            val id = match?.groupValues?.get(1) ?: name
+            val expected = match?.groupValues?.getOrNull(3)?.toIntOrNull()?.coerceAtLeast(1) ?: 1
+            val group = groups.getOrPut(id) { ModelGroup(id) }
+            group.expectedShards = maxOf(group.expectedShards, expected)
+            group.shards.add(name)
+            group.sizeBytes += file.length()
+        }
+        for (group in groups.values) {
+            group.shards.sortBy { shardRegex.matchEntire(it)?.groupValues?.getOrNull(2)?.toIntOrNull() ?: Int.MAX_VALUE }
+            val family = group.id.split('-').take(2).joinToString("-").lowercase()
+            group.mmproj = projectors.firstOrNull { it.lowercase().contains(family) } ?: ""
+        }
+        return groups.values.sortedBy { it.id }
+    }
+
+    private fun findSettings(id: String, group: ModelGroup): JSONObject {
+        state.optJSONObject(id)?.let { return it }
+        group.shards.firstOrNull()?.let { state.optJSONObject(it)?.let { return it } }
+        return JSONObject()
+    }
+
     fun listModels(): JSONArray {
         val arr = JSONArray()
-        modelsDir.listFiles { f -> f.extension.equals("gguf", true) }?.forEach { file ->
-            val settings = state.optJSONObject(file.name) ?: JSONObject()
+        for (group in buildModelGroups()) {
+            val settings = findSettings(group.id, group)
+            val mmproj = settings.optString("mmproj", "").ifBlank { group.mmproj }
+            val hasVision = mmproj.isNotBlank() && resolveModel(mmproj).exists()
+            val complete = group.shards.size >= group.expectedShards &&
+                group.shards.all { resolveModel(it).exists() }
+            val shards = JSONArray(); group.shards.forEach { shards.put(it) }
             arr.put(JSONObject().apply {
-                put("id", settings.optString("id", file.name))
-                put("fileName", file.name)
-                put("displayName", settings.optString("displayName", file.name))
+                put("id", group.id)
+                put("fileName", group.shards.first())
+                put("displayName", settings.optString("displayName", group.id))
                 put("source", settings.optString("source", "manual"))
                 put("sourceId", settings.optString("sourceId", ""))
                 put("mmap", settings.optBoolean("mmap", true))
                 put("contextSize", settings.optInt("contextSize", 4096))
                 put("gpuLayers", settings.optInt("gpuLayers", -1))
                 put("port", settings.optInt("port", 0))
-                put("sizeBytes", file.length())
+                put("sizeBytes", group.sizeBytes)
                 put("isRunning", processes.containsKey(settings.optInt("port", 0)))
+                put("shards", shards)
+                put("shardCount", group.shards.size)
+                put("shardExpected", group.expectedShards)
+                put("shardsComplete", complete)
+                put("hasVision", hasVision)
+                put("mmproj", if (hasVision) mmproj else "")
+                put("useJinja", settings.optBoolean("useJinja", false))
             })
         }
         return arr
     }
 
     fun saveModelSettings(settings: JSONObject) {
-        val fileName = File(settings.optString("fileName", "")).name
-        require(fileName.isNotBlank()) { "Model file name is required" }
-        val existing = state.optJSONObject(fileName) ?: JSONObject()
-        existing.put("id", settings.optString("id", existing.optString("id", fileName)))
-        existing.put("fileName", fileName)
-        existing.put("displayName", settings.optString("displayName", existing.optString("displayName", fileName)))
+        val modelId = settings.optString("id", "").ifBlank { File(settings.optString("fileName", "")).name }
+        require(modelId.isNotBlank()) { "Model id is required" }
+        val existing = state.optJSONObject(modelId) ?: JSONObject()
+        existing.put("id", modelId)
+        if (settings.has("fileName")) existing.put("fileName", File(settings.optString("fileName", "")).name)
+        existing.put("displayName", settings.optString("displayName", existing.optString("displayName", modelId)))
         existing.put("source", settings.optString("source", existing.optString("source", "manual")))
         existing.put("sourceId", settings.optString("sourceId", existing.optString("sourceId", "")))
+        if (settings.has("mmproj")) existing.put("mmproj", File(settings.optString("mmproj", "")).name)
+        existing.put("useJinja", settings.optBoolean("useJinja", existing.optBoolean("useJinja", false)))
         existing.put("mmap", settings.optBoolean("mmap", true))
         existing.put("contextSize", settings.optInt("contextSize", 4096))
         existing.put("gpuLayers", settings.optInt("gpuLayers", -1))
         existing.put("port", settings.optInt("port", 0))
-        state.put(fileName, existing); saveState()
+        state.put(modelId, existing); saveState()
     }
 
     fun saveUploadedModel(fileName: String, bytes: ByteArray, mmap: Boolean, onProgress: (Int) -> Unit) {
@@ -297,26 +351,36 @@ class LlamaManager(private val context: Context) {
         onProgress(100)
     }
 
-    fun deleteModel(fileName: String) {
-        val file = resolveModel(fileName)
-        if (file.exists()) file.delete()
-        state.remove(fileName); saveState()
+    fun deleteModel(modelId: String) {
+        val group = buildModelGroups().firstOrNull { it.id.equals(modelId, true) || it.shards.any { s -> s.equals(modelId, true) } }
+        if (group != null) {
+            group.shards.forEach { resolveModel(it).takeIf { f -> f.exists() }?.delete() }
+            state.remove(group.id)
+        } else {
+            resolveModel(modelId).takeIf { it.exists() }?.delete()
+        }
+        state.remove(modelId)
+        saveState()
     }
 
     fun importModel(sourcePath: String): String {
         val source = File(sourcePath)
         require(source.exists()) { "Source file not found" }
         val name = source.name
-        val target = resolveModel(name)
-        source.copyTo(target, overwrite = true)
-        saveModelSettings(JSONObject().apply { put("fileName", name); put("mmap", true) })
+        source.copyTo(resolveModel(name), overwrite = true)
+        saveModelSettings(JSONObject().apply { put("fileName", name); put("id", name); put("mmap", true) })
         return name
     }
 
-    fun start(fileName: String, port: Int, mmap: Boolean, contextSize: Int, gpuLayers: Int): Int {
+    fun start(modelId: String, port: Int, mmap: Boolean, contextSize: Int, gpuLayers: Int): Int {
         val exe = findServer() ?: throw IllegalStateException("llama.cpp is not installed")
-        val model = resolveModel(fileName)
+        val group = buildModelGroups().firstOrNull { it.id.equals(modelId, true) || it.shards.any { s -> s.equals(modelId, true) } }
+            ?: throw IllegalStateException("Model not found")
+        if (group.shards.size < group.expectedShards)
+            throw IllegalStateException("Model incomplete: ${group.shards.size}/${group.expectedShards} shards")
+        val model = resolveModel(group.shards.first())
         require(model.exists()) { "Model file not found" }
+        val settings = findSettings(group.id, group)
         var actualPort = if (port > 0) port else 8100 + (state.length() % 100)
         var args = listOf(
             "-m", model.absolutePath, "--host", "127.0.0.1", "--port", actualPort.toString(),
@@ -324,16 +388,21 @@ class LlamaManager(private val context: Context) {
         ).toMutableList()
         if (mmap) args.add("--mmap")
         if (gpuLayers >= 0) args.addAll(listOf("-ngl", gpuLayers.coerceAtMost(9999).toString()))
+        val mmproj = settings.optString("mmproj", "").ifBlank { group.mmproj }
+        if (mmproj.isNotBlank() && resolveModel(mmproj).exists())
+            args.addAll(listOf("--mmproj", resolveModel(mmproj).absolutePath))
+        if (settings.optBoolean("useJinja", false)) args.add("--jinja")
 
         val builder = ProcessBuilder(listOf(exe.absolutePath) + args)
             .directory(binDir)
             .redirectErrorStream(true)
         val process = builder.start()
         processes[actualPort] = process
-        val s = state.optJSONObject(fileName) ?: JSONObject()
+        val s = settings
+        s.put("id", group.id)
         s.put("port", actualPort); s.put("mmap", mmap)
         s.put("contextSize", contextSize); s.put("gpuLayers", gpuLayers)
-        state.put(fileName, s); saveState()
+        state.put(group.id, s); saveState()
         return actualPort
     }
 
@@ -367,6 +436,8 @@ class LlamaManager(private val context: Context) {
                 put("mmap", s.optBoolean("mmap", true))
                 put("contextSize", s.optInt("contextSize", 4096))
                 put("gpuLayers", s.optInt("gpuLayers", -1))
+                put("hasVision", s.optString("mmproj", "").isNotBlank())
+                put("useJinja", s.optBoolean("useJinja", false))
             })
         }
         return arr

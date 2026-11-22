@@ -7,6 +7,7 @@
  */
 
 export interface LlamaModelSettings {
+  id?: string;
   fileName: string;
   displayName?: string;
   mmap?: boolean;
@@ -15,6 +16,9 @@ export interface LlamaModelSettings {
   port?: number;
   source?: string;
   sourceId?: string;
+  shards?: string[];
+  mmproj?: string;
+  useJinja?: boolean;
 }
 
 export interface LlamaModelEntry {
@@ -29,6 +33,13 @@ export interface LlamaModelEntry {
   port: number;
   sizeBytes: number;
   isRunning: boolean;
+  shards: string[];
+  shardCount: number;
+  shardExpected: number;
+  shardsComplete: boolean;
+  hasVision: boolean;
+  mmproj: string;
+  useJinja: boolean;
 }
 
 export interface LlamaStatus {
@@ -51,6 +62,8 @@ export interface LlamaRunningInstance {
   mmap: boolean;
   contextSize: number;
   gpuLayers: number;
+  hasVision: boolean;
+  useJinja: boolean;
 }
 
 export interface DependencyUpdate {
@@ -240,20 +253,33 @@ export function llamaUploadModel(
   return callNative("llama_upload_model", { fileName, data, mmap }, 600000, onProgress);
 }
 
-export function llamaDeleteModel(fileName: string): Promise<any> {
-  return callNative("llama_delete_model", { fileName });
+export function llamaDeleteModel(modelId: string): Promise<any> {
+  return callNative("llama_delete_model", { fileName: modelId });
 }
 
-export function llamaPickModel(): Promise<{ path: string; fileName: string }> {
-  return callNative<{ path: string; fileName: string }>("llama_pick_model");
+export interface LlamaPickedFiles {
+  paths: string[];
+  fileNames: string[];
+  /** Backwards-compatible single-file fields. */
+  path: string;
+  fileName: string;
+}
+
+export function llamaPickModel(): Promise<LlamaPickedFiles> {
+  return callNative<LlamaPickedFiles>("llama_pick_model");
 }
 
 export function llamaImportModel(sourcePath: string): Promise<{ fileName: string }> {
   return callNative<{ fileName: string }>("llama_import_model", { sourcePath });
 }
 
+export function llamaImportModels(paths: string[]): Promise<{ fileNames: string[] }> {
+  return callNative<{ fileNames: string[] }>("llama_import_models", { paths });
+}
+
 export function llamaStart(settings: {
-  fileName: string;
+  modelId?: string;
+  fileName?: string;
   port?: number;
   mmap?: boolean;
   contextSize?: number;

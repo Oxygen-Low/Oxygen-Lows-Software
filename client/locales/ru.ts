@@ -376,6 +376,8 @@ export const ru = {
     viewStorage: "ÐŸÐ¾ÑÐ¼Ð¾Ñ‚Ñ€ÐµÑ‚ÑŒ Ð¾Ð±Ñ‰Ð¸Ðµ Ñ„Ð°Ð¹Ð»Ñ‹",
   },
   apps: {
+    chatbotAttachImage: "Attach image for vision models",
+    chatbotVisionBadge: "Vision",
 
     aiRunnerTitle: "AI Runner",
     aiRunnerDesc: "Запуск локальных текстовых моделей через llama.cpp с поддержкой mmap.",
@@ -3646,6 +3648,11 @@ notificationsTitle: "Ð£Ð²ÐµÐ´Ð¾Ð¼Ð»ÐµÐ½Ð¸Ñ",
   },
 
   aiRunner: {
+    shards: "{have}/{total} shards",
+    missingShards: "missing files",
+    modelSize: "Size: {size}",
+    vision: "Vision (mmproj)",
+    jinja: "Jinja template",
     title: "AI Runner",
     subtitle: "Run text models locally with llama.cpp.",
     desktopOnly: "Running local AI models requires the desktop or mobile app.",

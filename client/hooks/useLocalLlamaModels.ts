@@ -54,6 +54,7 @@ export function useLocalLlamaModels(refreshMs = 5000) {
     category: "custom" as const,
     isCustom: true,
     isLocal: true,
+    isVision: !!instance.hasVision,
   }));
 
   return { models, instances, loading, refresh };

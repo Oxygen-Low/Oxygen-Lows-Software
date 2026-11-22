@@ -344,6 +344,8 @@ export const en = {
     viewStorage: "View Shared Files",
   },
   apps: {
+    chatbotAttachImage: "Attach image for vision models",
+    chatbotVisionBadge: "Vision",
 
     aiRunnerTitle: "AI Runner",
     aiRunnerDesc: "Run local text models with llama.cpp, with mmap support.",
@@ -3641,6 +3643,11 @@ export const en = {
   },
 
   aiRunner: {
+    shards: "{have}/{total} shards",
+    missingShards: "missing files",
+    modelSize: "Size: {size}",
+    vision: "Vision (mmproj)",
+    jinja: "Jinja template",
     title: "AI Runner",
     subtitle: "Run text models locally with llama.cpp.",
     desktopOnly: "Running local AI models requires the desktop or mobile app.",
