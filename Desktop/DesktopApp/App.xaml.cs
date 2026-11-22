@@ -47,7 +47,6 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        PythonServerManager.Instance.Stop();
         base.OnExit(e);
     }
 
@@ -63,7 +62,6 @@ public partial class App : System.Windows.Application
 
     private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
     {
-        PythonServerManager.Instance.Stop();
         if (e.ExceptionObject is Exception ex)
         {
             System.Windows.MessageBox.Show(

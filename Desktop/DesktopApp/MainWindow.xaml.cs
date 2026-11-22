@@ -118,16 +118,6 @@ public partial class MainWindow : Window
             });
         ");
 
-        // Start isolated Python background server
-        PythonServerManager.Instance.OnServerReady += (url) =>
-        {
-            Dispatcher.Invoke(() =>
-            {
-                SendWebMessage(new { @event = "python_server_ready", data = new { url, port = PythonServerManager.Instance.Port, token = PythonServerManager.Instance.AuthToken } });
-            });
-        };
-        _ = PythonServerManager.Instance.StartAsync();
-
         // Initialize Game Process Monitor
         GameProcessMonitor.Instance.SessionStarted += (session) =>
         {
@@ -546,59 +536,6 @@ public partial class MainWindow : Window
                         SendWebMessage(new { id, success = true, data = new { isAdmin = true } });
                     }
                 }
-                else if (cmd == "get_python_server")
-                {
-                    SendWebMessage(new 
-                    { 
-                        id, 
-                        success = true, 
-                        data = new 
-                        { 
-                            isRunning = PythonServerManager.Instance.IsRunning,
-                            port = PythonServerManager.Instance.Port,
-                            url = PythonServerManager.Instance.ServerUrl,
-                            token = PythonServerManager.Instance.AuthToken,
-                            status = PythonServerManager.Instance.Status,
-                            error = PythonServerManager.Instance.LastError
-                        } 
-                    });
-                }
-                else if (cmd == "restart_python_server")
-                {
-                    PythonServerManager.Instance.Stop();
-                    bool ok = await PythonServerManager.Instance.StartAsync();
-                    SendWebMessage(new 
-                    { 
-                        id, 
-                        success = ok, 
-                        error = ok ? null : (PythonServerManager.Instance.LastError ?? "Failed to start Python server"),
-                        data = new 
-                        { 
-                            isRunning = PythonServerManager.Instance.IsRunning,
-                            port = PythonServerManager.Instance.Port,
-                            url = PythonServerManager.Instance.ServerUrl,
-                            token = PythonServerManager.Instance.AuthToken,
-                            status = PythonServerManager.Instance.Status,
-                            error = PythonServerManager.Instance.LastError
-                        } 
-                    });
-                }
-                else if (cmd == "call_python_action")
-                {
-                    string appId = doc.RootElement.TryGetProperty("app", out var a) ? a.GetString() ?? "" : "";
-                    string action = doc.RootElement.TryGetProperty("action", out var act) ? act.GetString() ?? "" : "";
-                    string paramsJson = doc.RootElement.TryGetProperty("params", out var p) ? p.GetRawText() : "{}";
-
-                    var (callSuccess, callData, callError) = await PythonServerManager.Instance.CallActionAsync(appId, action, paramsJson);
-                    if (callSuccess)
-                    {
-                        SendWebMessage(new { id, success = true, data = callData });
-                    }
-                    else
-                    {
-                        SendWebMessage(new { id, success = false, error = callError ?? "Python action failed" });
-                    }
-                }
                 else if (cmd == "fetch_local_models")
                 {
                     var models = new System.Collections.Concurrent.ConcurrentBag<Dictionary<string, string>>();
@@ -890,73 +827,6 @@ public partial class MainWindow : Window
                     }).ToList();
 
                     SendWebMessage(new { id, success = true, data = new { runningGames } });
-                }
-                else if (cmd == "open_models_folder")
-                {
-                    try
-                    {
-                        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                        string modelsFolder = Path.Combine(localAppData, "OxygenLowsSoftware", "Models");
-                        if (!Directory.Exists(modelsFolder))
-                        {
-                            Directory.CreateDirectory(modelsFolder);
-                        }
-                        Process.Start(new ProcessStartInfo
-                        {
-                            FileName = "explorer.exe",
-                            Arguments = $"\"{modelsFolder}\"",
-                            UseShellExecute = true
-                        });
-                        SendWebMessage(new { id, success = true, data = new { path = modelsFolder } });
-                    }
-                    catch (Exception ex)
-                    {
-                        SendWebMessage(new { id, success = false, error = ex.Message });
-                    }
-                }
-                else if (cmd == "pick_model_file")
-                {
-                    object? fileResult = null;
-                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        using var dialog = new System.Windows.Forms.OpenFileDialog
-                        {
-                            Title = "Select LLM Model File",
-                            Filter = "LLM Models (*.gguf;*.safetensors)|*.gguf;*.safetensors|GGUF Models (*.gguf)|*.gguf|SafeTensors Models (*.safetensors)|*.safetensors|All Files (*.*)|*.*",
-                            Multiselect = false,
-                            CheckFileExists = true
-                        };
-
-                        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK && !string.IsNullOrEmpty(dialog.FileName))
-                        {
-                            fileResult = new
-                            {
-                                path = dialog.FileName,
-                                name = Path.GetFileName(dialog.FileName),
-                                extension = Path.GetExtension(dialog.FileName).ToLowerInvariant()
-                            };
-                        }
-                    });
-
-                    SendWebMessage(new { id, success = true, data = fileResult });
-                }
-                else if (cmd == "pick_model_folder")
-                {
-                    string? selectedFolder = null;
-                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        using var dialog = new System.Windows.Forms.FolderBrowserDialog
-                        {
-                            Description = "Select Model / Checkpoint Directory",
-                            UseDescriptionForTitle = true
-                        };
-                        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                        {
-                            selectedFolder = dialog.SelectedPath;
-                        }
-                    });
-
-                    SendWebMessage(new { id, success = true, data = selectedFolder != null ? new { path = selectedFolder, name = Path.GetFileName(selectedFolder) } : null });
                 }
                 else if (cmd == "get_drives")
                 {
@@ -1401,6 +1271,5 @@ public partial class MainWindow : Window
     {
         _updateCheckTimer?.Stop();
         GameProcessMonitor.Instance.Stop();
-        PythonServerManager.Instance.Stop();
     }
 }

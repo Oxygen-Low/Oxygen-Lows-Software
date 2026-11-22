@@ -2,8 +2,6 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/lib/db";
 import { getLocalSession } from "@/lib/localSession";
 import { fetchPollinationsBalance } from "@/services/pollinationsClient";
-import { llmRunnerService } from "@/services/llmRunnerService";
-import { isDesktopBridgeAvailable } from "@/lib/desktopBridge";
 import { runWhenIdle } from "@/lib/idle";
 import {
   encryptApiKey,
@@ -49,14 +47,6 @@ export interface FreeUsageData {
   usedPoints?: number;
   remainingPoints?: number;
   models: Record<string, FreeModelUsageItem>;
-}
-
-export interface LocalProviderStatus {
-  ollama: boolean;
-  lmstudio: boolean;
-  kobold: boolean;
-  desktopBridge: boolean;
-  totalLocal: number;
 }
 
 export interface ProviderInfo {
@@ -245,56 +235,8 @@ export function useAiModels() {
   const [hordeStatus, setHordeStatus] = useState<Record<string, { workers: number; queued: number; speed?: string; eta?: number }>>({});
   const [freeUsage, setFreeUsage] = useState<FreeUsageData | null>(null);
   const [isMasterKeyActive, setIsMasterKeyActive] = useState(false);
-  const [localRunnerModel, setLocalRunnerModel] = useState<Model | null>(null);
   const loadIdRef = useRef<number>(0);
   const isMountedRef = useRef<boolean>(true);
-
-  const checkLocalRunner = useCallback(async () => {
-    if (!isDesktopBridgeAvailable()) {
-      if (isMountedRef.current) setLocalRunnerModel(null);
-      return null;
-    }
-    try {
-      const status = await llmRunnerService.getStatus();
-      if (status?.is_active && status.active_model?.name) {
-        const item: Model = {
-          id: `local:${status.active_model.name}`,
-          provider: "local-llm-runner",
-          model_id: status.active_model.name,
-          name: `${status.active_model.name} (${status.active_model.engine_type.toUpperCase()})`,
-          rate: "Local GPU/CPU",
-          category: "custom",
-          isLocal: true,
-        };
-        if (isMountedRef.current) {
-          setLocalRunnerModel(item);
-        }
-        return item;
-      } else {
-        if (isMountedRef.current) {
-          setLocalRunnerModel(null);
-        }
-        return null;
-      }
-    } catch {
-      if (isMountedRef.current) {
-        setLocalRunnerModel(null);
-      }
-      return null;
-    }
-  }, []);
-
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | undefined;
-    const cancelIdle = runWhenIdle(() => {
-      checkLocalRunner();
-      interval = setInterval(checkLocalRunner, 3500);
-    });
-    return () => {
-      cancelIdle();
-      if (interval) clearInterval(interval);
-    };
-  }, [checkLocalRunner]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -476,7 +418,7 @@ export function useAiModels() {
     return cancelIdle;
   }, [loadCustomModels, loadDefaults, loadApiKey]);
 
-  // Combine built-in models, custom models, and active local runner model
+  // Combine built-in models and custom models
   useEffect(() => {
     const combined = [...BUILTIN_MODELS];
     for (const cm of customModels) {
@@ -484,11 +426,8 @@ export function useAiModels() {
         combined.push(cm);
       }
     }
-    if (localRunnerModel && !combined.some((m) => m.model_id === localRunnerModel.model_id)) {
-      combined.unshift(localRunnerModel);
-    }
     setModels(combined);
-  }, [customModels, localRunnerModel]);
+  }, [customModels]);
 
   const refreshPollenBalance = useCallback(
     async (tokenToUse?: string) => {
@@ -818,17 +757,6 @@ export function useAiModels() {
     pollenBalance,
     refreshPollenBalance,
     isMasterKeyActive,
-    localRunnerModel,
-    localModels: localRunnerModel ? [localRunnerModel] : [],
-    isLocalRunnerActive: !!localRunnerModel,
-    checkLocalRunner,
-    localStatus: {
-      ollama: false,
-      lmstudio: false,
-      kobold: false,
-      desktopBridge: isDesktopBridgeAvailable(),
-      totalLocal: localRunnerModel ? 1 : 0,
-    } as LocalProviderStatus,
     hordeStatus,
     refreshHordeStatus,
   };

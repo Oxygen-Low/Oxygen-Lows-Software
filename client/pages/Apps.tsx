@@ -38,10 +38,8 @@ import {
   HardDrive,
   Search,
   X,
-  Cpu,
   Headphones,
   Database,
-  Terminal,
   Cookie,
   Star,
 } from "lucide-react";
@@ -92,16 +90,6 @@ const QRCodeGeneratorApp = lazy(() =>
 const LLMAgentApp = lazy(() =>
   import("@/components/apps/LLMAgent").then((m) => ({
     default: m.LLMAgentApp,
-  })),
-);
-const LLMRunnerApp = lazy(() =>
-  import("@/components/apps/LLMRunner").then((m) => ({
-    default: m.LLMRunnerApp,
-  })),
-);
-const PythonManagerApp = lazy(() =>
-  import("@/components/apps/PythonManager").then((m) => ({
-    default: m.PythonManagerApp,
   })),
 );
 const VPNApp = lazy(() =>
@@ -431,30 +419,6 @@ const APPS: AppMetadata[] = [
     icon: <Sparkles className="w-8 h-8 text-cyan-500" />,
     component: LLMAgentApp,
     authRequired: true,
-  },
-  {
-    id: "llm-runner",
-    nameKey: "apps.llmRunnerTitle",
-    defaultName: "LLM Runner",
-    descKey: "apps.llmRunnerDesc",
-    defaultDesc:
-      "Run local GGUF, SafeTensors, and massive AirLLM models right on your desktop hardware.",
-    categories: ["All", "LLM/AI", "Development"],
-    availability: "desktop-only",
-    icon: <Cpu className="w-8 h-8 text-cyan-500" />,
-    component: LLMRunnerApp,
-  },
-  {
-    id: "python-manager",
-    nameKey: "apps.pythonManagerTitle",
-    defaultName: "Python Manager",
-    descKey: "apps.pythonManagerDesc",
-    defaultDesc:
-      "Inspect Python server runtime status, manage AI packages, and view live error and warning logs.",
-    categories: ["All", "Utility", "Development"],
-    availability: "desktop-only",
-    icon: <Terminal className="w-8 h-8 text-cyan-500" />,
-    component: PythonManagerApp,
   },
   {
     id: "vpn",
