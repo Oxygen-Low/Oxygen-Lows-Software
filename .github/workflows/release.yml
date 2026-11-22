@@ -31,7 +31,7 @@ jobs:
       - name: Calculate Version
         id: calc_version
         run: |
-          MAJOR_MINOR="1.5"
+          MAJOR_MINOR="1.6"
           MAJOR="${MAJOR_MINOR%%.*}"
           MINOR="${MAJOR_MINOR#*.}"
           PREFIX="v${MAJOR_MINOR}."
