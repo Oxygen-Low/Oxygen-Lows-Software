@@ -187,7 +187,7 @@ jobs:
           cd llama-src
           # Use the runner's default Visual Studio generator (VS 18 2026 on
           # windows-latest) - forcing VS 17 2022 would fail if it isn't installed.
-          cmake -S . -B build \
+          cmake -Wno-dev -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DLLAMA_BUILD_SERVER=ON \
             -DLLAMA_BUILD_TESTS=OFF \
@@ -219,7 +219,7 @@ jobs:
             ABI="$1"; TRIPLE="$2"; OUT="$3"
             export CC="$TOOLCHAIN/$TRIPLE$API-clang"
             export CXX="$TOOLCHAIN/$TRIPLE$API-clang++"
-            cmake -S . -B "build-$ABI" \
+            cmake -Wno-dev -S . -B "build-$ABI" \
               -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
               -DANDROID_ABI="$ABI" -DANDROID_PLATFORM=android-$API \
               -DGGML_OPENMP=OFF -DLLAMA_BUILD_SERVER=ON \
@@ -229,14 +229,13 @@ jobs:
             mkdir -p "../llama-out-$OUT"
             cp "build-$ABI/bin/llama-server" "../llama-out-$OUT/llama-server"
           }
+          # 64-bit ARM only: upstream PR #32517 does not compile for armeabi-v7a
+          # (FP16 NEON intrinsics are unavailable), and 32-bit Android is legacy.
           build_abi arm64-v8a aarch64-linux-android arm64
-          build_abi armeabi-v7a armv7a-linux-androideabi arm
           cd ..
           (cd llama-out-arm64 && tar -czf "../llama-android-arm64.tar.gz" llama-server)
-          (cd llama-out-arm && tar -czf "../llama-android-arm.tar.gz" llama-server)
           # Keep the .zip asset name expected by the Android app.
           (cd llama-out-arm64 && zip -q ../llama-android-arm64.zip llama-server)
-          (cd llama-out-arm && zip -q ../llama-android-arm.zip llama-server)
 
       - name: Write build manifest
         if: matrix.platform == 'android'
@@ -270,7 +269,6 @@ jobs:
             gh release upload "${{ steps.tag.outputs.tag }}" "${{ matrix.asset }}" --clobber
           else
             gh release upload "${{ steps.tag.outputs.tag }}" \
-              llama-android-arm64.zip llama-android-arm.zip \
-              llama-android-arm64.tar.gz llama-android-arm.tar.gz \
+              llama-android-arm64.zip llama-android-arm64.tar.gz \
               llama-manifest.json --clobber
           fi
