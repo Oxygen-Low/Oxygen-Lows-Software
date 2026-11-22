@@ -132,8 +132,11 @@ class LlamaManager(private val context: Context) {
         }
         val assets = release.optJSONArray("assets") ?: JSONArray()
         var chosen: JSONObject? = null
-        val abi = android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"
-        val wanted = if (abi.contains("arm64")) "arm64" else "arm"
+        // Only 64-bit ARM binaries are shipped (upstream llama.cpp does not
+        // build for armeabi-v7a). Google Play requires 64-bit support anyway.
+        val hasArm64 = android.os.Build.SUPPORTED_ABIS.any { it.contains("arm64", true) }
+        if (!hasArm64) throw IllegalStateException("This device is not 64-bit ARM; a compatible llama.cpp build is not available")
+        val wanted = "arm64"
         for (i in 0 until assets.length()) {
             val asset = assets.getJSONObject(i)
             val name = asset.optString("name", "")
