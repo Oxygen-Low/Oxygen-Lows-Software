@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
@@ -403,11 +404,75 @@ namespace DesktopApp
         public string? FindServerExecutable()
         {
             if (!Directory.Exists(BinaryDirectory)) return null;
-            var exe = Directory.GetFiles(BinaryDirectory, "llama-server.exe", SearchOption.AllDirectories).FirstOrDefault();
+            // Prefer the version we recorded at install time. GetFiles() order is
+            // unspecified, so picking an older leftover build can mix an exe with
+            // a different version's DLLs (Windows then reports "Entry Point not
+            // found" and the process exits immediately).
+            string preferred = Path.Combine(
+                BinaryDirectory, "llama-" + Sanitize(_config.InstalledVersion), "llama-server.exe");
+            if (File.Exists(preferred)) return preferred;
+
+            var exe = Directory.GetFiles(BinaryDirectory, "llama-server.exe", SearchOption.AllDirectories)
+                .OrderByDescending(f => { try { return new FileInfo(f).LastWriteTimeUtc; } catch { return DateTime.MinValue; } })
+                .FirstOrDefault();
             if (exe != null) return exe;
-            var bin = Directory.GetFiles(BinaryDirectory, "llama-server", SearchOption.AllDirectories).FirstOrDefault();
-            if (bin != null) return bin;
-            return null;
+            var bin = Directory.GetFiles(BinaryDirectory, "llama-server", SearchOption.AllDirectories)
+                .OrderByDescending(f => { try { return new FileInfo(f).LastWriteTimeUtc; } catch { return DateTime.MinValue; } })
+                .FirstOrDefault();
+            return bin;
+        }
+
+        private const uint SemFailCriticalErrors = 0x0001;
+        private const uint SemNoGpFaultErrorBox = 0x0002;
+        private const uint SemNoOpenFileErrorBox = 0x8000;
+        private const uint WindowsErrorModes =
+            SemFailCriticalErrors | SemNoGpFaultErrorBox | SemNoOpenFileErrorBox;
+
+        [DllImport("kernel32.dll")]
+        private static extern uint SetErrorMode(uint uMode);
+
+        /// <summary>
+        /// Runs `llama-server --version` before accepting an install. A build with
+        /// missing/incompatible DLLs fails to load with a Windows "Entry Point not
+        /// found" dialog; with hard-error dialogs suppressed it exits with a code
+        /// we can report instead of silently installing a broken binary.
+        /// </summary>
+        private static string VerifyServerBinary(string exe)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = exe,
+                Arguments = "--version",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = Path.GetDirectoryName(exe) ?? ""
+            };
+            uint oldMode = OperatingSystem.IsWindows() ? SetErrorMode(WindowsErrorModes) : 0;
+            try
+            {
+                using var process = Process.Start(psi)
+                    ?? throw new InvalidOperationException("Could not start llama-server for verification");
+                var stdout = process.StandardOutput.ReadToEndAsync();
+                var stderr = process.StandardError.ReadToEndAsync();
+                if (!process.WaitForExit(15000))
+                {
+                    try { process.Kill(entireProcessTree: true); } catch { }
+                    throw new InvalidOperationException("llama-server did not respond to its startup check");
+                }
+                Task.WaitAll(new[] { stdout, stderr }, 5000);
+                string log = (stdout.Result + "\n" + stderr.Result).Trim();
+                if (process.ExitCode != 0 || log.Length == 0)
+                    throw new InvalidOperationException(
+                        "llama-server failed its startup check (exit code " + process.ExitCode +
+                        "). The DLLs in this build may be missing or incompatible; please try reinstalling.");
+                return log;
+            }
+            finally
+            {
+                if (OperatingSystem.IsWindows()) SetErrorMode(oldMode);
+            }
         }
 
         public async Task InstallAsync(string tag, Action<int>? progress = null, CancellationToken ct = default)
@@ -459,6 +524,7 @@ namespace DesktopApp
                 string? serverExe = Directory.GetFiles(extractDir, "llama-server.exe", SearchOption.AllDirectories).FirstOrDefault()
                     ?? Directory.GetFiles(extractDir, "llama-server", SearchOption.AllDirectories).FirstOrDefault();
                 if (serverExe == null) throw new InvalidOperationException("The release archive did not contain llama-server");
+                Debug.WriteLine("llama-server check: " + VerifyServerBinary(serverExe));
 
                 // Stage into a new version directory, then swap atomically.
                 string stageDir = Path.Combine(BinaryDirectory, ".stage-" + Guid.NewGuid().ToString("N"));
@@ -1097,6 +1163,13 @@ namespace DesktopApp
                 args += $" --mmproj \"{mmproj}\"";
             if (settings?.UseJinja == true) args += " --jinja";
 
+            var log = new System.Text.StringBuilder();
+            void Capture(string? line)
+            {
+                if (string.IsNullOrEmpty(line)) return;
+                lock (log) { if (log.Length < 8000) log.AppendLine(line); }
+            }
+
             var psi = new ProcessStartInfo
             {
                 FileName = serverExe,
@@ -1108,9 +1181,47 @@ namespace DesktopApp
                 WorkingDirectory = Path.GetDirectoryName(serverExe)!
             };
             var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
-            process.Exited += (_, _) => _processes.TryRemove(port, out _);
-            if (!process.Start()) throw new InvalidOperationException("Failed to start llama-server");
+            process.OutputDataReceived += (_, e) => Capture(e.Data);
+            process.ErrorDataReceived += (_, e) => Capture(e.Data);
+            process.Exited += (_, _) =>
+            {
+                _processes.TryRemove(port, out _);
+                lock (_sync)
+                {
+                    foreach (var kv in _state.Models)
+                        if (kv.Value.Port == port) kv.Value.Port = 0;
+                    SaveState();
+                }
+            };
+
+            uint oldMode = OperatingSystem.IsWindows() ? SetErrorMode(WindowsErrorModes) : 0;
+            try
+            {
+                if (!process.Start()) throw new InvalidOperationException("Failed to start llama-server");
+            }
+            finally
+            {
+                if (OperatingSystem.IsWindows()) SetErrorMode(oldMode);
+            }
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
             _processes[port] = process;
+
+            // A missing or incompatible DLL makes Windows show "Entry Point not
+            // found" and the process exits immediately. Previously we still
+            // returned success, so every later attempt failed silently.
+            if (process.WaitForExit(2500))
+            {
+                process.WaitForExit(); // flush async output handlers
+                _processes.TryRemove(port, out _);
+                string detail;
+                lock (log) { detail = log.ToString().Trim(); }
+                throw new InvalidOperationException(
+                    $"llama-server exited immediately (code {process.ExitCode}). " +
+                    (detail.Length > 0
+                        ? detail
+                        : "Its DLLs may be missing or incompatible. Reinstall llama.cpp from Dependencies Manager."));
+            }
 
             if (settings == null) settings = new ModelSettings();
             settings.Port = port;
@@ -1131,14 +1242,10 @@ namespace DesktopApp
         public void Stop(int instanceId)
         {
             if (_processes.TryRemove(instanceId, out var process))
-            {
                 TryStop(process);
-                foreach (var kv in _state.Models)
-                {
-                    if (kv.Value.Port == instanceId) { kv.Value.Port = 0; }
-                }
-                SaveState();
-            }
+            foreach (var kv in _state.Models)
+                if (kv.Value.Port == instanceId) { kv.Value.Port = 0; }
+            SaveState();
         }
 
         public void StopAll()
