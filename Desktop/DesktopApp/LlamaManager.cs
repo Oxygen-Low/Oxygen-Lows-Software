@@ -50,6 +50,9 @@ namespace DesktopApp
         private static readonly string RootDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "OxygenLowsSoftware", "llama.cpp");
+        // Backups live beside (not inside) the data folder so deleting or
+        // replacing that folder cannot destroy the model registry.
+        private static readonly string BackupDirectory = RootDirectory + ".backup";
         private static readonly string BinaryDirectory = Path.Combine(RootDirectory, "bin");
         private static readonly string ModelsDirectory = Path.Combine(RootDirectory, "models");
         private static readonly string ConfigPath = Path.Combine(RootDirectory, "config.json");
@@ -141,13 +144,33 @@ namespace DesktopApp
             _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         }
 
+        private static string BackupPath(string path) => Path.Combine(BackupDirectory, Path.GetFileName(path));
+
         private static T? LoadJson<T>(string path) where T : class
         {
-            try
+            string? json = null;
+            try { if (File.Exists(path)) json = File.ReadAllText(path); }
+            catch (Exception ex) { Debug.WriteLine("llama config load: " + ex.Message); }
+
+            if (string.IsNullOrWhiteSpace(json))
             {
-                if (!File.Exists(path)) return null;
-                return JsonSerializer.Deserialize<T>(File.ReadAllText(path));
+                // The primary data folder may have been removed (app reinstall,
+                // manual cleanup, etc.). Restore the last known good copy.
+                try
+                {
+                    string backup = BackupPath(path);
+                    if (File.Exists(backup))
+                    {
+                        json = File.ReadAllText(backup);
+                        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                        File.WriteAllText(path, json);
+                        Debug.WriteLine("Restored llama data from backup: " + path);
+                    }
+                }
+                catch (Exception ex) { Debug.WriteLine("llama backup restore: " + ex.Message); }
             }
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            try { return JsonSerializer.Deserialize<T>(json); }
             catch { return null; }
         }
 
@@ -155,9 +178,25 @@ namespace DesktopApp
         {
             try
             {
+                string json = JsonSerializer.Serialize(value);
                 string temp = path + ".tmp";
-                File.WriteAllText(temp, JsonSerializer.Serialize(value));
+                File.WriteAllText(temp, json);
                 File.Move(temp, path, true);
+
+                // Keep an empty-state backup from overwriting the last good one.
+                bool hasContent = value switch
+                {
+                    State st => st.Models.Count > 0,
+                    Config cfg => !string.IsNullOrWhiteSpace(cfg.InstalledVersion),
+                    _ => true
+                };
+                if (!hasContent) return;
+
+                Directory.CreateDirectory(BackupDirectory);
+                string backup = BackupPath(path);
+                string backupTemp = backup + ".tmp";
+                File.WriteAllText(backupTemp, json);
+                File.Move(backupTemp, backup, true);
             }
             catch (Exception ex) { Debug.WriteLine("llama config save: " + ex.Message); }
         }
