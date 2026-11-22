@@ -63,26 +63,32 @@ export function DependenciesManagerApp() {
   const doInstall = async (isUpdate: boolean) => {
     setBusy(isUpdate ? "update" : "install");
     setProgress(0);
+    const toastId = toast.loading(
+      t(
+        isUpdate ? "dependencies.updating" : "dependencies.installing",
+        undefined,
+        isUpdate ? "Updating llama.cpp…" : "Installing llama.cpp…",
+      ),
+    );
     try {
-      const op = isUpdate ? llamaUpdate("", onProgress) : llamaInstall("", onProgress);
-      await toast.promise(op, {
-        loading: t(
-          isUpdate ? "dependencies.updating" : "dependencies.installing",
-          undefined,
-          isUpdate ? "Updating llama.cpp…" : "Installing llama.cpp…",
-        ),
-        success: t(
-          "dependencies.done",
-          undefined,
-          "llama.cpp is ready.",
-        ),
-        error: t(
+      const op = isUpdate
+        ? llamaUpdate("", onProgress)
+        : llamaInstall("", onProgress);
+      await op;
+      toast.success(
+        t("dependencies.done", undefined, "llama.cpp is ready."),
+        { id: toastId },
+      );
+      await refresh();
+    } catch {
+      toast.error(
+        t(
           "dependencies.operationFailed",
           undefined,
           "The operation failed. Please try again.",
         ),
-      });
-      await refresh();
+        { id: toastId },
+      );
     } finally {
       setBusy(null);
       setProgress(0);
@@ -91,13 +97,25 @@ export function DependenciesManagerApp() {
 
   const doUninstall = async () => {
     setBusy("uninstall");
+    const toastId = toast.loading(
+      t("dependencies.uninstalling", undefined, "Uninstalling llama.cpp…"),
+    );
     try {
-      await toast.promise(llamaUninstall(), {
-        loading: t("dependencies.uninstalling", undefined, "Uninstalling llama.cpp…"),
-        success: t("dependencies.uninstalled", undefined, "llama.cpp was uninstalled."),
-        error: t("dependencies.operationFailed", undefined, "The operation failed. Please try again."),
-      });
+      await llamaUninstall();
+      toast.success(
+        t("dependencies.uninstalled", undefined, "llama.cpp was uninstalled."),
+        { id: toastId },
+      );
       await refresh();
+    } catch {
+      toast.error(
+        t(
+          "dependencies.operationFailed",
+          undefined,
+          "The operation failed. Please try again.",
+        ),
+        { id: toastId },
+      );
     } finally {
       setBusy(null);
     }

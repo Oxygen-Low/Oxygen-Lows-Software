@@ -32,23 +32,33 @@ export function useLlamaUpdateToast(enabled = true) {
       if (localStorage.getItem(DISMISSED_KEY) === update.latestVersion) return;
 
       const runUpdate = async () => {
-        toast.promise(llamaUpdate(), {
-          loading: t(
+        const toastId = toast.loading(
+          t(
             "dependencies.updatingBackground",
             undefined,
             "Updating llama.cpp in the background…",
           ),
-          success: t(
-            "dependencies.updateComplete",
-            undefined,
-            "llama.cpp is up to date.",
-          ),
-          error: t(
-            "dependencies.updateFailed",
-            undefined,
-            "Could not update llama.cpp.",
-          ),
-        });
+        );
+        try {
+          await llamaUpdate();
+          toast.success(
+            t(
+              "dependencies.updateComplete",
+              undefined,
+              "llama.cpp is up to date.",
+            ),
+            { id: toastId },
+          );
+        } catch {
+          toast.error(
+            t(
+              "dependencies.updateFailed",
+              undefined,
+              "Could not update llama.cpp.",
+            ),
+            { id: toastId },
+          );
+        }
       };
       const remindLater = async () => {
         localStorage.setItem(DISMISSED_KEY, update.latestVersion);

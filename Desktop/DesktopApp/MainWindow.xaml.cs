@@ -738,7 +738,7 @@ public partial class MainWindow : Window
                 {
                     try
                     {
-                        var release = await _llamaManager.GetPreferredReleaseAsync().ConfigureAwait(false);
+                        var release = await _llamaManager.GetPreferredReleaseAsync();
                         bool hasUpdate = LlamaManager.IsNewerVersion(release.Version, _llamaManager.InstalledVersion);
                         bool ignored = !string.IsNullOrEmpty(_llamaManager.IgnoredVersion) &&
                                        string.Equals(release.Version, _llamaManager.IgnoredVersion, StringComparison.OrdinalIgnoreCase);
@@ -763,7 +763,7 @@ public partial class MainWindow : Window
                     try
                     {
                         await _llamaManager.InstallAsync(tag, p =>
-                            SendWebMessage(new { id, success = true, progress = p })).ConfigureAwait(false);
+                            SendWebMessage(new { id, success = true, progress = p }));
                         SendWebMessage(new { id, success = true, data = new
                         {
                             installedVersion = _llamaManager.InstalledVersion,
@@ -879,7 +879,7 @@ public partial class MainWindow : Window
                         if (!File.Exists(fullPath)) throw new InvalidOperationException("Source file not found");
                         string fileName = Path.GetFileName(fullPath);
                         string target = _llamaManager.ResolveModelPath(fileName);
-                        await Task.Run(() => File.Copy(fullPath, target, true)).ConfigureAwait(false);
+                        await Task.Run(() => File.Copy(fullPath, target, true));
                         _llamaManager.SaveModelSettings(fileName, new LlamaManager.ModelSettings { Mmap = true, DisplayName = fileName });
                         SendWebMessage(new { id, success = true, data = new { fileName } });
                     }
@@ -1372,13 +1372,22 @@ public partial class MainWindow : Window
 
     private void SendWebMessage(object payload)
     {
+        // WebView2's COM objects must be used on the UI thread. Async bridge
+        // handlers can complete on a thread-pool thread (especially when the
+        // awaited work uses ConfigureAwait(false)); marshal the reply back
+        // before posting or it is silently dropped.
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(() => SendWebMessage(payload));
+            return;
+        }
         try
         {
             if (webView.CoreWebView2 == null || !NativeSecurity.IsTrustedOrigin(webView.CoreWebView2.Source)) return;
             string json = JsonSerializer.Serialize(payload);
             webView.CoreWebView2.PostWebMessageAsJson(json);
         }
-        catch { }
+        catch (Exception ex) { Debug.WriteLine("SendWebMessage Error: " + ex.Message); }
     }
 
     private bool _isFullscreen = false;

@@ -151,7 +151,49 @@ namespace DesktopApp
 
         public async Task<ReleaseInfo> GetLatestReleaseAsync(bool useCache = true)
         {
-            return await FetchReleaseAsync(ReleasesApiUrl).ConfigureAwait(false);
+            var latest = await FetchReleaseAsync(ReleasesApiUrl).ConfigureAwait(false);
+            if (latest.Assets.Count > 0) return latest;
+
+            // llama.cpp publishes binaries on nightly releases; the stable
+            // "latest" release only carries a nightly-tag.txt pointer.
+            string? nightlyTag = await ReadNightlyTagAsync().ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(nightlyTag))
+            {
+                var nightly = await GetReleaseByTagAsync(nightlyTag).ConfigureAwait(false);
+                if (nightly.Assets.Count > 0) return nightly;
+            }
+            return latest;
+        }
+
+        private async Task<string?> ReadNightlyTagAsync()
+        {
+            try
+            {
+                using var response = await _httpClient.GetAsync(ReleasesApiUrl).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode) return null;
+                using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+                if (!doc.RootElement.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array)
+                    return null;
+                foreach (var asset in assets.EnumerateArray())
+                {
+                    string name = asset.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+                    if (!string.Equals(name, "nightly-tag.txt", StringComparison.OrdinalIgnoreCase)) continue;
+                    string apiUrl = asset.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "";
+                    // Fixed GitHub API host and path - no untrusted URLs.
+                    if (!apiUrl.StartsWith("https://api.github.com/repos/ggml-org/llama.cpp/releases/assets/", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    using var request = new HttpRequestMessage(HttpMethod.Get, apiUrl);
+                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
+                    using var tagResponse = await _httpClient.SendAsync(request).ConfigureAwait(false);
+                    if (!tagResponse.IsSuccessStatusCode) return null;
+                    string tag = (await tagResponse.Content.ReadAsStringAsync().ConfigureAwait(false)).Trim();
+                    return tag.Length > 0 && tag.Length <= 40 && tag.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == '.')
+                        ? tag
+                        : null;
+                }
+            }
+            catch (Exception ex) { Debug.WriteLine("Nightly tag lookup: " + ex.Message); }
+            return null;
         }
 
         public async Task<ReleaseInfo> GetReleaseByTagAsync(string tag)
@@ -345,9 +387,14 @@ namespace DesktopApp
                 : await GetReleaseByTagAsync(tag).ConfigureAwait(false);
             if (release.Assets.Count == 0) throw new InvalidOperationException("No compatible llama.cpp release asset was found");
 
-            // Prefer a CUDA build when available, otherwise a plain CPU build.
-            var asset = release.Assets
-                .OrderByDescending(a => a.IsCuda)
+            // Desktop app is Windows x64. Prefer a small CPU build so it works
+            // on machines without an NVIDIA GPU; CUDA builds are ~300 MB.
+            var candidates = release.Assets
+                .Where(a => a.Platform == "win" && a.Arch == "x64")
+                .ToList();
+            if (candidates.Count == 0) candidates = release.Assets.ToList();
+            var asset = candidates
+                .OrderBy(a => a.IsCuda ? 1 : 0)
                 .ThenBy(a => a.Size)
                 .First();
             // Placeholder validation: the real asset list comes from the API.
