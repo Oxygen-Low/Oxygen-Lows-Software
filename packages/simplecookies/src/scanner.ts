@@ -160,7 +160,9 @@ export function trackerForCookieName(
     for (const entry of tracker.cookies) {
       const expected = entry.name.toLowerCase();
       if (expected.includes("*")) {
-        if (lower.startsWith(expected.replace("*", ""))) return { tracker, entry };
+        // A string first argument to `replace` only removes the first `*`.
+        // Use a global regex so every wildcard is stripped (js/incomplete-sanitization).
+        if (lower.startsWith(expected.replace(/\*/g, ""))) return { tracker, entry };
       } else if (lower === expected) {
         return { tracker, entry };
       }

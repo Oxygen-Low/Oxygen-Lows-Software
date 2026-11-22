@@ -24,6 +24,21 @@ function randomConsentId(): string {
   return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * Normalize a configured base URL by dropping trailing slashes.
+ *
+ * Implemented without a regular expression: `/\/+$/` combined with the `$`
+ * anchor makes the engine retry a variable-length tail from every start
+ * position, which CodeQL (correctly, for attacker-controlled config) reports
+ * as a polynomial-time regular expression. A linear scan has identical
+ * behaviour and no backtracking.
+ */
+export function normalizeBaseUrl(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end--;
+  return value.slice(0, end);
+}
+
 export function readStoredConsent(storageKey = CONSENT_STORAGE_KEY): StoredConsent | null {
   try {
     if (typeof localStorage === "undefined") return null;
@@ -89,7 +104,7 @@ export class SimpleCookiesClient {
       throw new Error("SimpleCookies: apiKey is required");
     }
     this.config = config;
-    this.apiUrl = (config.apiUrl || "https://oxygenlow.com").replace(/\/+$/, "");
+    this.apiUrl = normalizeBaseUrl(config.apiUrl || "https://oxygenlow.com");
   }
 
   get projectId(): string | null {

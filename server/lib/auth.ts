@@ -85,7 +85,8 @@ export function generateToken(
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString(
     "base64url",
   );
-  // codeql[js/insufficient-password-hash] HMAC-SHA256 signs a session token; it is not used for password storage.
+  // HMAC-SHA256 signs a session token; it is not password storage (false positive).
+  // codeql[js/insufficient-password-hash]
   const signature = crypto.createHmac("sha256", secret).update(encodedPayload).digest("base64url");
 
   return `ol_${encodedPayload}.${signature}`;
@@ -99,7 +100,8 @@ export function verifyToken(token: string): TokenPayload | null {
     if (!encodedPayload || !signature || cleanToken.split(".").length !== 2) return null;
 
     const secret = getSecretKey();
-    // codeql[js/insufficient-password-hash] HMAC-SHA256 verifies a session token; it is not used for password storage.
+    // HMAC-SHA256 verifies a session token signature; it is not password storage (false positive).
+    // codeql[js/insufficient-password-hash]
     const expectedSig = crypto.createHmac("sha256", secret).update(encodedPayload).digest("base64url");
 
     if (
@@ -135,7 +137,8 @@ export function generateOAuthState(
     nonce: crypto.randomBytes(8).toString("hex"),
   };
   const encoded = Buffer.from(JSON.stringify(data)).toString("base64url");
-  // codeql[js/insufficient-password-hash] HMAC-SHA256 signs OAuth state; it is not used for password storage.
+  // HMAC-SHA256 signs short-lived OAuth state; it is not password storage (false positive).
+  // codeql[js/insufficient-password-hash]
   const sig = crypto.createHmac("sha256", secret).update(encoded).digest("base64url");
   return `${encoded}.${sig}`;
 }
@@ -146,7 +149,8 @@ export function verifyOAuthState(state: string): Record<string, any> | null {
     const [encoded, sig] = state.split(".");
     if (!encoded || !sig || state.split(".").length !== 2) return null;
     const secret = getSecretKey();
-    // codeql[js/insufficient-password-hash] HMAC-SHA256 verifies OAuth state; it is not used for password storage.
+    // HMAC-SHA256 verifies short-lived OAuth state; it is not password storage (false positive).
+    // codeql[js/insufficient-password-hash]
     const expectedSig = crypto.createHmac("sha256", secret).update(encoded).digest("base64url");
     if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))) {
       return null;
