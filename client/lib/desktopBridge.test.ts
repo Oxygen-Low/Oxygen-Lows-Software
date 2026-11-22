@@ -180,6 +180,22 @@ describe("desktopBridge", () => {
       delete (window as any).AndroidApp;
     });
 
+    it("should detect native apps on desktop, mobile, and not in a plain browser", () => {
+      delete (window as any).AndroidApp;
+      delete (window as any).chrome;
+      sessionStorage.clear();
+      expect(desktopBridge.isNativeApp()).toBe(false);
+
+      (window as any).AndroidApp = {};
+      expect(desktopBridge.isNativeApp()).toBe(true);
+      delete (window as any).AndroidApp;
+      sessionStorage.clear();
+
+      (window as any).chrome = { webview: { postMessage: () => {} } };
+      expect(desktopBridge.isNativeApp()).toBe(true);
+      delete (window as any).chrome;
+    });
+
     it("should open external browser via window.open when bridge is not available", async () => {
       delete (window as any).AndroidApp;
       delete (window as any).chrome;

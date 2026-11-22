@@ -201,7 +201,8 @@ class MainActivity : AppCompatActivity() {
     private fun handleIntent(intent: Intent?) {
         intent?.data?.let { uri ->
             if (uri.scheme == "oxygenlows") {
-                val urlString = "https://oxygenlow.com/auth/callback" +
+                // The /auth route consumes oauth_token and requires_unlock.
+                val urlString = "https://oxygenlow.com/auth" +
                     (uri.encodedQuery?.let { "?$it" } ?: "") +
                     (uri.encodedFragment?.let { "#$it" } ?: "")
                 webView.loadUrl(Uri.parse(urlString).buildUpon().appendQueryParameter("android", "1").build().toString())

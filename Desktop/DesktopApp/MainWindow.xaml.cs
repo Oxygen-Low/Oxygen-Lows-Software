@@ -26,6 +26,8 @@ public partial class MainWindow : Window
     private readonly LlamaManager _llamaManager = new();
     private DispatcherTimer? _updateCheckTimer;
     private bool _isCheckingUpdates = false;
+    // A deep link can arrive before the WebView is initialized.
+    private string? _pendingDeepLink;
 
     public MainWindow()
     {
@@ -60,22 +62,28 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (message.StartsWith("oxygenlows://"))
+            if (!message.StartsWith("oxygenlows://")) return;
+
+            if (webView?.CoreWebView2 == null)
             {
-                var uri = new Uri(message);
-                if (webView != null && webView.CoreWebView2 != null)
-                {
-                    const string currentOrigin = "https://oxygenlow.com";
-                    var query = uri.Query;
-                    var fragment = uri.Fragment;
-                    webView.CoreWebView2.Navigate($"{currentOrigin}/auth/callback{query}{fragment}");
-                }
+                _pendingDeepLink = message;
+                return;
             }
+
+            NavigateToAuthDeepLink(message);
         }
         catch (Exception ex)
         {
             Debug.WriteLine("SingleInstance Message Error: " + ex.Message);
         }
+    }
+
+    private void NavigateToAuthDeepLink(string message)
+    {
+        var uri = new Uri(message);
+        // The /auth route consumes oauth_token and requires_unlock. There is no
+        // /auth/callback route in the SPA.
+        webView.CoreWebView2.Navigate($"https://oxygenlow.com/auth{uri.Query}{uri.Fragment}");
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -189,13 +197,10 @@ public partial class MainWindow : Window
 
         await Task.Delay(1000); 
         
-        string initialMessage = SingleInstance.InitialMessage ?? "";
+        string initialMessage = _pendingDeepLink ?? SingleInstance.InitialMessage ?? "";
         if (!string.IsNullOrEmpty(initialMessage) && initialMessage.StartsWith("oxygenlows://"))
         {
-            var uri = new Uri(initialMessage);
-            var query = uri.Query;
-            var fragment = uri.Fragment;
-            webView.CoreWebView2.Navigate($"https://oxygenlow.com/auth/callback{query}{fragment}");
+            NavigateToAuthDeepLink(initialMessage);
         }
         else
         {

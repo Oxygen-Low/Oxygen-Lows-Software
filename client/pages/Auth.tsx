@@ -28,7 +28,9 @@ import {
 import { LanguageSelect } from "@/components/ui/LanguageSelect";
 import { GoogleIcon } from "@/components/ui/GoogleIcon";
 import { GithubIcon } from "@/components/ui/GithubIcon";
-import { setLocalSession } from "@/lib/localSession";
+// Use the db wrapper so token-based sign-in (OAuth / native app hand-off) also
+// updates the React auth state, not just localStorage.
+import { setLocalSession } from "@/lib/db";
 import {
   isValidMasterKeyString,
   parseMasterKeyString,
@@ -37,7 +39,20 @@ import {
   deriveEncryptionKeyFromPassword,
   setActiveMasterKey,
 } from "@/lib/crypto";
-import { isMobileApp, openExternalBrowser } from "@/lib/desktopBridge";
+import { isNativeApp, openExternalBrowser } from "@/lib/desktopBridge";
+
+/** The auth page opened in the system browser on behalf of a native app. */
+export function buildNativeAuthUrl(origin: string, returnTo: string): string {
+  return `${origin}/auth?native=1&returnTo=${encodeURIComponent(returnTo)}`;
+}
+
+/** The deep link used to hand the session back to the native app. */
+export function buildReturnDeepLink(token: string, returnTo: string): string {
+  // "requires_unlock" makes the app ask for the password again so the
+  // zero-knowledge encryption key can be re-derived inside the app. The
+  // password itself never travels through the URL.
+  return `oxygenlows://auth?oauth_token=${encodeURIComponent(token)}&requires_unlock=true&returnTo=${encodeURIComponent(returnTo)}`;
+}
 
 export default function Auth() {
   const location = useLocation();
@@ -93,6 +108,7 @@ export default function Auth() {
   const [showUnlockPassword, setShowUnlockPassword] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
+  const [launchingBrowser, setLaunchingBrowser] = useState(false);
   const [googleOAuthConfigured, setGoogleOAuthConfigured] = useState(true);
   const [githubOAuthConfigured, setGithubOAuthConfigured] = useState(true);
 
@@ -100,6 +116,31 @@ export default function Auth() {
     "returnTo",
   );
   const returnTo = getSafeReturnPath(requestedReturnTo);
+
+  const searchParams = new URLSearchParams(location.search);
+  const nativeReturn = searchParams.get("native") === "1";
+  const hasOAuthToken = Boolean(searchParams.get("oauth_token"));
+
+  // Native apps have no reliable password-manager integration inside their
+  // WebView. Send the whole sign-in flow to the system browser so autofill
+  // works, then receive the session back through the oxygenlows:// deep link.
+  useEffect(() => {
+    if (!isNativeApp() || nativeReturn || hasOAuthToken) return;
+    setLaunchingBrowser(true);
+    void openExternalBrowser(
+      buildNativeAuthUrl(window.location.origin, returnTo),
+    );
+  }, [returnTo, nativeReturn, hasOAuthToken]);
+
+  // This page is running in the system browser on behalf of a native app.
+  // Once a session exists, hand it back to the app via the deep link.
+  useEffect(() => {
+    if (!nativeReturn || !session?.access_token) return;
+    window.location.href = buildReturnDeepLink(
+      session.access_token,
+      returnTo,
+    );
+  }, [nativeReturn, session, returnTo]);
 
   useEffect(() => {
     fetch("/api/auth/oauth/config")
@@ -315,7 +356,9 @@ export default function Auth() {
     };
   }, [mode, quickSessionId, quickStatus, returnTo, navigate, t]);
 
-  if (loading || oauthLoading) {
+  const returningToApp = nativeReturn && Boolean(session?.access_token);
+
+  if (loading || oauthLoading || launchingBrowser || returningToApp) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
@@ -323,8 +366,10 @@ export default function Auth() {
     );
   }
 
-  // If already logged in locally (and not in post-OAuth unlock state)
-  if (session && !requiresUnlock) {
+  // If already logged in locally (and not in post-OAuth unlock state).
+  // A browser-hosted native auth page returns to the app via the deep link
+  // instead of navigating away here.
+  if (session && !requiresUnlock && !nativeReturn) {
     return <Navigate to={returnTo} replace />;
   }
 
@@ -359,13 +404,19 @@ export default function Auth() {
     provider: "google" | "github",
     e: React.MouseEvent<HTMLAnchorElement>,
   ) => {
-    if (isMobileApp()) {
+    // The launch effect normally moves the whole page to the browser, but keep
+    // a fallback so an OAuth button tapped in the WebView still hands off.
+    if (isNativeApp()) {
       e.preventDefault();
-      const origin = window.location.origin;
-      const targetUrl = `${origin}/api/auth/oauth/${provider}/login?platform=mobile&returnTo=${encodeURIComponent(returnTo)}`;
-      openExternalBrowser(targetUrl);
+      void openExternalBrowser(
+        buildNativeAuthUrl(window.location.origin, returnTo),
+      );
+      return;
     }
+    // On the browser-hosted native auth page the href carries platform=mobile,
+    // which makes the server finish with an oxygenlows:// deep link.
   };
+
 
   const handlePasskeySignIn = async () => {
     try {
@@ -1141,7 +1192,7 @@ export default function Auth() {
                           {googleOAuthConfigured && (
                             <a
                               id="sign-in-with-google-btn"
-                              href={`/api/auth/oauth/google/login?returnTo=${encodeURIComponent(returnTo)}`}
+                              href={`/api/auth/oauth/google/login?${nativeReturn ? "platform=mobile&" : ""}returnTo=${encodeURIComponent(returnTo)}`}
                               onClick={(e) => handleOAuthSignIn("google", e)}
                               className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-white font-medium rounded-lg text-sm flex items-center justify-center gap-2.5 transition shadow-sm"
                             >
@@ -1159,7 +1210,7 @@ export default function Auth() {
                           {githubOAuthConfigured && (
                             <a
                               id="sign-in-with-github-btn"
-                              href={`/api/auth/oauth/github/login?returnTo=${encodeURIComponent(returnTo)}`}
+                              href={`/api/auth/oauth/github/login?${nativeReturn ? "platform=mobile&" : ""}returnTo=${encodeURIComponent(returnTo)}`}
                               onClick={(e) => handleOAuthSignIn("github", e)}
                               className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-white font-medium rounded-lg text-sm flex items-center justify-center gap-2.5 transition shadow-sm"
                             >

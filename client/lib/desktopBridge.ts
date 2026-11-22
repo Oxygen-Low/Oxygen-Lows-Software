@@ -142,6 +142,17 @@ export function isMobileApp(): boolean {
   return false;
 }
 
+/**
+ * True when running inside a native app WebView (Windows desktop or Android),
+ * as opposed to a regular web browser.
+ *
+ * The plain browser intentionally fails all of these checks so a browser-hosted
+ * /auth page does not bounce back out to the external browser again.
+ */
+export function isNativeApp(): boolean {
+  return isMobileApp() || isDesktopHostAvailable();
+}
+
 export async function openExternalBrowser(url: string): Promise<boolean> {
   if (typeof (window as any).AndroidApp?.postMessage === "function") {
     try {

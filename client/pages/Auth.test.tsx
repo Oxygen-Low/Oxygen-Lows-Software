@@ -2,7 +2,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
-import Auth from "./Auth";
+import Auth, {
+  buildNativeAuthUrl,
+  buildReturnDeepLink,
+} from "./Auth";
 import { useAuth } from "@/hooks/useAuth";
 
 // Mock useAuth
@@ -16,10 +19,12 @@ vi.mock("@/lib/db", () => {
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
     },
+    setLocalSession: vi.fn(),
   };
   return {
     db: mockClient,
     supabase: mockClient,
+    setLocalSession: mockClient.setLocalSession,
   };
 });
 
@@ -209,7 +214,7 @@ describe("Auth Component", () => {
     expect(document.getElementById("sign-in-with-github-btn")).toBeNull();
   });
 
-  it("should open external browser for Google and GitHub sign in when in mobile app", async () => {
+  it("should open the whole auth page in the external browser in the mobile app", async () => {
     (useAuth as any).mockReturnValue({
       session: null,
       loading: false,
@@ -220,33 +225,132 @@ describe("Auth Component", () => {
     const mockPostMessage = vi.fn();
     (window as any).AndroidApp = { postMessage: mockPostMessage };
 
+    try {
+      render(
+        <MemoryRouter initialEntries={["/auth?returnTo=%2Fapps"]}>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(mockPostMessage).toHaveBeenCalledTimes(1);
+      });
+      const msg = JSON.parse(mockPostMessage.mock.calls[0][0]);
+      expect(msg.command).toBe("open_browser");
+      expect(msg.url).toContain("/auth?native=1&returnTo=%2Fapps");
+    } finally {
+      delete (window as any).AndroidApp;
+    }
+  });
+
+  it("should open the whole auth page in the external browser in the desktop app", async () => {
+    (useAuth as any).mockReturnValue({
+      session: null,
+      loading: false,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+    });
+
+    const mockPostMessage = vi.fn();
+    (window as any).chrome = {
+      webview: {
+        postMessage: mockPostMessage,
+        addEventListener: vi.fn(),
+      },
+    };
+
+    try {
+      render(
+        <MemoryRouter initialEntries={["/auth?returnTo=%2Fapps"]}>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(mockPostMessage).toHaveBeenCalledTimes(1);
+      });
+      const msg = JSON.parse(mockPostMessage.mock.calls[0][0]);
+      expect(msg.command).toBe("open_browser");
+      expect(msg.url).toContain("/auth?native=1&returnTo=%2Fapps");
+    } finally {
+      delete (window as any).chrome;
+    }
+  });
+
+  it("should not relaunch the browser when returning with an oauth token", async () => {
+    (useAuth as any).mockReturnValue({
+      session: null,
+      loading: false,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+    });
+
+    const mockPostMessage = vi.fn();
+    (window as any).AndroidApp = { postMessage: mockPostMessage };
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ session: null, error: "invalid token" }),
+    });
+
+    try {
+      render(
+        <MemoryRouter initialEntries={["/auth?oauth_token=abc&returnTo=%2Fapps"]}>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+          "/api/auth/session?token=abc",
+        );
+      });
+      expect(mockPostMessage).not.toHaveBeenCalled();
+    } finally {
+      globalThis.fetch = origFetch;
+      delete (window as any).AndroidApp;
+    }
+  });
+
+  it("should build the native auth URL and the deep link that returns the session", () => {
+    expect(buildNativeAuthUrl("https://oxygenlow.com", "/apps?q=1")).toBe(
+      "https://oxygenlow.com/auth?native=1&returnTo=%2Fapps%3Fq%3D1",
+    );
+    expect(buildReturnDeepLink("ol_token", "/apps")).toBe(
+      "oxygenlows://auth?oauth_token=ol_token&requires_unlock=true&returnTo=%2Fapps",
+    );
+  });
+
+  it("should ask the server to deep-link back after OAuth in the browser-hosted native auth page", async () => {
+    (useAuth as any).mockReturnValue({
+      session: null,
+      loading: false,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+    });
+
     render(
-      <MemoryRouter initialEntries={["/auth?returnTo=%2Fapps"]}>
+      <MemoryRouter initialEntries={["/auth?native=1&returnTo=%2Fapps"]}>
         <Routes>
           <Route path="/auth" element={<Auth />} />
         </Routes>
       </MemoryRouter>,
     );
 
-    const googleBtn = document.getElementById("sign-in-with-google-btn")!;
-    fireEvent.click(googleBtn);
-
-    expect(mockPostMessage).toHaveBeenCalledTimes(1);
-    const googleMsg = JSON.parse(mockPostMessage.mock.calls[0][0]);
-    expect(googleMsg.command).toBe("open_browser");
-    expect(googleMsg.url).toContain("/api/auth/oauth/google/login?platform=mobile&returnTo=%2Fapps");
-
-    mockPostMessage.mockClear();
-
-    const githubBtn = document.getElementById("sign-in-with-github-btn")!;
-    fireEvent.click(githubBtn);
-
-    expect(mockPostMessage).toHaveBeenCalledTimes(1);
-    const githubMsg = JSON.parse(mockPostMessage.mock.calls[0][0]);
-    expect(githubMsg.command).toBe("open_browser");
-    expect(githubMsg.url).toContain("/api/auth/oauth/github/login?platform=mobile&returnTo=%2Fapps");
-
-    delete (window as any).AndroidApp;
+    const googleBtn = await screen.findByText("Sign in with Google");
+    expect(googleBtn.closest("a")?.getAttribute("href")).toBe(
+      "/api/auth/oauth/google/login?platform=mobile&returnTo=%2Fapps",
+    );
+    const githubBtn = await screen.findByText("Sign in with GitHub");
+    expect(githubBtn.closest("a")?.getAttribute("href")).toBe(
+      "/api/auth/oauth/github/login?platform=mobile&returnTo=%2Fapps",
+    );
   });
 
   it("should display error message when oauth_not_linked error is in URL query parameters", async () => {
