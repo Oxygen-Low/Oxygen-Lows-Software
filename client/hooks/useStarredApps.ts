@@ -18,6 +18,10 @@ import { getAuthenticatedClient } from "@/lib/db";
  */
 const STORAGE_KEY_PREFIX = "starred_apps";
 const GUEST_KEY = `${STORAGE_KEY_PREFIX}:guest`;
+// A last-known-good copy guarded against an empty list caused by a wiped
+// browser profile or a bad server row. Cleared when the user intentionally
+// unstars everything.
+const BACKUP_KEY_PREFIX = "starred_apps_backup";
 
 function readStarred(key: string): string[] {
   try {
@@ -34,10 +38,16 @@ function readStarred(key: string): string[] {
 function writeStarred(key: string, value: string[]) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    const backupKey = key.replace(STORAGE_KEY_PREFIX, BACKUP_KEY_PREFIX);
+    localStorage.setItem(backupKey, JSON.stringify(value));
   } catch {
     // localStorage may be unavailable (private mode / quota) — the in-memory
     // state still works for the current session.
   }
+}
+
+function backupKeyFor(key: string): string {
+  return key.replace(STORAGE_KEY_PREFIX, BACKUP_KEY_PREFIX);
 }
 
 function normalizeServerValue(value: unknown): string[] | null {
@@ -77,9 +87,17 @@ export function useStarredApps(): UseStarredAppsResult {
 
       if (!userId) {
         // Anonymous: localStorage is the only source of truth.
+        let finalLocal = local;
+        if (!finalLocal.length) {
+          const backup = readStarred(backupKeyFor(storageKey));
+          if (backup.length) {
+            finalLocal = backup;
+            writeStarred(storageKey, backup);
+          }
+        }
         if (isMounted) {
-          currentRef.current = local;
-          setStarredApps(local);
+          currentRef.current = finalLocal;
+          setStarredApps(finalLocal);
         }
         return;
       }
@@ -99,7 +117,13 @@ export function useStarredApps(): UseStarredAppsResult {
         }
 
         const fromServer = normalizeServerValue(data?.starred_apps);
-        const loaded = fromServer ?? local;
+        let loaded = fromServer ?? local;
+        if (!loaded.length) {
+          // An empty server row or a wiped browser profile should not silently
+          // destroy the user's favourites; fall back to the last known list.
+          const backup = readStarred(backupKeyFor(storageKey));
+          if (backup.length) loaded = backup;
+        }
         if (isMounted && !toggledDuringLoadRef.current) {
           currentRef.current = loaded;
           setStarredApps(loaded);
