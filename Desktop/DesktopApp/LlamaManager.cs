@@ -82,7 +82,14 @@ namespace DesktopApp
             public string Source { get; set; } = "manual"; // manual | huggingface | modelscope
             public string SourceId { get; set; } = "";
             public List<string> Shards { get; set; } = new List<string>();
+            /// <summary>
+            /// Absolute paths of imported shard files. When set, the files are used
+            /// in place and never copied into (or deleted from) the models folder.
+            /// </summary>
+            public List<string> Paths { get; set; } = new List<string>();
             public string Mmproj { get; set; } = "";
+            /// <summary>Absolute path of an imported mmproj file, if any.</summary>
+            public string MmprojPath { get; set; } = "";
             public bool UseJinja { get; set; } = false;
             public bool Mmap { get; set; } = true;
             public int ContextSize { get; set; } = 4096;
@@ -94,9 +101,13 @@ namespace DesktopApp
         {
             public string Id { get; set; } = "";
             public List<string> Shards { get; set; } = new List<string>();
+            public List<string> ShardPaths { get; set; } = new List<string>();
             public int ExpectedShards { get; set; } = 1;
             public string Mmproj { get; set; } = "";
+            public string MmprojPath { get; set; } = "";
             public long SizeBytes { get; set; }
+            /// <summary>True when the model's files live outside the models folder.</summary>
+            public bool Referenced { get; set; }
         }
 
         public sealed class ReleaseInfo
@@ -678,22 +689,25 @@ namespace DesktopApp
         /// Groups .gguf files into models. Split models named
         /// "base-00001-of-00002.gguf" become one group; mmproj files are attached
         /// to the matching model family for vision support.
+        ///
+        /// Models live either in the app's models folder (legacy copies) or at
+        /// the location they were imported from (recorded in the state file).
         /// </summary>
         private List<ModelGroup> BuildModelGroups()
         {
             Directory.CreateDirectory(ModelsDirectory);
+            var groups = new Dictionary<string, ModelGroup>(StringComparer.OrdinalIgnoreCase);
+
+            // 1) Models physically stored in the app's own models folder.
             var files = Directory.GetFiles(ModelsDirectory)
                 .Where(f => f.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase)).ToList();
-            var groups = new Dictionary<string, ModelGroup>(StringComparer.OrdinalIgnoreCase);
             var projectors = new List<string>();
-
             foreach (var file in files)
             {
                 string name = Path.GetFileName(file);
-                long size = new FileInfo(file).Length;
                 if (name.StartsWith("mmproj", StringComparison.OrdinalIgnoreCase))
                 {
-                    projectors.Add(name);
+                    projectors.Add(file);
                     continue;
                 }
                 var match = ShardPattern.Match(name);
@@ -707,17 +721,109 @@ namespace DesktopApp
                 }
                 group.ExpectedShards = Math.Max(group.ExpectedShards, expected);
                 group.Shards.Add(name);
-                group.SizeBytes += size;
+                group.ShardPaths.Add(file);
+                try { group.SizeBytes += new FileInfo(file).Length; } catch { }
             }
 
             foreach (var group in groups.Values)
             {
-                group.Shards.Sort((a, b) => ShardIndex(a).CompareTo(ShardIndex(b)));
-                string family = string.Join("-", group.Id.Split('-').Take(2)).ToLowerInvariant();
-                var projector = projectors.FirstOrDefault(p => p.ToLowerInvariant().Contains(family));
-                if (projector != null) group.Mmproj = projector;
+                var ordered = group.Shards
+                    .Select((name, i) => (name, path: group.ShardPaths[i]))
+                    .OrderBy(t => ShardIndex(t.name))
+                    .ToList();
+                group.Shards = ordered.Select(t => t.name).ToList();
+                group.ShardPaths = ordered.Select(t => t.path).ToList();
+                string family = FamilyOf(group.Id);
+                string? projector = projectors.FirstOrDefault(p => FamilyOf(Path.GetFileName(p)) == family)
+                    ?? projectors.FirstOrDefault(p => Path.GetFileName(p).ToLowerInvariant().Contains(family));
+                if (projector != null)
+                {
+                    group.Mmproj = Path.GetFileName(projector);
+                    group.MmprojPath = projector;
+                }
             }
+
+            // 2) Models imported by reference: use the files in place.
+            foreach (var kv in _state.Models)
+            {
+                var settings = kv.Value;
+                if (settings.Paths == null || settings.Paths.Count == 0) continue;
+                var paths = settings.Paths
+                    .Where(p => !string.IsNullOrWhiteSpace(p))
+                    .Select(p => { try { return Path.GetFullPath(p); } catch { return ""; } })
+                    .Where(p => p.Length > 0)
+                    .ToList();
+                if (paths.Count == 0) continue;
+
+                if (!groups.TryGetValue(kv.Key, out var group))
+                {
+                    group = new ModelGroup { Id = kv.Key };
+                    groups[kv.Key] = group;
+                }
+                group.Referenced = true;
+                var orderedPaths = paths
+                    .Select(p => (name: Path.GetFileName(p) ?? "", path: p))
+                    .OrderBy(t => ShardIndex(t.name))
+                    .ToList();
+                group.Shards = orderedPaths.Select(t => t.name).ToList();
+                group.ShardPaths = orderedPaths.Select(t => t.path).ToList();
+                group.ExpectedShards = orderedPaths
+                    .Select(t => ShardPattern.Match(t.name))
+                    .Where(m => m.Success && int.TryParse(m.Groups["total"].Value, out _))
+                    .Select(m => int.Parse(m.Groups["total"].Value))
+                    .DefaultIfEmpty(1).Max();
+                group.SizeBytes = orderedPaths.Sum(t =>
+                {
+                    try { return new FileInfo(t.path).Length; } catch { return 0L; }
+                });
+                group.Mmproj = settings.Mmproj;
+                if (!string.IsNullOrWhiteSpace(settings.MmprojPath))
+                    group.MmprojPath = settings.MmprojPath;
+                else if (!string.IsNullOrWhiteSpace(settings.Mmproj))
+                    group.MmprojPath = SafeResolveModelPath(settings.Mmproj);
+            }
+
             return groups.Values.OrderBy(g => g.Id).ToList();
+        }
+
+        private static string FamilyOf(string nameOrId)
+        {
+            string value = nameOrId;
+            if (value.StartsWith("mmproj", StringComparison.OrdinalIgnoreCase))
+                value = value.Substring("mmproj".Length).TrimStart('-', '_', '.');
+            if (value.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase))
+                value = value.Substring(0, value.Length - ".gguf".Length);
+            return string.Join("-", value.Split('-').Take(2)).ToLowerInvariant();
+        }
+
+        private static bool IsInsideModelsDirectory(string path)
+        {
+            try
+            {
+                string root = Path.GetFullPath(ModelsDirectory) + Path.DirectorySeparatorChar;
+                return Path.GetFullPath(path).StartsWith(root, StringComparison.OrdinalIgnoreCase);
+            }
+            catch { return false; }
+        }
+
+        private static string SafeResolveModelPath(string fileName)
+        {
+            try { return Path.GetFullPath(Path.Combine(ModelsDirectory, Path.GetFileName(fileName))); }
+            catch { return ""; }
+        }
+
+        /// <summary>Absolute mmproj path, preferring an imported file over a copied one.</summary>
+        private static string ResolveMmprojPath(ModelSettings? settings, ModelGroup group)
+        {
+            if (settings != null && !string.IsNullOrWhiteSpace(settings.MmprojPath) &&
+                File.Exists(settings.MmprojPath))
+                return settings.MmprojPath;
+            string name = !string.IsNullOrWhiteSpace(settings?.Mmproj) ? settings!.Mmproj : group.Mmproj;
+            if (string.IsNullOrWhiteSpace(name)) return "";
+            if (!string.IsNullOrWhiteSpace(group.MmprojPath) &&
+                string.Equals(Path.GetFileName(group.MmprojPath), name, StringComparison.OrdinalIgnoreCase))
+                return group.MmprojPath;
+            return SafeResolveModelPath(name);
         }
 
         private ModelSettings? FindSettings(string id, ModelGroup group)
@@ -735,14 +841,14 @@ namespace DesktopApp
             foreach (var group in BuildModelGroups())
             {
                 var settings = FindSettings(group.Id, group);
-                string mmproj = string.IsNullOrWhiteSpace(settings?.Mmproj) ? group.Mmproj : settings.Mmproj;
-                bool hasVision = !string.IsNullOrWhiteSpace(mmproj) && File.Exists(ResolveModelPath(mmproj));
+                string mmprojPath = ResolveMmprojPath(settings, group);
+                bool hasVision = !string.IsNullOrWhiteSpace(mmprojPath) && File.Exists(mmprojPath);
                 bool complete = group.Shards.Count >= group.ExpectedShards &&
-                                group.Shards.All(s => File.Exists(ResolveModelPath(s)));
+                                group.ShardPaths.All(File.Exists);
                 result.Add(new
                 {
                     id = group.Id,
-                    fileName = group.Shards[0],
+                    fileName = group.Shards.Count > 0 ? group.Shards[0] : "",
                     displayName = settings?.DisplayName ?? group.Id,
                     source = settings?.Source ?? "manual",
                     sourceId = settings?.SourceId ?? "",
@@ -757,8 +863,9 @@ namespace DesktopApp
                     shardExpected = group.ExpectedShards,
                     shardsComplete = complete,
                     hasVision = hasVision,
-                    mmproj = hasVision ? mmproj : "",
-                    useJinja = settings?.UseJinja ?? false
+                    mmproj = hasVision ? Path.GetFileName(mmprojPath) : "",
+                    useJinja = settings?.UseJinja ?? false,
+                    referenced = group.Referenced
                 });
             }
             return result;
@@ -772,9 +879,18 @@ namespace DesktopApp
             existing.DisplayName = string.IsNullOrWhiteSpace(settings.DisplayName) ? existing.DisplayName ?? modelId : settings.DisplayName;
             existing.Source = settings.Source ?? existing.Source;
             existing.SourceId = settings.SourceId ?? existing.SourceId;
-            if (settings.Shards != null && settings.Shards.Count > 0)
+            // For referenced models the shard list is authoritative from Paths.
+            if (!(existing.Paths != null && existing.Paths.Count > 0) &&
+                settings.Shards != null && settings.Shards.Count > 0)
                 existing.Shards = settings.Shards.Select(s => Path.GetFileName(s) ?? s).ToList();
-            if (!string.IsNullOrWhiteSpace(settings.Mmproj)) existing.Mmproj = Path.GetFileName(settings.Mmproj);
+            if (!string.IsNullOrWhiteSpace(settings.Mmproj))
+            {
+                string name = Path.GetFileName(settings.Mmproj);
+                existing.Mmproj = name;
+                if (!string.IsNullOrWhiteSpace(settings.MmprojPath) &&
+                    string.Equals(Path.GetFileName(settings.MmprojPath), name, StringComparison.OrdinalIgnoreCase))
+                    existing.MmprojPath = Path.GetFullPath(settings.MmprojPath);
+            }
             existing.UseJinja = settings.UseJinja;
             existing.Mmap = settings.Mmap;
             existing.ContextSize = settings.ContextSize > 0 ? settings.ContextSize : 4096;
@@ -784,36 +900,123 @@ namespace DesktopApp
             SaveState();
         }
 
+        private sealed class ImportEntry
+        {
+            public List<string> Shards { get; } = new List<string>();
+            public string MmprojPath { get; set; } = "";
+        }
+
+        /// <summary>
+        /// Registers GGUF files at their current location. Nothing is copied or
+        /// moved, so large models load straight from where the user keeps them.
+        /// </summary>
         public List<string> ImportModels(IEnumerable<string> sourcePaths)
         {
+            var models = new Dictionary<string, ImportEntry>(StringComparer.OrdinalIgnoreCase);
+            var projectors = new List<string>();
+
             foreach (var source in sourcePaths)
             {
-                string full = Path.GetFullPath(source);
-                if (!File.Exists(full)) continue;
+                if (string.IsNullOrWhiteSpace(source)) continue;
+                string full;
+                try { full = Path.GetFullPath(source); } catch { continue; }
+                if (!File.Exists(full) ||
+                    !full.EndsWith(".gguf", StringComparison.OrdinalIgnoreCase)) continue;
                 string name = Path.GetFileName(full);
-                string target = ResolveModelPath(name);
-                if (string.Equals(full, target, StringComparison.OrdinalIgnoreCase)) continue;
-                File.Copy(full, target, true);
-            }
-            var ids = new List<string>();
-            foreach (var group in BuildModelGroups())
-            {
-                if (!_state.Models.ContainsKey(group.Id))
+                if (name.StartsWith("mmproj", StringComparison.OrdinalIgnoreCase))
                 {
-                    _state.Models[group.Id] = new ModelSettings
+                    projectors.Add(full);
+                    continue;
+                }
+                var match = ShardPattern.Match(name);
+                string id = match.Success ? match.Groups["base"].Value : name;
+                if (!models.TryGetValue(id, out var entry))
+                {
+                    entry = new ImportEntry();
+                    models[id] = entry;
+                }
+                if (!entry.Shards.Contains(full, StringComparer.OrdinalIgnoreCase))
+                    entry.Shards.Add(full);
+            }
+
+            if (models.Count == 0 && projectors.Count == 0)
+                throw new InvalidOperationException("No GGUF files were selected");
+
+            // Attach mmproj files to the model family they belong to.
+            var known = BuildModelGroups();
+            foreach (var projector in projectors)
+            {
+                string family = FamilyOf(Path.GetFileName(projector));
+                string? id = models.Keys.FirstOrDefault(k => FamilyOf(k) == family)
+                    ?? known.FirstOrDefault(g => FamilyOf(g.Id) == family)?.Id;
+                if (id == null) continue;
+                if (!models.TryGetValue(id, out var entry))
+                {
+                    entry = new ImportEntry();
+                    models[id] = entry;
+                }
+                entry.MmprojPath = projector;
+            }
+
+            var ids = new List<string>();
+            foreach (var kv in models)
+            {
+                string id = kv.Key;
+                var entry = kv.Value;
+                entry.Shards.Sort((a, b) =>
+                    ShardIndex(Path.GetFileName(a)).CompareTo(ShardIndex(Path.GetFileName(b))));
+
+                if (!_state.Models.TryGetValue(id, out var settings))
+                {
+                    settings = new ModelSettings
                     {
-                        Id = group.Id,
-                        FileName = group.Shards[0],
-                        DisplayName = group.Id,
-                        Shards = group.Shards.ToList(),
-                        Mmproj = group.Mmproj,
+                        Id = id,
+                        DisplayName = id,
                         Mmap = true,
-                        // Hy4 Flash requires Jinja chat templates.
-                        UseJinja = group.Id.IndexOf("hy4", StringComparison.OrdinalIgnoreCase) >= 0
+                        UseJinja = id.IndexOf("hy4", StringComparison.OrdinalIgnoreCase) >= 0
                     };
                 }
-                ids.Add(group.Id);
+
+                if (entry.Shards.Count > 0)
+                {
+                    var merged = new List<string>(entry.Shards);
+                    // Keep other shards of the same model that were imported from
+                    // the same folder earlier.
+                    string dir = Path.GetDirectoryName(entry.Shards[0]) ?? "";
+                    if (settings.Paths != null)
+                        foreach (var p in settings.Paths)
+                            if (string.Equals(Path.GetDirectoryName(p), dir, StringComparison.OrdinalIgnoreCase) &&
+                                !merged.Contains(p, StringComparer.OrdinalIgnoreCase))
+                                merged.Add(p);
+                    merged.Sort((a, b) =>
+                        ShardIndex(Path.GetFileName(a)).CompareTo(ShardIndex(Path.GetFileName(b))));
+
+                    settings.Id = id;
+                    settings.FileName = Path.GetFileName(merged[0]);
+                    settings.Shards = merged.Select(p => Path.GetFileName(p) ?? p).ToList();
+                    settings.Paths = merged;
+                }
+
+                if (!string.IsNullOrWhiteSpace(entry.MmprojPath))
+                {
+                    settings.Mmproj = Path.GetFileName(entry.MmprojPath);
+                    settings.MmprojPath = entry.MmprojPath;
+                }
+                else if (string.IsNullOrWhiteSpace(settings.MmprojPath))
+                {
+                    var group = known.FirstOrDefault(g => g.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+                    if (group != null && !string.IsNullOrWhiteSpace(group.MmprojPath))
+                    {
+                        settings.Mmproj = group.Mmproj;
+                        settings.MmprojPath = group.MmprojPath;
+                    }
+                }
+
+                _state.Models[id] = settings;
+                ids.Add(id);
             }
+            if (ids.Count == 0)
+                throw new InvalidOperationException("No GGUF model files were selected");
             SaveState();
             return ids;
         }
@@ -825,52 +1028,22 @@ namespace DesktopApp
                      g.Shards.Contains(modelId, StringComparer.OrdinalIgnoreCase));
             if (group != null)
             {
-                foreach (var shard in group.Shards)
+                // Imported-by-reference files belong to the user: only forget them.
+                // Files copied into our own models folder are ours to delete.
+                foreach (var path in group.ShardPaths)
+                    if (IsInsideModelsDirectory(path) && File.Exists(path)) File.Delete(path);
+                if (!string.IsNullOrWhiteSpace(group.MmprojPath) && IsInsideModelsDirectory(group.MmprojPath))
                 {
-                    string path = ResolveModelPath(shard);
-                    if (File.Exists(path)) File.Delete(path);
-                }
-                if (!string.IsNullOrWhiteSpace(group.Mmproj))
-                {
-                    // Only remove the projector if no other model uses it.
-                    bool usedElsewhere = BuildModelGroups().Any(g => !string.Equals(g.Id, group.Id, StringComparison.OrdinalIgnoreCase) &&
-                        string.Equals(g.Mmproj, group.Mmproj, StringComparison.OrdinalIgnoreCase));
-                    if (!usedElsewhere)
-                    {
-                        string projector = ResolveModelPath(group.Mmproj);
-                        if (File.Exists(projector)) File.Delete(projector);
-                    }
+                    bool usedElsewhere = BuildModelGroups().Any(g =>
+                        !string.Equals(g.Id, group.Id, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(g.MmprojPath, group.MmprojPath, StringComparison.OrdinalIgnoreCase));
+                    if (!usedElsewhere && File.Exists(group.MmprojPath)) File.Delete(group.MmprojPath);
                 }
                 _state.Models.Remove(group.Id);
             }
             // Remove any legacy key stored under the file name.
             _state.Models.Remove(Path.GetFileName(modelId));
             SaveState();
-        }
-
-        public async Task SaveUploadedModelAsync(string fileName, byte[] data, ModelSettings? settings = null, Action<int>? progress = null, CancellationToken ct = default)
-        {
-            if ((long)data.Length > 32L * 1024 * 1024 * 1024) throw new InvalidOperationException("Model file is too large");
-            string full = ResolveModelPath(fileName);
-            const int chunk = 1 << 20;
-            using (var fs = new FileStream(full + ".upload", FileMode.Create, FileAccess.Write, FileShare.None))
-            {
-                for (int offset = 0; offset < data.Length; offset += chunk)
-                {
-                    int len = Math.Min(chunk, data.Length - offset);
-                    await fs.WriteAsync(data.AsMemory(offset, len), ct).ConfigureAwait(false);
-                    progress?.Invoke((int)((long)offset * 100 / Math.Max(1, data.Length)));
-                }
-            }
-            if (File.Exists(full)) File.Delete(full);
-            File.Move(full + ".upload", full);
-            if (settings != null)
-            {
-                if (fileName.IndexOf("hy4", StringComparison.OrdinalIgnoreCase) >= 0)
-                    settings.UseJinja = true;
-                SaveModelSettings(fileName, settings);
-            }
-            progress?.Invoke(100);
         }
 
         public string? ReadModelFile(string fileName)
@@ -891,8 +1064,9 @@ namespace DesktopApp
                 ?? throw new InvalidOperationException("Model not found");
             if (group.Shards.Count < group.ExpectedShards)
                 throw new InvalidOperationException($"Model is incomplete: {group.Shards.Count}/{group.ExpectedShards} shards present");
-            string modelPath = ResolveModelPath(group.Shards[0]);
-            if (!File.Exists(modelPath)) throw new InvalidOperationException("Model file not found");
+            string modelPath = group.ShardPaths.Count > 0 ? group.ShardPaths[0] : "";
+            if (string.IsNullOrWhiteSpace(modelPath) || !File.Exists(modelPath))
+                throw new InvalidOperationException("Model file not found");
             var settings = FindSettings(group.Id, group);
 
             int instanceId = _nextInstanceId++;
@@ -910,9 +1084,9 @@ namespace DesktopApp
             // naming pattern in the same directory, so only shard 1 is passed.
             if (mmap) args += " --mmap";
             if (gpuLayers >= 0) args += $" -ngl {Math.Min(gpuLayers, 9999)}";
-            string mmproj = string.IsNullOrWhiteSpace(settings?.Mmproj) ? group.Mmproj : settings.Mmproj;
-            if (!string.IsNullOrWhiteSpace(mmproj) && File.Exists(ResolveModelPath(mmproj)))
-                args += $" --mmproj \"{ResolveModelPath(mmproj)}\"";
+            string mmproj = ResolveMmprojPath(settings, group);
+            if (!string.IsNullOrWhiteSpace(mmproj) && File.Exists(mmproj))
+                args += $" --mmproj \"{mmproj}\"";
             if (settings?.UseJinja == true) args += " --jinja";
 
             var psi = new ProcessStartInfo

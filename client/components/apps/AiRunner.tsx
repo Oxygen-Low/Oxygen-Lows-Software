@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,11 +10,9 @@ import { useTranslation } from "@/contexts/LanguageContext";
 import { toast } from "sonner";
 import {
   isNativeRunnerAvailable,
-  isAndroidRunner,
   llamaListModels,
   llamaPickModel,
   llamaImportModels,
-  llamaUploadModel,
   llamaSaveModel,
   llamaDeleteModel,
   llamaStart,
@@ -45,8 +42,6 @@ export function AiRunnerApp() {
   const { t } = useTranslation();
   const { session } = useAuth();
   const native = isNativeRunnerAvailable();
-  const android = isAndroidRunner();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [status, setStatus] = useState<LlamaStatus | null>(null);
   const [models, setModels] = useState<LlamaModelEntry[]>([]);
@@ -56,7 +51,6 @@ export function AiRunnerApp() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [busyModel, setBusyModel] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -115,39 +109,32 @@ export function AiRunnerApp() {
   }, [query, modelType, source, session, t]);
 
   const pickLocalModel = async () => {
+    const toastId = toast.loading(
+      t("aiRunner.importing", undefined, "Importing model…"),
+    );
     try {
       const picked = await llamaPickModel();
       const paths = picked.paths?.length ? picked.paths : [picked.path];
-      await toast.promise(llamaImportModels(paths), {
-        loading: t("aiRunner.importing", undefined, "Importing model…"),
-        success: t("aiRunner.imported", undefined, "Model imported."),
-        error: t("aiRunner.importFailed", undefined, "Could not import the model."),
-      });
+      if (!paths.filter(Boolean).length) {
+        toast.dismiss(toastId);
+        return;
+      }
+      await llamaImportModels(paths.filter(Boolean));
+      toast.success(
+        t("aiRunner.imported", undefined, "Model imported."),
+        { id: toastId },
+      );
       refresh();
     } catch (e: any) {
-      if (e?.message !== "Canceled") {
-        toast.error(t("aiRunner.importFailed", undefined, "Could not import the model."));
+      if (e?.message === "Canceled") {
+        toast.dismiss(toastId);
+        return;
       }
-    }
-  };
-
-  const onUpload = async (files: File[]) => {
-    setUploadProgress(0);
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const base64 = await readFileAsBase64(file);
-        await llamaUploadModel(file.name, base64, true, (pct) =>
-          setUploadProgress(Math.round((i * 100 + pct) / files.length)),
-        );
-      }
-      toast.success(t("aiRunner.uploaded", undefined, "Model saved to this device."));
-      refresh();
-    } catch {
-      toast.error(t("aiRunner.uploadFailed", undefined, "Could not save the model."));
-    } finally {
-      setUploadProgress(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      toast.error(
+        e?.message ||
+          t("aiRunner.importFailed", undefined, "Could not import the model."),
+        { id: toastId },
+      );
     }
   };
 
@@ -266,7 +253,7 @@ export function AiRunnerApp() {
             {t(
               "aiRunner.addModelDesc",
               undefined,
-              "Search HuggingFace and ModelScope, import a local file, or upload a GGUF.",
+              "Search HuggingFace and ModelScope or import a local GGUF file.",
             )}
           </CardDescription>
         </CardHeader>
@@ -330,28 +317,18 @@ export function AiRunnerApp() {
             </div>
           ) : null}
 
-          <div className="flex flex-wrap gap-2">
-            {!android ? (
-              <Button variant="secondary" onClick={pickLocalModel}>
-                {t("aiRunner.importLocal", undefined, "Import local GGUF files")}
-              </Button>
-            ) : null}
-            <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-              {t("aiRunner.uploadGguf", undefined, "Upload GGUF")}
+          <div className="space-y-2">
+            <Button variant="secondary" onClick={pickLocalModel}>
+              {t("aiRunner.importLocal", undefined, "Import local GGUF files")}
             </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".gguf,application/octet-stream"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                if (files.length) onUpload(files);
-              }}
-            />
+            <p className="text-xs text-muted-foreground">
+              {t(
+                "aiRunner.importHint",
+                undefined,
+                "Files are used from where they already are; they are not copied.",
+              )}
+            </p>
           </div>
-          {uploadProgress !== null ? <Progress value={uploadProgress} /> : null}
         </CardContent>
       </Card>
 
@@ -413,6 +390,11 @@ export function AiRunnerApp() {
                           {t("aiRunner.vision", undefined, "Vision (mmproj)")}
                         </Badge>
                       ) : null}
+                      {model.referenced ? (
+                        <Badge variant="outline">
+                          {t("aiRunner.linked", undefined, "Linked file")}
+                        </Badge>
+                      ) : null}
                       <Badge variant="outline">
                         {t("aiRunner.modelSize", { size: formatBytes(model.sizeBytes) }, formatBytes(model.sizeBytes))}
                       </Badge>
@@ -456,7 +438,9 @@ export function AiRunnerApp() {
                         refresh();
                       }}
                     >
-                      {t("aiRunner.delete", undefined, "Delete")}
+                      {model.referenced
+                        ? t("aiRunner.remove", undefined, "Remove")
+                        : t("aiRunner.delete", undefined, "Delete")}
                     </Button>
                   </div>
                 </div>
@@ -543,16 +527,4 @@ function formatBytes(bytes: number): string {
   const units = ["B", "KiB", "MiB", "GiB", "TiB"];
   const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
   return `${(bytes / Math.pow(1024, i)).toFixed(i >= 3 ? 1 : 0)} ${units[i]}`;
-}
-
-function readFileAsBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.includes(",") ? result.split(",")[1] : result);
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
 }

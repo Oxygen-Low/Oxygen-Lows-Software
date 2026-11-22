@@ -808,6 +808,8 @@ public partial class MainWindow : Window
                 else if (cmd == "llama_save_model")
                 {
                     string fileName = doc.RootElement.TryGetProperty("fileName", out var fn) ? fn.GetString() ?? "" : "";
+                    string modelId = doc.RootElement.TryGetProperty("id", out var mid) ? mid.GetString() ?? "" : "";
+                    if (string.IsNullOrWhiteSpace(modelId)) modelId = fileName;
                     bool mmap = !doc.RootElement.TryGetProperty("mmap", out var mm) || mm.GetBoolean();
                     int contextSize = doc.RootElement.TryGetProperty("contextSize", out var cs) && cs.TryGetInt32(out var csv) ? csv : 4096;
                     int gpuLayers = doc.RootElement.TryGetProperty("gpuLayers", out var gl) && gl.TryGetInt32(out var glv) ? glv : -1;
@@ -821,31 +823,13 @@ public partial class MainWindow : Window
                     if (doc.RootElement.TryGetProperty("shards", out var sh) && sh.ValueKind == JsonValueKind.Array)
                         foreach (var s in sh.EnumerateArray())
                             if (s.GetString() is string sv && !string.IsNullOrWhiteSpace(sv)) shards.Add(sv);
-                    _llamaManager.SaveModelSettings(fileName, new LlamaManager.ModelSettings
+                    _llamaManager.SaveModelSettings(modelId, new LlamaManager.ModelSettings
                     {
                         Mmap = mmap, ContextSize = contextSize, GpuLayers = gpuLayers,
                         Port = port, DisplayName = displayName, Source = source, SourceId = sourceId,
                         UseJinja = useJinja, Mmproj = mmproj, Shards = shards
                     });
                     SendWebMessage(new { id, success = true });
-                }
-                else if (cmd == "llama_upload_model")
-                {
-                    string fileName = doc.RootElement.TryGetProperty("fileName", out var ufn) ? ufn.GetString() ?? "" : "";
-                    string base64 = doc.RootElement.TryGetProperty("data", out var ud) ? ud.GetString() ?? "" : "";
-                    bool mmap = !doc.RootElement.TryGetProperty("mmap", out var umm) || umm.GetBoolean();
-                    try
-                    {
-                        byte[] bytes = Convert.FromBase64String(base64);
-                        await _llamaManager.SaveUploadedModelAsync(fileName, bytes, new LlamaManager.ModelSettings { Mmap = mmap },
-                            p => SendWebMessage(new { id, success = true, progress = p })).ConfigureAwait(false);
-                        SendWebMessage(new { id, success = true });
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine("llama_upload_model: " + ex.Message);
-                        SendWebMessage(new { id, success = false, error = "Unable to save model file" });
-                    }
                 }
                 else if (cmd == "llama_delete_model")
                 {
@@ -899,18 +883,25 @@ public partial class MainWindow : Window
                     try
                     {
                         if (paths.Count == 0) throw new InvalidOperationException("No files selected");
-                        await Task.Run(() => _llamaManager.ImportModels(paths));
-                        SendWebMessage(new { id, success = true, data = new { fileNames = paths.Select(Path.GetFileName).ToArray() } });
+                        var ids = _llamaManager.ImportModels(paths);
+                        SendWebMessage(new { id, success = true, data = new
+                        {
+                            ids = ids.ToArray(),
+                            fileNames = paths.Select(Path.GetFileName).ToArray()
+                        } });
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine("llama_import_models: " + ex.Message);
-                        SendWebMessage(new { id, success = false, error = "Unable to import model files" });
+                        Debug.WriteLine("llama_import_models: " + ex);
+                        SendWebMessage(new { id, success = false, error = "Unable to import model files: " + ex.Message });
                     }
                 }
                 else if (cmd == "llama_start")
                 {
-                    string fileName = doc.RootElement.TryGetProperty("fileName", out var sfn) ? sfn.GetString() ?? "" : "";
+                    string fileName = doc.RootElement.TryGetProperty("modelId", out var smi) ? smi.GetString() ?? "" : "";
+                    if (string.IsNullOrWhiteSpace(fileName) &&
+                        doc.RootElement.TryGetProperty("fileName", out var sfn))
+                        fileName = sfn.GetString() ?? "";
                     int port = doc.RootElement.TryGetProperty("port", out var sp2) && sp2.TryGetInt32(out var spv) ? spv : 0;
                     bool mmap = !doc.RootElement.TryGetProperty("mmap", out var smm) || smm.GetBoolean();
                     int contextSize = doc.RootElement.TryGetProperty("contextSize", out var scs) && scs.TryGetInt32(out var scsv) ? scsv : 4096;

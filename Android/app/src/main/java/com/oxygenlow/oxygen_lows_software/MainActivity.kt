@@ -22,6 +22,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
@@ -121,6 +122,48 @@ class MainActivity : AppCompatActivity() {
         isForeground = true
         updateHandler.removeCallbacks(updateCheckRunnable)
         updateHandler.post(updateCheckRunnable)
+    }
+
+    // ── GGUF model picker ────────────────────────────────────────────────
+    private var llamaPickCallback: ((List<Uri>) -> Unit)? = null
+    private val llamaPickRequestCode = 4711
+
+    /**
+     * Opens the system document picker for GGUF files. The web layer can only
+     * see a File object for `<input type=file>`, which forces a huge base64
+     * round-trip; this lets the native side read the document directly.
+     */
+    fun pickLlamaModelFiles(callback: (List<Uri>) -> Unit) {
+        llamaPickCallback = callback
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        }
+        try {
+            startActivityForResult(intent, llamaPickRequestCode)
+        } catch (e: ActivityNotFoundException) {
+            llamaPickCallback = null
+            callback(emptyList())
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == llamaPickRequestCode) {
+            val callback = llamaPickCallback
+            llamaPickCallback = null
+            val uris = mutableListOf<Uri>()
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                data.clipData?.let { clip ->
+                    for (i in 0 until clip.itemCount) uris.add(clip.getItemAt(i).uri)
+                }
+                if (uris.isEmpty()) data.data?.let { uris.add(it) }
+            }
+            callback?.invoke(uris)
+            return
+        }
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun onPause() {
@@ -474,34 +517,52 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
                     try { llamaManager.saveModelSettings(json); respond(id, true) }
                     catch (e: Exception) { respond(id, false, error = "Unable to save model settings") }
                 }
-                "llama_upload_model" -> {
-                    val name = json.optString("fileName", "")
-                    val b64 = json.optString("data", "")
-                    val mmap = !json.has("mmap") || json.optBoolean("mmap", true)
-                    Thread {
-                        try {
-                            val bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
-                            llamaManager.saveUploadedModel(name, bytes, mmap) { p ->
-                                sendResponse(JSONObject().apply { put("id", id); put("success", true); put("progress", p) }.toString())
-                            }
-                            respond(id, true)
-                        } catch (e: Exception) { respond(id, false, error = "Unable to save model file") }
-                    }.start()
-                }
                 "llama_delete_model" -> {
                     try { llamaManager.deleteModel(json.optString("fileName", "")); respond(id, true) }
                     catch (e: Exception) { respond(id, false, error = "Unable to delete model") }
                 }
                 "llama_pick_model" -> {
-                    // Android uses the system file picker from the web layer via <input type=file>;
-                    // this command is a no-op stub on mobile.
-                    respond(id, false, error = "Use the upload control on Android")
+                    val activity = context
+                    if (activity !is MainActivity) {
+                        respond(id, false, error = "File picker unavailable")
+                    } else {
+                        activity.pickLlamaModelFiles { uris ->
+                            if (uris.isEmpty()) {
+                                respond(id, false, error = "Canceled")
+                            } else {
+                                val paths = uris.map { it.toString() }
+                                val names = uris.map { it.lastPathSegment ?: "model.gguf" }
+                                respond(id, true, data = JSONObject().apply {
+                                    put("paths", JSONArray().apply { paths.forEach { put(it) } })
+                                    put("fileNames", JSONArray().apply { names.forEach { put(it) } })
+                                    put("path", paths.first())
+                                    put("fileName", names.first())
+                                })
+                            }
+                        }
+                    }
                 }
-                "llama_import_model" -> {
-                    try {
-                        val name = llamaManager.importModel(json.optString("sourcePath", ""))
-                        respond(id, true, data = JSONObject().apply { put("fileName", name) })
-                    } catch (e: Exception) { respond(id, false, error = "Unable to import model") }
+                "llama_import_model", "llama_import_models" -> {
+                    val paths = mutableListOf<String>()
+                    json.optJSONArray("paths")?.let { arr ->
+                        for (i in 0 until arr.length()) {
+                            arr.optString(i, "").takeIf { it.isNotBlank() }?.let { paths.add(it) }
+                        }
+                    }
+                    if (paths.isEmpty()) {
+                        json.optString("sourcePath", "").takeIf { it.isNotBlank() }?.let { paths.add(it) }
+                    }
+                    Thread {
+                        try {
+                            val ids = llamaManager.importFiles(paths)
+                            respond(id, true, data = JSONObject().apply {
+                                put("ids", JSONArray().apply { ids.forEach { put(it) } })
+                                put("fileNames", JSONArray().apply { paths.forEach { put(File(it).name) } })
+                            })
+                        } catch (e: Exception) {
+                            respond(id, false, error = e.message ?: "Unable to import model")
+                        }
+                    }.start()
                 }
                 "llama_start" -> {
                     try {

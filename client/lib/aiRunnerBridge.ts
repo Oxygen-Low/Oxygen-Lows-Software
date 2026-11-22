@@ -40,6 +40,8 @@ export interface LlamaModelEntry {
   hasVision: boolean;
   mmproj: string;
   useJinja: boolean;
+  /** True when the model's files are used in place instead of copied. */
+  referenced: boolean;
 }
 
 export interface LlamaStatus {
@@ -244,15 +246,6 @@ export function llamaSaveModel(settings: LlamaModelSettings): Promise<any> {
   return callNative("llama_save_model", settings);
 }
 
-export function llamaUploadModel(
-  fileName: string,
-  data: string,
-  mmap: boolean,
-  onProgress?: (pct: number) => void,
-): Promise<any> {
-  return callNative("llama_upload_model", { fileName, data, mmap }, 600000, onProgress);
-}
-
 export function llamaDeleteModel(modelId: string): Promise<any> {
   return callNative("llama_delete_model", { fileName: modelId });
 }
@@ -270,11 +263,13 @@ export function llamaPickModel(): Promise<LlamaPickedFiles> {
 }
 
 export function llamaImportModel(sourcePath: string): Promise<{ fileName: string }> {
-  return callNative<{ fileName: string }>("llama_import_model", { sourcePath });
+  return callNative<{ fileName: string }>("llama_import_model", { sourcePath }, 600000);
 }
 
-export function llamaImportModels(paths: string[]): Promise<{ fileNames: string[] }> {
-  return callNative<{ fileNames: string[] }>("llama_import_models", { paths });
+export function llamaImportModels(paths: string[]): Promise<{ ids?: string[]; fileNames: string[] }> {
+  // Android copies the selected documents into app storage, which can take a
+  // while for multi-gigabyte models.
+  return callNative<{ ids?: string[]; fileNames: string[] }>("llama_import_models", { paths }, 600000);
 }
 
 export function llamaStart(settings: {
