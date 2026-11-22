@@ -174,12 +174,16 @@ namespace DesktopApp
 
         public async Task<ReleaseInfo> GetLatestReleaseAsync(bool useCache = true)
         {
-            var latest = await FetchReleaseAsync(ReleasesApiUrl).ConfigureAwait(false);
+            string json = await GitHubReleaseCache
+                .GetAsync(ReleasesApiUrl, _httpClient, force: !useCache).ConfigureAwait(false);
+            var latest = ParseRelease(json);
             if (latest.Assets.Count > 0) return latest;
 
             // llama.cpp publishes binaries on nightly releases; the stable
-            // "latest" release only carries a nightly-tag.txt pointer.
-            string? nightlyTag = await ReadNightlyTagAsync().ConfigureAwait(false);
+            // "latest" release only carries a nightly-tag.txt pointer. Fetch it
+            // through its plain download URL instead of the API so it does not
+            // consume another rate-limited request.
+            string? nightlyTag = await ReadNightlyTagAsync(json).ConfigureAwait(false);
             if (!string.IsNullOrWhiteSpace(nightlyTag))
             {
                 var nightly = await GetReleaseByTagAsync(nightlyTag).ConfigureAwait(false);
@@ -188,34 +192,34 @@ namespace DesktopApp
             return latest;
         }
 
-        private async Task<string?> ReadNightlyTagAsync()
+        private async Task<string?> ReadNightlyTagAsync(string latestJson)
         {
             try
             {
-                using var response = await _httpClient.GetAsync(ReleasesApiUrl).ConfigureAwait(false);
-                if (!response.IsSuccessStatusCode) return null;
-                using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
-                if (!doc.RootElement.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array)
-                    return null;
-                foreach (var asset in assets.EnumerateArray())
-                {
-                    string name = asset.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
-                    if (!string.Equals(name, "nightly-tag.txt", StringComparison.OrdinalIgnoreCase)) continue;
-                    string apiUrl = asset.TryGetProperty("url", out var u) ? u.GetString() ?? "" : "";
-                    // Fixed GitHub API host and path - no untrusted URLs.
-                    if (!apiUrl.StartsWith("https://api.github.com/repos/ggml-org/llama.cpp/releases/assets/", StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    using var request = new HttpRequestMessage(HttpMethod.Get, apiUrl);
-                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
-                    using var tagResponse = await _httpClient.SendAsync(request).ConfigureAwait(false);
-                    if (!tagResponse.IsSuccessStatusCode) return null;
-                    string tag = (await tagResponse.Content.ReadAsStringAsync().ConfigureAwait(false)).Trim();
-                    return tag.Length > 0 && tag.Length <= 40 && tag.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == '.')
-                        ? tag
-                        : null;
-                }
+                using var doc = JsonDocument.Parse(latestJson);
+                string? url = FindNightlyTagUrl(doc.RootElement);
+                if (string.IsNullOrWhiteSpace(url) || !IsReleaseAssetUrl(url)) return null;
+                string tag = (await _httpClient.GetStringAsync(url).ConfigureAwait(false)).Trim();
+                return tag.Length > 0 && tag.Length <= 40 &&
+                       tag.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == '.')
+                    ? tag
+                    : null;
             }
             catch (Exception ex) { Debug.WriteLine("Nightly tag lookup: " + ex.Message); }
+            return null;
+        }
+
+        private static string? FindNightlyTagUrl(JsonElement root)
+        {
+            if (!root.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array)
+                return null;
+            foreach (var asset in assets.EnumerateArray())
+            {
+                string name = asset.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+                if (!string.Equals(name, "nightly-tag.txt", StringComparison.OrdinalIgnoreCase)) continue;
+                string url = asset.TryGetProperty("browser_download_url", out var u) ? u.GetString() ?? "" : "";
+                if (IsReleaseAssetUrl(url)) return url;
+            }
             return null;
         }
 
@@ -228,9 +232,13 @@ namespace DesktopApp
 
         private async Task<ReleaseInfo> FetchReleaseAsync(string url)
         {
-            using var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+            string json = await GitHubReleaseCache.GetAsync(url, _httpClient).ConfigureAwait(false);
+            return ParseRelease(json);
+        }
+
+        private static ReleaseInfo ParseRelease(string json)
+        {
+            using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
             string tag = root.TryGetProperty("tag_name", out var t) ? t.GetString() ?? "" : "";
             string version = tag.TrimStart('b', 'v');
@@ -273,9 +281,9 @@ namespace DesktopApp
         {
             try
             {
-                using var response = await _httpClient.GetAsync(AppReleasesApiUrl).ConfigureAwait(false);
-                if (!response.IsSuccessStatusCode) return null;
-                using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
+                string json = await GitHubReleaseCache
+                    .GetAsync(AppReleasesApiUrl, _httpClient).ConfigureAwait(false);
+                using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
                 string tag = root.TryGetProperty("tag_name", out var t) ? t.GetString() ?? "" : "";
                 if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
@@ -406,7 +414,7 @@ namespace DesktopApp
         {
             var release = string.IsNullOrEmpty(tag)
                 ? await FetchPreferredHy4ReleaseAsync().ConfigureAwait(false)
-                    ?? await GetLatestReleaseAsync(false).ConfigureAwait(false)
+                    ?? await GetLatestReleaseAsync().ConfigureAwait(false)
                 : await GetReleaseByTagAsync(tag).ConfigureAwait(false);
             if (release.Assets.Count == 0) throw new InvalidOperationException("No compatible llama.cpp release asset was found");
 

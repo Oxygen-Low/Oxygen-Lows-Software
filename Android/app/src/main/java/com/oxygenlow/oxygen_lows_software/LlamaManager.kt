@@ -106,11 +106,7 @@ class LlamaManager(private val context: Context) {
     }
 
     private fun fetchLatestRelease(): JSONObject {
-        val conn = URL(RELEASE_API).openConnection() as HttpURLConnection
-        conn.connectTimeout = 15000; conn.readTimeout = 15000
-        conn.setRequestProperty("Accept", "application/vnd.github+json")
-        conn.setRequestProperty("User-Agent", "OxygenLowsSoftware")
-        val text = conn.inputStream.bufferedReader().use { it.readText() }
+        val text = GitHubReleaseCache.get(context, RELEASE_API)
         val root = JSONObject(text)
         val tag = root.optString("tag_name", "")
         val assets = root.optJSONArray("assets") ?: JSONArray()
@@ -122,10 +118,8 @@ class LlamaManager(private val context: Context) {
 
     fun install(tag: String = "", onProgress: (Int) -> Unit) {
         val release = if (tag.isBlank()) fetchLatestRelease() else {
-            val conn = URL("$RELEASE_API/tags/$tag").openConnection() as HttpURLConnection
-            conn.setRequestProperty("Accept", "application/vnd.github+json")
-            conn.setRequestProperty("User-Agent", "OxygenLowsSoftware")
-            JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
+            require(tag.all { it.isLetterOrDigit() || it in "-_." }) { "Invalid release tag" }
+            JSONObject(GitHubReleaseCache.get(context, "$RELEASE_API/tags/$tag"))
         }
         val version = release.optString("version", "").ifBlank {
             release.optString("tag_name", "").trimStart('v', 'b')

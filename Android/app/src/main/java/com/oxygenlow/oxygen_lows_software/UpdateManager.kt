@@ -100,23 +100,8 @@ class UpdateManager(private val context: Context) {
     }
 
     fun checkForUpdates(): UpdateInfo {
-        var connection: HttpURLConnection? = null
         return try {
-            val url = URL(GITHUB_API_URL)
-            connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.connectTimeout = 10000
-            connection.readTimeout = 10000
-            connection.setRequestProperty("User-Agent", "OxygenLowsSoftware-Android/$currentVersion")
-            connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
-
-            val responseCode = connection.responseCode
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                Log.w(TAG, "Update check returned HTTP $responseCode")
-                return UpdateInfo(false)
-            }
-
-            val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+            val responseText = GitHubReleaseCache.get(context, GITHUB_API_URL)
             val root = JSONObject(responseText)
 
             if (!root.has("tag_name")) return UpdateInfo(false)
@@ -149,8 +134,6 @@ class UpdateManager(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Error checking for updates", e)
             UpdateInfo(false)
-        } finally {
-            connection?.disconnect()
         }
     }
 

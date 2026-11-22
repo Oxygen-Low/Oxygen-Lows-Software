@@ -57,7 +57,7 @@ namespace DesktopApp
                 using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
                 client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("DesktopApp", CurrentVersion));
                 
-                var response = await client.GetStringAsync(GitHubApiUrl);
+                var response = await GitHubReleaseCache.GetAsync(GitHubApiUrl, client);
                 using var document = JsonDocument.Parse(response);
                 
                 var root = document.RootElement;
