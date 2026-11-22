@@ -913,8 +913,8 @@ public partial class MainWindow : Window
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine("llama_start: " + ex.Message);
-                        SendWebMessage(new { id, success = false, error = "Unable to start model" });
+                        Debug.WriteLine("llama_start: " + ex);
+                        SendWebMessage(new { id, success = false, error = DescribeLlamaError(ex, "start") });
                     }
                 }
                 else if (cmd == "llama_stop")
@@ -1380,12 +1380,23 @@ public partial class MainWindow : Window
         catch (Exception ex) { Debug.WriteLine("Could not open browser: " + ex.Message); }
     }
 
-    private static string DescribeLlamaError(Exception ex)
+    private static string DescribeLlamaError(Exception ex, string operation = "install")
     {
         string message = ex.Message ?? "";
         if (message.IndexOf("403", StringComparison.Ordinal) >= 0 ||
             message.IndexOf("rate limit", StringComparison.OrdinalIgnoreCase) >= 0)
             return "GitHub API rate limit reached. Please try again later.";
+        if (ex is System.ComponentModel.Win32Exception &&
+            (message.IndexOf("entry point", StringComparison.OrdinalIgnoreCase) >= 0 ||
+             message.IndexOf("procedure", StringComparison.OrdinalIgnoreCase) >= 0))
+            return "The llama.cpp build is missing a required DLL entry point. Reinstall llama.cpp from Dependencies Manager.";
+        if (message.IndexOf("exited immediately", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            message.IndexOf("startup check", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            message.IndexOf("incompatible", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            message = System.Text.RegularExpressions.Regex.Replace(message, @"https?://\S+", "").Trim();
+            return "Could not start llama.cpp. " + (message.Length > 240 ? message.Substring(0, 240) : message);
+        }
         if (ex is System.Net.Http.HttpRequestException)
             return "Could not reach GitHub. Check your internet connection and try again.";
         if (ex is System.Text.Json.JsonException)
@@ -1399,7 +1410,8 @@ public partial class MainWindow : Window
             return "The downloaded file failed verification. Please try again.";
         // Strip URLs and keep the message short; the full detail is logged above.
         message = System.Text.RegularExpressions.Regex.Replace(message, @"https?://\S+", "").Trim();
-        return "Could not install llama.cpp: " + (message.Length > 140 ? message.Substring(0, 140) : message);
+        string verb = operation == "start" ? "start" : "install";
+        return $"Could not {verb} llama.cpp: " + (message.Length > 140 ? message.Substring(0, 140) : message);
     }
 
     private void SendWebMessage(object payload)
