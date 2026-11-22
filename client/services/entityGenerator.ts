@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/db";
+import { decodeLlamaModelId } from "@/hooks/useLocalLlamaModels";
 import { safeParseJson } from "@shared/jsonRepair";
 import {
   fetchPollinationsClient,
@@ -414,6 +415,7 @@ export async function callModel(
   const isLocalOllama = model.isLocal && model.provider === "local-ollama";
   const isLocalLmStudio = model.isLocal && model.provider === "local-lmstudio";
   const isLocalKobold = model.isLocal && model.provider === "local-kobold";
+  const isLocalLlamaCpp = model.provider === "local-llamacpp";
 
   let url = "/api/ai/proxy";
   let headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -449,6 +451,15 @@ export async function callModel(
     };
   } else if (isLocalKobold) {
     url = "http://127.0.0.1:5001/v1/chat/completions";
+    bodyData = {
+      model: model.model_id,
+      messages,
+      stream: false,
+    };
+  } else if (isLocalLlamaCpp) {
+    const port = decodeLlamaModelId(model.model_id);
+    if (!port) throw new Error("Invalid local llama.cpp model");
+    url = `http://127.0.0.1:${port}/v1/chat/completions`;
     bodyData = {
       model: model.model_id,
       messages,

@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { db, supabase } from "@/lib/db";
 import { useAiModels, type Model } from "@/hooks/useAiModels";
+import {
+  useLocalLlamaModels,
+  decodeLlamaModelId,
+} from "@/hooks/useLocalLlamaModels";
 import { formatModelLabel, parseAiProxyError } from "@/utils/aiUtils";
 import {
   callDesktopBridge,
@@ -1211,16 +1215,19 @@ export function LLMAgentApp() {
 
   // Models
   const {
-    models,
+    models: baseModels,
     isLoading: modelsLoading,
     refreshModels,
     pollinationsApiKey,
     researchAgentDefaultModel,
   } = useAiModels();
+  const { models: localLlamaModels } = useLocalLlamaModels();
+  const models: Model[] = [...baseModels, ...localLlamaModels];
 
   const [userSelectedModel, setUserSelectedModel] = useState<string | null>(null);
   const selectedModel = userSelectedModel || researchAgentDefaultModel || "openai";
-  const selectedProvider: string = "pollinations";
+  const selectedProvider: string =
+    models.find((m) => m.model_id === selectedModel)?.provider || "pollinations";
   const setSelection = (m: string, _p?: string) => {
     setUserSelectedModel(m);
   };
@@ -1411,6 +1418,11 @@ export function LLMAgentApp() {
           url = "http://127.0.0.1:1234/v1/chat/completions";
         else if (selectedProvider === "local-kobold")
           url = "http://127.0.0.1:5001/v1/chat/completions";
+        else if (selectedProvider === "local-llamacpp") {
+          const port = decodeLlamaModelId(selectedModel);
+          if (!port) throw new Error("Invalid local llama.cpp model");
+          url = `http://127.0.0.1:${port}/v1/chat/completions`;
+        }
 
         fetchOptions = {
           method: "POST",

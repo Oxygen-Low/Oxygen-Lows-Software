@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private string? _workingDirectory = Path.GetTempPath();
     private static readonly HttpClient _localHttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2.5) };
     private readonly UpdateManager _updateManager = new();
+    private readonly LlamaManager _llamaManager = new();
     private DispatcherTimer? _updateCheckTimer;
     private bool _isCheckingUpdates = false;
 
@@ -714,6 +715,208 @@ public partial class MainWindow : Window
                     await Task.WhenAll(tasks);
                     SendWebMessage(new { id, success = true, data = models.ToList() });
                 }
+                // ── AI Runner / llama.cpp dependency commands ───────────────
+                else if (cmd == "llama_status")
+                {
+                    SendWebMessage(new { id, success = true, data = new
+                    {
+                        installed = _llamaManager.IsInstalled(),
+                        installedVersion = _llamaManager.InstalledVersion,
+                        ignoredVersion = _llamaManager.IgnoredVersion,
+                        autoCheckUpdates = _llamaManager.AutoCheckUpdates,
+                        binaryPath = _llamaManager.BinaryPath,
+                        modelsPath = _llamaManager.ModelsPath,
+                        running = _llamaManager.ListRunning()
+                    } });
+                }
+                else if (cmd == "llama_check_update")
+                {
+                    try
+                    {
+                        var release = await _llamaManager.GetPreferredReleaseAsync().ConfigureAwait(false);
+                        bool hasUpdate = LlamaManager.IsNewerVersion(release.Version, _llamaManager.InstalledVersion);
+                        bool ignored = !string.IsNullOrEmpty(_llamaManager.IgnoredVersion) &&
+                                       string.Equals(release.Version, _llamaManager.IgnoredVersion, StringComparison.OrdinalIgnoreCase);
+                        SendWebMessage(new { id, success = true, data = new
+                        {
+                            currentVersion = _llamaManager.InstalledVersion,
+                            latestVersion = release.Version,
+                            hasUpdate = hasUpdate && !ignored,
+                            ignored = ignored,
+                            releaseUrl = release.PageUrl
+                        } });
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("llama_check_update: " + ex.Message);
+                        SendWebMessage(new { id, success = false, error = "Unable to check for llama.cpp updates" });
+                    }
+                }
+                else if (cmd == "llama_install" || cmd == "llama_update")
+                {
+                    string tag = doc.RootElement.TryGetProperty("tag", out var tg) ? tg.GetString() ?? "" : "";
+                    try
+                    {
+                        await _llamaManager.InstallAsync(tag, p =>
+                            SendWebMessage(new { id, success = true, progress = p })).ConfigureAwait(false);
+                        SendWebMessage(new { id, success = true, data = new
+                        {
+                            installedVersion = _llamaManager.InstalledVersion,
+                            installed = _llamaManager.IsInstalled()
+                        } });
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("llama_install: " + ex.Message);
+                        SendWebMessage(new { id, success = false, error = "Unable to install llama.cpp" });
+                    }
+                }
+                else if (cmd == "llama_uninstall")
+                {
+                    try
+                    {
+                        _llamaManager.Uninstall();
+                        SendWebMessage(new { id, success = true });
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("llama_uninstall: " + ex.Message);
+                        SendWebMessage(new { id, success = false, error = "Unable to uninstall llama.cpp" });
+                    }
+                }
+                else if (cmd == "llama_ignore_version")
+                {
+                    string version = doc.RootElement.TryGetProperty("version", out var vv) ? vv.GetString() ?? "" : "";
+                    _llamaManager.SetIgnoredVersion(version);
+                    SendWebMessage(new { id, success = true });
+                }
+                else if (cmd == "llama_set_auto_check")
+                {
+                    bool enabled = !doc.RootElement.TryGetProperty("enabled", out var ae) || ae.GetBoolean();
+                    _llamaManager.SetAutoCheckUpdates(enabled);
+                    SendWebMessage(new { id, success = true });
+                }
+                else if (cmd == "llama_list_models")
+                {
+                    SendWebMessage(new { id, success = true, data = _llamaManager.ListModels() });
+                }
+                else if (cmd == "llama_save_model")
+                {
+                    string fileName = doc.RootElement.TryGetProperty("fileName", out var fn) ? fn.GetString() ?? "" : "";
+                    bool mmap = !doc.RootElement.TryGetProperty("mmap", out var mm) || mm.GetBoolean();
+                    int contextSize = doc.RootElement.TryGetProperty("contextSize", out var cs) && cs.TryGetInt32(out var csv) ? csv : 4096;
+                    int gpuLayers = doc.RootElement.TryGetProperty("gpuLayers", out var gl) && gl.TryGetInt32(out var glv) ? glv : -1;
+                    int port = doc.RootElement.TryGetProperty("port", out var pt) && pt.TryGetInt32(out var ptv) ? ptv : 0;
+                    string displayName = doc.RootElement.TryGetProperty("displayName", out var dn) ? dn.GetString() ?? "" : "";
+                    string source = doc.RootElement.TryGetProperty("source", out var src) ? src.GetString() ?? "manual" : "manual";
+                    string sourceId = doc.RootElement.TryGetProperty("sourceId", out var sid) ? sid.GetString() ?? "" : "";
+                    _llamaManager.SaveModelSettings(fileName, new LlamaManager.ModelSettings
+                    {
+                        Mmap = mmap, ContextSize = contextSize, GpuLayers = gpuLayers,
+                        Port = port, DisplayName = displayName, Source = source, SourceId = sourceId
+                    });
+                    SendWebMessage(new { id, success = true });
+                }
+                else if (cmd == "llama_upload_model")
+                {
+                    string fileName = doc.RootElement.TryGetProperty("fileName", out var ufn) ? ufn.GetString() ?? "" : "";
+                    string base64 = doc.RootElement.TryGetProperty("data", out var ud) ? ud.GetString() ?? "" : "";
+                    bool mmap = !doc.RootElement.TryGetProperty("mmap", out var umm) || umm.GetBoolean();
+                    try
+                    {
+                        byte[] bytes = Convert.FromBase64String(base64);
+                        await _llamaManager.SaveUploadedModelAsync(fileName, bytes, new LlamaManager.ModelSettings { Mmap = mmap },
+                            p => SendWebMessage(new { id, success = true, progress = p })).ConfigureAwait(false);
+                        SendWebMessage(new { id, success = true });
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("llama_upload_model: " + ex.Message);
+                        SendWebMessage(new { id, success = false, error = "Unable to save model file" });
+                    }
+                }
+                else if (cmd == "llama_delete_model")
+                {
+                    string fileName = doc.RootElement.TryGetProperty("fileName", out var dfn) ? dfn.GetString() ?? "" : "";
+                    try { _llamaManager.DeleteModel(fileName); SendWebMessage(new { id, success = true }); }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("llama_delete_model: " + ex.Message);
+                        SendWebMessage(new { id, success = false, error = "Unable to delete model file" });
+                    }
+                }
+                else if (cmd == "llama_pick_model")
+                {
+                    string? selectedPath = null;
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        using var dialog = new System.Windows.Forms.OpenFileDialog
+                        {
+                            Filter = "GGUF model files (*.gguf)|*.gguf|All files (*.*)|*.*",
+                            Title = "Select a GGUF model file",
+                            Multiselect = false
+                        };
+                        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                            selectedPath = dialog.FileName;
+                    });
+                    if (string.IsNullOrEmpty(selectedPath))
+                        SendWebMessage(new { id, success = false, error = "Canceled" });
+                    else
+                        SendWebMessage(new { id, success = true, data = new { path = selectedPath, fileName = Path.GetFileName(selectedPath) } });
+                }
+                else if (cmd == "llama_import_model")
+                {
+                    // Copies a local GGUF file selected via llama_pick_model into the models folder.
+                    string sourcePath = doc.RootElement.TryGetProperty("sourcePath", out var sp) ? sp.GetString() ?? "" : "";
+                    try
+                    {
+                        string fullPath = Path.GetFullPath(sourcePath);
+                        if (!File.Exists(fullPath)) throw new InvalidOperationException("Source file not found");
+                        string fileName = Path.GetFileName(fullPath);
+                        string target = _llamaManager.ResolveModelPath(fileName);
+                        await Task.Run(() => File.Copy(fullPath, target, true)).ConfigureAwait(false);
+                        _llamaManager.SaveModelSettings(fileName, new LlamaManager.ModelSettings { Mmap = true, DisplayName = fileName });
+                        SendWebMessage(new { id, success = true, data = new { fileName } });
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("llama_import_model: " + ex.Message);
+                        SendWebMessage(new { id, success = false, error = "Unable to import model file" });
+                    }
+                }
+                else if (cmd == "llama_start")
+                {
+                    string fileName = doc.RootElement.TryGetProperty("fileName", out var sfn) ? sfn.GetString() ?? "" : "";
+                    int port = doc.RootElement.TryGetProperty("port", out var sp2) && sp2.TryGetInt32(out var spv) ? spv : 0;
+                    bool mmap = !doc.RootElement.TryGetProperty("mmap", out var smm) || smm.GetBoolean();
+                    int contextSize = doc.RootElement.TryGetProperty("contextSize", out var scs) && scs.TryGetInt32(out var scsv) ? scsv : 4096;
+                    int gpuLayers = doc.RootElement.TryGetProperty("gpuLayers", out var sgl) && sgl.TryGetInt32(out var sglv) ? sglv : -1;
+                    try
+                    {
+                        int actualPort = _llamaManager.Start(fileName, port, mmap, contextSize, gpuLayers);
+                        SendWebMessage(new { id, success = true, data = new { instanceId = actualPort, port = actualPort } });
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("llama_start: " + ex.Message);
+                        SendWebMessage(new { id, success = false, error = "Unable to start model" });
+                    }
+                }
+                else if (cmd == "llama_stop")
+                {
+                    int instanceId = doc.RootElement.TryGetProperty("instanceId", out var si) && si.TryGetInt32(out var siv) ? siv : 0;
+                    try { _llamaManager.Stop(instanceId); SendWebMessage(new { id, success = true }); }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("llama_stop: " + ex.Message);
+                        SendWebMessage(new { id, success = false, error = "Unable to stop model" });
+                    }
+                }
+                else if (cmd == "llama_stop_all")
+                {
+                    _llamaManager.StopAll();
+                    SendWebMessage(new { id, success = true });
+                }
                 else if (cmd == "toggle_fullscreen")
                 {
                     Dispatcher.Invoke(ToggleFullscreen);
@@ -1271,5 +1474,6 @@ public partial class MainWindow : Window
     {
         _updateCheckTimer?.Stop();
         GameProcessMonitor.Instance.Stop();
+        _llamaManager.StopAll();
     }
 }

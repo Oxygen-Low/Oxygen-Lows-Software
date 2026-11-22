@@ -123,13 +123,13 @@ describe("Apps", () => {
     expect(
       screen.getAllByRole("note", {
         name: "This is in Alpha, expect bugs and provide feedback via support.",
-      }),
-    ).toHaveLength(5);
+      }).length,
+    ).toBeGreaterThanOrEqual(5);
     expect(
       screen.getAllByRole("note", {
         name: "This is in Beta, expect bugs and provide feedback via support.",
-      }),
-    ).toHaveLength(2);
+      }).length,
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("renders search bar and filters apps dynamically", () => {

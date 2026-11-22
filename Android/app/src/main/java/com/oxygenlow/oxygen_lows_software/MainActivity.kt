@@ -283,6 +283,7 @@ class MainActivity : AppCompatActivity() {
 class WebAppInterface(private val context: Activity, private val webView: WebView) {
 
     private var activeRingtone: Ringtone? = null
+    private val llamaManager by lazy { LlamaManager(context.applicationContext) }
 
     fun postMessage(message: String) {
         try {
@@ -435,6 +436,88 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
                         sendResponse(response.toString())
                     }
                 }
+                // ── AI Runner / llama.cpp (Android) ──────────────────────
+                "llama_status" -> respond(id, true, data = llamaManager.status())
+                "llama_check_update" -> {
+                    Thread {
+                        try { respond(id, true, data = llamaManager.checkUpdate()) }
+                        catch (e: Exception) { respond(id, false, error = "Unable to check for llama.cpp updates") }
+                    }.start()
+                }
+                "llama_install", "llama_update" -> {
+                    val tag = json.optString("tag", "")
+                    Thread {
+                        try {
+                            llamaManager.install(tag) { p ->
+                                val progress = JSONObject().apply { put("id", id); put("success", true); put("progress", p) }
+                                sendResponse(progress.toString())
+                            }
+                            respond(id, true, data = JSONObject().apply {
+                                put("installedVersion", llamaManager.installedVersion)
+                                put("installed", llamaManager.isInstalled())
+                            })
+                        } catch (e: Exception) { respond(id, false, error = "Unable to install llama.cpp") }
+                    }.start()
+                }
+                "llama_uninstall" -> {
+                    try { llamaManager.uninstall(); respond(id, true) }
+                    catch (e: Exception) { respond(id, false, error = "Unable to uninstall llama.cpp") }
+                }
+                "llama_ignore_version" -> {
+                    llamaManager.setIgnoredVersion(json.optString("version", ""))
+                    respond(id, true)
+                }
+                "llama_set_auto_check" -> respond(id, true)
+                "llama_list_models" -> respond(id, true, data = llamaManager.listModels())
+                "llama_save_model" -> {
+                    try { llamaManager.saveModelSettings(json); respond(id, true) }
+                    catch (e: Exception) { respond(id, false, error = "Unable to save model settings") }
+                }
+                "llama_upload_model" -> {
+                    val name = json.optString("fileName", "")
+                    val b64 = json.optString("data", "")
+                    val mmap = !json.has("mmap") || json.optBoolean("mmap", true)
+                    Thread {
+                        try {
+                            val bytes = android.util.Base64.decode(b64, android.util.Base64.DEFAULT)
+                            llamaManager.saveUploadedModel(name, bytes, mmap) { p ->
+                                sendResponse(JSONObject().apply { put("id", id); put("success", true); put("progress", p) }.toString())
+                            }
+                            respond(id, true)
+                        } catch (e: Exception) { respond(id, false, error = "Unable to save model file") }
+                    }.start()
+                }
+                "llama_delete_model" -> {
+                    try { llamaManager.deleteModel(json.optString("fileName", "")); respond(id, true) }
+                    catch (e: Exception) { respond(id, false, error = "Unable to delete model") }
+                }
+                "llama_pick_model" -> {
+                    // Android uses the system file picker from the web layer via <input type=file>;
+                    // this command is a no-op stub on mobile.
+                    respond(id, false, error = "Use the upload control on Android")
+                }
+                "llama_import_model" -> {
+                    try {
+                        val name = llamaManager.importModel(json.optString("sourcePath", ""))
+                        respond(id, true, data = JSONObject().apply { put("fileName", name) })
+                    } catch (e: Exception) { respond(id, false, error = "Unable to import model") }
+                }
+                "llama_start" -> {
+                    try {
+                        val port = llamaManager.start(
+                            json.optString("fileName", ""),
+                            json.optInt("port", 0),
+                            !json.has("mmap") || json.optBoolean("mmap", true),
+                            json.optInt("contextSize", 4096),
+                            json.optInt("gpuLayers", -1)
+                        )
+                        respond(id, true, data = JSONObject().apply { put("instanceId", port); put("port", port) })
+                    } catch (e: Exception) { respond(id, false, error = "Unable to start model") }
+                }
+                "llama_stop" -> {
+                    llamaManager.stop(json.optInt("instanceId", 0)); respond(id, true)
+                }
+                "llama_stop_all" -> { llamaManager.stopAll(); respond(id, true) }
                 // Fallback for unhandled commands
                 else -> {
                     val response = JSONObject().apply {
@@ -474,6 +557,16 @@ class WebAppInterface(private val context: Activity, private val webView: WebVie
         }
         
         context.startActivity(Intent.createChooser(intent, "Import VPN Configuration"))
+    }
+
+    private fun respond(id: String, success: Boolean, data: Any? = null, error: String? = null) {
+        val response = JSONObject().apply {
+            put("id", id)
+            put("success", success)
+            if (data != null) put("data", data)
+            if (error != null) put("error", error)
+        }
+        sendResponse(response.toString())
     }
 
     private fun sendResponse(jsonResponse: String) {

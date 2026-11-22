@@ -117,8 +117,14 @@ const PollinationsOAuthCallback = lazyWithRetry(
 );
 const AgentsPortal = lazyWithRetry(() => import("./pages/AgentsPortal"));
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { useLlamaUpdateToast } from "@/hooks/useLlamaUpdateToast";
 
 const queryClient = new QueryClient();
+
+function LlamaUpdateWatcher() {
+  useLlamaUpdateToast();
+  return null;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -126,6 +132,7 @@ const App = () => (
       <LanguageProvider>
         <ThemeProvider>
           <BrowserRouter>
+            <LlamaUpdateWatcher />
             <MusicProvider>
               <Suspense fallback={null}>
                 <Toaster />

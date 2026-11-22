@@ -35,6 +35,7 @@ import { contentTestRouter } from "./routes/contentTest.ts";
 import { agentsRouter } from "./routes/agents.ts";
 import { customGamesRouter } from "./routes/customGames.ts";
 import { datasetsRouter } from "./routes/datasets.ts";
+import { modelSearchRouter } from "./routes/modelSearch.ts";
 import { encryptedAccessRouter } from "./routes/encryptedAccess.ts";
 import { resumeInterruptedCrawls } from "./lib/oxylowCrawler.ts";
 import {
@@ -132,6 +133,7 @@ app.use("*", async (c, next) => {
     c.req.path.startsWith("/api/agents") ||
     c.req.path.startsWith("/api/custom-games") ||
     c.req.path.startsWith("/api/datasets") ||
+    c.req.path.startsWith("/api/model-search") ||
     c.req.path.startsWith("/api/simplecookies")
   ) {
     return next();
@@ -1302,6 +1304,7 @@ app.route("/api/models", modelsRouter);
 app.route("/api/agents", agentsRouter);
 app.route("/api/custom-games", customGamesRouter);
 app.route("/api/datasets", datasetsRouter);
+app.route("/api/model-search", modelSearchRouter);
 app.route("/api/encrypted-access", encryptedAccessRouter);
 app.route("/v1", v1Router);
 app.route("/api/v1", v1Router);

@@ -62,6 +62,10 @@ import { db, supabase } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/contexts/LanguageContext";
 import { useAiModels, type Model } from "@/hooks/useAiModels";
+import {
+  useLocalLlamaModels,
+  decodeLlamaModelId,
+} from "@/hooks/useLocalLlamaModels";
 import { useLiveVoice } from "@/hooks/useLiveVoice";
 import { WEBSITE_KNOWLEDGE_SYSTEM_PROMPT } from "@shared/websiteKnowledge";
 import { toast } from "sonner";
@@ -1124,7 +1128,7 @@ const formatHordeEta = (seconds: number): string => {
 export function ChatbotApp() {
   const { session } = useAuth();
   const {
-    models,
+    models: baseModels,
     refreshModels,
     pollinationsApiKey,
     isPollinationsConfigured,
@@ -1139,6 +1143,8 @@ export function ChatbotApp() {
     refreshFreeUsage,
     hordeStatus,
   } = useAiModels();
+  const { models: localLlamaModels } = useLocalLlamaModels();
+  const models: Model[] = [...baseModels, ...localLlamaModels];
   const [gateKeyInput, setGateKeyInput] = useState("");
   const [showGateKey, setShowGateKey] = useState(false);
   const [isSavingGateKey, setIsSavingGateKey] = useState(false);
@@ -1405,8 +1411,11 @@ export function ChatbotApp() {
   const selectedProvider = "pollinations";
 
   const formatModelLabel = useCallback(
-    (_provider: string, modelId: string) => {
+    (provider: string, modelId: string) => {
       const found = models.find((m) => m.model_id === modelId);
+      if (provider === "local-llamacpp") {
+        return `${found?.name || "llama.cpp"} (local)`;
+      }
       if (found?.name) return `${found.name} - ${modelId}`;
       return modelId;
     },
@@ -2156,6 +2165,11 @@ export function ChatbotApp() {
         url = "http://127.0.0.1:1234/v1/chat/completions";
       else if (provider === "local-kobold")
         url = "http://127.0.0.1:5001/v1/chat/completions";
+      else if (provider === "local-llamacpp") {
+        const port = decodeLlamaModelId(model);
+        if (!port) throw new Error("Invalid local llama.cpp model");
+        url = `http://127.0.0.1:${port}/v1/chat/completions`;
+      }
 
       fetchOptions = {
         method: "POST",

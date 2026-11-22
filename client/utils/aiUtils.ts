@@ -41,6 +41,12 @@ export const formatModelLabel = (provider: string, modelId: string) => {
     provider === "kobold"
   )
     return "Koboldcpp/" + modelId;
+  if (
+    provider === "local-llamacpp" ||
+    provider === "llamacpp" ||
+    provider === "llama.cpp"
+  )
+    return "llama.cpp/" + modelId;
 
   if (provider === "openrouter" && modelId === "openrouter/free") {
     return "Auto Select - Free Model";

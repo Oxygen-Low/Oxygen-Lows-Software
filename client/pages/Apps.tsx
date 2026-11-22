@@ -197,6 +197,16 @@ const DiskSpaceSaverApp = lazy(() =>
     default: m.DiskSpaceSaverApp,
   })),
 );
+const AiRunnerApp = lazy(() =>
+  import("@/components/apps/AiRunner").then((m) => ({
+    default: m.AiRunnerApp,
+  })),
+);
+const DependenciesManagerApp = lazy(() =>
+  import("@/components/apps/DependenciesManager").then((m) => ({
+    default: m.DependenciesManagerApp,
+  })),
+);
 
 type Category =
   "All" | "Utility" | "LLM/AI" | "Development" | "Social" | "Security";
@@ -649,6 +659,32 @@ const APPS: AppMetadata[] = [
     availability: "desktop-only",
     icon: <HardDrive className="w-8 h-8 text-cyan-500" />,
     component: DiskSpaceSaverApp,
+  },
+  {
+    id: "ai-runner",
+    nameKey: "apps.aiRunnerTitle",
+    defaultName: "AI Runner",
+    descKey: "apps.aiRunnerDesc",
+    defaultDesc: "Run local text models with llama.cpp, with mmap support.",
+    categories: ["All", "LLM/AI", "Utility"],
+    availability: "web-and-desktop",
+    androidSupported: true,
+    icon: <Bot className="w-8 h-8 text-cyan-500" />,
+    component: AiRunnerApp,
+    tag: "beta",
+  },
+  {
+    id: "dependencies-manager",
+    nameKey: "apps.dependenciesTitle",
+    defaultName: "Dependencies Manager",
+    descKey: "apps.dependenciesDesc",
+    defaultDesc: "Manage app dependencies such as llama.cpp.",
+    categories: ["All", "Utility", "Development"],
+    availability: "web-and-desktop",
+    androidSupported: true,
+    icon: <HardDrive className="w-8 h-8 text-cyan-500" />,
+    component: DependenciesManagerApp,
+    tag: "beta",
   },
 ];
 
