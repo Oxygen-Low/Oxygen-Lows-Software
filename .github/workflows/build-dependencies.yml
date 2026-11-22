@@ -118,30 +118,65 @@ jobs:
           git checkout --detach hy4-flash
           echo "Building llama.cpp at $(git rev-parse HEAD)"
 
-      - name: Patch MSVC move-constructor issue in PR #32517
+      - name: Patch MSVC compile issue in PR #32517
         shell: bash
         run: |
           set -euo pipefail
-          # The PR declares a destructor on llama_kv_cache_kpool_context, which
-          # suppresses its implicit move constructor. MSVC then rejects the
-          # ternary construction in llama-memory-hybrid-idx.cpp (C2280).
-          # Explicitly default the move operations until the PR is fixed/merged.
+          # MSVC rejects the ternary construction of llama_kv_cache_kpool_context
+          # (C2280: deleted copy constructor). Replace each ternary with an
+          # immediately-invoked lambda that returns a prvalue, and give the
+          # class an explicit move constructor. Until the PR is fixed/merged.
           PYTHON=python3
           command -v python3 >/dev/null 2>&1 || PYTHON=python
           "$PYTHON" - <<'PY'
           from pathlib import Path
-          p = Path("llama-src/src/llama-kv-cache-kpool.h")
-          s = p.read_text(encoding="utf-8")
+
+          header = Path("llama-src/src/llama-kv-cache-kpool.h")
+          s = header.read_text(encoding="utf-8")
           marker = "~llama_kv_cache_kpool_context();"
           add = (
               "    llama_kv_cache_kpool_context(llama_kv_cache_kpool_context &&) = default;\n"
               "    llama_kv_cache_kpool_context & operator=(llama_kv_cache_kpool_context &&) = default;\n"
           )
           if marker in s and "operator=(llama_kv_cache_kpool_context &&)" not in s:
-              p.write_text(s.replace(marker, add + marker, 1), encoding="utf-8")
-              print("Patched llama-kv-cache-kpool.h for MSVC")
-          else:
-              print("Patch already applied or marker not found; continuing")
+              header.write_text(s.replace(marker, add + marker, 1), encoding="utf-8")
+              print("Patched llama-kv-cache-kpool.h (move constructor)")
+
+          source = Path("llama-src/src/llama-memory-hybrid-idx.cpp")
+          t = source.read_text(encoding="utf-8")
+          replacements = [
+              (
+                  "kpool(mem->get_mem_idx() == nullptr ? llama_kv_cache_kpool_context() : llama_kv_cache_kpool_context(mem->get_mem_idx())) {}",
+                  "kpool([&]() -> llama_kv_cache_kpool_context {\n"
+                  "            if (mem->get_mem_idx() == nullptr) return llama_kv_cache_kpool_context();\n"
+                  "            return llama_kv_cache_kpool_context(mem->get_mem_idx());\n"
+                  "        }()) {}",
+              ),
+              (
+                  "kpool(mem->get_mem_idx() == nullptr ? llama_kv_cache_kpool_context() : llama_kv_cache_kpool_context(mem->get_mem_idx(), lctx, optimize)) {}",
+                  "kpool([&]() -> llama_kv_cache_kpool_context {\n"
+                  "            if (mem->get_mem_idx() == nullptr) return llama_kv_cache_kpool_context();\n"
+                  "            return llama_kv_cache_kpool_context(mem->get_mem_idx(), lctx, optimize);\n"
+                  "        }()) {}",
+              ),
+              (
+                  "kpool(mem->get_mem_idx() == nullptr ? llama_kv_cache_kpool_context() :\n"
+                  "        llama_kv_cache_kpool_context(mem->get_mem_idx(), std::move(sinfos_idx), std::move(ubatches))) {}",
+                  "kpool([&]() -> llama_kv_cache_kpool_context {\n"
+                  "            if (mem->get_mem_idx() == nullptr) return llama_kv_cache_kpool_context();\n"
+                  "            return llama_kv_cache_kpool_context(mem->get_mem_idx(), std::move(sinfos_idx), std::move(ubatches));\n"
+                  "        }()) {}",
+              ),
+          ]
+          count = 0
+          for old, new in replacements:
+              if old in t:
+                  t = t.replace(old, new, 1)
+                  count += 1
+          source.write_text(t, encoding="utf-8")
+          print(f"Patched {count}/3 ternary sites in llama-memory-hybrid-idx.cpp")
+          if count != 3:
+              raise SystemExit("Unexpected llama.cpp source; patch did not apply cleanly")
           PY
 
       - name: Build llama-server (Windows)
