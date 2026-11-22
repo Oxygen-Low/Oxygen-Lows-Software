@@ -10,6 +10,15 @@ vi.mock("sonner", () => ({
   },
 }));
 
+// `lazyToast` loads sonner via a dynamic import, so toast calls resolve
+// asynchronously after `handleSafetyModeration` returns.
+const flushToasts = () =>
+  vi.waitFor(() => {
+    expect(
+      (toast.info as any).mock.calls.length + (toast.error as any).mock.calls.length,
+    ).toBeGreaterThan(0);
+  });
+
 describe("client safetyModeration", () => {
   let openSpy: any;
 
@@ -30,11 +39,12 @@ describe("client safetyModeration", () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 
-  it("handles self-harm code by opening redirect URL in a new tab", () => {
+  it("handles self-harm code by opening redirect URL in a new tab", async () => {
     const handled = handleSafetyModeration({
       code: "SELF_HARM_DETECTED",
       redirectUrl: "https://findahelpline.com/",
     });
+    await flushToasts();
 
     expect(handled).toBe(true);
     expect(openSpy).toHaveBeenCalledWith(
@@ -48,7 +58,7 @@ describe("client safetyModeration", () => {
     );
   });
 
-  it("uses provided translation function for self-harm notice", () => {
+  it("uses provided translation function for self-harm notice", async () => {
     const mockT = vi.fn().mockReturnValue("Translated Crisis Help Notice");
     const handled = handleSafetyModeration(
       {
@@ -57,38 +67,42 @@ describe("client safetyModeration", () => {
       },
       mockT,
     );
+    await flushToasts();
 
     expect(handled).toBe(true);
     expect(mockT).toHaveBeenCalledWith("safety.selfHarmSupportNotice");
     expect(toast.info).toHaveBeenCalledWith("Translated Crisis Help Notice", expect.any(Object));
   });
 
-  it("handles child safety policy violation response", () => {
+  it("handles child safety policy violation response", async () => {
     const handled = handleSafetyModeration({
       code: "CHILD_SAFETY_POLICY_VIOLATION",
       error: "Child safety violation",
     });
+    await flushToasts();
 
     expect(handled).toBe(true);
     expect(toast.error).toHaveBeenCalledWith("Child safety violation", expect.any(Object));
   });
 
-  it("handles standard content policy violation response", () => {
+  it("handles standard content policy violation response", async () => {
     const handled = handleSafetyModeration({
       code: "CONTENT_POLICY_VIOLATION",
       category: "hate",
       error: "Hate speech blocked",
     });
+    await flushToasts();
 
     expect(handled).toBe(true);
     expect(toast.error).toHaveBeenCalledWith("Hate speech blocked", expect.any(Object));
   });
 
-  it("handles moderation service unavailable response", () => {
+  it("handles moderation service unavailable response", async () => {
     const handled = handleSafetyModeration({
       code: "MODERATION_SERVICE_UNAVAILABLE",
       error: "Safety moderation service is temporarily unavailable. Please try again shortly.",
     });
+    await flushToasts();
 
     expect(handled).toBe(true);
     expect(toast.error).toHaveBeenCalledWith(

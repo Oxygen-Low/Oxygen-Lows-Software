@@ -1059,11 +1059,12 @@ describe("MusicContext playlist management and playback features", () => {
     });
 
     const VolumeConsumer = () => {
-      const { playlistSessionVolume, setPlaylistSessionVolume, audioRef, playNext } =
+      const { playlistSessionVolume, setPlaylistSessionVolume, audioRef, playNext, playlist } =
         useMusicContext();
       return (
         <div>
           <span data-testid="session-vol">{playlistSessionVolume}</span>
+          <span data-testid="playlist-length">{playlist.length}</span>
           <button
             data-testid="set-session-vol"
             onClick={() => setPlaylistSessionVolume(0.5)}
@@ -1083,8 +1084,9 @@ describe("MusicContext playlist management and playback features", () => {
       </MusicProvider>,
     );
 
+    // Playlist preferences are loaded on idle, so wait for them before interacting.
     await waitFor(() => {
-      expect(screen.getByTestId("session-vol").textContent).toBe("1");
+      expect(screen.getByTestId("playlist-length").textContent).toBe("2");
     });
 
     const audioElement = document.querySelector("audio");

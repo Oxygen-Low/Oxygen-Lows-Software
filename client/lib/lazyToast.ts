@@ -5,6 +5,8 @@ type ToastFn = (
   data?: ExternalToast,
 ) => void | string | number;
 
+type ToastMethod = "message" | "info" | "error" | "success" | "warning" | "loading";
+
 let toastPromise: Promise<{
   default: typeof import("sonner").toast;
 }> | null = null;
@@ -16,10 +18,19 @@ function getToast() {
   return toastPromise;
 }
 
-/** Fire-and-forget toast helper that keeps `sonner` out of the initial bundle. */
-export function notify(message: string, data?: ExternalToast): void {
+/**
+ * Fire-and-forget toast helper that keeps `sonner` out of the initial bundle.
+ * Delegates to the matching `sonner` toast method so the toast keeps its
+ * semantic type (info/error/success/...) instead of becoming a plain message.
+ */
+export function notify(
+  message: string,
+  data?: ExternalToast,
+  method: ToastMethod = "message",
+): void {
   void getToast().then(({ default: toast }) => {
-    toast(message, data);
+    const toastFn = (toast[method] ?? toast.message) as ToastFn;
+    toastFn(message, data);
   });
 }
 
@@ -38,12 +49,12 @@ export interface LazyToast {
  * synchronous dismiss id — no entry-level caller does.
  */
 export const lazyToast: LazyToast = Object.assign(
-  (message: string, data?: ExternalToast) => notify(message, data),
+  (message: string, data?: ExternalToast) => notify(message, data, "message"),
   {
-    info: ((message, data) => notify(message, data)) as ToastFn,
-    error: ((message, data) => notify(message, data)) as ToastFn,
-    success: ((message, data) => notify(message, data)) as ToastFn,
-    warning: ((message, data) => notify(message, data)) as ToastFn,
-    loading: ((message, data) => notify(message, data)) as ToastFn,
+    info: ((message, data) => notify(message, data, "info")) as ToastFn,
+    error: ((message, data) => notify(message, data, "error")) as ToastFn,
+    success: ((message, data) => notify(message, data, "success")) as ToastFn,
+    warning: ((message, data) => notify(message, data, "warning")) as ToastFn,
+    loading: ((message, data) => notify(message, data, "loading")) as ToastFn,
   },
 );
