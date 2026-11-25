@@ -1413,7 +1413,16 @@ export function ChatbotApp() {
   const setSelectedModel = useCallback((modelId: string) => {
     setUserSelectedModel(modelId);
   }, []);
-  const selectedProvider = "pollinations";
+  // Derive the provider from the selected model id. Local model ids are
+  // self-describing, so they keep working even if the running-instance poll
+  // hasn't refreshed the model list yet.
+  const selectedProvider = useMemo(() => {
+    if (selectedModel.startsWith("llamacpp:")) return "local-llamacpp";
+    if (selectedModel.startsWith("ollama:")) return "local-ollama";
+    if (selectedModel.startsWith("lmstudio:")) return "local-lmstudio";
+    if (selectedModel.startsWith("kobold:")) return "local-kobold";
+    return models.find((m) => m.model_id === selectedModel)?.provider || "pollinations";
+  }, [selectedModel, models]);
   const selectedModelSupportsVision = !!models.find(
     (m) => m.model_id === selectedModel,
   )?.isVision;
@@ -1750,6 +1759,13 @@ export function ChatbotApp() {
     streamCallback: (content: string, reasoning?: string) => void,
     onFallback?: (modelUsed?: string) => void,
   ): Promise<string> => {
+    // Never send a local model id to a remote provider. This also protects
+    // against a stale model list causing the caller to pass "pollinations".
+    if (model?.startsWith("llamacpp:")) provider = "local-llamacpp";
+    else if (model?.startsWith("ollama:")) provider = "local-ollama";
+    else if (model?.startsWith("lmstudio:")) provider = "local-lmstudio";
+    else if (model?.startsWith("kobold:")) provider = "local-kobold";
+
     const apiKey = pollinationsApiKey;
     const sanitizedMsgs = msgs.map((m) => ({
       role: (m.role || "user") as "system" | "user" | "assistant",
@@ -2375,7 +2391,15 @@ export function ChatbotApp() {
     let finalContent = "";
     let reasoningContent = "";
     const currentModelObj = models.find((m) => m.model_id === selectedModel);
-    const effectiveProvider = currentModelObj?.provider || selectedProvider;
+    const effectiveProvider = selectedModel.startsWith("llamacpp:")
+      ? "local-llamacpp"
+      : selectedModel.startsWith("ollama:")
+        ? "local-ollama"
+        : selectedModel.startsWith("lmstudio:")
+          ? "local-lmstudio"
+          : selectedModel.startsWith("kobold:")
+            ? "local-kobold"
+            : currentModelObj?.provider || selectedProvider;
     const effectiveModel = selectedModel;
 
     const injectedSystemPrompt = getInjectedSystemPrompt();
