@@ -35,7 +35,7 @@ if (process.env.NODE_ENV === "production") {
     if (
       reqPath.startsWith("/api/") ||
       reqPath.startsWith("/assets/") ||
-      /\.(js|css|wasm|map|json|png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|eot|mp3|wav|ogg)$/i.test(
+      /\.(js|css|wasm|map|json|png|jpg|jpeg|gif|webp|jxl|svg|ico|woff|woff2|ttf|eot|mp3|wav|ogg)$/i.test(
         reqPath,
       )
     ) {

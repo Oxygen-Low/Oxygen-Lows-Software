@@ -434,6 +434,8 @@ export const SEO_ROUTES: Record<string, RouteSeoData> = {
       "convert audio",
       "convert video",
       "convert images",
+      "jpeg xl converter",
+      "jxl converter",
       "ffmpeg wasm",
     ],
     ogType: "website",

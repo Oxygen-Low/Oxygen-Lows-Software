@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile } from "@ffmpeg/util";
 import { useAuth } from "@/hooks/useAuth";
+import { imageBlobToJxlBlob, isJxlFormat, jxlBlobToPngBlob } from "@/lib/jxl";
 
 let ffmpegInstance: FFmpeg | null = null;
 let ffmpegLoadPromise: Promise<FFmpeg> | null = null;
@@ -65,11 +66,32 @@ const loadFfmpeg = async (): Promise<FFmpeg> => {
   return ffmpegLoadPromise;
 };
 
-const FORMATS = {
-  image: ["png", "jpeg", "webp", "tiff", "bmp", "ico", "svg", "eps"],
+export const FORMATS = {
+  image: ["png", "jpeg", "webp", "jxl", "tiff", "bmp", "ico", "svg", "eps"],
   audio: ["wav", "aiff", "flac", "alac", "mp3", "aac", "ogg"],
   video: ["mp4", "mov", "webm", "avi", "mkv"],
 };
+
+const FORMAT_LABELS: Record<string, string> = { jxl: "JPEG XL" };
+
+export type ConversionPlan =
+  | "jxl-passthrough"
+  | "to-jxl"
+  | "from-jxl"
+  | "ffmpeg";
+
+/** Which codec pipeline a conversion needs, given the input and output types. */
+export function getConversionPlan(
+  inputExt: string,
+  targetFormat: string,
+): ConversionPlan {
+  const sourceIsJxl = isJxlFormat(inputExt);
+  const targetIsJxl = isJxlFormat(targetFormat);
+  if (sourceIsJxl && targetIsJxl) return "jxl-passthrough";
+  if (targetIsJxl) return "to-jxl";
+  if (sourceIsJxl) return "from-jxl";
+  return "ffmpeg";
+}
 
 export function FileConverterApp() {
   const { session } = useAuth();
@@ -191,42 +213,85 @@ export function FileConverterApp() {
     };
 
     try {
-      const ffmpeg = await loadFfmpeg();
-      ffmpegRef = ffmpeg;
+      const inputExt = file.name.split(".").pop()?.toLowerCase() || "";
+      const plan = getConversionPlan(inputExt, targetFormat);
+      let convertedBlob: Blob;
 
-      ffmpeg.on("progress", progressCallback);
+      if (plan === "jxl-passthrough") {
+        // Re-encoding JXL to JXL can only lose quality, so pass it through.
+        convertedBlob = file;
+        setProgress(100);
+      } else if (plan === "to-jxl") {
+        setProgress(10);
 
-      const inputName = `input.${file.name.split(".").pop()}`;
-      const outputName = `output.${targetFormat}`;
-
-      await ffmpeg.writeFile(inputName, await fetchFile(file));
-
-      let ffmpegArgs: string[] = ["-i", inputName];
-
-      if (fileType === "audio") {
-        if (targetFormat === "alac") {
-          ffmpegArgs.push("-acodec", "alac");
-          // alac goes into m4a container generally
+        try {
+          convertedBlob = await imageBlobToJxlBlob(file);
+        } catch {
+          // The browser cannot decode every FFmpeg-supported format (e.g.
+          // TIFF), so render those to PNG first and encode that instead.
+          const ffmpeg = await loadFfmpeg();
+          ffmpegRef = ffmpeg;
+          ffmpeg.on("progress", progressCallback);
+          const intermediateName = `input.${inputExt}`;
+          await ffmpeg.writeFile(intermediateName, await fetchFile(file));
+          await ffmpeg.exec(["-i", intermediateName, "intermediate.png"]);
+          const pngData = await ffmpeg.readFile("intermediate.png");
+          const pngBlob = new Blob(
+            [new Uint8Array(pngData as unknown as ArrayBuffer)],
+            { type: "image/png" },
+          );
+          convertedBlob = await imageBlobToJxlBlob(pngBlob);
         }
+
+        setProgress(100);
+      } else {
+        const ffmpeg = await loadFfmpeg();
+        ffmpegRef = ffmpeg;
+
+        ffmpeg.on("progress", progressCallback);
+
+        let inputSource: Blob = file;
+        let inputName = `input.${inputExt}`;
+        if (plan === "from-jxl") {
+          // FFmpeg.wasm has no libjxl codec, so decode to PNG with jSquash
+          // before running the regular FFmpeg conversion pipeline.
+          setProgress(10);
+          inputSource = await jxlBlobToPngBlob(file);
+          inputName = "input.png";
+          setProgress(40);
+        }
+
+        const outputName = `output.${targetFormat}`;
+        await ffmpeg.writeFile(inputName, await fetchFile(inputSource));
+
+        const ffmpegArgs: string[] = ["-i", inputName];
+
+        if (fileType === "audio") {
+          if (targetFormat === "alac") {
+            ffmpegArgs.push("-acodec", "alac");
+            // alac goes into m4a container generally
+          }
+        }
+
+        ffmpegArgs.push(outputName);
+
+        await ffmpeg.exec(ffmpegArgs);
+
+        const data = await ffmpeg.readFile(outputName);
+
+        // Determine MIME type
+        let mimeType = "application/octet-stream";
+        if (fileType === "image")
+          mimeType = `image/${targetFormat === "jpg" ? "jpeg" : targetFormat}`;
+        else if (fileType === "audio") mimeType = `audio/${targetFormat}`;
+        else if (fileType === "video") mimeType = `video/${targetFormat}`;
+
+        convertedBlob = new Blob(
+          [new Uint8Array(data as unknown as ArrayBuffer)],
+          { type: mimeType },
+        );
       }
 
-      ffmpegArgs.push(outputName);
-
-      await ffmpeg.exec(ffmpegArgs);
-
-      const data = await ffmpeg.readFile(outputName);
-
-      // Determine MIME type
-      let mimeType = "application/octet-stream";
-      if (fileType === "image")
-        mimeType = `image/${targetFormat === "jpg" ? "jpeg" : targetFormat}`;
-      else if (fileType === "audio") mimeType = `audio/${targetFormat}`;
-      else if (fileType === "video") mimeType = `video/${targetFormat}`;
-
-      const convertedBlob = new Blob(
-        [new Uint8Array(data as unknown as ArrayBuffer)],
-        { type: mimeType },
-      );
       const url = URL.createObjectURL(convertedBlob);
 
       if (convertedUrl) {
@@ -440,7 +505,7 @@ export function FileConverterApp() {
                       <SelectContent>
                         {getAvailableFormats(fileType).map((fmt) => (
                           <SelectItem key={fmt} value={fmt}>
-                            {fmt.toUpperCase()}
+                            {FORMAT_LABELS[fmt] ?? fmt.toUpperCase()}
                             {(fmt === "svg" || fmt === "eps") && " (WIP)"}
                           </SelectItem>
                         ))}

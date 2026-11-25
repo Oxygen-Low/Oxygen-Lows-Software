@@ -1,10 +1,20 @@
 // @vitest-environment jsdom
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
-import { FileConverterApp } from "./FileConverter";
+import { FileConverterApp, FORMATS, getConversionPlan } from "./FileConverter";
 import * as authHook from "@/hooks/useAuth";
 
 vi.mock("@/hooks/useAuth");
+
+vi.mock("@/lib/jxl", () => ({
+  isJxlFormat: (format: string) => format.toLowerCase() === "jxl",
+  imageBlobToJxlBlob: vi
+    .fn()
+    .mockResolvedValue(new Blob(["jxl"], { type: "image/jxl" })),
+  jxlBlobToPngBlob: vi
+    .fn()
+    .mockResolvedValue(new Blob(["png"], { type: "image/png" })),
+}));
 
 vi.mock("@ffmpeg/ffmpeg", () => ({
   FFmpeg: vi.fn().mockImplementation(() => ({
@@ -62,5 +72,17 @@ describe("FileConverterApp", () => {
     // It's a bit hard to test file input directly with testing-library without full user-event setup,
     // but we can ensure the upload prompt exists.
     expect(screen.getAllByText("Click to select a file").length).toBeGreaterThan(0);
+  });
+
+  it("offers JPEG XL as an image target format", () => {
+    expect(FORMATS.image).toContain("jxl");
+  });
+
+  it("routes JXL conversions through the correct pipeline", () => {
+    expect(getConversionPlan("png", "jxl")).toBe("to-jxl");
+    expect(getConversionPlan("jxl", "png")).toBe("from-jxl");
+    expect(getConversionPlan("jxl", "jxl")).toBe("jxl-passthrough");
+    expect(getConversionPlan("png", "webp")).toBe("ffmpeg");
+    expect(getConversionPlan("mp3", "wav")).toBe("ffmpeg");
   });
 });

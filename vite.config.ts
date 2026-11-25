@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => ({
     ],
   },
   optimizeDeps: {
-    exclude: ["@ffmpeg/ffmpeg", "@ffmpeg/util"],
+    exclude: ["@ffmpeg/ffmpeg", "@ffmpeg/util", "@jsquash/jxl"],
   },
   server: {
     host: "::",

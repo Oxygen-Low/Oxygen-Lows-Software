@@ -51,6 +51,7 @@ const MIME_MAP: Record<string, string> = {
   jpeg: "image/jpeg",
   gif: "image/gif",
   webp: "image/webp",
+  jxl: "image/jxl",
   svg: "image/svg+xml",
   bmp: "image/bmp",
   ico: "image/x-icon",

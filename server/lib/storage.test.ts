@@ -47,6 +47,7 @@ describe("Server Storage Library", () => {
     it("returns correct MIME types for common media and files", () => {
       expect(getMimeType("photo.png")).toBe("image/png");
       expect(getMimeType("photo.jpg")).toBe("image/jpeg");
+      expect(getMimeType("photo.jxl")).toBe("image/jxl");
       expect(getMimeType("font.otf")).toBe("font/otf");
       expect(getMimeType("font.ttf")).toBe("font/ttf");
       expect(getMimeType("font.woff")).toBe("font/woff");
